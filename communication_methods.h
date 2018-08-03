@@ -1,5 +1,8 @@
 #include <string>
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/lambda/bind.hpp>
+#include <boost/lambda/lambda.hpp>
 
 #ifndef COMMUNICATIONMETHODS_H
 #define COMMUNICATIONMETHODS_H
@@ -20,9 +23,12 @@ public:
     //TODO implement PVT support
 
 private:
+    void timeout_fn();
+    void connect_fn(const boost::system::error_code& ec);
     boost::asio::io_service io_service;
     boost::asio::ip::tcp::socket sock;
     boost::system::error_code ec;
+    boost::asio::deadline_timer timeout;
 
     char block[BLOCK_SIZE+1];
 };
