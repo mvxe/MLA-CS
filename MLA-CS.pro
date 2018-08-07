@@ -26,14 +26,18 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
-    communication_methods.cpp
+    communication_methods.cpp \
+    mutex_containers.cpp
 
 HEADERS += \
         mainwindow.h \
-    communication_methods.h
+    communication_methods.h \
+    mutex_containers.h \
+    interthread_com.h
 
 FORMS += \
         mainwindow.ui
 
 LIBS += \
        -lboost_system\
+

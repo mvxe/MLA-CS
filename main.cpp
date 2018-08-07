@@ -1,7 +1,12 @@
 #include "mainwindow.h"
 #include <QApplication>
 #include "communication_methods.h"
+#include "interthread_com.h"
 #include <iostream>
+
+#include <thread>
+#include <mutex>
+
 
 int main(int argc, char *argv[])
 {
@@ -9,10 +14,13 @@ int main(int argc, char *argv[])
     MainWindow w;
     w.show();
 
+    ComM_XPS xyz_ctrl;
+//    std::cout << iCC_GUI.GUI_change();
+
 //    std::string ret;
-//    ComM_XPS xyz_ctrl;
+
 //    std::cout << "connecting...\n";
-//    try { xyz_ctrl.connect("192.168.0.254","5001"); }
+//    try { xyz_ctrl.connect("192.168.0.254",5001); }
 //    catch (int &a) {std::cout << "error:" << a << "\n";}
 //    std::cout << "done.\n";
 
@@ -35,5 +43,5 @@ int main(int argc, char *argv[])
 
 //    std::cout << "\n";
 
-    return a.exec();
+    a.exec();
 }

@@ -1,22 +1,20 @@
 #include "communication_methods.h"
 
+
+/* this is the class for communication with the XPS*/
+
 ComM_XPS::ComM_XPS () : sock(io_service) , timeout(io_service){}
 ComM_XPS::~ComM_XPS (){
     disconnect();
 }
 
 
-void ComM_XPS::connect (std::string host, std::string port){
-    boost::asio::ip::tcp::resolver resolver(io_service);
-    boost::asio::ip::tcp::resolver::query query(host, port);
-//    boost::asio::connect(sock, resolver.resolve(query),ec);
-//    if (ec) throw ec;
+void ComM_XPS::connect (std::string host, int port){
     timeout.expires_from_now(boost::posix_time::seconds(1));
     timeout.async_wait(boost::bind(&ComM_XPS::timeout_fn, this));
     ec = boost::asio::error::would_block;
 
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("192.168.0.254"), 5001);
-    //sock.async_connect(endpoint, boost::lambda::var(ec) =  boost::lambda::_1);
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(host), port);
     sock.async_connect(endpoint, boost::bind(&ComM_XPS::connect_fn, this, boost::asio::placeholders::error));
     io_service.run();
     if (ec) exit(0);
@@ -45,8 +43,7 @@ void ComM_XPS::rw(std::string write_string,std::string &read_string){
 void ComM_XPS::timeout_fn(){
     sock.cancel();
 }
-void ComM_XPS::connect_fn(const boost::system::error_code& ecx)
-{
+void ComM_XPS::connect_fn(const boost::system::error_code& ecx){
     timeout.cancel();
     ec=ecx;
 }
