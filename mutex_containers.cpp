@@ -1,10 +1,9 @@
 #include "mutex_containers.h"
-#include <cstdio>
 
 /*########## mxvar_whatever ##########*/
 
-mxvar_ip::mxvar_ip(std::mutex *mxn) : mxvar<std::string>(mxn){
-    set("0.0.0.0");
+mxvar_ip::mxvar_ip(std::mutex *mxn, std::string initial) : mxvar<std::string>(mxn, initial){
+    if (check(initial)) err(initial);
 }
 
 bool mxvar_ip::check(std::string nvar){
@@ -22,11 +21,12 @@ bool mxvar_ip::check(std::string nvar){
 
 /*####*/
 
-mxvar_port::mxvar_port(std::mutex *mxn) : mxvar<int>(mxn){
-    set(0);
+mxvar_port::mxvar_port(std::mutex *mxn, int initial) : mxvar<int>(mxn, initial){
+    if (check(initial)) err(initial);
 }
 
 bool mxvar_port::check(int nvar){
     if (nvar<0 || nvar>65535) return true;
     return false;
 }
+

@@ -28,14 +28,16 @@ SOURCES += \
         gui_settingstab.cpp \
         mainwindow.cpp \
         communication_methods.cpp \
-        mutex_containers.cpp
+    mutex_containers.cpp
 
 
 HEADERS += \
         mainwindow.h \
         communication_methods.h \
         mutex_containers.h \
+        mutex_containers_impl.h \
         interthread_com.h
+
 
 FORMS += \
         mainwindow.ui
