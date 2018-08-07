@@ -13,6 +13,3 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::on_e_xps_ip_editingFinished(){
-
-}

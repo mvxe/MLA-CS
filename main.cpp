@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include <QApplication>
 #include "communication_methods.h"
-#include "interthread_com.h"
 #include <iostream>
 
 #include <thread>

@@ -25,15 +25,17 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
+        gui_settingstab.cpp \
         mainwindow.cpp \
-    communication_methods.cpp \
-    mutex_containers.cpp
+        communication_methods.cpp \
+        mutex_containers.cpp
+
 
 HEADERS += \
         mainwindow.h \
-    communication_methods.h \
-    mutex_containers.h \
-    interthread_com.h
+        communication_methods.h \
+        mutex_containers.h \
+        interthread_com.h
 
 FORMS += \
         mainwindow.ui

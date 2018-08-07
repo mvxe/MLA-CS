@@ -345,15 +345,24 @@
               <property name="alignment">
                <set>Qt::AlignCenter</set>
               </property>
-              <property name="value">
+              <property name="minimum">
                <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>10000</number>
+              </property>
+              <property name="singleStep">
+               <number>100</number>
+              </property>
+              <property name="value">
+               <number>1000</number>
               </property>
              </widget>
             </item>
             <item row="0" column="0">
              <widget class="QLabel" name="label_10">
               <property name="text">
-               <string>TCP Autoconnect/Keepalive every (in sec):</string>
+               <string>TCP Autoconnect/Keepalive every (in msec):</string>
               </property>
              </widget>
             </item>
