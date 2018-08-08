@@ -18,8 +18,8 @@ extern mxvar<bool> XPS_connected;
 /* GUI <-> MAKO thread communication */
 extern std::mutex GUI_MAKO;
 extern mxvar<int> MAKO_keepalive;
+extern mxvar<bool> MAKO_end;
 extern mxvar<bool> MAKO_connected;
-
 
 
 /* GUI <-> RPTY thread communication */
@@ -27,6 +27,7 @@ extern std::mutex GUI_RPTY;
 extern mxvar_ip RPTY_ip;
 extern mxvar_port RPTY_port;
 extern mxvar<int> RPTY_keepalive;
+extern mxvar<bool> RPTY_end;
 extern mxvar<bool> RPTY_connected;
 
 

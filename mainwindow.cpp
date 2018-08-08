@@ -13,6 +13,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 }
 
 MainWindow::~MainWindow(){
+    XPS_end.set(true);     //signal the other threads to exit
+    MAKO_end.set(true);
+    RPTY_end.set(true);
     delete ui;
 }
 

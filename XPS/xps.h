@@ -3,13 +3,13 @@
 
 #include "TCP_con.h"
 #include "sharedvars.h"
-#include <chrono>
 #include <thread>
 
-class XPS : public TCP_con
-{
+
+class XPS : public TCP_con{
 public:
     XPS();
+    ~XPS();
     void run();
 };
 

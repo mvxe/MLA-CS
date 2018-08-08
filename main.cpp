@@ -1,10 +1,8 @@
 #include "mainwindow.h"
 #include <QApplication>
 #include "XPS/xps.h"
+#include "MAKO/mako.h"
 #include <iostream>
-
-#include <thread>
-#include <mutex>
 
 int main(int argc, char *argv[])
 {
@@ -14,6 +12,10 @@ int main(int argc, char *argv[])
 
     XPS XPS;
     std::thread XPS_thread(&XPS::run, &XPS);
+    XPS_thread.detach();
+    MAKO MAKO;
+    std::thread MAKO_thread(&MAKO::run, &MAKO);
+    MAKO_thread.detach();
 
  //   ComM_XPS xyz_ctrl;
 //    std::cout << iCC_GUI.GUI_change();

@@ -6,6 +6,7 @@
 #include <QString>
 #include <QTimer>
 #include "gui_slots_baseclass.h"
+#include <thread>
 
 namespace Ui {
 class MainWindow;

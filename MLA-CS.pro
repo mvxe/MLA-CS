@@ -31,27 +31,39 @@ FORMS += \
 LIBS += \
        -lboost_system\
 
-DISTFILES +=
+DISTFILES += \
+    icons/emblem-nowrite.svg \
+    icons/emblem-ok.svg
 
 RESOURCES += \
+    icons/icon.qrc \
     icons/icon.qrc
 
+
+
+
+unix:!macx: LIBS += -L$$PWD/../Vimba_2_1/VimbaCPP/DynamicLib/x86_64bit/ -lVimbaCPP -lVimbaC
+
+INCLUDEPATH += $$PWD/../Vimba_2_1
+DEPENDPATH += $$PWD/../Vimba_2_1
+
 HEADERS += \
+    MAKO/mako.h \
     XPS/xps.h \
     gui_slots_baseclass.h \
     mainwindow.h \
     mutex_containers.h \
     mutex_containers_impl.h \
-    TCP_con.h \
-    sharedvars.h
+    sharedvars.h \
+    TCP_con.h
 
 SOURCES += \
+    MAKO/mako.cpp \
     XPS/xps.cpp \
     gui_settingstab.cpp \
     gui_slots_baseclass.cpp \
     main.cpp \
     mainwindow.cpp \
     mutex_containers.cpp \
-    TCP_con.cpp \
-    sharedvars.cpp
-
+    sharedvars.cpp \
+    TCP_con.cpp
