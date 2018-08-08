@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>emblem-nowrite.svg</file>
+        <file>emblem-ok.svg</file>
+    </qresource>
+</RCC>

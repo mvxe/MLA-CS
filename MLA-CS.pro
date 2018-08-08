@@ -24,26 +24,30 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 
 SOURCES += \
-        main.cpp \
-        gui_settingstab.cpp \
-        mainwindow.cpp \
-        communication_methods.cpp \
+    main.cpp \
+    gui_settingstab.cpp \
+    mainwindow.cpp \
+    communication_methods.cpp \
     mutex_containers.cpp \
     gui_slots_baseclass.cpp
 
 
 HEADERS += \
-        mainwindow.h \
-        communication_methods.h \
-        mutex_containers.h \
-        mutex_containers_impl.h \
-        interthread_com.h \
+    mainwindow.h \
+    communication_methods.h \
+    mutex_containers.h \
+    mutex_containers_impl.h \
+    interthread_com.h \
     gui_slots_baseclass.h
-
 
 FORMS += \
         mainwindow.ui
 
 LIBS += \
        -lboost_system\
+
+DISTFILES +=
+
+RESOURCES += \
+    icons/icon.qrc
 
