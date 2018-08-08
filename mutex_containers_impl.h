@@ -22,7 +22,7 @@ bool mxvar<T>::set(T nvar){
 template <typename T>
 T mxvar<T>::get(){
     mx->lock();
-    const T nvar = var;
+    T nvar = var;
     change = false;
     mx->unlock();
     return nvar;

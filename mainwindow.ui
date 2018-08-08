@@ -75,7 +75,7 @@
          </spacer>
         </item>
         <item row="0" column="1">
-         <widget class="QLabel" name="label_7">
+         <widget class="QLabel" name="si_XPS">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
@@ -115,7 +115,7 @@
          </widget>
         </item>
         <item row="1" column="1">
-         <widget class="QLabel" name="label_9">
+         <widget class="QLabel" name="si_MAKO">
           <property name="maximumSize">
            <size>
             <width>30</width>
@@ -150,7 +150,7 @@
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QLabel" name="label_14">
+         <widget class="QLabel" name="si_RPTY">
           <property name="maximumSize">
            <size>
             <width>30</width>
@@ -161,7 +161,7 @@
            <string/>
           </property>
           <property name="pixmap">
-           <pixmap resource="icons/icon.qrc">:/emblem-ok.svg</pixmap>
+           <pixmap resource="icons/icon.qrc">:/emblem-nowrite.svg</pixmap>
           </property>
           <property name="scaledContents">
            <bool>true</bool>
@@ -176,7 +176,54 @@
        </attribute>
        <layout class="QGridLayout" name="gridLayout_5">
         <item row="0" column="0">
-         <widget class="QGraphicsView" name="graphicsView"/>
+         <widget class="QGraphicsView" name="graphicsView">
+          <property name="cursor" stdset="0">
+           <cursorShape>SizeAllCursor</cursorShape>
+          </property>
+          <property name="mouseTracking">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0">
+          <property name="spacing">
+           <number>5</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="bt_webcam">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="icons/icon.qrc">
+              <normaloff>:/emblem-nowrite.svg</normaloff>:/emblem-nowrite.svg</iconset>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="verticalSpacer_3">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>

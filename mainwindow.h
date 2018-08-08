@@ -2,8 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "interthread_com.h"
+#include "sharedvars.h"
 #include <QString>
+#include <QTimer>
 #include "gui_slots_baseclass.h"
 
 namespace Ui {
@@ -20,6 +21,7 @@ public:
 
 private slots:
     void sync_settings();
+    void GUI_update();
 
     void on_e_xps_ip_editingFinished();
     void on_e_xps_port_editingFinished();
@@ -34,6 +36,9 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+
+    QPixmap* px_online;
+    QPixmap* px_offline;
 };
 
 #endif // MAINWINDOW_H

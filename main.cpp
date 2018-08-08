@@ -1,11 +1,10 @@
 #include "mainwindow.h"
 #include <QApplication>
-#include "communication_methods.h"
+#include "XPS/xps.h"
 #include <iostream>
 
 #include <thread>
 #include <mutex>
-
 
 int main(int argc, char *argv[])
 {
@@ -13,7 +12,10 @@ int main(int argc, char *argv[])
     MainWindow w;
     w.show();
 
-    ComM_XPS xyz_ctrl;
+    XPS XPS;
+    std::thread XPS_thread(&XPS::run, &XPS);
+
+ //   ComM_XPS xyz_ctrl;
 //    std::cout << iCC_GUI.GUI_change();
 
 //    std::string ret;

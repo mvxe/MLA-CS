@@ -23,22 +23,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 
-SOURCES += \
-    main.cpp \
-    gui_settingstab.cpp \
-    mainwindow.cpp \
-    communication_methods.cpp \
-    mutex_containers.cpp \
-    gui_slots_baseclass.cpp
 
-
-HEADERS += \
-    mainwindow.h \
-    communication_methods.h \
-    mutex_containers.h \
-    mutex_containers_impl.h \
-    interthread_com.h \
-    gui_slots_baseclass.h
 
 FORMS += \
         mainwindow.ui
@@ -50,4 +35,23 @@ DISTFILES +=
 
 RESOURCES += \
     icons/icon.qrc
+
+HEADERS += \
+    XPS/xps.h \
+    gui_slots_baseclass.h \
+    mainwindow.h \
+    mutex_containers.h \
+    mutex_containers_impl.h \
+    TCP_con.h \
+    sharedvars.h
+
+SOURCES += \
+    XPS/xps.cpp \
+    gui_settingstab.cpp \
+    gui_slots_baseclass.cpp \
+    main.cpp \
+    mainwindow.cpp \
+    mutex_containers.cpp \
+    TCP_con.cpp \
+    sharedvars.cpp
 

@@ -1,5 +1,5 @@
-#ifndef COMMUNICATIONMETHODS_H
-#define COMMUNICATIONMETHODS_H
+#ifndef TCP_CON_H
+#define TCP_CON_H
 
 #include <string>
 #include <boost/asio.hpp>
@@ -7,13 +7,13 @@
 #include <boost/lambda/bind.hpp>
 #include <boost/lambda/lambda.hpp>
 
-/* this is the class for communication with the XPS*/
+/* this is a class that can be used for TCP communication*/
 #define BLOCK_SIZE	1024
 
-class ComM_XPS{
+class TCP_con{
 public:
-    ComM_XPS();
-    ~ComM_XPS();
+    TCP_con();
+    ~TCP_con();
     void connect (std::string host, int port);  //connect to ip
     void disconnect();
     void write(std::string write_string);
@@ -22,16 +22,16 @@ public:
     //TODO implement TCL scripts
     //TODO implement PVT support
 
+protected:
+    bool connected;
+
 private:
-    void timeout_fn();
     void connect_fn(const boost::system::error_code& ec);
     boost::asio::io_service io_service;
     boost::asio::ip::tcp::socket sock;
     boost::system::error_code ec;
-    boost::asio::deadline_timer timeout;
-
     char block[BLOCK_SIZE+1];
 };
 
 
-#endif // COMMUNICATIONMETHODS_H
+#endif // TCP_CON_H
