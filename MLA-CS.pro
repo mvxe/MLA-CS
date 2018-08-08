@@ -28,7 +28,8 @@ SOURCES += \
         gui_settingstab.cpp \
         mainwindow.cpp \
         communication_methods.cpp \
-    mutex_containers.cpp
+    mutex_containers.cpp \
+    gui_slots_baseclass.cpp
 
 
 HEADERS += \
@@ -36,7 +37,8 @@ HEADERS += \
         communication_methods.h \
         mutex_containers.h \
         mutex_containers_impl.h \
-        interthread_com.h
+        interthread_com.h \
+    gui_slots_baseclass.h
 
 
 FORMS += \

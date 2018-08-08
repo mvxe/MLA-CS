@@ -15,7 +15,7 @@ template <typename T>
 class mxvar{
 public:
     mxvar(std::mutex *mxn, T initial);  //must be constructed with a mutex pointer
-    bool set(T nvar);                   //the usual set, returns false on success (if the provided value is valid)
+    virtual bool set(T nvar);           //the usual set, returns false on success (if the provided value is valid)
     T get();                            //the usual get
     bool changed();                     //has the variable been changed since last get()
 private:
