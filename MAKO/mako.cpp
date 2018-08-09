@@ -13,6 +13,7 @@ void MAKO::run(){    //this is the MAKO thread loop
 
         if(MAKO_end.get()){
             //cleanup TODO
+            std::cout<<"MAKO thread exited.\n";
             MAKO_end.set(false);
             return;
         }

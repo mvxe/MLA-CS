@@ -7,6 +7,7 @@
 #include <QTimer>
 #include "gui_slots_baseclass.h"
 #include <thread>
+#include <queue>
 
 namespace Ui {
 class MainWindow;

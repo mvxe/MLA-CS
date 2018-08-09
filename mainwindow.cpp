@@ -14,15 +14,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 MainWindow::~MainWindow(){
     std::cout<<"Sending end signals to all threads...\n";
-    XPS_end.set(true);     //signal the other threads to exit
-    MAKO_end.set(true);
-    RPTY_end.set(true);
+    std::vector<mxvar<bool>*> tokill;
 
-    while (XPS_end.get() || MAKO_end.get()) std::this_thread::sleep_for (std::chrono::milliseconds(100));       //wait for others to exit, TODO add other threads here
+    tokill.push_back(&XPS_end);     //this one closes last
+    tokill.push_back(&MAKO_end);
+    //tokill.push_back(&RPTY_end);
+
+    while(!tokill.empty()){           //the threads are closed one by one, although it takes longer, we can now define the order above
+        tokill.back()->set(true);     //signal the other threads to exit
+        while (tokill.back()->get())std::this_thread::sleep_for (std::chrono::milliseconds(100));    //wait for the thread to exit
+        tokill.pop_back();
+    }
+
+    std::cout<<"All threads exited successfully!\n";
     delete ui;
 }
 
 
 void MainWindow::on_tabWidget_currentChanged(int index){
-    ui->centralWidget->setFocus();
+    ui->centralWidget->setFocus();  //prevents random textboxes from receiving focus after tab switch
 }

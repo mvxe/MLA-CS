@@ -34,6 +34,7 @@ void XPS::run(){    //this is the XPS thread loop
 
         if(XPS_end.get()){
             //cleanup TODO
+            std::cout<<"XPS thread exited.\n";
             XPS_end.set(false);
             return;
         }
