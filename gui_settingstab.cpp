@@ -29,17 +29,13 @@ void MainWindow::on_e_rpty_timeout_editingFinished(){spinbox_fun(ui->e_rpty_time
 
 
 void MainWindow::GUI_update(){
-    static bool changed[3]={false,false,false};     //for the connected icons
-    if (XPS_connected.get()!=changed[0]){
-        changed[0]=XPS_connected.get();
-        ui->si_XPS->setPixmap(changed[0]?*px_online:*px_offline);
-    }
-    if (MAKO_connected.get()!=changed[1]){
-        changed[0]=MAKO_connected.get();
-        ui->si_XPS->setPixmap(changed[0]?*px_online:*px_offline);
-    }
-    if (RPTY_connected.get()!=changed[2]){
-        changed[0]=RPTY_connected.get();
-        ui->si_XPS->setPixmap(changed[0]?*px_online:*px_offline);
-    }
+    if (XPS_connected.changed())
+        ui->si_XPS->setPixmap(XPS_connected.get()?*px_online:*px_offline);
+    if (MAKO_connected.changed())
+        ui->si_XPS->setPixmap(MAKO_connected.get()?*px_online:*px_offline);
+    if (RPTY_connected.changed())
+        ui->si_XPS->setPixmap(RPTY_connected.get()?*px_online:*px_offline);
+
+    if (XPS_ip.resolved.changed())
+        ui->e_xps_ip_resolved->setText(QString::fromStdString(XPS_ip.is_name?XPS_ip.resolved.get():" "));
 }

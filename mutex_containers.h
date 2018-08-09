@@ -33,6 +33,8 @@ here we derive a few classes that also do variable validity checks*/
 class mxvar_ip : public mxvar<std::string>{     //contain ip strings in the format of xxx:xxx:xxx:xxx
 public:
     mxvar_ip(std::mutex *mxn, std::string initial);
+    bool is_name;
+    mxvar<std::string> resolved;
 protected:
     bool check(std::string nvar) override;
 };

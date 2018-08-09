@@ -2,7 +2,7 @@
 
 /*########## mxvar_whatever ##########*/
 
-mxvar_ip::mxvar_ip(std::mutex *mxn, std::string initial) : mxvar<std::string>(mxn, initial){
+mxvar_ip::mxvar_ip(std::mutex *mxn, std::string initial) : mxvar<std::string>(mxn, initial) , resolved(mxn, " "){
     if (check(initial)) err(initial);
 }
 
@@ -12,10 +12,14 @@ bool mxvar_ip::check(std::string nvar){
     for (int i=0;i!=nvar.size();i++){
         if (nvar[i]=='.') n++;
         else if (nvar[i]>='0' && nvar[i]<='9');
-        else return false;      //character not a number or dot
+        else {      //character not a number or dot: let it go, maybe its a hostname}
+            is_name=true;
+            return false;
+        }
     }
     if (n!=3 || sscanf(nvar.c_str(),"%d.%d.%d.%d",&nums[0],&nums[1],&nums[2],&nums[3])!=4) return true;     //must be three dots and three numbers
     for (int i=0;i!=4;i++) if (nums[i]<0 || nums[i]>255) return true;
+    is_name=false;
     return false;
 }
 

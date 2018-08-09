@@ -35,6 +35,8 @@ private slots:
     void on_e_rpty_ip_editingFinished();
     void on_e_rpty_port_editingFinished();
 
+    void on_tabWidget_currentChanged(int index);
+
 private:
     Ui::MainWindow *ui;
 

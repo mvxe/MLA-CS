@@ -9,7 +9,7 @@ MAKO::~MAKO(){
 
 void MAKO::run(){    //this is the MAKO thread loop
     for (;;){
-        std::this_thread::sleep_for (std::chrono::milliseconds(1));
+        std::this_thread::sleep_for (std::chrono::milliseconds(100));
 
         if(MAKO_end.get()){
             //cleanup TODO

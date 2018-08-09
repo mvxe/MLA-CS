@@ -29,7 +29,6 @@ FORMS += \
         mainwindow.ui
 
 LIBS += \
-       -lboost_system\
 
 DISTFILES += \
     icons/emblem-nowrite.svg \
