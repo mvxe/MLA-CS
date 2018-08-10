@@ -1,12 +1,8 @@
 #ifndef SHAREDVARS_H
 #define SHAREDVARS_H
 
+#include "includes.h"
 #include "mutex_containers.h"
-#include <iostream>
-#include <fstream>
-#include <deque>
-#include <sstream>
-
 
 class sharedvarsba{
 public:

@@ -1,6 +1,4 @@
 #include "TCP_con.h"
-#include <iostream>
-#include <errno.h>
 
 /* this is a class that can be used for TCP communication*/
 

@@ -1,9 +1,9 @@
 #ifndef XPS_H
 #define XPS_H
 
+#include "includes.h"
 #include "TCP_con.h"
 #include "sharedvars.h"
-#include <thread>
 
 
 class XPS : public TCP_con{

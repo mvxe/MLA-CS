@@ -1,9 +1,9 @@
 #ifndef MAKO_H
 #define MAKO_H
 
-#include "sharedvars.h"
-#include <thread>
+#include "includes.h"
 #include <VimbaCPP/Include/VimbaCPP.h>
+#include "sharedvars.h"
 
 
 class MAKO{

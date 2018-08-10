@@ -2,8 +2,6 @@
 #include <QApplication>
 #include "XPS/xps.h"
 #include "MAKO/mako.h"
-#include <iostream>
-
 
 
 int main(int argc, char *argv[])

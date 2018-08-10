@@ -1,12 +1,12 @@
 #ifndef TCP_CON_H
 #define TCP_CON_H
 
-#include <string>
+#include "includes.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <unistd.h>
-#include<arpa/inet.h>
+#include <arpa/inet.h>
+#include <errno.h>
 
 /* this is a class that can be used for TCP communication*/
 #define BLOCK_SIZE	1024

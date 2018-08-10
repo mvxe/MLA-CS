@@ -1,10 +1,8 @@
 #ifndef GUI_SLOTS_BASECLASS_H
 #define GUI_SLOTS_BASECLASS_H
 
-#include <QLineEdit>
-#include <QSpinBox>
-#include "mutex_containers.h"
-
+#include "includes.h"
+#include "sharedvars.h"
 
 class GUI_slots_baseclass{
 protected:

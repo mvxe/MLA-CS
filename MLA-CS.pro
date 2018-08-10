@@ -54,7 +54,8 @@ HEADERS += \
     mutex_containers.h \
     mutex_containers_impl.h \
     sharedvars.h \
-    TCP_con.h
+    TCP_con.h \
+    includes.h
 
 SOURCES += \
     MAKO/mako.cpp \
