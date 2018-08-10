@@ -2,7 +2,7 @@
 
 /*########## mxvar_whatever ##########*/
 
-mxvar_ip::mxvar_ip(std::mutex *mxn, std::string initial) : mxvar<std::string>(mxn, initial) , resolved(mxn, " "){
+mxvar_ip::mxvar_ip(std::mutex *mxn, std::string initial, std::deque<_fovar>* vec, std::string name) : mxvar<std::string>(mxn, initial,vec, name) , resolved(mxn, " "){
     if (check(initial)) err(initial);
 }
 
@@ -25,7 +25,7 @@ bool mxvar_ip::check(std::string nvar){
 
 /*####*/
 
-mxvar_port::mxvar_port(std::mutex *mxn, int initial) : mxvar<int>(mxn, initial){
+mxvar_port::mxvar_port(std::mutex *mxn, int initial, std::deque<_fovar>* vec, std::string name) : mxvar<int>(mxn, initial, vec, name){
     if (check(initial)) err(initial);
 }
 

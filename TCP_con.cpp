@@ -1,11 +1,6 @@
 #include "TCP_con.h"
 #include <iostream>
-       #include <errno.h>
-
-inline int connect_rnm (int sockfd, const struct sockaddr *addr, socklen_t addrlen){   //just a renamed function to avoid name conflicts
-    return connect (sockfd, addr, addrlen);                                            //returns 0 on sucess
-}
-
+#include <errno.h>
 
 /* this is a class that can be used for TCP communication*/
 
@@ -55,7 +50,7 @@ void TCP_con::connect(int timeout_ms){
         std::cerr << "Cannot set socket timeout.\n";
         exit (EXIT_FAILURE);
     }
-    int err = connect_rnm(sock, (struct sockaddr *)&servernm , sizeof(servernm));
+    int err = ::connect(sock, (struct sockaddr *)&servernm , sizeof(servernm));
     if (err<0 && sock>=0) close(sock);
     _connected = (err>=0);
     int errsv = errno;

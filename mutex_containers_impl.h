@@ -4,9 +4,31 @@
 /*########## mxvar ##########*/
 
 template <typename T>
-mxvar<T>::mxvar(std::mutex *mxn, T initial) : mx(mxn){
+mxvar<T>::mxvar(std::mutex *mxn, T initial, std::deque<_fovar>* vec, std::string name) : mx(mxn){
     var = initial;
     change = false;
+    tfvec=nullptr;
+    if(vec!=nullptr){   //initialization if additional arguments were provided
+        for (int i=0;i!=vec->size();i++){
+            if (name.compare((*vec)[i].strname)==0){
+                std::istringstream ss((*vec)[i].strval);
+                ss >> var;
+                tfvec=&(*vec)[i];
+                return;
+            }
+        }
+        vec->push_back({name,""});  //if it doesnt exist
+        tfvec=&vec->back();
+    }
+}
+
+template <typename T>
+mxvar<T>::~mxvar(){
+    if (tfvec!=nullptr){
+        std::ostringstream ss;
+        ss<<var;
+        tfvec->strval=ss.str();
+    }
 }
 
 template <typename T>

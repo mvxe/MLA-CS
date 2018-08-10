@@ -4,6 +4,8 @@
 #include "MAKO/mako.h"
 #include <iostream>
 
+
+
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
@@ -13,9 +15,10 @@ int main(int argc, char *argv[])
     XPS XPS;
     std::thread XPS_thread(&XPS::run, &XPS);
     XPS_thread.detach();
-    MAKO MAKO;
-    std::thread MAKO_thread(&MAKO::run, &MAKO);
+    MAKO MAKOa;
+    std::thread MAKO_thread(&MAKO::run, &MAKOa);
     MAKO_thread.detach();
+
 
  //   ComM_XPS xyz_ctrl;
 //    std::cout << iCC_GUI.GUI_change();

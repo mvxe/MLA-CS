@@ -1,28 +1,36 @@
 #include "sharedvars.h"
 
-/* GUI <-> XPS thread communication */
-std::mutex GUI_XPS;
-mxvar_ip XPS_ip(&GUI_XPS, std::string("192.168.0.254"));
-mxvar_port XPS_port(&GUI_XPS, 5001);
-mxvar<std::string> Xaxis_groupname(&GUI_XPS,std::string("GROUP1"));
-mxvar<std::string> Yaxis_groupname(&GUI_XPS,std::string("GROUP2"));
-mxvar<std::string> Zaxis_groupname(&GUI_XPS,std::string("GROUP3"));
-mxvar<int> XPS_keepalive(&GUI_XPS, 500);     //keepalive and connect timeout, in ms
-mxvar<bool> XPS_end(&GUI_XPS,false);         //for signaling the XPS thread it's time to close
-mxvar<bool> XPS_connected(&GUI_XPS,false);   //XPS thread -> GUI
+#define _CODE0_ "fo@}=Z]!5W5CW/jL"  //hardcoded random codes
+#define _NCHC0_ 16                  //num of characters in code
+#define _CODE1_ "@{5d&afkyAR8>a&V"
+#define _NCHC1_ 16
+//the config is saved into a plain text file in format VAR1NAME_CODE0_VAR1VALUE_CODE1_VAR2NAME_CODE0_... and so on without newlines
 
+sharedvars sw;    //only one istance of the object is needed
+sharedvarsba::sharedvarsba(){  //at program start we read from file
+    std::ifstream ifile;
+    ifile.open ("mla_cs.conf");
+    buffer << ifile.rdbuf();
+    ifile.close();
+    int iter=buffer.str().find(_CODE1_,0), iter2, iter3;
+    if (iter!=std::string::npos)
+        for (;;iter=iter3){
+            iter2 = buffer.str().find(_CODE0_,iter+_NCHC0_);
+            if (iter2 == std::string::npos) break;
+            iter3 = buffer.str().find(_CODE1_,iter2+_NCHC1_);
+            if (iter3 == std::string::npos) break;
+            var.push_back({buffer.str().substr(iter+_NCHC0_,iter2-iter-_NCHC0_),buffer.str().substr(iter2+_NCHC1_,iter3-iter2-_NCHC1_)});
+        }
+}
+sharedvarsba::~sharedvarsba(){  //at program end we write to file
+    std::ofstream ofile;
+    ofile.open ("mla_cs.conf.backup",std::ofstream::trunc); //making backup of old config
+    ofile << buffer.str();
+    ofile.close();
 
-/* GUI <-> MAKO thread communication */
-std::mutex GUI_MAKO;
-mxvar<int> MAKO_keepalive(&GUI_MAKO, 500);   //in ms
-mxvar<bool> MAKO_end(&GUI_MAKO,false);
-mxvar<bool> MAKO_connected(&GUI_MAKO,false);
-
-
-/* GUI <-> RPTY thread communication */
-std::mutex GUI_RPTY;
-mxvar_ip RPTY_ip(&GUI_RPTY, std::string("192.168.1.2"));
-mxvar_port RPTY_port(&GUI_RPTY, 32);
-mxvar<int> RPTY_keepalive(&GUI_RPTY, 500);   //in ms
-mxvar<bool> RPTY_end(&GUI_RPTY,false);
-mxvar<bool> RPTY_connected(&GUI_RPTY,false);
+    ofile.open ("mla_cs.conf",std::ofstream::trunc);
+    ofile << _CODE1_;
+    for (int i=0;i!=var.size();i++)
+        ofile << var[i].strname << _CODE0_ << var[i].strval << _CODE1_;
+    ofile.close();
+}

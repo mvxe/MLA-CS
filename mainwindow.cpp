@@ -16,8 +16,8 @@ MainWindow::~MainWindow(){
     std::cout<<"Sending end signals to all threads...\n";
     std::vector<mxvar<bool>*> tokill;
 
-    tokill.push_back(&XPS_end);     //this one closes last
-    tokill.push_back(&MAKO_end);
+    tokill.push_back(&sw.XPS_end);     //this one closes last
+    tokill.push_back(&sw.MAKO_end);
     //tokill.push_back(&RPTY_end);
 
     while(!tokill.empty()){           //the threads are closed one by one, although it takes longer, we can now define the order above

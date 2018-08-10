@@ -5,6 +5,13 @@
 #include <string>
 #include <cstdio>
 #include <iostream>
+#include <deque>
+#include <sstream>
+
+struct _fovar{    //for file ops
+    std::string strname;
+    std::string strval;
+};
 
 /*########## mxvar ##########
 provides a template container that
@@ -14,7 +21,8 @@ can access the variable*/
 template <typename T>
 class mxvar{
 public:
-    mxvar(std::mutex *mxn, T initial);  //must be constructed with a mutex pointer
+    mxvar(std::mutex *mxn, T initial, std::deque<_fovar>* vec = nullptr, std::string name = "??");  //must be constructed with a mutex pointer
+    ~mxvar();
     virtual bool set(T nvar);           //the usual set, returns false on success (if the provided value is valid)
     T get();                            //the usual get
     bool changed();                     //has the variable been changed since last get()
@@ -25,6 +33,7 @@ private:
 protected:
     bool virtual check(T nvar);         //function added to start of set() to check if the provided value is invalid (returns false if the value is valid)
     void err(T initial);                //constructors of derived classes with overriden check should also call "if (check(initial)) err(initial);"
+    _fovar* tfvec;                      //for saving to file
 };
 
 /*########## mxvar_whatever ##########
@@ -32,7 +41,7 @@ here we derive a few classes that also do variable validity checks*/
 
 class mxvar_ip : public mxvar<std::string>{     //contain ip strings in the format of xxx:xxx:xxx:xxx
 public:
-    mxvar_ip(std::mutex *mxn, std::string initial);
+    mxvar_ip(std::mutex *mxn, std::string initial, std::deque<_fovar>* vec = nullptr, std::string name = "");
     bool is_name;
     mxvar<std::string> resolved;
 protected:
@@ -43,7 +52,7 @@ protected:
 
 class mxvar_port : public mxvar<int>{           //contain port (0 to 65535)
 public:
-    mxvar_port(std::mutex *mxn, int initial);
+    mxvar_port(std::mutex *mxn, int initial, std::deque<_fovar>* vec = nullptr, std::string name = "");
 protected:
     bool check(int nvar) override;
 };
