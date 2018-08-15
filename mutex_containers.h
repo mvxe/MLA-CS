@@ -8,26 +8,38 @@ struct _fovar{    //for file ops
     std::string strval;
 };
 
-/*########## mxvar ##########
-provides a template container that
-is thread safe, it blocks until it
-can access the variable*/
+/*########## mxva ##########
+ * provides a template container that
+ * is thread safe, it blocks until it
+ * can access the variable
+ */
 
 template <typename T>
-class mxvar{
+class mxva{
 public:
-    mxvar(std::mutex *mxn, T initial, std::deque<_fovar>* vec = nullptr, std::string name = "??");  //must be constructed with a mutex pointer
-    ~mxvar();
+    mxva(std::mutex *mxn, T initial);  //must be constructed with a mutex pointer
     virtual bool set(T nvar);           //the usual set, returns false on success (if the provided value is valid)
     T get();                            //the usual get
     bool changed();                     //has the variable been changed since last get()
-private:
+protected:
     std::mutex *mx;
     T var;
     bool change;
-protected:
     bool virtual check(T nvar);         //function added to start of set() to check if the provided value is invalid (returns false if the value is valid)
     void err(T initial);                //constructors of derived classes with overriden check should also call "if (check(initial)) err(initial);"
+    _fovar* tfvec;                      //for saving to file
+};
+
+/*########## mxvar ##########
+ * adds automatic read from/write to file
+ */
+
+template <typename T>
+class mxvar : public mxva<T>{
+public:
+    mxvar(std::mutex *mxn, T initial, std::deque<_fovar>* vec = nullptr, std::string name = "??");  //must be constructed with a mutex pointer
+    ~mxvar();
+protected:
     _fovar* tfvec;                      //for saving to file
 };
 
@@ -51,6 +63,7 @@ public:
 protected:
     bool check(int nvar) override;
 };
+
 
 
 #include "mutex_containers_impl.h"

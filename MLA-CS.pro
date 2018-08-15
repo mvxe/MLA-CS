@@ -38,9 +38,6 @@ RESOURCES += \
     icons/icon.qrc \
     icons/icon.qrc
 
-
-
-
 unix:!macx: LIBS += -L$$PWD/../Vimba_2_1/VimbaCPP/DynamicLib/x86_64bit/ -lVimbaCPP -lVimbaC
 
 INCLUDEPATH += $$PWD/../Vimba_2_1

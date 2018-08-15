@@ -13,6 +13,8 @@ void MainWindow::sync_settings(){
     ui->e_rpty_ip->setText(QString::fromStdString(sw.RPTY_ip.get()));
     ui->e_rpty_port->setValue(sw.RPTY_port.get());
     ui->e_rpty_timeout->setValue(sw.RPTY_keepalive.get());
+
+    if (!sw.iuScopeID.get().empty()) ui->cam1_select->setText(QString::fromStdString("camera ID: "+sw.iuScopeID.get()));
 }
 
 
@@ -31,10 +33,10 @@ void MainWindow::on_e_rpty_timeout_editingFinished(){spinbox_fun(ui->e_rpty_time
 void MainWindow::GUI_update(){
     if (sw.XPS_connected.changed())
         ui->si_XPS->setPixmap(sw.XPS_connected.get()?*px_online:*px_offline);
-    if (sw.MAKO_connected.changed())
-        ui->si_XPS->setPixmap(sw.MAKO_connected.get()?*px_online:*px_offline);
+    if (sw.iuScope_connected.changed())
+        ui->si_iuScope->setPixmap(sw.iuScope_connected.get()?*px_online:*px_offline);
     if (sw.RPTY_connected.changed())
-        ui->si_XPS->setPixmap(sw.RPTY_connected.get()?*px_online:*px_offline);
+        ui->si_RPTY->setPixmap(sw.RPTY_connected.get()?*px_online:*px_offline);
 
     if (sw.XPS_ip.resolved.changed())
         ui->e_xps_ip_resolved->setText(QString::fromStdString(sw.XPS_ip.is_name?sw.XPS_ip.resolved.get():" "));

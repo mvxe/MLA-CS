@@ -13,6 +13,11 @@ protected:
     std::stringstream buffer;   //contains a backup of conf file
 };
 
+struct _dcams{
+    std::string ID;
+    std::string description;
+};
+
 class sharedvars : sharedvarsba{    //the vars to be saved in a file have two additional arguments: ...,&var,"varname")
 public:
     /* GUI <-> XPS thread communication */
@@ -31,8 +36,9 @@ public:
     std::mutex GUI_MAKO;
     mxvar<int> MAKO_keepalive = mxvar<int>(&GUI_MAKO, 500,&var,"MAKO_keepalive");   //in ms
     mxvar<bool> MAKO_end = mxvar<bool>(&GUI_MAKO,false);
-    mxvar<bool> MAKO_connected = mxvar<bool>(&GUI_MAKO,false);
-
+    mxvar<bool> iuScope_connected = mxvar<bool>(&GUI_MAKO,false);
+    mxva<std::vector<_dcams>*> MAKO_cam_desc = mxva<std::vector<_dcams>*>(&GUI_MAKO,nullptr);
+    mxvar<std::string> iuScopeID = mxvar<std::string>(&GUI_MAKO,"",&var,"iuScopeID");
 
     /* GUI <-> RPTY thread communication */
     std::mutex GUI_RPTY;

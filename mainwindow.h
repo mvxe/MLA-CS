@@ -19,6 +19,7 @@ public:
 private slots:
     void sync_settings();
     void GUI_update();
+    void updateCamMenu();
 
     void on_e_xps_ip_editingFinished();
     void on_e_xps_port_editingFinished();
@@ -33,8 +34,14 @@ private slots:
 
     void on_tabWidget_currentChanged(int index);
 
+    void on_cam1_select_triggered(QAction *arg1);
+
+    void cam1_select_show();
+
 private:
     Ui::MainWindow *ui;
+    QMenu *menu;
+    std::vector<QAction*> actptrs;
 
     QPixmap* px_online;
     QPixmap* px_offline;
