@@ -64,7 +64,20 @@ protected:
     bool check(int nvar) override;
 };
 
+/*########## mxbool ##########
+bool container with expiration time*/
 
+class mxbool{
+public:
+    mxbool(std::mutex *mxn, bool initial, double exp_time);      //after exp time this returns to deflt
+    void set(bool nvar);
+    bool get();
+protected:
+    double exp_time;
+    time_t mf;
+    std::mutex *mx;
+    bool var;
+};
 
 #include "mutex_containers_impl.h"
 

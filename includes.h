@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <cstdio>
 #include <cstddef>
+#include <time.h>
 
 #include <iostream>
 #include <sstream>

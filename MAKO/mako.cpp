@@ -68,7 +68,6 @@ void MAKO::con_cams(bool ch){
 }
 
 void MAKO::list_cams(){
-    std::cerr<<"refreshing\n";
     sw.MAKO_list.set(false);
     cams.clear();
     VmbErrorType errc = vsys.GetCameras(cameras);

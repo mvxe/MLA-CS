@@ -34,3 +34,24 @@ bool mxvar_port::check(int nvar){
     return false;
 }
 
+/*########## mxbool ##########
+bool container with expiration time*/
+
+mxbool::mxbool(std::mutex *mxn, bool initial, double exp_time) : mx(mxn), exp_time(exp_time){
+    var = initial;
+    time(&mf);
+}
+void mxbool::set(bool nvar){
+    mx->lock();
+    var = nvar;
+    time(&mf);
+    mx->unlock();
+}
+bool mxbool::get(){
+    bool nvar;
+    mx->lock();
+    if (difftime(mf,time(NULL))>exp_time) var = false;
+    nvar = var;
+    mx->unlock();
+    return nvar;
+}

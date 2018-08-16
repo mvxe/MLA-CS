@@ -43,7 +43,7 @@ public:
 
     /*MAKO <-> Vimba events internal*/
     std::mutex MAKO_VMB;
-    mxvar<bool> MVM_ignore = mxvar<bool>(&GUI_MAKO,false);
+    mxvar<bool> MVM_ignore = mxvar<bool>(&MAKO_VMB,false);
 
     /* GUI <-> RPTY thread communication */
     std::mutex GUI_RPTY;
