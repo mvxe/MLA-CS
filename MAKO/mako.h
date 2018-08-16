@@ -6,7 +6,6 @@
 #include "sharedvars.h"
 
 
-
 class MAKO{
 public:
     MAKO();
@@ -14,15 +13,20 @@ public:
     void run();
 
 private:
-    struct _cams{
+    struct _cam{
         AVT::VmbAPI::CameraPtr ptr;
         std::string ID;
     };
-    void refresh_cams();
+    void list_cams();
+    void con_cams(bool ch);
     AVT::VmbAPI::VimbaSystem &vsys;
     AVT::VmbAPI::CameraPtrVector cameras;
 
-    std::vector<_cams> cams;
+    std::vector<_cam> cams;
+    _cam iuScope;
 };
+
+
+#include "mako_events.h"
 
 #endif // MAKO_H

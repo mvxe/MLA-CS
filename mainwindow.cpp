@@ -7,7 +7,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     ui->setupUi(this);
     sync_settings();
-    QTimer *timer = new QTimer(this);
+    timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(GUI_update()));
     timer->start(100);
 
@@ -15,13 +15,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     menu->setToolTipsVisible(true);
     ui->cam1_select->setMenu(menu);
     connect(menu, SIGNAL(aboutToShow()), this, SLOT(cam1_select_show()));
-
-
 }
 
 MainWindow::~MainWindow(){
     std::cout<<"Sending end signals to all threads...\n";
     std::vector<mxvar<bool>*> tokill;
+    timer->stop();
+
 
     tokill.push_back(&sw.XPS_end);     //this one closes last
     tokill.push_back(&sw.MAKO_end);
@@ -57,11 +57,6 @@ void MainWindow::updateCamMenu(){
         delete actptrs.back();
         actptrs.pop_back();
     }
-    if (sw.MAKO_cam_desc.get()!=nullptr){   //delete old camera description list
-        delete sw.MAKO_cam_desc.get();
-        sw.MAKO_cam_desc.set(nullptr);
-    }
-    while(sw.MAKO_cam_desc.get()==nullptr) std::this_thread::sleep_for (std::chrono::milliseconds(10)); //wait for MAKO thread to update this
     for (int i=0;i!=sw.MAKO_cam_desc.get()->size();i++){
         QAction *actx = new QAction(this);
         actx->setText(QString::fromStdString(sw.MAKO_cam_desc.get()->at(i).ID));

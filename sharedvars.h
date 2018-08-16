@@ -38,7 +38,12 @@ public:
     mxvar<bool> MAKO_end = mxvar<bool>(&GUI_MAKO,false);
     mxvar<bool> iuScope_connected = mxvar<bool>(&GUI_MAKO,false);
     mxva<std::vector<_dcams>*> MAKO_cam_desc = mxva<std::vector<_dcams>*>(&GUI_MAKO,nullptr);
-    mxvar<std::string> iuScopeID = mxvar<std::string>(&GUI_MAKO,"",&var,"iuScopeID");
+    mxvar<std::string> iuScopeID = mxvar<std::string>(&GUI_MAKO,"none",&var,"iuScopeID");
+    mxvar<bool> MAKO_list = mxvar<bool>(&GUI_MAKO,true);
+
+    /*MAKO <-> Vimba events internal*/
+    std::mutex MAKO_VMB;
+    mxvar<bool> MVM_ignore = mxvar<bool>(&GUI_MAKO,false);
 
     /* GUI <-> RPTY thread communication */
     std::mutex GUI_RPTY;

@@ -42,6 +42,7 @@ private:
     Ui::MainWindow *ui;
     QMenu *menu;
     std::vector<QAction*> actptrs;
+    QTimer *timer;
 
     QPixmap* px_online;
     QPixmap* px_offline;

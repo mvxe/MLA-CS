@@ -159,7 +159,7 @@
              <set>Qt::ImhNone</set>
             </property>
             <property name="text">
-             <string>camera ID</string>
+             <string>camera ID: none</string>
             </property>
             <property name="popupMode">
              <enum>QToolButton::InstantPopup</enum>
