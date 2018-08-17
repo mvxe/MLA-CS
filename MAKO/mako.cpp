@@ -32,13 +32,12 @@ void camobj::start(){
     fet->GetValue(ex);
     std::cerr<<"exposure(us)="<<ex<<"\n";
 
-
     for (int i=0; i!=VMBframes.size();i++){
         VMBframes[i].reset(new AVT::VmbAPI::Frame(nPLS));
-        VMBframes[i]->RegisterObserver(VMBo);               //add err =
-        cam.ptr->AnnounceFrame(VMBframes[i]);              //add err =
+        VMBframes[i]->RegisterObserver(VMBo);
+        cam.ptr->AnnounceFrame(VMBframes[i]);
     }
-    cam.ptr->StartCapture();
+    if (cam.ptr->StartCapture()!=VmbErrorSuccess) {end(); return;}
     for (int i=0; i!=VMBframes.size();i++) cam.ptr->QueueFrame(VMBframes[i]);
     cam.ptr->GetFeatureByName("AcquisitionStart",fet);      //TODO add acquisition control on demand
     fet->RunCommand();
@@ -55,7 +54,6 @@ void camobj::end(){
     }
     VMBo.reset();
 }
-
 void camobj::con_cam(bool ch){
     if (cam.ptr!=nullptr){
         if (ch && (cam.ID == ID.get())) return;
