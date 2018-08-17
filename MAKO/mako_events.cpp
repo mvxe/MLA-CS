@@ -8,3 +8,17 @@ void CamObserver::CameraListChanged ( AVT::VmbAPI::CameraPtr pCam , AVT::VmbAPI:
     else sw.MAKO_list.set(true);
     sw.MAKO_reco.set(true);
 }
+
+FrameObserver::FrameObserver(AVT::VmbAPI::CameraPtr pCamera) : IFrameObserver(pCamera){}
+
+int frame=0;
+void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
+
+    //code
+    if ((frame%168)==0)std::cerr<<"f "<<frame<<"\n";
+    frame++;
+
+    m_pCamera -> QueueFrame ( pFrame );
+}
+
+

@@ -1,14 +1,59 @@
 #include "mako.h"
 
 
-camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxvar<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0){
+camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxvar<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB){
 }
 
 void camobj::start(){
+    VMBo = AVT::VmbAPI::IFrameObserverPtr(new FrameObserver(cam.ptr));
+    VmbInt64_t nPLS; // Payload size value
+    cam.ptr->GetFeatureByName("PayloadSize",fet);
+    fet->GetValue(nPLS);
 
+    VmbInt64_t ret;
+    cam.ptr->GetFeatureByName("Width",fet);
+    fet->GetValue(ret);
+    Xsize=ret;
+    cam.ptr->GetFeatureByName("Height",fet);
+    fet->GetValue(ret);
+    Ysize=ret;
+    cam.ptr->GetFeatureByName("PixelFormat",fet);
+    fet->GetValue(ret);
+    format_enum=ret;
+
+    std::cerr<<"Xsize="<<Xsize<<"\n";
+    std::cerr<<"Ysize="<<Ysize<<"\n";
+    std::cerr<<"format="<<format_enum<<"\n";
+    double ex;
+
+    cam.ptr->GetFeatureByName("ExposureTime",fet);
+    fet->SetValue(100.);
+    cam.ptr->GetFeatureByName("ExposureTime",fet);
+    fet->GetValue(ex);
+    std::cerr<<"exposure(us)="<<ex<<"\n";
+
+
+    for (int i=0; i!=VMBframes.size();i++){
+        VMBframes[i].reset(new AVT::VmbAPI::Frame(nPLS));
+        VMBframes[i]->RegisterObserver(VMBo);               //add err =
+        cam.ptr->AnnounceFrame(VMBframes[i]);              //add err =
+    }
+    cam.ptr->StartCapture();
+    for (int i=0; i!=VMBframes.size();i++) cam.ptr->QueueFrame(VMBframes[i]);
+    cam.ptr->GetFeatureByName("AcquisitionStart",fet);      //TODO add acquisition control on demand
+    fet->RunCommand();
 }
 void camobj::end(){
-
+    cam.ptr->GetFeatureByName("AcquisitionStop",fet);       //TODO add acquisition control on demand
+    fet->RunCommand ();
+    cam.ptr->EndCapture();
+    cam.ptr->FlushQueue();
+    cam.ptr->RevokeAllFrames();
+    for (int i=0; i!=VMBframes.size();i++){
+        VMBframes[i]->UnregisterObserver();
+        VMBframes[i].reset();
+    }
+    VMBo.reset();
 }
 
 void camobj::con_cam(bool ch){

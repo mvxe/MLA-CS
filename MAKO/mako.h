@@ -33,6 +33,13 @@ private:
     _cam cam;
     mxvar<std::string> &ID;     //pointer to the ID thread safe string, for GUI
     mxvar<bool> &connected;     //pointer to the connected flag thread safe string, for GUI
+
+    AVT::VmbAPI::FeaturePtr fet;    //see page 28 of C++ Vimba manual for possible features
+    AVT::VmbAPI::IFrameObserverPtr VMBo;
+    AVT::VmbAPI::FramePtrVector VMBframes;        //CAMOBJ<->VIMBA frames
+    int Xsize;
+    int Ysize;
+    int format_enum;
 };
 
 /*########### MAKO ###########*/
