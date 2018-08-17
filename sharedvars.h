@@ -36,10 +36,12 @@ public:
     std::mutex GUI_MAKO;
     mxvar<int> MAKO_keepalive = mxvar<int>(&GUI_MAKO, 500,&var,"MAKO_keepalive");   //in ms
     mxvar<bool> MAKO_end = mxvar<bool>(&GUI_MAKO,false);
-    mxvar<bool> iuScope_connected = mxvar<bool>(&GUI_MAKO,false);
     mxva<std::vector<_dcams>*> MAKO_cam_desc = mxva<std::vector<_dcams>*>(&GUI_MAKO,nullptr);
-    mxvar<std::string> iuScopeID = mxvar<std::string>(&GUI_MAKO,"none",&var,"iuScopeID");
     mxvar<bool> MAKO_list = mxvar<bool>(&GUI_MAKO,true);
+    mxvar<bool> MAKO_reco = mxvar<bool>(&GUI_MAKO,true);
+
+    mxvar<bool> iuScope_connected = mxvar<bool>(&GUI_MAKO,false);
+    mxvar<std::string> iuScopeID = mxvar<std::string>(&GUI_MAKO,"none",&var,"iuScopeID");
 
     /*MAKO <-> Vimba events internal*/
     std::mutex MAKO_VMB;

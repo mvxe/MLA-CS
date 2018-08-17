@@ -49,6 +49,7 @@ void MainWindow::cam1_select_show(){   //on_cam1_select pressed, should update u
 void MainWindow::on_cam1_select_triggered(QAction *arg1){   //on_cam1_select action selected
     sw.iuScopeID.set(arg1->text().toStdString());
     ui->cam1_select->setText("camera ID: "+arg1->text());
+    sw.MAKO_reco.set(true);
 }
 
 void MainWindow::updateCamMenu(){

@@ -51,7 +51,6 @@ void TCP_con::connect(int timeout_ms){
     int err = ::connect(sock, (struct sockaddr *)&servernm , sizeof(servernm));
     if (err<0 && sock>=0) close(sock);
     _connected = (err>=0);
-    int errsv = errno;
     std::cerr<<"error="<<errno<<"\n";
 }
 void TCP_con::disconnect(){

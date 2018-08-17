@@ -1,6 +1,51 @@
 #include "mako.h"
 
-MAKO::MAKO() : vsys( AVT::VmbAPI::VimbaSystem::GetInstance()){
+
+camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxvar<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0){
+}
+
+void camobj::start(){
+
+}
+void camobj::end(){
+
+}
+
+void camobj::con_cam(bool ch){
+    if (cam.ptr!=nullptr){
+        if (ch && (cam.ID == ID.get())) return;
+        sw.MVM_ignore.set(true);
+        end();
+        cam.ptr->Close();
+        cam.ptr.reset();
+    }
+    if (ID.get()!="none"){
+        bool found = false;
+        for (int i=0;i!=cobj->cams.size();i++){
+            if (ID.get()==cobj->cams[i].ID){
+                cam = cobj->cams[i];
+                found = true;
+                break;
+            }
+        }
+        if (found){
+            sw.MVM_ignore.set(true);
+            if (cam.ptr->Open(VmbAccessModeFull) == VmbErrorSuccess){
+                connected.set(true);
+                start();
+                return;
+            }else{
+                sw.MVM_ignore.set(false);
+                cam.ptr.reset();
+            }
+        }
+    }
+    connected.set(false);
+}
+
+/*########### MAKO ###########*/
+
+MAKO::MAKO() : vsys( AVT::VmbAPI::VimbaSystem::GetInstance()), iuScope(this, sw.iuScopeID, sw.iuScope_connected){             //init new cameras here!
     sw.MAKO_cam_desc.set(new std::vector<_dcams>());
     VmbErrorType errc = vsys.Startup();
     if (errc!=VmbErrorSuccess){
@@ -21,9 +66,18 @@ MAKO::~MAKO(){
 }
 
 void MAKO::run(){    //this is the MAKO thread loop
+    bool ch=true;
     for (;;){
-        if(sw.MAKO_list.get()) list_cams();
-        else con_cams(true);
+        if (sw.MAKO_list.get()) {
+            list_cams();
+            ch = false;
+            sw.MAKO_list.set(false);
+        }
+        if (sw.MAKO_reco.get()){
+            iuScope.con_cam(ch);   //add other cameras here too
+            ch = true;
+            sw.MAKO_reco.set(false);
+        }
 
         std::this_thread::sleep_for (std::chrono::milliseconds(1000));
 
@@ -36,39 +90,7 @@ void MAKO::run(){    //this is the MAKO thread loop
     }
 }
 
-void MAKO::con_cams(bool ch){
-    if (iuScope.ptr!=nullptr){
-        if (ch && (iuScope.ID == sw.iuScopeID.get())) return;
-        sw.MVM_ignore.set(true);
-        iuScope.ptr->Close();
-        iuScope.ptr.reset();
-    }
-    if (sw.iuScopeID.get()!="none"){
-        bool found = false;
-        for (int i=0;i!=cams.size();i++){
-            if (sw.iuScopeID.get()==cams[i].ID){
-                iuScope = cams[i];
-                found = true;
-                break;
-            }
-        }
-        if (found){
-            sw.MVM_ignore.set(true);
-            if (iuScope.ptr->Open(VmbAccessModeFull) == VmbErrorSuccess){
-                sw.iuScope_connected.set(true);
-                //TODO when connected to camera
-                return;
-            }else{
-                sw.MVM_ignore.set(false);
-                iuScope.ptr.reset();
-            }
-        }
-    }
-    sw.iuScope_connected.set(false);
-}
-
 void MAKO::list_cams(){
-    sw.MAKO_list.set(false);
     cams.clear();
     VmbErrorType errc = vsys.GetCameras(cameras);
     if (errc == VmbErrorSuccess){
@@ -93,5 +115,4 @@ void MAKO::list_cams(){
         std::cerr<<"Vimba error getting cameras: "<<errc<<".\n";
         exit (EXIT_FAILURE);
     }
-    con_cams(false);
 }

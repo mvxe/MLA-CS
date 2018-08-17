@@ -6,4 +6,5 @@ void CamObserver::CameraListChanged ( AVT::VmbAPI::CameraPtr pCam , AVT::VmbAPI:
     //cam.Close() and cam.Open() triggers this, so I use MVM_ignore flag
     if(sw.MVM_ignore.get()) sw.MVM_ignore.set(false);
     else sw.MAKO_list.set(true);
+    sw.MAKO_reco.set(true);
 }
