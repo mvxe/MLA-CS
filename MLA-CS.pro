@@ -66,3 +66,9 @@ SOURCES += \
     sharedvars.cpp \
     TCP_con.cpp \
     MAKO/mako_events.cpp
+
+
+unix {
+    CONFIG += link_pkgconfig
+    PKGCONFIG += opencv
+}
