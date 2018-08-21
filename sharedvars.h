@@ -19,7 +19,9 @@ struct _dcams{
 };
 struct _tqueues{
     cv::Mat* ptr;
-    double fps;
+    unsigned fps;        //rounds to the closest divisor by two of the actual framerate (ie 9999 of 168 fps gives 168, 33 of 168 fps gives 28 fps, 0 means no acquisition)
+    int i;               //for framerate reduction
+    bool isbusy;         //to be somewhat threadsafe, the thread that uses the images keeps this flag on while accessing the matrix so that the main thread doesnt overwrite it (this should cause skipped frames and some flashy errors onscreen)
 };
 
 class sharedvars : sharedvarsba{    //the vars to be saved in a file have two additional arguments: ...,&var,"varname")
@@ -46,7 +48,7 @@ public:
 
     mxvar<bool> iuScope_connected = mxvar<bool>(&GUI_MAKO,false);
     mxvar<std::string> iuScopeID = mxvar<std::string>(&GUI_MAKO,"none",&var,"iuScopeID");
-    mxva<_tqueues> iuScope_img = mxva<_tqueues>(&GUI_MAKO,{nullptr,0.});                //iuScope -> GUI
+    mxva<_tqueues> iuScope_img = mxva<_tqueues>(&GUI_MAKO,{nullptr,0,0,false});                //iuScope -> GUI
 
     /*MAKO <-> Vimba events internal*/
     std::mutex MAKO_VMB;

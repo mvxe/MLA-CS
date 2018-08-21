@@ -29,10 +29,20 @@ void camobj::start(){
     }
     if (cam.ptr->StartCapture()!=VmbErrorSuccess) {end(); return;}
     for (int i=0; i!=VMBframes.size();i++) cam.ptr->QueueFrame(VMBframes[i]);
-    wfun::run(cam.ptr,"AcquisitionStart");      //TODO add acquisition control on demand
+}
+void camobj::work(){
+    bool doack=false;
+    for (int i=0;i!=img_cqueues.size();i++) if (img_cqueues[i]->get().fps!=0) {
+        doack=true;
+        wfun::run(cam.ptr,"AcquisitionStart");
+    }
+    else{
+        doack=false;
+        wfun::run(cam.ptr,"AcquisitionStop");
+    }
 }
 void camobj::end(){
-    wfun::run(cam.ptr,"AcquisitionStop");      //TODO add acquisition control on demand
+    wfun::run(cam.ptr,"AcquisitionStop");
     cam.ptr->EndCapture();
     cam.ptr->FlushQueue();
     cam.ptr->RevokeAllFrames();

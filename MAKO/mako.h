@@ -22,7 +22,6 @@ public:
     _cam cptr;
     void start();
     void work();                                //call this periodically
-    void get_frame_ptrlist(double fps);
     void end();
     void con_cam(bool ch);
 private:
