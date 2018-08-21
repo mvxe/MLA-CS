@@ -3,35 +3,24 @@
 
 camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxvar<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB){
     imgs_iter=0;
+    for (int i=0;i!=imgs.size();i++) ptr_queue.push(&imgs[i]);
 }
 
 void camobj::start(){
     VMBo = AVT::VmbAPI::IFrameObserverPtr(new FrameObserver(cam.ptr));
-    VmbInt64_t nPLS; // Payload size value
-    cam.ptr->GetFeatureByName("PayloadSize",fet);
-    fet->GetValue(nPLS);
 
-    VmbInt64_t ret;
-    cam.ptr->GetFeatureByName("Width",fet);
-    fet->GetValue(ret);
-    Xsize=ret;
-    cam.ptr->GetFeatureByName("Height",fet);
-    fet->GetValue(ret);
-    Ysize=ret;
-    cam.ptr->GetFeatureByName("PixelFormat",fet);
-    fet->GetValue(ret);
-    format_enum=ret;
+    VmbInt64_t nPLS=wfun::get<VmbInt64_t>(cam.ptr,"PayloadSize");
+    Xsize=wfun::get<VmbInt64_t>(cam.ptr,"Width");
+    Ysize=wfun::get<VmbInt64_t>(cam.ptr,"Height");
+    format_enum=wfun::get<VmbInt64_t>(cam.ptr,"PixelFormat");
 
     std::cerr<<"Xsize="<<Xsize<<"\n";
     std::cerr<<"Ysize="<<Ysize<<"\n";
     std::cerr<<"format="<<format_enum<<"\n";
-    double ex;
 
-    cam.ptr->GetFeatureByName("ExposureTime",fet);
-    fet->SetValue(100.);
-    cam.ptr->GetFeatureByName("ExposureTime",fet);
-    fet->GetValue(ex);
-    std::cerr<<"exposure(us)="<<ex<<"\n";
+
+    wfun::set<double>(cam.ptr,"ExposureTime",100.);
+    std::cerr<<"exposure(us)="<< wfun::get<double>(cam.ptr,"ExposureTime") <<"\n";
 
     for (int i=0; i!=VMBframes.size();i++){
         VMBframes[i].reset(new AVT::VmbAPI::Frame(nPLS));
@@ -40,12 +29,10 @@ void camobj::start(){
     }
     if (cam.ptr->StartCapture()!=VmbErrorSuccess) {end(); return;}
     for (int i=0; i!=VMBframes.size();i++) cam.ptr->QueueFrame(VMBframes[i]);
-    cam.ptr->GetFeatureByName("AcquisitionStart",fet);      //TODO add acquisition control on demand
-    fet->RunCommand();
+    wfun::run(cam.ptr,"AcquisitionStart");      //TODO add acquisition control on demand
 }
 void camobj::end(){
-    cam.ptr->GetFeatureByName("AcquisitionStop",fet);       //TODO add acquisition control on demand
-    fet->RunCommand ();
+    wfun::run(cam.ptr,"AcquisitionStop");      //TODO add acquisition control on demand
     cam.ptr->EndCapture();
     cam.ptr->FlushQueue();
     cam.ptr->RevokeAllFrames();
@@ -90,6 +77,8 @@ void camobj::con_cam(bool ch){
 /*########### MAKO ###########*/
 
 MAKO::MAKO() : vsys( AVT::VmbAPI::VimbaSystem::GetInstance()), iuScope(this, sw.iuScopeID, sw.iuScope_connected){             //init new cameras here!
+    iuScope.img_cqueues.push_back(&sw.iuScope_img);                                                                           //add image queues here!
+
     sw.MAKO_cam_desc.set(new std::vector<_dcams>());
     VmbErrorType errc = vsys.Startup();
     if (errc!=VmbErrorSuccess){

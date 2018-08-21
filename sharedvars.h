@@ -17,6 +17,10 @@ struct _dcams{
     std::string ID;
     std::string description;
 };
+struct _tqueues{
+    cv::Mat* ptr;
+    double fps;
+};
 
 class sharedvars : sharedvarsba{    //the vars to be saved in a file have two additional arguments: ...,&var,"varname")
 public:
@@ -42,6 +46,7 @@ public:
 
     mxvar<bool> iuScope_connected = mxvar<bool>(&GUI_MAKO,false);
     mxvar<std::string> iuScopeID = mxvar<std::string>(&GUI_MAKO,"none",&var,"iuScopeID");
+    mxva<_tqueues> iuScope_img = mxva<_tqueues>(&GUI_MAKO,{nullptr,0.});                //iuScope -> GUI
 
     /*MAKO <-> Vimba events internal*/
     std::mutex MAKO_VMB;

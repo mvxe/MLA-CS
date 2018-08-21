@@ -53,7 +53,8 @@ HEADERS += \
     sharedvars.h \
     TCP_con.h \
     includes.h \
-    MAKO/mako_events.h
+    MAKO/mako_events.h \
+    MAKO/vmbwrap.h
 
 SOURCES += \
     MAKO/mako.cpp \

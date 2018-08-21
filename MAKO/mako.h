@@ -4,6 +4,7 @@
 #include "includes.h"
 #include <VimbaCPP/Include/VimbaCPP.h>
 #include "sharedvars.h"
+#include "MAKO/vmbwrap.h"
 
 const int N_FRAMES_MAKO_VMB  = 15;   //queue length of CAMOBJ<->VIMBA communication
 const int N_FRAMES_MAKO_PROC = 60;   //queue length of CAMOBJ<->Processing
@@ -11,12 +12,10 @@ class MAKO;
 
 class camobj{
 public:
+    friend class MAKO;
     struct _cam{
         AVT::VmbAPI::CameraPtr ptr;
         std::string ID;
-    };
-    struct frame_ptrlist{
-
     };
 
     camobj(MAKO *cobj, mxvar<std::string> &ID, mxvar<bool> &connected);
@@ -34,14 +33,17 @@ private:
     mxvar<std::string> &ID;     //pointer to the ID thread safe string, for GUI
     mxvar<bool> &connected;     //pointer to the connected flag thread safe string, for GUI
 
-    AVT::VmbAPI::FeaturePtr fet;    //see page 28 of C++ Vimba manual for possible features
     AVT::VmbAPI::IFrameObserverPtr VMBo;
     AVT::VmbAPI::FramePtrVector VMBframes;        //CAMOBJ<->VIMBA frames
     int Xsize;
     int Ysize;
     int format_enum;
 
-    std::array<cv::Mat, N_FRAMES_MAKO_PROC> imgs;       //here be the image matrices
+    std::array<cv::Mat, N_FRAMES_MAKO_PROC> imgs;       //here be image matrices
+    std::queue<cv::Mat*> ptr_queue;                     //here be image pointers
+    std::vector<mxva<_tqueues>*> img_cqueues;           //vector containing queues for delivering images to other threads
+
+    int imgs_iter;
 };
 
 /*########### MAKO ###########*/
