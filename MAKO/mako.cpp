@@ -2,6 +2,7 @@
 
 
 camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxvar<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB){
+    imgs_iter=0;
 }
 
 void camobj::start(){

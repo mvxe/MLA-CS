@@ -40,6 +40,8 @@ private:
     int Xsize;
     int Ysize;
     int format_enum;
+
+    std::array<cv::Mat, N_FRAMES_MAKO_PROC> imgs;       //here be the image matrices
 };
 
 /*########### MAKO ###########*/
