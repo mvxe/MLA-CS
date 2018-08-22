@@ -40,9 +40,10 @@ private:
 
     std::array<cv::Mat, N_FRAMES_MAKO_PROC> imgs;       //here be image matrices
     std::queue<cv::Mat*> ptr_queue;                     //here be image pointers
-    std::vector<mxva<_tqueues>*> img_cqueues;           //vector containing queues for delivering images to other threads
+    std::deque<_tqueue*> img_cqueues;                   //vector containing queues for delivering images to other threads
 
     int imgs_iter;
+    bool ackstatus;                                     //acquisition status
 };
 
 /*########### MAKO ###########*/

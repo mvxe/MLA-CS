@@ -2,9 +2,10 @@
 #define VMBWRAP_H
 
 #include <VimbaCPP/Include/VimbaCPP.h>
+#include "includes.h"
 
 
-namespace wfun{
+namespace wfun{                 //to make the damn vimba api features simpler to use
     template <typename T>
     VmbErrorType set(AVT::VmbAPI::CameraPtr ptr, char* atr, T nvar){
         AVT::VmbAPI::FeaturePtr fet;
@@ -25,6 +26,17 @@ namespace wfun{
         return fet->RunCommand();
     }
 }
+
+
+struct format_conv{            //to convert vimba formats to standard opencv mat
+    VmbPixelFormatType vmb_type;
+    int ocv_type;
+    std::string vmb_name;
+    std::string ocv_name;
+};
+
+
+
 
 
 #endif // VMBWRAP_H

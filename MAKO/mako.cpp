@@ -1,7 +1,7 @@
 #include "mako.h"
 
 
-camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxvar<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB){
+camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxvar<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB), ackstatus(false){
     imgs_iter=0;
     for (int i=0;i!=imgs.size();i++) ptr_queue.push(&imgs[i]);
 }
@@ -17,6 +17,7 @@ void camobj::start(){
     std::cerr<<"Xsize="<<Xsize<<"\n";
     std::cerr<<"Ysize="<<Ysize<<"\n";
     std::cerr<<"format="<<format_enum<<"\n";
+    for (int i=0;i!=imgs.size();i++) imgs[i]=cv::Mat(Xsize,Ysize, CV_8UC3);                                      //we set the img sizes and formats, redo/separate this if you add res settings!
 
 
     wfun::set<double>(cam.ptr,"ExposureTime",100.);
@@ -32,17 +33,21 @@ void camobj::start(){
 }
 void camobj::work(){
     bool doack=false;
-    for (int i=0;i!=img_cqueues.size();i++) if (img_cqueues[i]->get().fps!=0) {
-        doack=true;
-        wfun::run(cam.ptr,"AcquisitionStart");
+    for (int i=0;i<img_cqueues.size();i++) if (img_cqueues[i]->fps.get()!=0) {
+        if (!ackstatus) ackstatus=(wfun::run(cam.ptr,"AcquisitionStart")==VmbErrorSuccess);
+        doack=ackstatus;
+        break;
     }
-    else{
-        doack=false;
+    if(doack==false && ackstatus==true){
         wfun::run(cam.ptr,"AcquisitionStop");
+        ackstatus=false;
+    }
+    if (doack){
+
     }
 }
 void camobj::end(){
-    wfun::run(cam.ptr,"AcquisitionStop");
+    if (ackstatus) wfun::run(cam.ptr,"AcquisitionStop");
     cam.ptr->EndCapture();
     cam.ptr->FlushQueue();
     cam.ptr->RevokeAllFrames();
@@ -117,15 +122,16 @@ void MAKO::run(){    //this is the MAKO thread loop
             sw.MAKO_list.set(false);
         }
         if (sw.MAKO_reco.get()){
-            iuScope.con_cam(ch);   //add other cameras here too
+            iuScope.con_cam(ch);                                                                                                //add other cameras here too
             ch = true;
             sw.MAKO_reco.set(false);
         }
 
-        std::this_thread::sleep_for (std::chrono::milliseconds(1000));
+        iuScope.work();
+        std::this_thread::sleep_for (std::chrono::milliseconds(1));                                                             //TODO fix this delay with timers
 
         if(sw.MAKO_end.get()){
-            //TODO cleanup
+            if (iuScope.cam.ptr!=nullptr) iuScope.end();                                                                        //add other cameras here too
             std::cout<<"MAKO thread exited.\n";
             sw.MAKO_end.set(false);
             return;

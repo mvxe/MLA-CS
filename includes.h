@@ -23,3 +23,12 @@
 #include <sstream>
 
 #include "opencv2/opencv.hpp"
+
+#ifndef THREADS_H
+#define THREADS_H
+
+extern std::thread XPS_thread;
+extern std::thread MAKO_thread;
+
+
+#endif

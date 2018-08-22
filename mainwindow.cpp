@@ -19,19 +19,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 MainWindow::~MainWindow(){
     std::cout<<"Sending end signals to all threads...\n";
-    std::vector<mxvar<bool>*> tokill;
+
     timer->stop();
-
-
-    tokill.push_back(&sw.XPS_end);     //this one closes last
-    tokill.push_back(&sw.MAKO_end);
-    //tokill.push_back(&RPTY_end);
-
-    while(!tokill.empty()){           //the threads are closed one by one, although it takes longer, we can now define the order above
-        tokill.back()->set(true);     //signal the other threads to exit
-        while (tokill.back()->get())std::this_thread::sleep_for (std::chrono::milliseconds(100));    //wait for the thread to exit
-        tokill.pop_back();
-    }
+    sw.XPS_end.set(true);
+    XPS_thread.join();
+    sw.MAKO_end.set(true);
+    MAKO_thread.join();
 
     std::cout<<"All threads exited successfully!\n";
     delete ui;
