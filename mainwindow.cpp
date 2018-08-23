@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
+MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainWindow(parent), ui(new Ui::MainWindow) {
     connect(qapp,SIGNAL(aboutToQuit()),this,SLOT(program_exit()));
     px_online = new QPixmap(":/emblem-ok.svg");
     px_offline = new QPixmap(":/emblem-nowrite.svg");

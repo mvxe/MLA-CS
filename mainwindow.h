@@ -4,7 +4,6 @@
 #include "includes.h"
 #include "gui_slots_baseclass.h"
 
-extern QApplication* qapp;
 
 namespace Ui {
 class MainWindow;
@@ -15,7 +14,7 @@ class MainWindow : public QMainWindow , public GUI_slots_baseclass
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = 0);
+    explicit MainWindow(QApplication* qapp, QWidget *parent = 0);
     ~MainWindow();
 
 private slots:
@@ -42,6 +41,7 @@ private slots:
     void cam1_select_show();
 
 private:
+    QApplication* qapp;
     Ui::MainWindow *ui;
     QMenu *menu;
     std::vector<QAction*> actptrs;
