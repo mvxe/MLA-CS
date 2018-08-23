@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
+    connect(qapp,SIGNAL(aboutToQuit()),this,SLOT(program_exit()));
     px_online = new QPixmap(":/emblem-ok.svg");
     px_offline = new QPixmap(":/emblem-nowrite.svg");
 
@@ -18,6 +19,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 }
 
 MainWindow::~MainWindow(){
+    delete ui;
+}
+void MainWindow::program_exit(){
     std::cout<<"Sending end signals to all threads...\n";
 
     timer->stop();
@@ -27,9 +31,7 @@ MainWindow::~MainWindow(){
     MAKO_thread.join();
 
     std::cout<<"All threads exited successfully!\n";
-    delete ui;
 }
-
 
 void MainWindow::on_tabWidget_currentChanged(int index){
     ui->centralWidget->setFocus();  //prevents random textboxes from receiving focus after tab switch

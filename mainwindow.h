@@ -4,6 +4,8 @@
 #include "includes.h"
 #include "gui_slots_baseclass.h"
 
+extern QApplication* qapp;
+
 namespace Ui {
 class MainWindow;
 }
@@ -20,6 +22,7 @@ private slots:
     void sync_settings();
     void GUI_update();
     void updateCamMenu();
+    void program_exit();
 
     void on_e_xps_ip_editingFinished();
     void on_e_xps_port_editingFinished();

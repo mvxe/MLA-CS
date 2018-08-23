@@ -6,10 +6,11 @@
 
 std::thread XPS_thread;
 std::thread MAKO_thread;
+QApplication* qapp;
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+    qapp = new QApplication(argc, argv);
     MainWindow w;
     w.show();
 
@@ -48,5 +49,5 @@ int main(int argc, char *argv[])
 
 //    std::cout << "\n";
 
-    a.exec();
+    qapp->exec();
 }
