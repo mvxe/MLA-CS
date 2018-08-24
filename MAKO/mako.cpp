@@ -1,19 +1,15 @@
 #include "mako.h"
 
 
-camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxva<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB), ackstatus(false){
-    imgs_iter=0;
-    for (int i=0;i!=imgs.size();i++) ptr_queue.push(&imgs[i]);
-}
+camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxva<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB), ackstatus(false), FQsPCcam(){}
 
 void camobj::start(){
-    VMBo = AVT::VmbAPI::IFrameObserverPtr(new FrameObserver(cam.ptr, &ptr_queue));
+    VMBo = AVT::VmbAPI::IFrameObserverPtr(new FrameObserver(cam.ptr, &FQsPCcam));
 
     VmbInt64_t nPLS=wfun::get<VmbInt64_t>(cam.ptr,"PayloadSize");
     Xsize=wfun::get<VmbInt64_t>(cam.ptr,"Width");
     Ysize=wfun::get<VmbInt64_t>(cam.ptr,"Height");
     format_enum=wfun::get<VmbInt64_t>(cam.ptr,"PixelFormat");
-
 
 /* TODO implement this in gui later on*/
     AVT::VmbAPI::FeaturePtrVector features;
@@ -42,6 +38,10 @@ void camobj::start(){
     wfun::set<double>(cam.ptr,"ExposureTime",100.);
     std::cerr<<"exposure(us)="<< wfun::get<double>(cam.ptr,"ExposureTime") <<"\n";
 
+    ackFPS=wfun::get<double>(cam.ptr,"AcquisitionFrameRate");
+    FQsPCcam.setCamFPS(ackFPS);
+    std::cerr<<"ackFPS="<<ackFPS<<"\n";
+
     for (int i=0; i!=VMBframes.size();i++){
         VMBframes[i].reset(new AVT::VmbAPI::Frame(nPLS));
         VMBframes[i]->RegisterObserver(VMBo);
@@ -56,10 +56,9 @@ void camobj::work(){
         return;
     }
     bool doack=false;
-    for (int i=0;i<img_cqueues.size();i++) if (img_cqueues[i]->fps.get()!=0) {
+    if (FQsPCcam.isThereInterest()){
         if (!ackstatus) ackstatus=(wfun::run(cam.ptr,"AcquisitionStart")==VmbErrorSuccess);
         doack=ackstatus;
-        break;
     }
     if(doack==false && ackstatus==true){
         wfun::run(cam.ptr,"AcquisitionStop");
@@ -113,7 +112,7 @@ void camobj::con_cam(bool ch){
 /*########### MAKO ###########*/
 
 MAKO::MAKO() : vsys( AVT::VmbAPI::VimbaSystem::GetInstance()), iuScope(this, sw.iuScopeID, sw.iuScope_connected){             //init new cameras here!
-    iuScope.img_cqueues.push_back(&sw.iuScope_img);                                                                           //add image queues here!
+    sw.iuScope_img=iuScope.FQsPCcam.getNewFQ();                                                                               //add image queues here!
 
     sw.MAKO_cam_desc.set(new std::vector<_dcams>());
     VmbErrorType errc = vsys.Startup();

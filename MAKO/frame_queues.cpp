@@ -28,7 +28,7 @@ void FQsPC::enqueueMat(){
     for (int i=0;i!=user_queues.size();i++){
         if (user_queues[i].fps!=0){
             user_queues[i].umx.lock();
-                unsigned div=round((float)camfps/user_queues[i].fps);
+                unsigned div=round(camfps/user_queues[i].fps);
                 if (user_queues[i].i>=div){
                     user_queues[i].i=1;
                     user_queues[i].full.push(&mat_ptr_full.front().mat);
@@ -56,6 +56,11 @@ FQ* FQsPC::getNewFQ(){
     userqmx.unlock();
     return ret;
 }
+void FQsPC::setCamFPS(double nfps){
+    userqmx.lock();
+    fps=nfps;
+    userqmx.unlock();
+}
 void FQsPC::reclaim(){
     for (int i=0;i!=user_queues.size();i++){
         user_queues[i].umx.lock();
@@ -78,8 +83,9 @@ void FQsPC::reclaim(){
         }
 }
 
+
 FQ::FQ() : fps(0), i(1){}
-void FQ::setUserFps(unsigned nfps){
+void FQ::setUserFps(double nfps){
     umx.lock();
     fps=nfps;
     umx.unlock();

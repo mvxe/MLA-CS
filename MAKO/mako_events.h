@@ -9,10 +9,10 @@ public :
 
 class FrameObserver : public AVT::VmbAPI::IFrameObserver{
 public :
-    FrameObserver(AVT::VmbAPI::CameraPtr pCamera, std::queue<cv::Mat*>* ptr_queue);
+    FrameObserver(AVT::VmbAPI::CameraPtr pCamera, FQsPC* FQsPCcam);
     void FrameReceived(const AVT::VmbAPI::FramePtr pFrame);
 private:
-    std::queue<cv::Mat*>* ptr_queue;
+    FQsPC *FQsPCcam;
 };
 
 #endif // MAKO_EVENTS_H

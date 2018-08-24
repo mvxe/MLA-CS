@@ -23,6 +23,7 @@
 #include <sstream>
 
 #include "opencv2/opencv.hpp"
+#include "MAKO/frame_queues.h"
 
 #ifndef THREADS_H
 #define THREADS_H

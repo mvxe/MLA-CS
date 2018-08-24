@@ -40,4 +40,10 @@ void MainWindow::GUI_update(){
 
     if (sw.XPS_ip.resolved.changed())
         ui->e_xps_ip_resolved->setText(QString::fromStdString(sw.XPS_ip.is_name?sw.XPS_ip.resolved.get():" "));
+
+    const cv::Mat* dmat=sw.iuScope_img->getUserMat();
+    if (dmat!=nullptr){
+        ui->camera_stream->setPixmap(QPixmap::fromImage(QImage(dmat->data, dmat->cols, dmat->rows, dmat->step, QImage::Format_Mono)));      //TODO generalize this
+        sw.iuScope_img->freeUserMat();
+    }
 }

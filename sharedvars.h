@@ -44,6 +44,7 @@ public:
 
     /* GUI <-> MAKO thread communication */
     std::mutex GUI_MAKO;
+    mxva<bool> MAKO_init_done = mxva<bool>(&GUI_MAKO,false);
     mxvar<int> MAKO_keepalive = mxvar<int>(&GUI_MAKO, 500,&var,"MAKO_keepalive");   //in ms
     mxva<bool> MAKO_end = mxva<bool>(&GUI_MAKO,false);
     mxva<std::vector<_dcams>*> MAKO_cam_desc = mxva<std::vector<_dcams>*>(&GUI_MAKO,nullptr);
@@ -52,7 +53,7 @@ public:
 
     mxva<bool> iuScope_connected = mxva<bool>(&GUI_MAKO,false);
     mxvar<std::string> iuScopeID = mxvar<std::string>(&GUI_MAKO,"none",&var,"iuScopeID");
-    _tqueue iuScope_img = _tqueue(&GUI_MAKO);                                              //iuScope -> GUI
+    FQ* iuScope_img;                                              //iuScope -> GUI
 
     /*MAKO <-> Vimba events internal*/
     std::mutex MAKO_VMB;

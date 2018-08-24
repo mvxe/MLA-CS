@@ -9,7 +9,7 @@ void CamObserver::CameraListChanged ( AVT::VmbAPI::CameraPtr pCam , AVT::VmbAPI:
     sw.MAKO_reco.set(true);
 }
 
-FrameObserver::FrameObserver(AVT::VmbAPI::CameraPtr pCamera, std::queue<cv::Mat*>* ptr_queue) : IFrameObserver(pCamera), ptr_queue(ptr_queue){}
+FrameObserver::FrameObserver(AVT::VmbAPI::CameraPtr pCamera, FQsPC *FQsPCcam) : IFrameObserver(pCamera), FQsPCcam(FQsPCcam){}
 
 int frame=0;
 void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
@@ -25,22 +25,24 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
         std::cerr<<"The PixelFormat type is not supported(this should have been prevented by GUI selector)! Skipping frame.\n";
         m_pCamera -> QueueFrame ( pFrame ); return;
     }
-    if (ptr_queue->front()->rows!=xsize || ptr_queue->front()->cols!=ysize){    //the allocated matrix is of the wrong size/type
-        ptr_queue->front()->release();
-        *(ptr_queue->front())=cv::Mat(xsize, ysize, imgfor::ocv_type_get(form).ocv_type);
+    cv::Mat* freeMat = FQsPCcam->getAFreeMatPtr();
+    if (freeMat->rows!=xsize || freeMat->cols!=ysize){    //the allocated matrix is of the wrong size/type
+        freeMat->release();
+        *(freeMat)=cv::Mat(xsize, ysize, imgfor::ocv_type_get(form).ocv_type);
         //std::cerr<<"typename: "<<imgfor::ocv_type_get(form).vmb_name<<" ,  ocv type: "<<imgfor::ocv_type_get(form).ocv_type<<"\n";
     }
     VmbUint32_t bufsize;
     pFrame->GetBufferSize(bufsize);
-    if (bufsize>(ptr_queue->front()->dataend - ptr_queue->front()->datastart)){
-        std::cerr<<"Image buffer from Vimba too large(this should not be possible) "<< bufsize <<"  "<<(ptr_queue->front()->dataend - ptr_queue->front()->datastart) <<" ! Skipping frame.\n";
+    if (bufsize>(freeMat->dataend - freeMat->datastart)){
+        std::cerr<<"Image buffer from Vimba too large(this should not be possible) "<< bufsize <<"  "<<(freeMat->dataend - freeMat->datastart) <<" ! Skipping frame.\n";
         m_pCamera -> QueueFrame ( pFrame ); return;
     }
 
-    pFrame->GetImage(ptr_queue->front()->data);
-    if (imgfor::ocv_type_get(form).ccc!=(cv::ColorConversionCodes)-1) cvtColor(*ptr_queue->front(), *ptr_queue->front(), imgfor::ocv_type_get(form).ccc);   //color conversion if img is not monochrome or bgr
-    ptr_queue->push(ptr_queue->front());    //the one at the front
-    ptr_queue->pop();                       //is moved to the end
+    pFrame->GetImage(freeMat->data);
+    if (imgfor::ocv_type_get(form).ccc!=(cv::ColorConversionCodes)-1) cvtColor(*freeMat, *freeMat, imgfor::ocv_type_get(form).ccc);   //color conversion if img is not monochrome or bgr
+    FQsPCcam->enqueueMat();
+
+    std::cerr<<"Total mat number: "<<FQsPCcam->getMatNumber()<<" ,Full mat number: "<<FQsPCcam->getFullNumber()<<"\n";
 
     m_pCamera -> QueueFrame ( pFrame );
 }
