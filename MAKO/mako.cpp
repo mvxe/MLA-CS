@@ -14,6 +14,25 @@ void camobj::start(){
     Ysize=wfun::get<VmbInt64_t>(cam.ptr,"Height");
     format_enum=wfun::get<VmbInt64_t>(cam.ptr,"PixelFormat");
 
+
+/* TODO implement this in gui later on*/
+    AVT::VmbAPI::FeaturePtrVector features;
+    cam.ptr->GetFeatures(features);
+    std::string fname[5];
+    bool rw[2];
+    for (int i=0;i!=features.size();i++){
+        features[i]->GetName(fname[0]);
+        features[i]->GetUnit(fname[1]);
+        features[i]->GetRepresentation(fname[2]);
+        features[i]->GetToolTip(fname[3]);
+        features[i]->GetDescription(fname[4]);
+        features[i]->IsReadable(rw[0]);
+        features[i]->IsWritable(rw[1]);
+        std::cerr<<"feature name: "<<fname[0]<<"\n  Unit: "<<fname[1]<<"\n  Representation: "<<fname[2]<<"\n  ToolTip: "<<fname[3]<<"\n  Description: "<<fname[4];
+        std::cerr<<"\n  R/W: "<<rw[0]<<"/"<<rw[1]<<"\n\n";
+    }
+/*#####################################*/
+
     std::cerr<<"Xsize="<<Xsize<<"\n";
     std::cerr<<"Ysize="<<Ysize<<"\n";
     std::cerr<<"format="<<format_enum<<"\n";
