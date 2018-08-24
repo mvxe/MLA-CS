@@ -65,8 +65,6 @@ void camobj::work(){
         wfun::run(cam.ptr,"AcquisitionStop");
         ackstatus=false;
     }
-    if (doack){
-    }
 }
 void camobj::end(){
     if (ackstatus) wfun::run(cam.ptr,"AcquisitionStop");

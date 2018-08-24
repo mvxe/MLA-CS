@@ -25,7 +25,7 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
         std::cerr<<"The PixelFormat type is not supported(this should have been prevented by GUI selector)! Skipping frame.\n";
         m_pCamera -> QueueFrame ( pFrame ); return;
     }
-    if (ptr_queue->front()->rows!=xsize || ptr_queue->front()->cols!=ysize){
+    if (ptr_queue->front()->rows!=xsize || ptr_queue->front()->cols!=ysize){    //the allocated matrix is of the wrong size/type
         ptr_queue->front()->release();
         *(ptr_queue->front())=cv::Mat(xsize, ysize, imgfor::ocv_type_get(form).ocv_type);
         //std::cerr<<"typename: "<<imgfor::ocv_type_get(form).vmb_name<<" ,  ocv type: "<<imgfor::ocv_type_get(form).ocv_type<<"\n";

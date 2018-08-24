@@ -54,7 +54,8 @@ HEADERS += \
     TCP_con.h \
     includes.h \
     MAKO/mako_events.h \
-    MAKO/vmbwrap.h
+    MAKO/vmbwrap.h \
+    MAKO/frame_queues.h
 
 SOURCES += \
     MAKO/mako.cpp \
@@ -66,7 +67,8 @@ SOURCES += \
     mutex_containers.cpp \
     sharedvars.cpp \
     TCP_con.cpp \
-    MAKO/mako_events.cpp
+    MAKO/mako_events.cpp \
+    MAKO/frame_queues.cpp
 
 
 unix {

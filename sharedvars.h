@@ -21,8 +21,8 @@ struct _dcams{
 
 class _tqueue{
 public:
-    _tqueue(std::mutex* mux) : ptr(mux,nullptr), fps(mux,0), i(mux,0), isbusy(mux,false){}
-    mxva<cv::Mat*> ptr;
+    _tqueue(std::mutex* mux) : fps(mux,0), i(mux,0), isbusy(mux,false){}
+    std::queue<cv::Mat*> qu;
     mxva<unsigned> fps;          //rounds to the closest divisor by two of the actual framerate (ie 9999 of 168 fps gives 168, 33 of 168 fps gives 28 fps, 0 means no acquisition)
     mxva<int> i;                 //for framerate reduction
     mxva<bool> isbusy;           //to be somewhat threadsafe, the thread that uses the images keeps this flag on while accessing the matrix so that the main thread doesnt overwrite it (this should cause skipped frames and some flashy errors onscreen)
