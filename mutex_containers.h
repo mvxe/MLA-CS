@@ -17,9 +17,9 @@ struct _fovar{    //for file ops
 template <typename T>
 class mxva{
 public:
-    mxva(std::mutex *mxn, T initial);  //must be constructed with a mutex pointer
+    mxva(std::mutex *mxn, T initial);   //must be constructed with a mutex pointer
     virtual bool set(T nvar);           //the usual set, returns false on success (if the provided value is valid)
-    T get();                            //the usual get
+    T get(bool silent = false);         //the usual get, the optional parameter silent, if true, makes the get operation not set changed to false
     bool changed();                     //has the variable been changed since last get()
 protected:
     std::mutex *mx;

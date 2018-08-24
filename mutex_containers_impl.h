@@ -18,10 +18,10 @@ bool mxva<T>::set(T nvar){
     return false;
 }
 template <typename T>
-T mxva<T>::get(){
+T mxva<T>::get(bool silent){
     mx->lock();
     T nvar = var;
-    change = false;
+    if (!silent) change = false;
     mx->unlock();
     return nvar;
 }

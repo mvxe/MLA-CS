@@ -212,7 +212,7 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tabcamera">
+      <widget class="QWidget" name="tab_camera">
        <attribute name="title">
         <string>Camera</string>
        </attribute>

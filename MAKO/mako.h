@@ -18,7 +18,7 @@ public:
         std::string ID;
     };
 
-    camobj(MAKO *cobj, mxvar<std::string> &ID, mxvar<bool> &connected);
+    camobj(MAKO *cobj, mxvar<std::string> &ID, mxva<bool> &connected);
     _cam cptr;
     void start();
     void work();                                //call this periodically
@@ -30,7 +30,7 @@ private:
     std::deque<int> frames;
     _cam cam;
     mxvar<std::string> &ID;     //pointer to the ID thread safe string, for GUI
-    mxvar<bool> &connected;     //pointer to the connected flag thread safe string, for GUI
+    mxva<bool> &connected;      //pointer to the connected flag thread safe string, for GUI
 
     AVT::VmbAPI::IFrameObserverPtr VMBo;
     AVT::VmbAPI::FramePtrVector VMBframes;        //CAMOBJ<->VIMBA frames

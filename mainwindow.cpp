@@ -16,6 +16,7 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     menu->setToolTipsVisible(true);
     ui->cam1_select->setMenu(menu);
     connect(menu, SIGNAL(aboutToShow()), this, SLOT(cam1_select_show()));
+    on_tabWidget_currentChanged(ui->tabWidget->currentIndex());                 //executed commands for current index
 }
 
 MainWindow::~MainWindow(){
@@ -35,6 +36,8 @@ void MainWindow::program_exit(){
 
 void MainWindow::on_tabWidget_currentChanged(int index){
     ui->centralWidget->setFocus();  //prevents random textboxes from receiving focus after tab switch
+    if (ui->tabWidget->tabText(index)=="Camera") sw.iuScope_img.fps.set(30);
+    else sw.iuScope_img.fps.set(0);
 }
 
 

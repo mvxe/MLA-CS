@@ -1,13 +1,13 @@
 #include "mako.h"
 
 
-camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxvar<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB), ackstatus(false){
+camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxva<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB), ackstatus(false){
     imgs_iter=0;
     for (int i=0;i!=imgs.size();i++) ptr_queue.push(&imgs[i]);
 }
 
 void camobj::start(){
-    VMBo = AVT::VmbAPI::IFrameObserverPtr(new FrameObserver(cam.ptr));
+    VMBo = AVT::VmbAPI::IFrameObserverPtr(new FrameObserver(cam.ptr, &ptr_queue));
 
     VmbInt64_t nPLS=wfun::get<VmbInt64_t>(cam.ptr,"PayloadSize");
     Xsize=wfun::get<VmbInt64_t>(cam.ptr,"Width");
@@ -36,7 +36,7 @@ void camobj::start(){
     std::cerr<<"Xsize="<<Xsize<<"\n";
     std::cerr<<"Ysize="<<Ysize<<"\n";
     std::cerr<<"format="<<format_enum<<"\n";
-    for (int i=0;i!=imgs.size();i++) imgs[i]=cv::Mat(Xsize,Ysize, CV_8UC3);                                      //we set the img sizes and formats, redo/separate this if you add res settings!
+    //for (int i=0;i!=imgs.size();i++) imgs[i]=cv::Mat(Xsize,Ysize, CV_8UC3);                                      //we set the img sizes and formats, redo/separate this if you add res settings!
 
 
     wfun::set<double>(cam.ptr,"ExposureTime",100.);
@@ -51,6 +51,10 @@ void camobj::start(){
     for (int i=0; i!=VMBframes.size();i++) cam.ptr->QueueFrame(VMBframes[i]);
 }
 void camobj::work(){
+    if (connected.get(true)==false){
+        ackstatus=false;
+        return;
+    }
     bool doack=false;
     for (int i=0;i<img_cqueues.size();i++) if (img_cqueues[i]->fps.get()!=0) {
         if (!ackstatus) ackstatus=(wfun::run(cam.ptr,"AcquisitionStart")==VmbErrorSuccess);
@@ -62,11 +66,11 @@ void camobj::work(){
         ackstatus=false;
     }
     if (doack){
-
     }
 }
 void camobj::end(){
     if (ackstatus) wfun::run(cam.ptr,"AcquisitionStop");
+    ackstatus=false;
     cam.ptr->EndCapture();
     cam.ptr->FlushQueue();
     cam.ptr->RevokeAllFrames();

@@ -18,7 +18,6 @@ int main(int argc, char *argv[])
     MAKO MAKOa;
     MAKO_thread = std::thread(&MAKO::run, &MAKOa);
 
-
  //   ComM_XPS xyz_ctrl;
 //    std::cout << iCC_GUI.GUI_change();
 
