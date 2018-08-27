@@ -43,7 +43,7 @@ void MainWindow::GUI_update(){
 
     const cv::Mat* dmat=sw.iuScope_img->getUserMat();
     if (dmat!=nullptr){
-        ui->camera_stream->setPixmap(QPixmap::fromImage(QImage(dmat->data, dmat->cols, dmat->rows, dmat->step, QImage::Format_Mono)));      //TODO generalize this
+        ui->camera_stream->setPixmap(QPixmap::fromImage(QImage(dmat->data, dmat->cols, dmat->rows, dmat->step, QImage::Format_Indexed8).copy()));      //.copy() is here to make an actual copy, otherwise it segfaults when the other thread frees the mat //TODO generalize Format_Indexed8
         sw.iuScope_img->freeUserMat();
     }
 }

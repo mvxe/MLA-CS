@@ -10,7 +10,7 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     sync_settings();
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(GUI_update()));
-    timer->start(20);
+    timer->start(10);
 
     menu = new QMenu(this);
     menu->setToolTipsVisible(true);
@@ -35,7 +35,7 @@ void MainWindow::program_exit(){
 
 void MainWindow::on_tabWidget_currentChanged(int index){
     ui->centralWidget->setFocus();  //prevents random textboxes from receiving focus after tab switch
-    if (ui->tabWidget->tabText(index)=="Camera") sw.iuScope_img->setUserFps(30.);
+    if (ui->tabWidget->tabText(index)=="Camera") sw.iuScope_img->setUserFps(30.,50);
     else sw.iuScope_img->setUserFps(0.);
 }
 

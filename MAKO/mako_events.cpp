@@ -26,15 +26,15 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
         m_pCamera -> QueueFrame ( pFrame ); return;
     }
     cv::Mat* freeMat = FQsPCcam->getAFreeMatPtr();
-    if (freeMat->rows!=xsize || freeMat->cols!=ysize){    //the allocated matrix is of the wrong size/type
+    if (freeMat->rows!=ysize || freeMat->cols!=xsize){    //the allocated matrix is of the wrong size/type
         freeMat->release();
-        *(freeMat)=cv::Mat(xsize, ysize, imgfor::ocv_type_get(form).ocv_type);
+        *(freeMat)=cv::Mat(ysize, xsize, imgfor::ocv_type_get(form).ocv_type);
         //std::cerr<<"typename: "<<imgfor::ocv_type_get(form).vmb_name<<" ,  ocv type: "<<imgfor::ocv_type_get(form).ocv_type<<"\n";
     }
     VmbUint32_t bufsize;
     pFrame->GetBufferSize(bufsize);
-    if (bufsize>(freeMat->dataend - freeMat->datastart)){
-        std::cerr<<"Image buffer from Vimba too large(this should not be possible) "<< bufsize <<"  "<<(freeMat->dataend - freeMat->datastart) <<" ! Skipping frame.\n";
+    if (bufsize!=(freeMat->dataend - freeMat->datastart)){
+        std::cerr<<"Image buffer from Vimba of wrong size(this should not be possible) "<< bufsize <<"  "<<(freeMat->dataend - freeMat->datastart) <<" ! Skipping frame.\n";
         m_pCamera -> QueueFrame ( pFrame ); return;
     }
 

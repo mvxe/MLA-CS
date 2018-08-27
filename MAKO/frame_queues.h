@@ -39,16 +39,18 @@ class FQ      //frame queue,        this should be accessed from  the user threa
     friend class FQsPC;
 public:
     FQ();
-    void setUserFps(double nfps);   //sets the framerate, set to zero if not in use to avoid piling up of data, see below
-    cv::Mat const* getUserMat();      //gets the pointer to the last matrix
-    void freeUserMat();               //tells the class its safe to free the matrix (if this isnt called, the above call will return the pointer to the same old matrix)
-    unsigned getUserQueueLength();    //return the number of frames waiting to be processed by this user
-    unsigned getFullNumber();       //get the number of full matrices
-    unsigned getFreeNumber();       //get the number of free matrices
+    void setUserFps(double nfps, unsigned maxframes = 0);   //sets the framerate, set to zero if not in use to avoid piling up of data, see below, the optional parameter maxframes halves the framerate when the full queue size reaches maxframes, and ups it again at maxframes/2 up to fps
+    cv::Mat const* getUserMat();        //gets the pointer to the last matrix
+    void freeUserMat();                 //tells the class its safe to free the matrix (if this isnt called, the above call will return the pointer to the same old matrix)
+    unsigned getUserQueueLength();      //return the number of frames waiting to be processed by this user
+    unsigned getFullNumber();           //get the number of full matrices
+    unsigned getFreeNumber();           //get the number of free matrices
 private:
     std::queue<cv::Mat**> full;
     std::deque<cv::Mat**> free;
-    double fps;               //rounds to the closest divisor by two of the actual framerate (ie 9999 of 168 fps gives 168, 33 of 168 fps gives 28 fps, 0 means no acquisition)
+    double fps;                 //rounds to the closest divisor by two of the actual framerate (ie 9999 of 168 fps gives 168, 33 of 168 fps gives 28 fps, 0 means no acquisition)
+    unsigned maxfr;
+    unsigned div;
     int i;                      //for framerate reduction
     std::mutex umx;
 };
