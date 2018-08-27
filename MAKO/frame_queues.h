@@ -42,8 +42,7 @@ public:
     void setUserFps(double nfps, unsigned maxframes = 0);   //sets the framerate, set to zero if not in use to avoid piling up of data, see below, the optional parameter maxframes halves the framerate when the full queue size reaches maxframes, and ups it again at maxframes/2 up to fps
     cv::Mat const* getUserMat();        //gets the pointer to the last matrix
     void freeUserMat();                 //tells the class its safe to free the matrix (if this isnt called, the above call will return the pointer to the same old matrix)
-    unsigned getUserQueueLength();      //return the number of frames waiting to be processed by this user
-    unsigned getFullNumber();           //get the number of full matrices
+    unsigned getFullNumber();           //get the number of full matrices (return the number of frames waiting to be processed by this user)
     unsigned getFreeNumber();           //get the number of free matrices
 private:
     std::queue<cv::Mat**> full;

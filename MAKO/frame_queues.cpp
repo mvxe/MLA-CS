@@ -31,7 +31,7 @@ void FQsPC::enqueueMat(){
                 if (user_queues[i].maxfr==0 || user_queues[i].full.size()==0) user_queues[i].div=round(camfps/user_queues[i].fps);
                 else if (user_queues[i].full.size()<=user_queues[i].maxfr/2 && user_queues[i].div!=round(camfps/user_queues[i].fps)) user_queues[i].div-=1;
                 else if (user_queues[i].full.size()>=user_queues[i].maxfr) user_queues[i].div+=1;
-                std::cerr<<"camfps/fps: "<<user_queues[i].div<<"\n";
+                //std::cerr<<"camfps/fps: "<<user_queues[i].div<<"\n";
                 if (user_queues[i].i>=user_queues[i].div){
                     user_queues[i].i=1;
                     user_queues[i].full.push(&mat_ptr_full.front().mat);
@@ -74,7 +74,6 @@ void FQsPC::reclaim(){
                     user_queues[i].free.erase(user_queues[i].free.begin()+j);
                     j--;
                 }
-
         user_queues[i].umx.unlock();
     }
     for (int k=0;k!=mat_ptr_full.size();k++)
@@ -109,20 +108,17 @@ void FQ::freeUserMat(){
     }
     umx.unlock();
 }
-unsigned FQ::getUserQueueLength(){
+unsigned FQ::getFullNumber(){
     unsigned ret;
     umx.lock();
     ret=full.size();
     umx.unlock();
     return ret;
 }
-unsigned FQ::getFullNumber(){
-    umx.lock();
-    return full.size();
-    umx.unlock();
-}
 unsigned FQ::getFreeNumber(){
+    unsigned ret;
     umx.lock();
-    return free.size();
+    ret=free.size();
     umx.unlock();
+    return ret;
 }

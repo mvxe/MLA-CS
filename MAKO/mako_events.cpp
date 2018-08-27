@@ -11,11 +11,7 @@ void CamObserver::CameraListChanged ( AVT::VmbAPI::CameraPtr pCam , AVT::VmbAPI:
 
 FrameObserver::FrameObserver(AVT::VmbAPI::CameraPtr pCamera, FQsPC *FQsPCcam) : IFrameObserver(pCamera), FQsPCcam(FQsPCcam){}
 
-int frame=0;
 void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
-    if ((frame%168)==0)std::cerr<<"ack\n";
-    frame++;
-
     VmbUint32_t xsize,ysize;
     VmbPixelFormatType form;
     pFrame->GetWidth(xsize);
@@ -42,8 +38,7 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
     if (imgfor::ocv_type_get(form).ccc!=(cv::ColorConversionCodes)-1) cvtColor(*freeMat, *freeMat, imgfor::ocv_type_get(form).ccc);   //color conversion if img is not monochrome or bgr
     FQsPCcam->enqueueMat();
 
-    std::cerr<<"Total mat number: "<<FQsPCcam->getMatNumber()<<" ,Full mat number: "<<FQsPCcam->getFullNumber()<<"\n";
-
+    //std::cerr<<"Total mat number: "<<FQsPCcam->getMatNumber()<<" ,Full mat number: "<<FQsPCcam->getFullNumber()<<"\n";
     m_pCamera -> QueueFrame ( pFrame );
 }
 
