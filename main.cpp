@@ -14,6 +14,7 @@ int main(int argc, char *argv[])
     w.show();
 
     XPS XPS;
+    sw.XPSa=&XPS;
     XPS_thread = std::thread(&XPS::run, &XPS);
     MAKO MAKOa;
     MAKO_thread = std::thread(&MAKO::run, &MAKOa);

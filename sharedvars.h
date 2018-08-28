@@ -3,6 +3,8 @@
 
 #include "includes.h"
 #include "mutex_containers.h"
+#include "MAKO/frame_queues.h"
+#include "XPS/xps.h"
 
 class sharedvarsba{
 public:
@@ -30,6 +32,9 @@ public:
 
 class sharedvars : sharedvarsba{    //the vars to be saved in a file have two additional arguments: ...,&var,"varname")
 public:
+    /* global access to XPS functions */
+    XPS* XPSa;
+
     /* GUI <-> XPS thread communication */
     std::mutex GUI_XPS;
     mxvar_ip XPS_ip = mxvar_ip(&GUI_XPS, std::string("192.168.0.254"),&var,"XPS_ip");

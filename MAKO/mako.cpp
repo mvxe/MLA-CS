@@ -1,6 +1,5 @@
 #include "mako.h"
 
-
 camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxva<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB), ackstatus(false), FQsPCcam(){}
 
 void camobj::start(){

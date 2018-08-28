@@ -51,4 +51,11 @@ private:
     QPixmap* px_offline;
 };
 
+class mtlabel : public QLabel{
+    using QLabel::QLabel;
+    void mousePressEvent(QMouseEvent *event);
+};
+
+
+
 #endif // MAINWINDOW_H

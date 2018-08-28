@@ -51,7 +51,7 @@ void TCP_con::connect(int timeout_ms){
     int err = ::connect(sock, (struct sockaddr *)&servernm , sizeof(servernm));
     if (err<0 && sock>=0) close(sock);
     _connected = (err>=0);
-    std::cerr<<"error="<<errno<<"\n";
+    //std::cerr<<"error="<<errno<<"\n";
 }
 void TCP_con::disconnect(){
     if (sock>=0) close(sock);
@@ -59,14 +59,24 @@ void TCP_con::disconnect(){
     captr = nullptr;
     _connected = false;
 }
-void TCP_con::write(std::string write_string){
-
+int TCP_con::write(std::string write_string){
+    rn = ::write(sock,write_string.c_str(),write_string.size());
+    std::cerr<<"Num of chars written:"<<rn<<"\n";
+    if (rn<0)
+         std::cerr<<"ERROR writing to socket\n";
+    return rn;
 }
-void TCP_con::read(std::string &read_string){   //TODO: this needs rewriting
-
+int TCP_con::read(std::string &read_string){   //TODO: this needs rewriting
+    bzero(block,BLOCK_SIZE+1);
+    rn = ::read(sock,block,BLOCK_SIZE);
+    read_string=block;
+    std::cerr<<"Num of chars read:"<<rn<<"\n";
+    if (rn<0)
+         std::cerr<<"ERROR writing to socket\n";
+    return rn;
 }
-void TCP_con::rw(std::string write_string,std::string &read_string){
-    write(write_string);
-    read(read_string);
+int TCP_con::rw(std::string write_string,std::string &read_string){
+    if (write(write_string)!=0)
+        return read(read_string);
 }
 

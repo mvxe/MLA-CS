@@ -258,7 +258,10 @@
          </layout>
         </item>
         <item row="0" column="0">
-         <widget class="QLabel" name="camera_stream">
+         <widget class="mtlabel" name="camera_stream">
+          <property name="mouseTracking">
+           <bool>false</bool>
+          </property>
           <property name="frameShape">
            <enum>QFrame::Box</enum>
           </property>
@@ -545,6 +548,13 @@
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>mtlabel</class>
+   <extends>QLabel</extends>
+   <header>mainwindow.h</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="icons/icon.qrc"/>
  </resources>

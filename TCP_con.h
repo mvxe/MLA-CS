@@ -18,9 +18,9 @@ public:
     bool resolve(std::string host, int port, std::string *resolved = nullptr);     //returns 0 on success, *resolved is optional and returns the resolved ip string
     void connect(int timeout_ms);
     void disconnect();
-    void write(std::string write_string);
-    void read(std::string &read_string);
-    void rw(std::string write_string,std::string &read_string);
+    int write(std::string write_string);                        //returns number of characters written
+    int read(std::string &read_string);                         //returns number of characters read
+    int rw(std::string write_string,std::string &read_string);  //returns number of characters read
     //TODO implement TCL scripts
     //TODO implement PVT support
     const bool& connected;
@@ -32,6 +32,7 @@ protected:
     int sock;
 
 private:
+    int rn;
     char block[BLOCK_SIZE+1];
     struct timeval timeout;
 };

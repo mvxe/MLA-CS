@@ -37,11 +37,6 @@ void MainWindow::on_tabWidget_currentChanged(int index){
     ui->centralWidget->setFocus();  //prevents random textboxes from receiving focus after tab switch
     if (ui->tabWidget->tabText(index)=="Camera") sw.iuScope_img->setUserFps(30.,50);
     else sw.iuScope_img->setUserFps(0.);
-
-//    std::stringstream textss;
-//    if (ui->tabWidget->tabText(index)=="Camera") textss<<"Full mat number: "<<sw.iuScope_img->getFullNumber()<<"\nFree mat number: "<<sw.iuScope_img->getFreeNumber();
-//    QString text=QString::fromStdString(textss.str());
-//    ui->tabWidget->setToolTip(text);
 }
 
 
@@ -67,4 +62,18 @@ void MainWindow::updateCamMenu(){
         menu->addAction(actx);
         actptrs.push_back(actx);
     }
+}
+
+void mtlabel::mousePressEvent(QMouseEvent *event){
+    double disp_x=event->pos().x()-size().width()/2.;
+    double disp_y=event->pos().y()-size().height()/2.;
+    if(sw.XPSa->connected){
+        std::stringstream strm;
+        strm<<"GroupMoveRelative "<<1<<" "<<"groupname_x"<<" "<<disp_x;
+        sw.XPSa->execCommandNow(strm.str());
+        strm.str().clear();
+        strm<<"GroupMoveRelative "<<1<<" "<<"groupname_x"<<" "<<disp_y;
+        sw.XPSa->execCommandNow(strm.str());
+    }
+    std::cerr<<disp_x<<"  "<<disp_y<<"\n";
 }

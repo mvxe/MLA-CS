@@ -1,6 +1,7 @@
 #include "xps.h"
+#include "sharedvars.h"
 
-XPS::XPS(){
+XPS::XPS() : _writef(false){
     TCP_con();
 }
 
@@ -26,11 +27,38 @@ void XPS::run(){    //this is the XPS thread loop
         }
         if(sw.XPS_ip.changed() || sw.XPS_port.changed()) disconnect();  //if the user changes the IP or port setting we disconnect
 
-        std::this_thread::sleep_for (std::chrono::milliseconds(sw.XPS_keepalive.get()));
-        //rw("set x 0",tmp);
-        //std::cout<<tmp<<"\n";
+        std::this_thread::sleep_for (std::chrono::milliseconds(sw.XPS_keepalive.get()));    //TODO remove this sleep (XPS)
 
-        //do something here
+        mpq.lock();
+        for(;;){
+            if(!priority_queue.empty()){
+                tmp=priority_queue.front();
+                mpq.unlock();
+                if (write(tmp)!=tmp.size()) {std::cerr<<"wrong written size!\n"; disconnect(); break;}
+                mpq.lock();
+                if (!priority_queue.empty()) priority_queue.pop();
+                mpq.unlock();
+                read(tmp);
+                std::cerr<<tmp<<"\n";
+                mpq.lock();
+            }
+            else if(!main_queue.empty() && _writef){
+                tmp=main_queue.front();
+                mpq.unlock();
+                if (write(tmp)!=tmp.size()) {std::cerr<<"wrong written size!\n"; disconnect(); break;}
+                mpq.lock();
+                if (!main_queue.empty()) main_queue.pop();
+                mpq.unlock();
+                read(tmp);
+                std::cerr<<tmp<<"\n";
+                mpq.lock();
+            }
+            else {
+                mpq.unlock();
+                break;
+            }
+        }
+
 
         if(sw.XPS_end.get()){
             //cleanup TODO
@@ -39,4 +67,37 @@ void XPS::run(){    //this is the XPS thread loop
             return;
         }
     }
+}
+
+void XPS::addCommandToQueue(std::string command){
+    mpq.lock();
+    main_queue.push(command);
+    mpq.unlock();
+}
+void XPS::clearCommandQueue(void){
+    mpq.lock();
+    while(!main_queue.empty())main_queue.pop();
+    mpq.unlock();
+}
+void XPS::execQueueStart(void){
+    mpq.lock();
+    _writef=true;
+    mpq.unlock();
+}
+void XPS::execQueueHalt(void){
+    mpq.lock();
+    _writef=false;
+    mpq.unlock();
+}
+unsigned XPS::getCommandQueueSize(void){
+    mpq.lock();
+    unsigned ret=main_queue.size();
+    mpq.unlock();
+    return ret;
+}
+
+void XPS::execCommandNow(std::string command){
+    mpq.lock();
+    priority_queue.push(command);
+    mpq.unlock();
 }

@@ -3,8 +3,8 @@
 
 #include "includes.h"
 #include <VimbaCPP/Include/VimbaCPP.h>
-#include "sharedvars.h"
 #include "MAKO/vmbwrap.h"
+#include "sharedvars.h"
 
 const int N_FRAMES_MAKO_VMB  = 15;   //queue length of CAMOBJ<->VIMBA communication
 const int N_FRAMES_MAKO_PROC = 60;   //queue length of CAMOBJ<->Processing
