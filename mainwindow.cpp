@@ -68,12 +68,10 @@ void mtlabel::mousePressEvent(QMouseEvent *event){
     double disp_x=event->pos().x()-size().width()/2.;
     double disp_y=event->pos().y()-size().height()/2.;
     if(sw.XPSa->connected){
-        std::stringstream strm;
-        strm<<"GroupMoveRelative "<<1<<" "<<"groupname_x"<<" "<<disp_x;
-        sw.XPSa->execCommandNow(strm.str());
-        strm.str().clear();
-        strm<<"GroupMoveRelative "<<1<<" "<<"groupname_x"<<" "<<disp_y;
-        sw.XPSa->execCommandNow(strm.str());
+        sw.XPSa->execCommandNow("GroupMoveRelative ",sw.Xaxis_groupname.get()," ",disp_x);
+        sw.Xaxis_position.set(disp_x);
+        sw.XPSa->execCommandNow("GroupMoveRelative ",sw.Yaxis_groupname.get()," ",disp_y);
+        sw.Yaxis_position.set(disp_y);
     }
     std::cerr<<disp_x<<"  "<<disp_y<<"\n";
 }

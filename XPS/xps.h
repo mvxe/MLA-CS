@@ -2,6 +2,7 @@
 #define XPS_H
 
 #include "includes.h"
+#include "mutex_containers.h"
 #include "TCP_con.h"
 
 class XPS : public TCP_con{
@@ -15,16 +16,57 @@ public:
     void execQueueHalt(void);                           //halts the queue command execution
     unsigned getCommandQueueSize(void);                 //gets the number of commands waiting to be executed
 
-    void execCommandNow(std::string command);           //exectue a command now, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
+    template <typename T>
+    void execCommandNow(T value);
+    template<typename T, typename... Args>
+    void execCommandNow(T value, Args... args);         //exectue a command now, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
+
+    void initGroups();
+    void homeGroups();
+    void killGroups();
 
     //void execPVTQueue(void);                          //TODO implement PVT
 
 private:
+    template <typename T>
+    void execCommandNow(std::stringstream* strm, T value);
+    template<typename T, typename... Args>
+    void execCommandNow(std::stringstream* strm, T value, Args... args);
+
     void run();
     std::queue<std::string>     main_queue;
     std::queue<std::string> priority_queue;
     std::mutex mpq;
     bool _writef;
 };
+
+
+/*##### Template functions #####*/
+template <typename T>
+void XPS::execCommandNow(T value){
+    std::stringstream* nstrm=new std::stringstream();
+    execCommandNow(nstrm, value);
+}
+template<typename T, typename... Args>
+void XPS::execCommandNow(T value, Args... args){
+    std::stringstream* nstrm=new std::stringstream();
+    execCommandNow(nstrm, value, args...);
+}
+template <typename T>
+void XPS::execCommandNow(std::stringstream* strm, T value){
+    *strm<<value;
+    mpq.lock();
+    priority_queue.push(strm->str());
+    mpq.unlock();
+    std::cerr<<"\nexecuting command:\n"<<strm->str()<<"\n";
+    strm->str("");
+    strm->clear();
+    delete strm;
+}
+template<typename T, typename... Args>
+void XPS::execCommandNow(std::stringstream* strm, T value, Args... args){
+    *strm<<value;
+    execCommandNow(strm, args...);
+}
 
 #endif // XPS_H

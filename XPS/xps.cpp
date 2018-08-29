@@ -6,6 +6,7 @@ XPS::XPS() : _writef(false){
 }
 
 XPS::~XPS(){
+    if (connected) killGroups();
 }
 
 void XPS::run(){    //this is the XPS thread loop
@@ -22,40 +23,43 @@ void XPS::run(){    //this is the XPS thread loop
             else{
                     //connecting...
                 connect(sw.XPS_keepalive.get());
+                if (connected) {initGroups();homeGroups();}
             }
             sw.XPS_ip.resolved.set(resname);
         }
-        if(sw.XPS_ip.changed() || sw.XPS_port.changed()) disconnect();  //if the user changes the IP or port setting we disconnect
+        if(sw.XPS_ip.changed() || sw.XPS_port.changed()) {killGroups();disconnect();}  //if the user changes the IP or port setting we disconnect
 
         std::this_thread::sleep_for (std::chrono::milliseconds(sw.XPS_keepalive.get()));    //TODO remove this sleep (XPS)
 
-        mpq.lock();
-        for(;;){
-            if(!priority_queue.empty()){
-                tmp=priority_queue.front();
-                mpq.unlock();
-                if (write(tmp)!=tmp.size()) {std::cerr<<"wrong written size!\n"; disconnect(); break;}
-                mpq.lock();
-                if (!priority_queue.empty()) priority_queue.pop();
-                mpq.unlock();
-                read(tmp);
-                std::cerr<<tmp<<"\n";
-                mpq.lock();
-            }
-            else if(!main_queue.empty() && _writef){
-                tmp=main_queue.front();
-                mpq.unlock();
-                if (write(tmp)!=tmp.size()) {std::cerr<<"wrong written size!\n"; disconnect(); break;}
-                mpq.lock();
-                if (!main_queue.empty()) main_queue.pop();
-                mpq.unlock();
-                read(tmp);
-                std::cerr<<tmp<<"\n";
-                mpq.lock();
-            }
-            else {
-                mpq.unlock();
-                break;
+        if (connected) {
+            mpq.lock();
+            for(;;){
+                if(!priority_queue.empty()){
+                    tmp=priority_queue.front();
+                    mpq.unlock();
+                    if (write(tmp)!=tmp.size()) {std::cerr<<"wrong written size!\n"; disconnect(); break;}
+                    mpq.lock();
+                    if (!priority_queue.empty()) priority_queue.pop();
+                    mpq.unlock();
+                    read(tmp);
+                    std::cerr<<tmp<<"\n";
+                    mpq.lock();
+                }
+                else if(!main_queue.empty() && _writef){
+                    tmp=main_queue.front();
+                    mpq.unlock();
+                    if (write(tmp)!=tmp.size()) {std::cerr<<"wrong written size!\n"; disconnect(); break;}
+                    mpq.lock();
+                    if (!main_queue.empty()) main_queue.pop();
+                    mpq.unlock();
+                    read(tmp);
+                    std::cerr<<tmp<<"\n";
+                    mpq.lock();
+                }
+                else {
+                    mpq.unlock();
+                    break;
+                }
             }
         }
 
@@ -96,8 +100,19 @@ unsigned XPS::getCommandQueueSize(void){
     return ret;
 }
 
-void XPS::execCommandNow(std::string command){
-    mpq.lock();
-    priority_queue.push(command);
-    mpq.unlock();
+
+void XPS::initGroups(){
+    execCommandNow("GroupInitialize ",sw.Xaxis_groupname.get());
+    execCommandNow("GroupInitialize ",sw.Yaxis_groupname.get());
+    execCommandNow("GroupInitialize ",sw.Zaxis_groupname.get());
+}
+void XPS::homeGroups(){
+    execCommandNow("GroupHomeSearchAndRelativeMove ",sw.Xaxis_groupname.get(), " ", sw.Xaxis_position.get());
+    execCommandNow("GroupHomeSearchAndRelativeMove ",sw.Yaxis_groupname.get(), " ", sw.Yaxis_position.get());
+    execCommandNow("GroupHomeSearchAndRelativeMove ",sw.Zaxis_groupname.get(), " ", sw.Zaxis_position.get());
+}
+void XPS::killGroups(){
+    execCommandNow("GroupKill ",sw.Xaxis_groupname.get());
+    execCommandNow("GroupKill ",sw.Yaxis_groupname.get());
+    execCommandNow("GroupKill ",sw.Zaxis_groupname.get());
 }

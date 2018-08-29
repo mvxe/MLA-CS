@@ -34,6 +34,10 @@ class sharedvars : sharedvarsba{    //the vars to be saved in a file have two ad
 public:
     /* global access to XPS functions */
     XPS* XPSa;
+    std::mutex XPS_sav;
+    mxvar<double> Xaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Xaxis_position");
+    mxvar<double> Yaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Yaxis_position");
+    mxvar<double> Zaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Zaxis_position");
 
     /* GUI <-> XPS thread communication */
     std::mutex GUI_XPS;
