@@ -55,7 +55,8 @@ HEADERS += \
     includes.h \
     MAKO/mako_events.h \
     MAKO/vmbwrap.h \
-    MAKO/frame_queues.h
+    MAKO/frame_queues.h \
+    utility.h
 
 SOURCES += \
     MAKO/mako.cpp \

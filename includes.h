@@ -27,6 +27,7 @@
 #include <sstream>
 
 #include "opencv2/opencv.hpp"
+#include "utility.h"
 
 #ifndef INCLUDES_H
 #define INCLUDES_H

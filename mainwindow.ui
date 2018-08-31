@@ -21,7 +21,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab_con">
        <property name="contextMenuPolicy">
@@ -388,10 +388,16 @@
         <item row="1" column="0">
          <widget class="QSlider" name="sl_expo">
           <property name="minimum">
-           <number>442</number>
+           <number>10000</number>
           </property>
           <property name="maximum">
-           <number>6000</number>
+           <number>10000000</number>
+          </property>
+          <property name="singleStep">
+           <number>100</number>
+          </property>
+          <property name="pageStep">
+           <number>1000</number>
           </property>
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -403,8 +409,14 @@
         </item>
         <item row="1" column="2">
          <widget class="QLabel" name="lab_expo">
+          <property name="minimumSize">
+           <size>
+            <width>200</width>
+            <height>0</height>
+           </size>
+          </property>
           <property name="text">
-           <string>Exposure time: 44.2 us</string>
+           <string>Exposure: 44.2 us</string>
           </property>
          </widget>
         </item>

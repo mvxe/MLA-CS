@@ -31,12 +31,11 @@ void camobj::start(){
     std::cerr<<"Xsize="<<Xsize<<"\n";
     std::cerr<<"Ysize="<<Ysize<<"\n";
     std::cerr<<"format="<<format_enum<<"\n";
-    //for (int i=0;i!=imgs.size();i++) imgs[i]=cv::Mat(Xsize,Ysize, CV_8UC3);                                      //we set the img sizes and formats, redo/separate this if you add res settings!
 
-
-    //wfun::set<double>(cam.ptr,"ExposureTime",sw.MAKO_expo*0.1);
-    wfun::set<double>(cam.ptr,"ExposureTime",1000.);
-    std::cerr<<"exposure(us)="<< wfun::get<double>(cam.ptr,"ExposureTime") <<"\n";
+    //wfun::set<double>(cam.ptr,"ExposureTime",1000.);
+    wfun::set<double>(cam.ptr,"ExposureTime",sw.iuScope_expo.get());        //TODO run this only if uiScope
+    sw.iuScope_expo.set(wfun::get<double>(cam.ptr,"ExposureTime"));
+    std::cerr<<"exposure(us)="<<sw.iuScope_expo.get()<<"\n";
 
     ackFPS=wfun::get<double>(cam.ptr,"AcquisitionFrameRate");
     FQsPCcam.setCamFPS(ackFPS);
@@ -51,8 +50,10 @@ void camobj::start(){
     for (int i=0; i!=VMBframes.size();i++) cam.ptr->QueueFrame(VMBframes[i]);
 }
 void camobj::work(){
+    mtx.lock();
     if (connected.get(true)==false){
         ackstatus=false;
+        mtx.unlock();
         return;
     }
     bool doack=false;
@@ -64,8 +65,10 @@ void camobj::work(){
         wfun::run(cam.ptr,"AcquisitionStop");
         ackstatus=false;
     }
+    mtx.unlock();
 }
 void camobj::end(){
+    mtx.lock();
     if (ackstatus) wfun::run(cam.ptr,"AcquisitionStop");
     ackstatus=false;
     cam.ptr->EndCapture();
@@ -76,10 +79,12 @@ void camobj::end(){
         VMBframes[i].reset();
     }
     VMBo.reset();
+    mtx.unlock();
 }
 void camobj::con_cam(bool ch){
+    mtx.lock();
     if (cam.ptr!=nullptr){
-        if (ch && (cam.ID == ID.get())) return;
+        if (ch && (cam.ID == ID.get())) {mtx.unlock();return;}
         sw.MVM_ignore.set(true);
         end();
         cam.ptr->Close();
@@ -99,6 +104,7 @@ void camobj::con_cam(bool ch){
             if (cam.ptr->Open(VmbAccessModeFull) == VmbErrorSuccess){
                 connected.set(true);
                 start();
+                mtx.unlock();
                 return;
             }else{
                 sw.MVM_ignore.set(false);
@@ -107,11 +113,13 @@ void camobj::con_cam(bool ch){
         }
     }
     connected.set(false);
+    mtx.unlock();
 }
 
 /*########### MAKO ###########*/
 
 MAKO::MAKO() : vsys( AVT::VmbAPI::VimbaSystem::GetInstance()), iuScope(this, sw.iuScopeID, sw.iuScope_connected){             //init new cameras here!
+    sw.iuScope_st=&iuScope;
     sw.iuScope_img=iuScope.FQsPCcam.getNewFQ();                                                                               //add image queues here!
 
     sw.MAKO_cam_desc.set(new std::vector<_dcams>());
@@ -147,7 +155,7 @@ void MAKO::run(){    //this is the MAKO thread loop
             sw.MAKO_reco.set(false);
         }
 
-        iuScope.work();
+        iuScope.work();                                                                                                        //add other cameras here too
         std::this_thread::sleep_for (std::chrono::milliseconds(1));                                                             //TODO fix this delay with timers
 
         if(sw.MAKO_end.get()){

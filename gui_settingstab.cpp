@@ -3,6 +3,7 @@
 
 
 void MainWindow::sync_settings(){
+    ui->sl_expo->blockSignals(true);
     ui->e_xps_ip->setText(QString::fromStdString(sw.XPS_ip.get()));
     ui->e_xps_port->setValue(sw.XPS_port.get());
     ui->e_xps_xaxis->setText(QString::fromStdString(sw.Xaxis_groupname.get()));
@@ -17,9 +18,11 @@ void MainWindow::sync_settings(){
     ui->sl_xsens->setValue(sw.xps_x_sen.get());
     ui->sl_ysens->setValue(sw.xps_y_sen.get());
     ui->sl_zsens->setValue(sw.xps_z_sen.get());
-    ui->sl_expo->setValue(sw.MAKO_expo.get());
+    ui->sl_expo->setValue(sw.iuScope_expo.get()*1000);
+    ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",sw.iuScope_expo.get()," us")));
 
     if (!sw.iuScopeID.get().empty()) ui->cam1_select->setText(QString::fromStdString("camera ID: "+sw.iuScopeID.get()));
+    ui->sl_expo->blockSignals(false);
 }
 
 
@@ -38,10 +41,11 @@ void MainWindow::on_sl_xsens_valueChanged(int value){slider_fun(ui->sl_xsens,&sw
 void MainWindow::on_sl_ysens_valueChanged(int value){slider_fun(ui->sl_ysens,&sw.xps_y_sen,value);}
 void MainWindow::on_sl_zsens_valueChanged(int value){slider_fun(ui->sl_zsens,&sw.xps_z_sen,value);}
 void MainWindow::on_sl_expo_valueChanged(int value) {
-   // wfun::set<double>(cam.ptr,"ExposureTime",sw.MAKO_expo*0.1);
-    //std::cerr<<"exposure(us)="<< wfun::get<double>(cam.ptr,"ExposureTime") <<"\n";
-    //slider_fun(ui->sl_expo,&sw.MAKO_expo,value);
-
+    if(sw.iuScope_st->connected.get()){
+        sw.iuScope_st->set<double>("ExposureTime",value/1000);
+        sw.iuScope_expo.set(sw.iuScope_st->get<double>("ExposureTime"));
+        //std::cerr<<"exposure(us)="<<sw.iuScope_expo.get(true)<<"\n";
+    }
 }
 
 void MainWindow::GUI_update(){
@@ -54,6 +58,9 @@ void MainWindow::GUI_update(){
 
     if (sw.XPS_ip.resolved.changed())
         ui->e_xps_ip_resolved->setText(QString::fromStdString(sw.XPS_ip.is_name?sw.XPS_ip.resolved.get():" "));
+
+    if(sw.iuScope_expo.changed())
+        ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",sw.iuScope_expo.get()," us")));
 
     const cv::Mat* dmat=sw.iuScope_img->getUserMat();
     if (dmat!=nullptr){

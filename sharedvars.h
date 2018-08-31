@@ -5,6 +5,8 @@
 #include "mutex_containers.h"
 #include "MAKO/frame_queues.h"
 #include "XPS/xps.h"
+#include "MAKO/mako.h"
+class camobj;
 
 class sharedvarsba{
 public:
@@ -61,11 +63,12 @@ public:
     mxva<std::vector<_dcams>*> MAKO_cam_desc = mxva<std::vector<_dcams>*>(&GUI_MAKO,nullptr);
     mxva<bool> MAKO_list = mxva<bool>(&GUI_MAKO,true);
     mxva<bool> MAKO_reco = mxva<bool>(&GUI_MAKO,true);
-    mxvar<int> MAKO_expo = mxvar<int>(&GUI_MAKO,442,&var,"MAKO_expo");              //in units od 0.1us
 
-    mxva<bool> iuScope_connected = mxva<bool>(&GUI_MAKO,false);
-    mxvar<std::string> iuScopeID = mxvar<std::string>(&GUI_MAKO,"none",&var,"iuScopeID");
+    mxvar<double> iuScope_expo = mxvar<double>(&GUI_MAKO,442,&var,"iuScope_expo");          //in us
+    mxva<bool> iuScope_connected = mxva<bool>(&GUI_MAKO,false);                             //(TODO) this can be also accessed via iuScope_st, perhaps remove?
+    mxvar<std::string> iuScopeID = mxvar<std::string>(&GUI_MAKO,"none",&var,"iuScopeID");   //(TODO) this can be also accessed via iuScope_st, perhaps remove?
     FQ* iuScope_img;                                              //iuScope -> GUI
+    camobj* iuScope_st;                                           //for accessing camera features and settings (the thread safe functions are public, but check if its live first)
 
     /*MAKO <-> Vimba events internal*/
     std::mutex MAKO_VMB;

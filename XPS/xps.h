@@ -24,9 +24,9 @@ public:
 
 private:
     template <typename T>
-    void execCommandNow(std::stringstream* strm, T value);
+    void eexecCommandNow(std::stringstream* strm, T value);
     template<typename T, typename... Args>
-    void execCommandNow(std::stringstream* strm, T value, Args... args);
+    void eexecCommandNow(std::stringstream* strm, T value, Args... args);
     void flushQueue();
 
     void run();
@@ -40,15 +40,15 @@ private:
 template <typename T>
 void XPS::execCommandNow(T value){
     std::stringstream* nstrm=new std::stringstream();
-    execCommandNow(nstrm, value);
+    eexecCommandNow(nstrm, value);
 }
 template<typename T, typename... Args>
 void XPS::execCommandNow(T value, Args... args){
     std::stringstream* nstrm=new std::stringstream();
-    execCommandNow(nstrm, value, args...);
+    eexecCommandNow(nstrm, value, args...);
 }
 template <typename T>
-void XPS::execCommandNow(std::stringstream* strm, T value){
+void XPS::eexecCommandNow(std::stringstream* strm, T value){
     *strm<<value;
     mpq.lock();
     priority_queue.push(strm->str());
@@ -59,9 +59,9 @@ void XPS::execCommandNow(std::stringstream* strm, T value){
     delete strm;
 }
 template<typename T, typename... Args>
-void XPS::execCommandNow(std::stringstream* strm, T value, Args... args){
+void XPS::eexecCommandNow(std::stringstream* strm, T value, Args... args){
     *strm<<value;
-    execCommandNow(strm, args...);
+    eexecCommandNow(strm, args...);
 }
 
 #endif // XPS_H
