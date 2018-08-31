@@ -40,6 +40,14 @@ private slots:
 
     void cam1_select_show();
 
+    void on_sl_xsens_valueChanged(int value);
+
+    void on_sl_ysens_valueChanged(int value);
+
+    void on_sl_zsens_valueChanged(int value);
+
+    void on_sl_expo_valueChanged(int value);
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;
@@ -54,6 +62,7 @@ private:
 class mtlabel : public QLabel{
     using QLabel::QLabel;
     void mousePressEvent(QMouseEvent *event);
+    void wheelEvent(QWheelEvent *event);
 };
 
 

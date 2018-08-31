@@ -49,7 +49,9 @@ public:
     mxvar<int> XPS_keepalive = mxvar<int>(&GUI_XPS, 500,&var,"XPS_keepalive");     //keepalive and connect timeout, in ms
     mxva<bool> XPS_end = mxva<bool>(&GUI_XPS,false);                               //for signaling the XPS thread it's time to close
     mxva<bool> XPS_connected = mxva<bool>(&GUI_XPS,false);                         //XPS thread -> GUI
-
+    mxvar<int> xps_x_sen = mxvar<int>(&GUI_XPS,100,&var,"xps_x_sen");
+    mxvar<int> xps_y_sen = mxvar<int>(&GUI_XPS,100,&var,"xps_y_sen");
+    mxvar<int> xps_z_sen = mxvar<int>(&GUI_XPS,100,&var,"xps_z_sen");
 
     /* GUI <-> MAKO thread communication */
     std::mutex GUI_MAKO;
@@ -59,6 +61,7 @@ public:
     mxva<std::vector<_dcams>*> MAKO_cam_desc = mxva<std::vector<_dcams>*>(&GUI_MAKO,nullptr);
     mxva<bool> MAKO_list = mxva<bool>(&GUI_MAKO,true);
     mxva<bool> MAKO_reco = mxva<bool>(&GUI_MAKO,true);
+    mxvar<int> MAKO_expo = mxvar<int>(&GUI_MAKO,442,&var,"MAKO_expo");              //in units od 0.1us
 
     mxva<bool> iuScope_connected = mxva<bool>(&GUI_MAKO,false);
     mxvar<std::string> iuScopeID = mxvar<std::string>(&GUI_MAKO,"none",&var,"iuScopeID");

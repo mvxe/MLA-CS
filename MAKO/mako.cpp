@@ -23,8 +23,8 @@ void camobj::start(){
         features[i]->GetDescription(fname[4]);
         features[i]->IsReadable(rw[0]);
         features[i]->IsWritable(rw[1]);
-        std::cerr<<"feature name: "<<fname[0]<<"\n  Unit: "<<fname[1]<<"\n  Representation: "<<fname[2]<<"\n  ToolTip: "<<fname[3]<<"\n  Description: "<<fname[4];
-        std::cerr<<"\n  R/W: "<<rw[0]<<"/"<<rw[1]<<"\n\n";
+        //std::cerr<<"feature name: "<<fname[0]<<"\n  Unit: "<<fname[1]<<"\n  Representation: "<<fname[2]<<"\n  ToolTip: "<<fname[3]<<"\n  Description: "<<fname[4];
+        //std::cerr<<"\n  R/W: "<<rw[0]<<"/"<<rw[1]<<"\n\n";
     }
 /*#####################################*/
 
@@ -34,7 +34,8 @@ void camobj::start(){
     //for (int i=0;i!=imgs.size();i++) imgs[i]=cv::Mat(Xsize,Ysize, CV_8UC3);                                      //we set the img sizes and formats, redo/separate this if you add res settings!
 
 
-    wfun::set<double>(cam.ptr,"ExposureTime",100.);
+    //wfun::set<double>(cam.ptr,"ExposureTime",sw.MAKO_expo*0.1);
+    wfun::set<double>(cam.ptr,"ExposureTime",1000.);
     std::cerr<<"exposure(us)="<< wfun::get<double>(cam.ptr,"ExposureTime") <<"\n";
 
     ackFPS=wfun::get<double>(cam.ptr,"AcquisitionFrameRate");

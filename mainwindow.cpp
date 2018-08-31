@@ -25,10 +25,10 @@ void MainWindow::program_exit(){
     std::cout<<"Sending end signals to all threads...\n";
 
     timer->stop();
-    sw.XPS_end.set(true);
-    XPS_thread.join();
     sw.MAKO_end.set(true);
     MAKO_thread.join();
+    sw.XPS_end.set(true);
+    XPS_thread.join();
 
     std::cout<<"All threads exited successfully!\n";
 }
@@ -65,13 +65,22 @@ void MainWindow::updateCamMenu(){
 }
 
 void mtlabel::mousePressEvent(QMouseEvent *event){
-    double disp_x=event->pos().x()-size().width()/2.;
-    double disp_y=event->pos().y()-size().height()/2.;
+    double disp_x=(event->pos().x()-size().width()/2.)/size().width();
+    double disp_y=(event->pos().y()-size().height()/2.)/size().height();
     if(sw.XPSa->connected){
-        sw.XPSa->execCommandNow("GroupMoveRelative ",sw.Xaxis_groupname.get()," ",disp_x);
-        sw.Xaxis_position.set(disp_x);
-        sw.XPSa->execCommandNow("GroupMoveRelative ",sw.Yaxis_groupname.get()," ",disp_y);
-        sw.Yaxis_position.set(disp_y);
+        sw.XPSa->execCommandNow("GroupMoveRelative (",sw.Xaxis_groupname.get(),", ",disp_x*sw.xps_x_sen.get()/100,")");
+        sw.Xaxis_position.set(sw.Xaxis_position.get()+disp_x*sw.xps_x_sen.get()/100);
+        sw.XPSa->execCommandNow("GroupMoveRelative (",sw.Yaxis_groupname.get(),", ",disp_y*sw.xps_y_sen.get()/100,")");
+        sw.Yaxis_position.set(sw.Yaxis_position.get()+disp_y*sw.xps_y_sen.get()/100);
     }
-    std::cerr<<disp_x<<"  "<<disp_y<<"\n";
+    //std::cerr<<disp_x<<"  "<<disp_y<<"\n";
 }
+
+void mtlabel::wheelEvent(QWheelEvent *event){
+    if(sw.XPSa->connected){
+        sw.XPSa->execCommandNow("GroupMoveRelative (",sw.Zaxis_groupname.get(),", ",(double)event->delta()*sw.xps_z_sen.get()/100000,")");
+        sw.Zaxis_position.set(sw.Zaxis_position.get()+(double)event->delta()*sw.xps_z_sen.get()/100000);
+    }
+    //std::cerr<<"wheel:"<<event->delta()<<"\n";
+}
+

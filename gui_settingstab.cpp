@@ -14,6 +14,11 @@ void MainWindow::sync_settings(){
     ui->e_rpty_port->setValue(sw.RPTY_port.get());
     ui->e_rpty_timeout->setValue(sw.RPTY_keepalive.get());
 
+    ui->sl_xsens->setValue(sw.xps_x_sen.get());
+    ui->sl_ysens->setValue(sw.xps_y_sen.get());
+    ui->sl_zsens->setValue(sw.xps_z_sen.get());
+    ui->sl_expo->setValue(sw.MAKO_expo.get());
+
     if (!sw.iuScopeID.get().empty()) ui->cam1_select->setText(QString::fromStdString("camera ID: "+sw.iuScopeID.get()));
 }
 
@@ -29,6 +34,15 @@ void MainWindow::on_e_rpty_ip_editingFinished()     {lineedit_fun(ui->e_rpty_ip,
 void MainWindow::on_e_rpty_port_editingFinished()   {spinbox_fun(ui->e_rpty_port,&sw.RPTY_port);}
 void MainWindow::on_e_rpty_timeout_editingFinished(){spinbox_fun(ui->e_rpty_timeout,&sw.RPTY_keepalive);}
 
+void MainWindow::on_sl_xsens_valueChanged(int value){slider_fun(ui->sl_xsens,&sw.xps_x_sen,value);}
+void MainWindow::on_sl_ysens_valueChanged(int value){slider_fun(ui->sl_ysens,&sw.xps_y_sen,value);}
+void MainWindow::on_sl_zsens_valueChanged(int value){slider_fun(ui->sl_zsens,&sw.xps_z_sen,value);}
+void MainWindow::on_sl_expo_valueChanged(int value) {
+   // wfun::set<double>(cam.ptr,"ExposureTime",sw.MAKO_expo*0.1);
+    //std::cerr<<"exposure(us)="<< wfun::get<double>(cam.ptr,"ExposureTime") <<"\n";
+    //slider_fun(ui->sl_expo,&sw.MAKO_expo,value);
+
+}
 
 void MainWindow::GUI_update(){
     if (sw.XPS_connected.changed())

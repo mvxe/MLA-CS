@@ -13,3 +13,8 @@ void GUI_slots_baseclass::spinbox_fun(QSpinBox* obj, mxvar<int> *var){
         obj->setValue(var->get());
     obj->clearFocus();
 }
+    /* this handles (most) slider events*/
+void GUI_slots_baseclass::slider_fun(QSlider* obj,mxvar<int> *var,int value){
+    if (var->set(value))
+        obj->setValue(var->get());                  //TODO maybe revise this
+}

@@ -19,7 +19,7 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
     pFrame->GetPixelFormat(form);
     if (imgfor::ocv_type_get(form).ocv_type==-1){
         std::cerr<<"The PixelFormat type is not supported(this should have been prevented by GUI selector)! Skipping frame.\n";
-        m_pCamera -> QueueFrame ( pFrame ); return;
+        m_pCamera->QueueFrame ( pFrame ); return;
     }
     cv::Mat* freeMat = FQsPCcam->getAFreeMatPtr();
     if (freeMat->rows!=ysize || freeMat->cols!=xsize){    //the allocated matrix is of the wrong size/type
@@ -31,7 +31,7 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
     pFrame->GetBufferSize(bufsize);
     if (bufsize!=(freeMat->dataend - freeMat->datastart)){
         std::cerr<<"Image buffer from Vimba of wrong size(this should not be possible) "<< bufsize <<"  "<<(freeMat->dataend - freeMat->datastart) <<" ! Skipping frame.\n";
-        m_pCamera -> QueueFrame ( pFrame ); return;
+        m_pCamera->QueueFrame ( pFrame ); return;
     }
 
     pFrame->GetImage(freeMat->data);
@@ -39,7 +39,7 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
     FQsPCcam->enqueueMat();
 
     //std::cerr<<"Total mat number: "<<FQsPCcam->getMatNumber()<<" ,Full mat number: "<<FQsPCcam->getFullNumber()<<"\n";
-    m_pCamera -> QueueFrame ( pFrame );
+    m_pCamera->QueueFrame ( pFrame );
 }
 
 

@@ -44,7 +44,7 @@ void TCP_con::connect(int timeout_ms){
         std::cerr << "Cannot open socket.\n";
         exit (EXIT_FAILURE);
     }
-    if (setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout))<0 || setsockopt (sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout))<0){
+    if (setsockopt (sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout))<0){   //receive timeout fucks it up: setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout))<0 ||
         std::cerr << "Cannot set socket timeout.\n";
         exit (EXIT_FAILURE);
     }
@@ -61,18 +61,14 @@ void TCP_con::disconnect(){
 }
 int TCP_con::write(std::string write_string){
     rn = ::write(sock,write_string.c_str(),write_string.size());
-    std::cerr<<"Num of chars written:"<<rn<<"\n";
-    if (rn<0)
-         std::cerr<<"ERROR writing to socket\n";
+    //std::cerr<<"Num of chars written:"<<rn<<"\n";
     return rn;
 }
 int TCP_con::read(std::string &read_string){   //TODO: this needs rewriting
     bzero(block,BLOCK_SIZE+1);
     rn = ::read(sock,block,BLOCK_SIZE);
     read_string=block;
-    std::cerr<<"Num of chars read:"<<rn<<"\n";
-    if (rn<0)
-         std::cerr<<"ERROR writing to socket\n";
+    //std::cerr<<"Num of chars read:"<<rn<<"\n";
     return rn;
 }
 int TCP_con::rw(std::string write_string,std::string &read_string){

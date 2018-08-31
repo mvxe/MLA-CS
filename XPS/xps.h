@@ -10,11 +10,6 @@ class XPS : public TCP_con{
 public:
     XPS();
     ~XPS();
-    void addCommandToQueue(std::string command);        //adds the command to the queue to be executed (FIFO), this can be done even if the queue is executing, it simply adds one more to the FIFO
-    void clearCommandQueue(void);                       //clears all the commands in the queue, can be done even if the queue is executing
-    void execQueueStart(void);                          //starts the execution of the queue commands, when queue is empty it waits and immediately executes new commands, unless halted
-    void execQueueHalt(void);                           //halts the queue command execution
-    unsigned getCommandQueueSize(void);                 //gets the number of commands waiting to be executed
 
     template <typename T>
     void execCommandNow(T value);
@@ -32,9 +27,9 @@ private:
     void execCommandNow(std::stringstream* strm, T value);
     template<typename T, typename... Args>
     void execCommandNow(std::stringstream* strm, T value, Args... args);
+    void flushQueue();
 
     void run();
-    std::queue<std::string>     main_queue;
     std::queue<std::string> priority_queue;
     std::mutex mpq;
     bool _writef;
@@ -58,7 +53,7 @@ void XPS::execCommandNow(std::stringstream* strm, T value){
     mpq.lock();
     priority_queue.push(strm->str());
     mpq.unlock();
-    std::cerr<<"\nexecuting command:\n"<<strm->str()<<"\n";
+    //std::cerr<<"\nexecuting command:\n"<<strm->str()<<"\n";
     strm->str("");
     strm->clear();
     delete strm;

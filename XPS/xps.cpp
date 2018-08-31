@@ -6,7 +6,6 @@ XPS::XPS() : _writef(false){
 }
 
 XPS::~XPS(){
-    if (connected) killGroups();
 }
 
 void XPS::run(){    //this is the XPS thread loop
@@ -31,41 +30,15 @@ void XPS::run(){    //this is the XPS thread loop
 
         std::this_thread::sleep_for (std::chrono::milliseconds(sw.XPS_keepalive.get()));    //TODO remove this sleep (XPS)
 
-        if (connected) {
-            mpq.lock();
-            for(;;){
-                if(!priority_queue.empty()){
-                    tmp=priority_queue.front();
-                    mpq.unlock();
-                    if (write(tmp)!=tmp.size()) {std::cerr<<"wrong written size!\n"; disconnect(); break;}
-                    mpq.lock();
-                    if (!priority_queue.empty()) priority_queue.pop();
-                    mpq.unlock();
-                    read(tmp);
-                    std::cerr<<tmp<<"\n";
-                    mpq.lock();
-                }
-                else if(!main_queue.empty() && _writef){
-                    tmp=main_queue.front();
-                    mpq.unlock();
-                    if (write(tmp)!=tmp.size()) {std::cerr<<"wrong written size!\n"; disconnect(); break;}
-                    mpq.lock();
-                    if (!main_queue.empty()) main_queue.pop();
-                    mpq.unlock();
-                    read(tmp);
-                    std::cerr<<tmp<<"\n";
-                    mpq.lock();
-                }
-                else {
-                    mpq.unlock();
-                    break;
-                }
-            }
-        }
+        if (connected)
+            flushQueue();
 
 
         if(sw.XPS_end.get()){
-            //cleanup TODO
+            if (connected){
+                killGroups();
+                disconnect();
+            }
             std::cout<<"XPS thread exited.\n";
             sw.XPS_end.set(false);
             return;
@@ -73,46 +46,42 @@ void XPS::run(){    //this is the XPS thread loop
     }
 }
 
-void XPS::addCommandToQueue(std::string command){
-    mpq.lock();
-    main_queue.push(command);
-    mpq.unlock();
-}
-void XPS::clearCommandQueue(void){
-    mpq.lock();
-    while(!main_queue.empty())main_queue.pop();
-    mpq.unlock();
-}
-void XPS::execQueueStart(void){
-    mpq.lock();
-    _writef=true;
-    mpq.unlock();
-}
-void XPS::execQueueHalt(void){
-    mpq.lock();
-    _writef=false;
-    mpq.unlock();
-}
-unsigned XPS::getCommandQueueSize(void){
-    mpq.lock();
-    unsigned ret=main_queue.size();
-    mpq.unlock();
-    return ret;
-}
-
 
 void XPS::initGroups(){
-    execCommandNow("GroupInitialize ",sw.Xaxis_groupname.get());
-    execCommandNow("GroupInitialize ",sw.Yaxis_groupname.get());
-    execCommandNow("GroupInitialize ",sw.Zaxis_groupname.get());
+    execCommandNow("GroupInitialize (",sw.Xaxis_groupname.get(),")");
+    execCommandNow("GroupInitialize (",sw.Yaxis_groupname.get(),")");
+    execCommandNow("GroupInitialize (",sw.Zaxis_groupname.get(),")");
+    flushQueue();
 }
 void XPS::homeGroups(){
-    execCommandNow("GroupHomeSearchAndRelativeMove ",sw.Xaxis_groupname.get(), " ", sw.Xaxis_position.get());
-    execCommandNow("GroupHomeSearchAndRelativeMove ",sw.Yaxis_groupname.get(), " ", sw.Yaxis_position.get());
-    execCommandNow("GroupHomeSearchAndRelativeMove ",sw.Zaxis_groupname.get(), " ", sw.Zaxis_position.get());
+    execCommandNow("GroupHomeSearchAndRelativeMove (",sw.Xaxis_groupname.get(), ",", sw.Xaxis_position.get(),")");
+    execCommandNow("GroupHomeSearchAndRelativeMove (",sw.Yaxis_groupname.get(), ",", sw.Yaxis_position.get(),")");
+    execCommandNow("GroupHomeSearchAndRelativeMove (",sw.Zaxis_groupname.get(), ",", sw.Zaxis_position.get(),")");
+    flushQueue();
 }
 void XPS::killGroups(){
-    execCommandNow("GroupKill ",sw.Xaxis_groupname.get());
-    execCommandNow("GroupKill ",sw.Yaxis_groupname.get());
-    execCommandNow("GroupKill ",sw.Zaxis_groupname.get());
+    execCommandNow("GroupKill (",sw.Xaxis_groupname.get(),")");
+    execCommandNow("GroupKill (",sw.Yaxis_groupname.get(),")");
+    execCommandNow("GroupKill (",sw.Zaxis_groupname.get(),")");
+    flushQueue();
+}
+void XPS::flushQueue(){
+    std::string tmp;
+    if (!priority_queue.empty()) {
+        //while(read(tmp)!=0);
+        mpq.lock();
+    }
+    while (!priority_queue.empty()){
+        tmp=priority_queue.front();
+        mpq.unlock();
+        //for (unsigned totw=0;totw!=tmp.size();totw+=write(tmp.substr(totw)));
+        write(tmp);
+        mpq.lock();
+        std::cerr <<"SENT: "<<tmp<<"\n";
+        if (!priority_queue.empty()) priority_queue.pop();
+        mpq.unlock();
+        //while(read(tmp)==0);
+        read(tmp);
+        std::cerr<<"RECV: "<<tmp<<"\n";
+    }
 }
