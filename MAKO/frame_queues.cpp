@@ -20,11 +20,11 @@ cv::Mat* FQsPC::getAFreeMatPtr(){
     }
     return mat_ptr_free.front();
 }
-void FQsPC::enqueueMat(){
+void FQsPC::enqueueMat(unsigned int timestamp){
     userqmx.lock();
     unsigned camfps=fps;
     userqmx.unlock();
-    mat_ptr_full.emplace_front(_used{mat_ptr_free.front(),0});
+    mat_ptr_full.emplace_front(_used{mat_ptr_free.front(),0,timestamp});
     for (int i=0;i!=user_queues.size();i++){
         user_queues[i].umx.lock();
             if (user_queues[i].fps!=0){
@@ -34,7 +34,7 @@ void FQsPC::enqueueMat(){
                 //std::cerr<<"camfps/fps: "<<user_queues[i].div<<"\n";
                 if (user_queues[i].i>=user_queues[i].div){
                     user_queues[i].i=1;
-                    user_queues[i].full.push(&mat_ptr_full.front().mat);
+                    user_queues[i].full.push({&mat_ptr_full.front().mat,timestamp});
                     mat_ptr_full.front().users++;
                 }
                 else user_queues[i].i++;
@@ -95,15 +95,23 @@ void FQ::setUserFps(double nfps, unsigned maxframes){
 cv::Mat const* FQ::getUserMat(){
     cv::Mat* ret;
     umx.lock();
-    if (!full.empty()) ret=*full.front();
+    if (!full.empty()) ret=*full.front().ptr;
     else ret=nullptr;
+    umx.unlock();
+    return ret;
+}
+unsigned int FQ::getUserTimestamp(){
+    unsigned int ret;
+    umx.lock();
+    if (!full.empty()) ret=full.front().timestamp;
+    else ret=0;
     umx.unlock();
     return ret;
 }
 void FQ::freeUserMat(){
     umx.lock();
     if (!full.empty()){
-        free.push_back(full.front());
+        free.push_back(full.front().ptr);
         full.pop();
     }
     umx.unlock();

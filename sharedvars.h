@@ -41,6 +41,10 @@ public:
     mxvar<double> Yaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Yaxis_position");
     mxvar<double> Zaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Zaxis_position");
 
+    /* global GUI vars */
+    std::mutex GUI_GL;
+    mxbool GUI_disable = mxbool(&GUI_GL);
+
     /* GUI <-> XPS thread communication */
     std::mutex GUI_XPS;
     mxvar_ip XPS_ip = mxvar_ip(&GUI_XPS, std::string("192.168.0.254"),&var,"XPS_ip");

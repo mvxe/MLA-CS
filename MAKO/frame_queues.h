@@ -15,7 +15,7 @@ public:
     unsigned getFullNumber();       //get the number of full matrices
 
     cv::Mat* getAFreeMatPtr();      //these two functions are used by the vimba api observer to put new frames into the queue
-    void enqueueMat();              //they are not thread safe, so use them only in one observer function
+    void enqueueMat(unsigned int timestamp);     //they are not thread safe, so use them only in one observer function
 
     FQ* getNewFQ();                 //returns a pointer to a new frame queue
     void setCamFPS(double nfps);  //set the camera framerate, essential of proper image sorting into queues (this is thread safe)
@@ -23,6 +23,7 @@ private:
     struct _used{
         cv::Mat* mat;
         unsigned users;              //number of users that got a copy of this pointer
+        long unsigned timestamp;     //timestamp (this is the internal camera timestamp)
     };
 
     void reclaim();
@@ -41,11 +42,17 @@ public:
     FQ();
     void setUserFps(double nfps, unsigned maxframes = 0);   //sets the framerate, set to zero if not in use to avoid piling up of data, see below, the optional parameter maxframes halves the framerate when the full queue size reaches maxframes, and ups it again at maxframes/2 up to fps
     cv::Mat const* getUserMat();        //gets the pointer to the last matrix
+    unsigned int getUserTimestamp();    //gets the timestamp of the last matrix
     void freeUserMat();                 //tells the class its safe to free the matrix (if this isnt called, the above call will return the pointer to the same old matrix)
     unsigned getFullNumber();           //get the number of full matrices (return the number of frames waiting to be processed by this user)
     unsigned getFreeNumber();           //get the number of free matrices
+
+    struct _img{
+        cv::Mat** ptr;
+        long unsigned timestamp;     //timestamp (this is the internal camera timestamp)
+    };
 private:
-    std::queue<cv::Mat**> full;
+    std::queue<_img> full;
     std::deque<cv::Mat**> free;
     double fps;                 //rounds to the closest divisor by two of the actual framerate (ie 9999 of 168 fps gives 168, 33 of 168 fps gives 28 fps, 0 means no acquisition)
     unsigned maxfr;

@@ -48,6 +48,8 @@ private slots:
 
     void on_sl_expo_valueChanged(int value);
 
+    void on_btm_kill_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;

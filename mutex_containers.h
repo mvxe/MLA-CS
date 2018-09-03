@@ -69,8 +69,8 @@ bool container with expiration time*/
 
 class mxbool{
 public:
-    mxbool(std::mutex *mxn, bool initial, double exp_time);      //after exp time this returns to deflt
-    void set(bool nvar);
+    mxbool(std::mutex *mxn);
+    void set(bool nvar, double expt=0);      //after exp time this returns to false
     bool get();
 protected:
     double exp_time;

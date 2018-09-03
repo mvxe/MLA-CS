@@ -65,6 +65,15 @@ void MainWindow::GUI_update(){
     const cv::Mat* dmat=sw.iuScope_img->getUserMat();
     if (dmat!=nullptr){
         ui->camera_stream->setPixmap(QPixmap::fromImage(QImage(dmat->data, dmat->cols, dmat->rows, dmat->step, QImage::Format_Indexed8).copy()));      //.copy() is here to make an actual copy, otherwise it segfaults when the other thread frees the mat //TODO generalize Format_Indexed8
+        //std::cerr<<"timestamp: "<<sw.iuScope_img->getUserTimestamp()<<"\n";
         sw.iuScope_img->freeUserMat();
     }
+
+    if (sw.GUI_disable.get()) {
+        if (ui->centralWidget->isEnabled())
+           { ui->centralWidget->setEnabled(false); std::cerr<<"ENabled!\n";}
+    }
+    else if (!ui->centralWidget->isEnabled())
+        {ui->centralWidget->setEnabled(true); std::cerr<<"DIsabled!\n";}
+
 }

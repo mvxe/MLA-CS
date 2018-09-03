@@ -84,3 +84,7 @@ void mtlabel::wheelEvent(QWheelEvent *event){
     //std::cerr<<"wheel:"<<event->delta()<<"\n";
 }
 
+
+void MainWindow::on_btm_kill_released(){        //TODO: this is just a GUI_disable timer test, remove
+    sw.GUI_disable.set(true,5);
+}
