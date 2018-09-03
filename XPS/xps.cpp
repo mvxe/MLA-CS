@@ -85,3 +85,22 @@ void XPS::flushQueue(){
         std::cerr<<"RECV: "<<tmp<<"\n";
     }
 }
+
+void XPS::addToPVTqueue(){
+
+}
+void XPS::clearPVTqueue(){
+
+}
+void XPS::copyPVToverFTP(){
+    ftpmx.lock();
+    ftplib *ftp = new ftplib();
+    std::cerr<<"Connect: "<<ftp->Connect(sw.XPS_ip.get().c_str())  <<"\n";
+    std::cerr<<"Login: "<<ftp->Login("Administrator", "Administrator")    <<"\n";
+    std::cerr<<"Dir: "<<ftp->Dir(NULL, "/ftp/pub")  <<"\n";
+    std::cerr<<"Quit: "<<ftp->Quit() <<"\n";
+    ftpmx.unlock();
+}
+void XPS::execPVTQueue(){
+
+}

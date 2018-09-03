@@ -71,9 +71,9 @@ void MainWindow::GUI_update(){
 
     if (sw.GUI_disable.get()) {
         if (ui->centralWidget->isEnabled())
-           { ui->centralWidget->setEnabled(false); std::cerr<<"ENabled!\n";}
+            ui->centralWidget->setEnabled(false);
     }
     else if (!ui->centralWidget->isEnabled())
-        {ui->centralWidget->setEnabled(true); std::cerr<<"DIsabled!\n";}
+        ui->centralWidget->setEnabled(true);
 
 }

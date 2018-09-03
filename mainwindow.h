@@ -50,6 +50,8 @@ private slots:
 
     void on_btm_kill_released();
 
+    void on_btn_home_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;

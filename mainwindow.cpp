@@ -88,3 +88,7 @@ void mtlabel::wheelEvent(QWheelEvent *event){
 void MainWindow::on_btm_kill_released(){        //TODO: this is just a GUI_disable timer test, remove
     sw.GUI_disable.set(true,5);
 }
+
+void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
+    sw.XPSa->copyPVToverFTP();
+}

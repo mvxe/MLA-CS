@@ -4,6 +4,7 @@
 #include "includes.h"
 #include "mutex_containers.h"
 #include "TCP_con.h"
+#include "../ftplibpp/ftplib.h"
 
 class XPS : public TCP_con{
     friend int main(int argc, char *argv[]);    //to be able to call run()
@@ -20,7 +21,10 @@ public:
     void homeGroups();
     void killGroups();
 
-    //void execPVTQueue(void);                          //TODO implement PVT
+    void addToPVTqueue();
+    void clearPVTqueue();
+    void copyPVToverFTP();
+    void execPVTQueue();                                //TODO implement PVT
 
 private:
     template <typename T>
@@ -33,6 +37,8 @@ private:
     std::queue<std::string> priority_queue;
     std::mutex mpq;
     bool _writef;
+
+    std::mutex ftpmx;
 };
 
 
