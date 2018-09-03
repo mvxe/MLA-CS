@@ -65,8 +65,8 @@ void MainWindow::updateCamMenu(){
 }
 
 void mtlabel::mousePressEvent(QMouseEvent *event){
-    double disp_x=(event->pos().x()-size().width()/2.)/size().width();
-    double disp_y=(event->pos().y()-size().height()/2.)/size().height();
+    double disp_x=-(event->pos().x()-size().width()/2.)/size().width();
+    double disp_y=-(event->pos().y()-size().height()/2.)/size().height();
     if(sw.XPSa->connected){
         sw.XPSa->execCommandNow("GroupMoveRelative (",sw.Xaxis_groupname.get(),", ",disp_x*sw.xps_x_sen.get()/100,")");
         sw.Xaxis_position.set(sw.Xaxis_position.get()+disp_x*sw.xps_x_sen.get()/100);
