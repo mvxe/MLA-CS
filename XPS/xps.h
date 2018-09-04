@@ -4,7 +4,6 @@
 #include "includes.h"
 #include "mutex_containers.h"
 #include "TCP_con.h"
-#include "../ftplibpp/ftplib.h"
 
 class XPS : public TCP_con{
     friend int main(int argc, char *argv[]);    //to be able to call run()
