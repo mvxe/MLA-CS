@@ -52,6 +52,30 @@ private slots:
     void on_dial_valueChanged(int value);
 
 
+    void on_btn_X_dec_released();
+
+    void on_btn_Y_dec_released();
+
+    void on_btn_Z_dec_released();
+
+    void on_btn_X_min_released();
+
+    void on_btn_Y_min_released();
+
+    void on_btn_Z_min_released();
+
+    void on_btn_X_max_released();
+
+    void on_btn_Y_max_released();
+
+    void on_btn_Z_max_released();
+
+    void on_btn_X_inc_released();
+
+    void on_btn_Y_inc_released();
+
+    void on_btn_Z_inc_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;

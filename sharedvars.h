@@ -40,6 +40,12 @@ public:
     mxvar<double> Xaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Xaxis_position");
     mxvar<double> Yaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Yaxis_position");
     mxvar<double> Zaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Zaxis_position");
+    mxvar<double> Xaxis_min = mxvar<double>(&XPS_sav,-9999.,&var,"Xaxis_min");
+    mxvar<double> Yaxis_min = mxvar<double>(&XPS_sav,-9999.,&var,"Yaxis_min");
+    mxvar<double> Zaxis_min = mxvar<double>(&XPS_sav,-9999.,&var,"Zaxis_min");
+    mxvar<double> Xaxis_max = mxvar<double>(&XPS_sav, 9999.,&var,"Xaxis_max");
+    mxvar<double> Yaxis_max = mxvar<double>(&XPS_sav, 9999.,&var,"Yaxis_max");
+    mxvar<double> Zaxis_max = mxvar<double>(&XPS_sav, 9999.,&var,"Zaxis_max");
 
     /* global GUI vars */
     std::mutex GUI_GL;

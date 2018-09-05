@@ -145,15 +145,26 @@ void XPS::execPVTQueue(std::string name){
     execCommand("MultipleAxesPVTExecution (",sw.XYZ_groupname.get(),",",name,",1)");
 }
 
-void XPS::XYZMoveRelative(double dX,double dY, double dZ){
-    execCommand("GroupMoveRelative (",sw.XYZ_groupname.get(),",",dX,",",dY,",",dZ,")");
+void XPS::XYZMoveRelative(double dX,double dY, double dZ, bool limit){
     sw.Xaxis_position.set(sw.Xaxis_position.get()+dX);
     sw.Yaxis_position.set(sw.Yaxis_position.get()+dY);
     sw.Zaxis_position.set(sw.Zaxis_position.get()+dZ);
+    _XYZMoveAbsolute(limit);
 }
-void XPS::XYZMoveAbsolute(double X,double Y, double Z){
-    execCommand("GroupMoveAbsolute (",sw.XYZ_groupname.get(),",",X,",",Y,",",Z,")");
+void XPS::XYZMoveAbsolute(double X,double Y, double Z, bool limit){
     sw.Xaxis_position.set(X);
     sw.Yaxis_position.set(Y);
     sw.Zaxis_position.set(Z);
+    _XYZMoveAbsolute(limit);
+}
+void XPS::_XYZMoveAbsolute(bool limit){
+    if (limit){
+        if(sw.Xaxis_min.get()>sw.Xaxis_position.get()) sw.Xaxis_position.set(sw.Xaxis_min.get());
+        else if(sw.Xaxis_max.get()<sw.Xaxis_position.get()) sw.Xaxis_position.set(sw.Xaxis_max.get());
+        if(sw.Yaxis_min.get()>sw.Yaxis_position.get()) sw.Yaxis_position.set(sw.Yaxis_min.get());
+        else if(sw.Yaxis_max.get()<sw.Yaxis_position.get()) sw.Yaxis_position.set(sw.Yaxis_max.get());
+        if(sw.Zaxis_min.get()>sw.Zaxis_position.get()) sw.Zaxis_position.set(sw.Zaxis_min.get());
+        else if(sw.Zaxis_max.get()<sw.Zaxis_position.get()) sw.Zaxis_position.set(sw.Zaxis_max.get());
+    }
+    execCommand("GroupMoveAbsolute (",sw.XYZ_groupname.get(),",",sw.Xaxis_position.get(),",",sw.Yaxis_position.get(),",",sw.Zaxis_position.get(),")");
 }

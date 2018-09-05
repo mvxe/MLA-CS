@@ -34,8 +34,9 @@ public:
     void execPVTQueue(std::string name);
     std::string listPVTfiles();
 
-    void XYZMoveRelative(double dX,double dY, double dZ);
-    void XYZMoveAbsolute(double X, double Y, double Z);
+    void XYZMoveRelative(double dX,double dY, double dZ, bool limit=true);
+    void XYZMoveAbsolute(double X, double Y, double Z, bool limit=true);
+
 
 private:
     template <typename T>
@@ -47,6 +48,7 @@ private:
     template<typename T, typename... Args>
     std::string eexecCommandR(std::stringstream* strm, T value, Args... args);
     void flushQueue();
+    void _XYZMoveAbsolute(bool limit=true);
 
     void run();
     struct execss{

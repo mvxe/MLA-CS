@@ -102,4 +102,3 @@ void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
     sw.XPSa->clearPVTqueue();
     sw.XPSa->execPVTQueue("test.txt");
 }
-
