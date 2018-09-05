@@ -49,9 +49,7 @@ public:
     std::mutex GUI_XPS;
     mxvar_ip XPS_ip = mxvar_ip(&GUI_XPS, std::string("192.168.0.254"),&var,"XPS_ip");
     mxvar_port XPS_port = mxvar_port(&GUI_XPS, 5001,&var,"XPS_port");
-    mxvar<std::string> Xaxis_groupname = mxvar<std::string>(&GUI_XPS,std::string("GROUP1"),&var,"Xaxis_groupname");
-    mxvar<std::string> Yaxis_groupname = mxvar<std::string>(&GUI_XPS,std::string("GROUP2"),&var,"Yaxis_groupname");
-    mxvar<std::string> Zaxis_groupname = mxvar<std::string>(&GUI_XPS,std::string("GROUP3"),&var,"Zaxis_groupname");
+    mxvar<std::string> XYZ_groupname = mxvar<std::string>(&GUI_XPS,std::string("M"),&var,"XYZ_groupname");
     mxvar<int> XPS_keepalive = mxvar<int>(&GUI_XPS, 500,&var,"XPS_keepalive");     //keepalive and connect timeout, in ms
     mxva<bool> XPS_end = mxva<bool>(&GUI_XPS,false);                               //for signaling the XPS thread it's time to close
     mxva<bool> XPS_connected = mxva<bool>(&GUI_XPS,false);                         //XPS thread -> GUI

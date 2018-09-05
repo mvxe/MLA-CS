@@ -1,9 +1,9 @@
 #include "sharedvars.h"
 
-#define _CODE0_ "fo@}=Z]!5W5CW/jL"  //hardcoded random codes
-#define _NCHC0_ 16                  //num of characters in code
-#define _CODE1_ "@{5d&afkyAR8>a&V"
-#define _NCHC1_ 16
+#define _CODE0_ " [val] "
+#define _NCHC0_ 7                  //num of characters in code
+#define _CODE1_ " [var] "
+#define _NCHC1_ 7
 //the config is saved into a plain text file in format VAR1NAME_CODE0_VAR1VALUE_CODE1_VAR2NAME_CODE0_... and so on without newlines
 
 sharedvars sw;    //only one istance of the object is needed

@@ -48,21 +48,15 @@ void XPS::run(){    //this is the XPS thread loop
 
 
 void XPS::initGroups(){
-    execCommandNow("GroupInitialize (",sw.Xaxis_groupname.get(),")");
-    execCommandNow("GroupInitialize (",sw.Yaxis_groupname.get(),")");
-    execCommandNow("GroupInitialize (",sw.Zaxis_groupname.get(),")");
+    execCommandNow("GroupInitialize (",sw.XYZ_groupname.get(),")");
     flushQueue();
 }
 void XPS::homeGroups(){
-    execCommandNow("GroupHomeSearchAndRelativeMove (",sw.Xaxis_groupname.get(), ",", sw.Xaxis_position.get(),")");
-    execCommandNow("GroupHomeSearchAndRelativeMove (",sw.Yaxis_groupname.get(), ",", sw.Yaxis_position.get(),")");
-    execCommandNow("GroupHomeSearchAndRelativeMove (",sw.Zaxis_groupname.get(), ",", sw.Zaxis_position.get(),")");
+    execCommandNow("GroupHomeSearchAndRelativeMove (",sw.XYZ_groupname.get(), ",", sw.Xaxis_position.get(), ",", sw.Yaxis_position.get(), ",", sw.Zaxis_position.get(),")");
     flushQueue();
 }
 void XPS::killGroups(){
-    execCommandNow("GroupKill (",sw.Xaxis_groupname.get(),")");
-    execCommandNow("GroupKill (",sw.Yaxis_groupname.get(),")");
-    execCommandNow("GroupKill (",sw.Zaxis_groupname.get(),")");
+    execCommandNow("GroupKill (",sw.XYZ_groupname.get(),")");
     flushQueue();
 }
 void XPS::flushQueue(){
@@ -144,27 +138,4 @@ std::string XPS::listPVTfiles(){
     return os.str();
 }
 void XPS::execPVTQueue(std::string name){
-
 }
-std::string XPS::clearPVTfolder(){
-    ftpmx.lock();
-    std::ostringstream os;
-    try{
-        cURLpp::Easy ftpHandle;
-        ftpHandle.setOpt(cURLpp::Options::Url(util::toString("ftp://",sw.XPS_ip.get(),TRAJ_PATH).c_str()));
-        ftpHandle.setOpt(cURLpp::Options::UserPwd("Administrator:Administrator"));
-        ftpHandle.setOpt(cURLpp::Options::CustomRequest("DELETE"));
-        curlpp::options::WriteStream ws(&os);
-        ftpHandle.setOpt(ws);
-        ftpHandle.perform();
-    }
-    catch( cURLpp::RuntimeError &e ){
-        os<<e.what()<<std::endl;
-    }
-    catch( cURLpp::LogicError &e ){
-        os<<e.what()<<std::endl;
-    }
-    ftpmx.unlock();
-    return os.str();
-}
-

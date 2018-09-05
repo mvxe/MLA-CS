@@ -25,9 +25,7 @@ private slots:
 
     void on_e_xps_ip_editingFinished();
     void on_e_xps_port_editingFinished();
-    void on_e_xps_xaxis_editingFinished();
-    void on_e_xps_yaxis_editingFinished();
-    void on_e_xps_zaxis_editingFinished();
+    void on_e_xps_xyz_editingFinished();
     void on_e_xps_timeout_editingFinished();
 
     void on_e_rpty_timeout_editingFinished();
