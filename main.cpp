@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
     MainWindow w(qapp);
     w.show();
 
+    cURLpp::initialize(CURL_GLOBAL_ALL);     //we init the curl lib needed for FTP
     XPS XPS;
     sw.XPSa=&XPS;
     XPS_thread = std::thread(&XPS::run, &XPS);

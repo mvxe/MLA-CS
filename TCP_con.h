@@ -37,5 +37,4 @@ private:
     struct timeval timeout;
 };
 
-
 #endif // TCP_CON_H

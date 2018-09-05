@@ -38,7 +38,8 @@ RESOURCES += \
     icons/icon.qrc \
     icons/icon.qrc
 
-unix:!macx: LIBS += -L$$PWD/../Vimba_2_1/VimbaCPP/DynamicLib/x86_64bit/ -lVimbaCPP -lVimbaC
+unix:!macx: LIBS += -L$$PWD/../Vimba_2_1/VimbaCPP/DynamicLib/x86_64bit/ -lVimbaCPP -lVimbaC -lcurlpp -lcurl
+#DEP: sudo apt install libcurlpp-dev libcurlpp0
 
 INCLUDEPATH += $$PWD/../Vimba_2_1
 DEPENDPATH += $$PWD/../Vimba_2_1

@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainWindow(parent), ui(new Ui::MainWindow) {
+MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainWindow(parent), ui(new Ui::MainWindow), dialval(0) {
     connect(qapp,SIGNAL(aboutToQuit()),this,SLOT(program_exit()));
     px_online = new QPixmap(":/emblem-ok.svg");
     px_offline = new QPixmap(":/emblem-nowrite.svg");
@@ -29,7 +29,7 @@ void MainWindow::program_exit(){
     MAKO_thread.join();
     sw.XPS_end.set(true);
     XPS_thread.join();
-
+    cURLpp::terminate();        //we terminate curl
     std::cout<<"All threads exited successfully!\n";
 }
 
@@ -76,19 +76,41 @@ void mtlabel::mousePressEvent(QMouseEvent *event){
     //std::cerr<<disp_x<<"  "<<disp_y<<"\n";
 }
 
-void mtlabel::wheelEvent(QWheelEvent *event){
+void MainWindow::change_xps_z(int value){
     if(sw.XPSa->connected){
-        sw.XPSa->execCommandNow("GroupMoveRelative (",sw.Zaxis_groupname.get(),", ",(double)event->delta()*sw.xps_z_sen.get()/100000,")");
-        sw.Zaxis_position.set(sw.Zaxis_position.get()+(double)event->delta()*sw.xps_z_sen.get()/100000);
+        sw.XPSa->execCommandNow("GroupMoveRelative (",sw.Zaxis_groupname.get(),", ",(double)value*sw.xps_z_sen.get()/1000000,")");
+        sw.Zaxis_position.set(sw.Zaxis_position.get()+(double)value*sw.xps_z_sen.get()/1000000);
     }
     //std::cerr<<"wheel:"<<event->delta()<<"\n";
+}
+void mtlabel::wheelEvent(QWheelEvent *event){
+    MainWindow::change_xps_z(event->delta());
+}
+void MainWindow::on_dial_valueChanged(int value){
+    int change=dialval-value;
+    dialval=value;
+    if (abs(change)>(ui->dial->maximum()-ui->dial->minimum())/2){
+        if (abs(change)>0) change-=(ui->dial->maximum()-ui->dial->minimum())/2;
+        else change+=(ui->dial->maximum()-ui->dial->minimum())/2;
+    }
+    change_xps_z(change);
 }
 
 
 void MainWindow::on_btm_kill_released(){        //TODO: this is just a GUI_disable timer test, remove
     sw.GUI_disable.set(true,5);
+    std::cout<<sw.XPSa->clearPVTfolder();
 }
 
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
-    sw.XPSa->copyPVToverFTP();
+    sw.XPSa->addToPVTqueue("hello world!\nabc");
+    std::cout<<sw.XPSa->copyPVToverFTP("testa");
+    std::cout<<sw.XPSa->copyPVToverFTP("testa1");
+    sw.XPSa->clearPVTqueue();
+    std::cout<<sw.XPSa->copyPVToverFTP("testa2");
+    sw.XPSa->addToPVTqueue("hello woooorld!\nabc");
+    sw.XPSa->addToPVTqueue("\nabcssssss");
+    std::cout<<sw.XPSa->copyPVToverFTP("testa3");
+    std::cout<<sw.XPSa->listPVTfiles();
 }
+

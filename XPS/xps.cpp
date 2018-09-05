@@ -86,16 +86,85 @@ void XPS::flushQueue(){
     }
 }
 
-void XPS::addToPVTqueue(){
-
-}
-void XPS::clearPVTqueue(){
-
-}
-void XPS::copyPVToverFTP(){
+void XPS::addToPVTqueue(std::string str){
     ftpmx.lock();
+    upPVTfile.append(str);
     ftpmx.unlock();
 }
-void XPS::execPVTQueue(){
+void XPS::clearPVTqueue(){
+    ftpmx.lock();
+    upPVTfile.clear();
+    ftpmx.unlock();
+}
+
+std::string XPS::copyPVToverFTP(std::string name){
+    ftpmx.lock();
+    std::ostringstream os;
+    try{
+        cURLpp::Easy ftpHandle;
+        std::stringstream datastr;
+        if(!upPVTfile.empty()) datastr<<upPVTfile;
+        else datastr<<" ";
+        ftpHandle.setOpt(cURLpp::Options::Url(util::toString("ftp://",sw.XPS_ip.get(),TRAJ_PATH,name).c_str()));
+        ftpHandle.setOpt(cURLpp::Options::UserPwd("Administrator:Administrator"));
+        ftpHandle.setOpt(cURLpp::Options::ReadStream(&datastr));
+        ftpHandle.setOpt(cURLpp::Options::InfileSize(datastr.str().size()));
+        ftpHandle.setOpt(cURLpp::Options::Upload(true));
+        curlpp::options::WriteStream ws(&os);
+        ftpHandle.setOpt(ws);
+        ftpHandle.perform();
+    }
+    catch( cURLpp::RuntimeError &e ){
+        os<<e.what()<<std::endl;
+    }
+    catch( cURLpp::LogicError &e ){
+        os<<e.what()<<std::endl;
+    }
+    ftpmx.unlock();
+    return os.str();
+}
+std::string XPS::listPVTfiles(){
+    std::ostringstream os;
+    ftpmx.lock();
+    try{
+        cURLpp::Easy ftpHandle;
+        ftpHandle.setOpt(cURLpp::Options::Url(util::toString("ftp://",sw.XPS_ip.get(),TRAJ_PATH).c_str()));
+        ftpHandle.setOpt(cURLpp::Options::UserPwd("Administrator:Administrator"));
+        curlpp::options::WriteStream ws(&os);
+        ftpHandle.setOpt(ws);
+        ftpHandle.perform();
+    }
+    catch( cURLpp::RuntimeError &e ){
+        os<<e.what()<<std::endl;
+    }
+    catch( cURLpp::LogicError &e ){
+        os<<e.what()<<std::endl;
+    }
+    ftpmx.unlock();
+    return os.str();
+}
+void XPS::execPVTQueue(std::string name){
 
 }
+std::string XPS::clearPVTfolder(){
+    ftpmx.lock();
+    std::ostringstream os;
+    try{
+        cURLpp::Easy ftpHandle;
+        ftpHandle.setOpt(cURLpp::Options::Url(util::toString("ftp://",sw.XPS_ip.get(),TRAJ_PATH).c_str()));
+        ftpHandle.setOpt(cURLpp::Options::UserPwd("Administrator:Administrator"));
+        ftpHandle.setOpt(cURLpp::Options::CustomRequest("DELETE"));
+        curlpp::options::WriteStream ws(&os);
+        ftpHandle.setOpt(ws);
+        ftpHandle.perform();
+    }
+    catch( cURLpp::RuntimeError &e ){
+        os<<e.what()<<std::endl;
+    }
+    catch( cURLpp::LogicError &e ){
+        os<<e.what()<<std::endl;
+    }
+    ftpmx.unlock();
+    return os.str();
+}
+

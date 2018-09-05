@@ -4,6 +4,11 @@
 #include "includes.h"
 #include "mutex_containers.h"
 #include "TCP_con.h"
+#include <curlpp/cURLpp.hpp>
+#include <curlpp/Easy.hpp>
+#include <curlpp/Options.hpp>
+
+#define TRAJ_PATH "/public/Trajectories/"
 
 class XPS : public TCP_con{
     friend int main(int argc, char *argv[]);    //to be able to call run()
@@ -20,10 +25,11 @@ public:
     void homeGroups();
     void killGroups();
 
-    void addToPVTqueue();
+    void addToPVTqueue(std::string str);
     void clearPVTqueue();
-    void copyPVToverFTP();
-    void execPVTQueue();                                //TODO implement PVT
+    std::string copyPVToverFTP(std::string name);
+    void execPVTQueue(std::string name);
+    std::string listPVTfiles();
 
 private:
     template <typename T>
@@ -38,6 +44,7 @@ private:
     bool _writef;
 
     std::mutex ftpmx;
+    std::string upPVTfile;
 };
 
 
