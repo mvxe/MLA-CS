@@ -138,4 +138,6 @@ std::string XPS::listPVTfiles(){
     return os.str();
 }
 void XPS::execPVTQueue(std::string name){
+    execCommandNow("MultipleAxesPVTVerification (",sw.XYZ_groupname.get(),",",name,")");
+    execCommandNow("MultipleAxesPVTExecution (",sw.XYZ_groupname.get(),",",name,",1)");
 }

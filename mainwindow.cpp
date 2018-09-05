@@ -68,7 +68,7 @@ void mtlabel::mousePressEvent(QMouseEvent *event){
     double disp_x=-(event->pos().x()-size().width()/2.)/size().width();
     double disp_y=-(event->pos().y()-size().height()/2.)/size().height();
     if(sw.XPSa->connected){
-        sw.XPSa->execCommandNow("GroupMoveRelative (",sw.XYZ_groupname.get(),", ",disp_x*sw.xps_x_sen.get()/100,", ",disp_y*sw.xps_y_sen.get()/100,", 0)");
+        sw.XPSa->execCommandNow("GroupMoveRelative (",sw.XYZ_groupname.get(),",",disp_x*sw.xps_x_sen.get()/100,",",disp_y*sw.xps_y_sen.get()/100,",0)");
         sw.Xaxis_position.set(sw.Xaxis_position.get()+disp_x*sw.xps_x_sen.get()/100);
         sw.Yaxis_position.set(sw.Yaxis_position.get()+disp_y*sw.xps_y_sen.get()/100);
     }
@@ -77,7 +77,7 @@ void mtlabel::mousePressEvent(QMouseEvent *event){
 
 void MainWindow::change_xps_z(int value){
     if(sw.XPSa->connected){
-        sw.XPSa->execCommandNow("GroupMoveRelative (",sw.XYZ_groupname.get(),", 0, 0, ",(double)value*sw.xps_z_sen.get()/1000000,")");
+        sw.XPSa->execCommandNow("GroupMoveRelative (",sw.XYZ_groupname.get(),",0,0,",(double)value*sw.xps_z_sen.get()/1000000,")");
         sw.Zaxis_position.set(sw.Zaxis_position.get()+(double)value*sw.xps_z_sen.get()/1000000);
     }
     //std::cerr<<"wheel:"<<event->delta()<<"\n";
@@ -101,14 +101,14 @@ void MainWindow::on_btm_kill_released(){        //TODO: this is just a GUI_disab
 }
 
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
-    sw.XPSa->addToPVTqueue("hello world!\nabc");
-    std::cout<<sw.XPSa->copyPVToverFTP("testa");
-    std::cout<<sw.XPSa->copyPVToverFTP("testa1");
-    sw.XPSa->clearPVTqueue();
-    std::cout<<sw.XPSa->copyPVToverFTP("testa2");
-    sw.XPSa->addToPVTqueue("hello woooorld!\nabc");
-    sw.XPSa->addToPVTqueue("\nabcssssss");
-    std::cout<<sw.XPSa->copyPVToverFTP("testa3");
     std::cout<<sw.XPSa->listPVTfiles();
+
+    sw.XPSa->addToPVTqueue("1 1 1 1 1 1 1\n");
+    sw.XPSa->addToPVTqueue("1 0 0 0 0 0 0\n");
+    sw.XPSa->addToPVTqueue("1 -1 -1 -1 -1 -1 -1\n");
+    sw.XPSa->addToPVTqueue("1 0 0 0 0 0 0\n");
+    std::cout<<sw.XPSa->copyPVToverFTP("test.txt");
+    sw.XPSa->clearPVTqueue();
+    sw.XPSa->execPVTQueue("test.txt");
 }
 
