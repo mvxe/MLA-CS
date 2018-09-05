@@ -67,23 +67,13 @@ void MainWindow::updateCamMenu(){
 void mtlabel::mousePressEvent(QMouseEvent *event){
     double disp_x=-(event->pos().x()-size().width()/2.)/size().width();
     double disp_y=-(event->pos().y()-size().height()/2.)/size().height();
-    if(sw.XPSa->connected){
-        sw.XPSa->execCommand("GroupMoveRelative (",sw.XYZ_groupname.get(),",",disp_x*sw.xps_x_sen.get()/100,",",disp_y*sw.xps_y_sen.get()/100,",0)");
-        sw.Xaxis_position.set(sw.Xaxis_position.get()+disp_x*sw.xps_x_sen.get()/100);
-        sw.Yaxis_position.set(sw.Yaxis_position.get()+disp_y*sw.xps_y_sen.get()/100);
-    }
-    //std::cerr<<disp_x<<"  "<<disp_y<<"\n";
+    if(sw.XPSa->connected)
+        sw.XPSa->XYZMoveRelative(disp_x*sw.xps_x_sen.get()/100,disp_y*sw.xps_y_sen.get()/100,0);
 }
 
-void MainWindow::change_xps_z(int value){
-    if(sw.XPSa->connected){
-        sw.XPSa->execCommand("GroupMoveRelative (",sw.XYZ_groupname.get(),",0,0,",(double)value*sw.xps_z_sen.get()/1000000,")");
-        sw.Zaxis_position.set(sw.Zaxis_position.get()+(double)value*sw.xps_z_sen.get()/1000000);
-    }
-    //std::cerr<<"wheel:"<<event->delta()<<"\n";
-}
 void mtlabel::wheelEvent(QWheelEvent *event){
-    MainWindow::change_xps_z(event->delta());
+    if(sw.XPSa->connected)
+        sw.XPSa->XYZMoveRelative(0,0,(double)event->delta()*sw.xps_z_sen.get()/1000000);
 }
 void MainWindow::on_dial_valueChanged(int value){
     int change=dialval-value;
@@ -92,7 +82,8 @@ void MainWindow::on_dial_valueChanged(int value){
         if (abs(change)>0) change-=(ui->dial->maximum()-ui->dial->minimum())/2;
         else change+=(ui->dial->maximum()-ui->dial->minimum())/2;
     }
-    change_xps_z(change);
+    if(sw.XPSa->connected)
+        sw.XPSa->XYZMoveRelative(0,0,(double)change*sw.xps_z_sen.get()/1000000);
 }
 
 

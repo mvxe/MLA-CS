@@ -144,3 +144,16 @@ void XPS::execPVTQueue(std::string name){
         return;
     execCommand("MultipleAxesPVTExecution (",sw.XYZ_groupname.get(),",",name,",1)");
 }
+
+void XPS::XYZMoveRelative(double dX,double dY, double dZ){
+    execCommand("GroupMoveRelative (",sw.XYZ_groupname.get(),",",dX,",",dY,",",dZ,")");
+    sw.Xaxis_position.set(sw.Xaxis_position.get()+dX);
+    sw.Yaxis_position.set(sw.Yaxis_position.get()+dY);
+    sw.Zaxis_position.set(sw.Zaxis_position.get()+dZ);
+}
+void XPS::XYZMoveAbsolute(double X,double Y, double Z){
+    execCommand("GroupMoveAbsolute (",sw.XYZ_groupname.get(),",",X,",",Y,",",Z,")");
+    sw.Xaxis_position.set(X);
+    sw.Yaxis_position.set(Y);
+    sw.Zaxis_position.set(Z);
+}

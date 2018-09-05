@@ -34,6 +34,9 @@ public:
     void execPVTQueue(std::string name);
     std::string listPVTfiles();
 
+    void XYZMoveRelative(double dX,double dY, double dZ);
+    void XYZMoveAbsolute(double X, double Y, double Z);
+
 private:
     template <typename T>
     void eexecCommand(std::stringstream* strm, T value);
