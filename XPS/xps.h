@@ -17,10 +17,13 @@ public:
     ~XPS();
 
     template <typename T>
-    void execCommandNow(T value);
+    void execCommand(T value);
     template<typename T, typename... Args>
-    void execCommandNow(T value, Args... args);         //exectue a command now, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
-
+    void execCommand(T value, Args... args);            //exectue a command (nonblocking) without return, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
+    template <typename T>
+    std::string execCommandR(T value);
+    template<typename T, typename... Args>
+    std::string execCommandR(T value, Args... args);    //exectue a command (blocking) with return, waits for its turn in the FIFO
     void initGroups();
     void homeGroups();
     void killGroups();
@@ -33,13 +36,21 @@ public:
 
 private:
     template <typename T>
-    void eexecCommandNow(std::stringstream* strm, T value);
+    void eexecCommand(std::stringstream* strm, T value);
     template<typename T, typename... Args>
-    void eexecCommandNow(std::stringstream* strm, T value, Args... args);
+    void eexecCommand(std::stringstream* strm, T value, Args... args);
+    template <typename T>
+    std::string eexecCommandR(std::stringstream* strm, T value);
+    template<typename T, typename... Args>
+    std::string eexecCommandR(std::stringstream* strm, T value, Args... args);
     void flushQueue();
 
     void run();
-    std::queue<std::string> priority_queue;
+    struct execss{
+        std::string comm;
+        std::string* ret;
+    };
+    std::queue<execss> priority_queue;
     std::mutex mpq;
     bool _writef;
 
@@ -50,30 +61,63 @@ private:
 
 /*##### Template functions #####*/
 template <typename T>
-void XPS::execCommandNow(T value){
+void XPS::execCommand(T value){
     std::stringstream* nstrm=new std::stringstream();
-    eexecCommandNow(nstrm, value);
+    eexecCommand(nstrm, value);
 }
 template<typename T, typename... Args>
-void XPS::execCommandNow(T value, Args... args){
+void XPS::execCommand(T value, Args... args){
     std::stringstream* nstrm=new std::stringstream();
-    eexecCommandNow(nstrm, value, args...);
+    eexecCommand(nstrm, value, args...);
 }
 template <typename T>
-void XPS::eexecCommandNow(std::stringstream* strm, T value){
+void XPS::eexecCommand(std::stringstream* strm, T value){
     *strm<<value;
     mpq.lock();
-    priority_queue.push(strm->str());
+    priority_queue.push({strm->str(),nullptr});
     mpq.unlock();
-    //std::cerr<<"\nexecuting command:\n"<<strm->str()<<"\n";
     strm->str("");
     strm->clear();
     delete strm;
 }
 template<typename T, typename... Args>
-void XPS::eexecCommandNow(std::stringstream* strm, T value, Args... args){
+void XPS::eexecCommand(std::stringstream* strm, T value, Args... args){
     *strm<<value;
-    eexecCommandNow(strm, args...);
+    eexecCommand(strm, args...);
+}
+
+template <typename T>
+std::string XPS::execCommandR(T value){
+    std::stringstream* nstrm=new std::stringstream();
+    return eexecCommandR(nstrm, value);
+}
+template<typename T, typename... Args>
+std::string XPS::execCommandR(T value, Args... args){
+    std::stringstream* nstrm=new std::stringstream();
+    return eexecCommandR(nstrm, value, args...);
+}
+template <typename T>
+std::string XPS::eexecCommandR(std::stringstream* strm, T value){
+    *strm<<value;
+    std::string ret;
+    mpq.lock();
+    priority_queue.push({strm->str(),&ret});
+    mpq.unlock();
+    strm->str("");
+    strm->clear();
+    delete strm;
+    for(bool done=false;done==false;){
+        std::this_thread::sleep_for (std::chrono::milliseconds(1));
+        mpq.lock();
+        if(!ret.empty()) done=true;
+        mpq.unlock();
+    }
+    return ret;
+}
+template<typename T, typename... Args>
+std::string XPS::eexecCommandR(std::stringstream* strm, T value, Args... args){
+    *strm<<value;
+    return eexecCommandR(strm, args...);
 }
 
 #endif // XPS_H

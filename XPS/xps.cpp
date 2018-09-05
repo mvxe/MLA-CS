@@ -28,11 +28,10 @@ void XPS::run(){    //this is the XPS thread loop
         }
         if(sw.XPS_ip.changed() || sw.XPS_port.changed()) {killGroups();disconnect();}  //if the user changes the IP or port setting we disconnect
 
-        std::this_thread::sleep_for (std::chrono::milliseconds(sw.XPS_keepalive.get()));    //TODO remove this sleep (XPS)
+        std::this_thread::sleep_for (std::chrono::milliseconds(1));    //TODO remove this sleep (XPS)
 
         if (connected)
             flushQueue();
-
 
         if(sw.XPS_end.get()){
             if (connected){
@@ -48,35 +47,37 @@ void XPS::run(){    //this is the XPS thread loop
 
 
 void XPS::initGroups(){
-    execCommandNow("GroupInitialize (",sw.XYZ_groupname.get(),")");
+    execCommand("GroupInitialize (",sw.XYZ_groupname.get(),")");
     flushQueue();
 }
 void XPS::homeGroups(){
-    execCommandNow("GroupHomeSearchAndRelativeMove (",sw.XYZ_groupname.get(), ",", sw.Xaxis_position.get(), ",", sw.Yaxis_position.get(), ",", sw.Zaxis_position.get(),")");
+    execCommand("GroupHomeSearchAndRelativeMove (",sw.XYZ_groupname.get(), ",", sw.Xaxis_position.get(), ",", sw.Yaxis_position.get(), ",", sw.Zaxis_position.get(),")");
     flushQueue();
 }
 void XPS::killGroups(){
-    execCommandNow("GroupKill (",sw.XYZ_groupname.get(),")");
+    execCommand("GroupKill (",sw.XYZ_groupname.get(),")");
     flushQueue();
 }
 void XPS::flushQueue(){
-    std::string tmp;
+    std::string tmp[2];
     if (!priority_queue.empty()) {
-        //while(read(tmp)!=0);
         mpq.lock();
     }
     while (!priority_queue.empty()){
-        tmp=priority_queue.front();
+        tmp[0]=priority_queue.front().comm;
         mpq.unlock();
-        //for (unsigned totw=0;totw!=tmp.size();totw+=write(tmp.substr(totw)));
-        write(tmp);
+        write(tmp[0]);
+        read(tmp[1]);
         mpq.lock();
-        std::cerr <<"SENT: "<<tmp<<"\n";
-        if (!priority_queue.empty()) priority_queue.pop();
+        if(!priority_queue.empty()){
+            if(priority_queue.front().ret!=nullptr) *priority_queue.front().ret=tmp[1];
+            priority_queue.pop();
+        }
         mpq.unlock();
-        //while(read(tmp)==0);
-        read(tmp);
-        std::cerr<<"RECV: "<<tmp<<"\n";
+        if(tmp[1][0]!='0'){
+            std::cerr<<"SENT: "<<tmp[0]<<"\n";
+            std::cerr<<"RECV: "<<tmp[1]<<"\n";
+        }
     }
 }
 
@@ -138,6 +139,8 @@ std::string XPS::listPVTfiles(){
     return os.str();
 }
 void XPS::execPVTQueue(std::string name){
-    execCommandNow("MultipleAxesPVTVerification (",sw.XYZ_groupname.get(),",",name,")");
-    execCommandNow("MultipleAxesPVTExecution (",sw.XYZ_groupname.get(),",",name,",1)");
+    std::string ret=execCommandR("MultipleAxesPVTVerification (",sw.XYZ_groupname.get(),",",name,")");
+    if(ret[0]!='0')
+        return;
+    execCommand("MultipleAxesPVTExecution (",sw.XYZ_groupname.get(),",",name,",1)");
 }
