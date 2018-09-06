@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-
 void MainWindow::sync_settings(){
     ui->sl_expo->blockSignals(true);
     ui->e_xps_ip->setText(QString::fromStdString(sw.XPS_ip.get()));
@@ -44,18 +43,18 @@ void MainWindow::on_sl_expo_valueChanged(int value) {
     }
 }
 
-void MainWindow::on_btn_X_dec_released(){sw.XPSa->XYZMoveRelative(-1,0,0,false);}
-void MainWindow::on_btn_Y_dec_released(){sw.XPSa->XYZMoveRelative(0,-1,0,false);}
-void MainWindow::on_btn_Z_dec_released(){sw.XPSa->XYZMoveRelative(0,0,-1,false);}
+void MainWindow::on_btn_X_dec_released(){go.pXPS->XYZMoveRelative(-1,0,0,false);}
+void MainWindow::on_btn_Y_dec_released(){go.pXPS->XYZMoveRelative(0,-1,0,false);}
+void MainWindow::on_btn_Z_dec_released(){go.pXPS->XYZMoveRelative(0,0,-1,false);}
 void MainWindow::on_btn_X_min_released(){sw.Xaxis_min.set(sw.Xaxis_position.get());}
 void MainWindow::on_btn_Y_min_released(){sw.Yaxis_min.set(sw.Yaxis_position.get());}
 void MainWindow::on_btn_Z_min_released(){sw.Zaxis_min.set(sw.Zaxis_position.get());}
 void MainWindow::on_btn_X_max_released(){sw.Xaxis_max.set(sw.Xaxis_position.get());}
 void MainWindow::on_btn_Y_max_released(){sw.Yaxis_max.set(sw.Yaxis_position.get());}
 void MainWindow::on_btn_Z_max_released(){sw.Zaxis_max.set(sw.Zaxis_position.get());}
-void MainWindow::on_btn_X_inc_released(){sw.XPSa->XYZMoveRelative(1,0,0,false);}
-void MainWindow::on_btn_Y_inc_released(){sw.XPSa->XYZMoveRelative(0,1,0,false);}
-void MainWindow::on_btn_Z_inc_released(){sw.XPSa->XYZMoveRelative(0,0,1,false);}
+void MainWindow::on_btn_X_inc_released(){go.pXPS->XYZMoveRelative(1,0,0,false);}
+void MainWindow::on_btn_Y_inc_released(){go.pXPS->XYZMoveRelative(0,1,0,false);}
+void MainWindow::on_btn_Z_inc_released(){go.pXPS->XYZMoveRelative(0,0,1,false);}
 
 void MainWindow::GUI_update(){
     if (sw.XPS_connected.changed())

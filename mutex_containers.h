@@ -1,7 +1,12 @@
 #ifndef MUTEX_CONTAINERS_H
 #define MUTEX_CONTAINERS_H
 
-#include "includes.h"
+#include <mutex>
+#include <string>
+#include <deque>
+#include <unistd.h>
+#include <time.h>
+#include <sstream>
 
 struct _fovar{    //for file ops
     std::string strname;

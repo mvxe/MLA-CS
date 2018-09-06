@@ -2,8 +2,8 @@
 #define VMBWRAP_H
 
 #include <VimbaCPP/Include/VimbaCPP.h>
-#include "includes.h"
-
+#include <string>
+#include "opencv2/opencv.hpp"
 
 namespace wfun{                 //to make the damn vimba api features simpler to use
     template <typename T>

@@ -24,15 +24,14 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include <sstream>
 
 #include "opencv2/opencv.hpp"
+
+#include "mutex_containers.h"
 #include "utility.h"
+#include "globals.h"
+#include "sharedvars.h"
 
-#ifndef INCLUDES_H
-#define INCLUDES_H
-
-extern std::thread XPS_thread;
-extern std::thread MAKO_thread;
-
-#endif
+#include "MAKO/frame_queues.h"
+#include "XPS/xps.h"
+#include "MAKO/mako.h"

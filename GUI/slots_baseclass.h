@@ -1,8 +1,7 @@
 #ifndef GUI_SLOTS_BASECLASS_H
 #define GUI_SLOTS_BASECLASS_H
 
-#include "includes.h"
-#include "sharedvars.h"
+#include "GUI/includes.h"
 
 class GUI_slots_baseclass{
 protected:

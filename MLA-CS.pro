@@ -26,7 +26,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 CONFIG += c++17
 
 FORMS += \
-        mainwindow.ui
+    GUI/mainwindow.ui
 
 LIBS += \
 
@@ -47,8 +47,6 @@ DEPENDPATH += $$PWD/../Vimba_2_1
 HEADERS += \
     MAKO/mako.h \
     XPS/xps.h \
-    gui_slots_baseclass.h \
-    mainwindow.h \
     mutex_containers.h \
     mutex_containers_impl.h \
     sharedvars.h \
@@ -57,20 +55,27 @@ HEADERS += \
     MAKO/mako_events.h \
     MAKO/vmbwrap.h \
     MAKO/frame_queues.h \
-    utility.h
+    utility.h \
+    globals.h \
+    GUI/slots_baseclass.h \
+    GUI/includes.h \
+    mainwindow.h \
+    MAKO/camobj.h
 
 SOURCES += \
     MAKO/mako.cpp \
     XPS/xps.cpp \
-    gui_settingstab.cpp \
-    gui_slots_baseclass.cpp \
     main.cpp \
-    mainwindow.cpp \
     mutex_containers.cpp \
     sharedvars.cpp \
     TCP_con.cpp \
     MAKO/mako_events.cpp \
-    MAKO/frame_queues.cpp
+    MAKO/frame_queues.cpp \
+    globals.cpp \
+    GUI/settingstab.cpp \
+    GUI/slots_baseclass.cpp \
+    GUI/mainwindow.cpp \
+    MAKO/camobj.cpp
 
 
 unix {

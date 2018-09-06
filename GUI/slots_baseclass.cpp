@@ -1,4 +1,4 @@
-#include "gui_slots_baseclass.h"
+#include "GUI/slots_baseclass.h"
 
 
     /* this handles (most) lineedit events*/

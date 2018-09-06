@@ -1,5 +1,4 @@
 #include "xps.h"
-#include "sharedvars.h"
 
 XPS::XPS() : _writef(false){
     TCP_con();

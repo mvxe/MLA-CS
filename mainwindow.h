@@ -1,9 +1,8 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "includes.h"
-#include "gui_slots_baseclass.h"
-
+#include "GUI/includes.h"
+#include "GUI/slots_baseclass.h"
 
 namespace Ui {
 class MainWindow;

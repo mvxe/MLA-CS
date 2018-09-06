@@ -1,7 +1,11 @@
 #ifndef SHAREDVARS_H
 #define SHAREDVARS_H
 
-#include "includes.h"
+#include <string>
+#include <mutex>
+#include <queue>
+#include <fstream>
+#include <iostream>
 #include "mutex_containers.h"
 #include "MAKO/frame_queues.h"
 #include "XPS/xps.h"
@@ -35,7 +39,7 @@ public:
 class sharedvars : sharedvarsba{    //the vars to be saved in a file have two additional arguments: ...,&var,"varname")
 public:
     /* global access to XPS functions */
-    XPS* XPSa;
+    //XPS* XPSa;
     std::mutex XPS_sav;
     mxvar<double> Xaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Xaxis_position");
     mxvar<double> Yaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Yaxis_position");

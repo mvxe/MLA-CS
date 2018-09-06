@@ -1,9 +1,13 @@
 #ifndef XPS_H
 #define XPS_H
 
-#include "includes.h"
+#include <string>
+#include <mutex>
+#include <queue>
+#include <thread>
 #include "mutex_containers.h"
 #include "TCP_con.h"
+#include "sharedvars.h"
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
@@ -11,7 +15,7 @@
 #define TRAJ_PATH "/public/Trajectories/"
 
 class XPS : public TCP_con{
-    friend int main(int argc, char *argv[]);    //to be able to call run()
+    friend class globals;    //to be able to call run()
 public:
     XPS();
     ~XPS();

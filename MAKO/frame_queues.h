@@ -1,7 +1,10 @@
 #ifndef FRAME_QUEUES_H
 #define FRAME_QUEUES_H
 
-#include "includes.h"
+#include <string>
+#include <deque>
+#include <mutex>
+#include "opencv2/opencv.hpp"
 
 class FQ;
 

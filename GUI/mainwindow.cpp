@@ -22,15 +22,8 @@ MainWindow::~MainWindow(){
     delete ui;
 }
 void MainWindow::program_exit(){
-    std::cout<<"Sending end signals to all threads...\n";
-
     timer->stop();
-    sw.MAKO_end.set(true);
-    MAKO_thread.join();
-    sw.XPS_end.set(true);
-    XPS_thread.join();
-    cURLpp::terminate();        //we terminate curl
-    std::cout<<"All threads exited successfully!\n";
+    go.cleanup();
 }
 
 void MainWindow::on_tabWidget_currentChanged(int index){
@@ -67,13 +60,13 @@ void MainWindow::updateCamMenu(){
 void mtlabel::mousePressEvent(QMouseEvent *event){
     double disp_x=-(event->pos().x()-size().width()/2.)/size().width();
     double disp_y=-(event->pos().y()-size().height()/2.)/size().height();
-    if(sw.XPSa->connected)
-        sw.XPSa->XYZMoveRelative(disp_x*sw.xps_x_sen.get()/100,disp_y*sw.xps_y_sen.get()/100,0);
+    if(go.pXPS->connected)
+        go.pXPS->XYZMoveRelative(disp_x*sw.xps_x_sen.get()/100,disp_y*sw.xps_y_sen.get()/100,0);
 }
 
 void mtlabel::wheelEvent(QWheelEvent *event){
-    if(sw.XPSa->connected)
-        sw.XPSa->XYZMoveRelative(0,0,(double)event->delta()*sw.xps_z_sen.get()/1000000);
+    if(go.pXPS->connected)
+        go.pXPS->XYZMoveRelative(0,0,(double)event->delta()*sw.xps_z_sen.get()/1000000);
 }
 void MainWindow::on_dial_valueChanged(int value){
     int change=dialval-value;
@@ -82,8 +75,8 @@ void MainWindow::on_dial_valueChanged(int value){
         if (abs(change)>0) change-=(ui->dial->maximum()-ui->dial->minimum())/2;
         else change+=(ui->dial->maximum()-ui->dial->minimum())/2;
     }
-    if(sw.XPSa->connected)
-        sw.XPSa->XYZMoveRelative(0,0,(double)change*sw.xps_z_sen.get()/1000000);
+    if(go.pXPS->connected)
+        go.pXPS->XYZMoveRelative(0,0,(double)change*sw.xps_z_sen.get()/1000000);
 }
 
 
@@ -92,13 +85,13 @@ void MainWindow::on_btm_kill_released(){        //TODO: this is just a GUI_disab
 }
 
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
-    std::cout<<sw.XPSa->listPVTfiles();
+    std::cout<<go.pXPS->listPVTfiles();
 
-    sw.XPSa->addToPVTqueue("1 1 1 1 1 1 1\n");
-    sw.XPSa->addToPVTqueue("1 0 0 0 0 0 0\n");
-    sw.XPSa->addToPVTqueue("1 -1 -1 -1 -1 -1 -1\n");
-    sw.XPSa->addToPVTqueue("1 0 0 0 0 0 0\n");
-    std::cout<<sw.XPSa->copyPVToverFTP("test.txt");
-    sw.XPSa->clearPVTqueue();
-    sw.XPSa->execPVTQueue("test.txt");
+    go.pXPS->addToPVTqueue("1 1 1 1 1 1 1\n");
+    go.pXPS->addToPVTqueue("1 0 0 0 0 0 0\n");
+    go.pXPS->addToPVTqueue("1 -1 -1 -1 -1 -1 -1\n");
+    go.pXPS->addToPVTqueue("1 0 0 0 0 0 0\n");
+    std::cout<<go.pXPS->copyPVToverFTP("test.txt");
+    go.pXPS->clearPVTqueue();
+    go.pXPS->execPVTQueue("test.txt");
 }
