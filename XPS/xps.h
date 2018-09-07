@@ -16,6 +16,11 @@
 
 class XPS : public TCP_con{
     friend class globals;    //to be able to call run()
+private:
+    struct execss{
+        std::string comm;
+        std::string* ret;
+    };
 public:
     XPS();
     ~XPS();
@@ -55,16 +60,17 @@ private:
     void _XYZMoveAbsolute(bool limit=true);
 
     void run();
-    struct execss{
-        std::string comm;
-        std::string* ret;
-    };
+
     std::queue<execss> priority_queue;
     std::mutex mpq;
     bool _writef;
 
     std::mutex ftpmx;
     std::string upPVTfile;
+
+    double posX, posY, posZ;
+    double maxX, maxY, maxZ;
+    double minX, minY, minZ;
 };
 
 
