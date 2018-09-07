@@ -55,12 +55,15 @@ HEADERS += \
     MAKO/mako_events.h \
     MAKO/vmbwrap.h \
     MAKO/frame_queues.h \
-    utility.h \
     globals.h \
     GUI/slots_baseclass.h \
     GUI/includes.h \
     mainwindow.h \
-    MAKO/camobj.h
+    MAKO/camobj.h \
+    UTIL/utility.h \
+    UTIL/containers.h \
+    UTIL/containers_template.h \
+    XPS/xps_template.h
 
 SOURCES += \
     MAKO/mako.cpp \
@@ -75,7 +78,8 @@ SOURCES += \
     GUI/settingstab.cpp \
     GUI/slots_baseclass.cpp \
     GUI/mainwindow.cpp \
-    MAKO/camobj.cpp
+    MAKO/camobj.cpp \
+    UTIL/containers.cpp
 
 
 unix {

@@ -3,10 +3,8 @@
 XPS::XPS() : _writef(false){
     TCP_con();
 }
-
 XPS::~XPS(){
 }
-
 void XPS::run(){    //this is the XPS thread loop
     std::string tmp;
     for (;;){
@@ -27,8 +25,7 @@ void XPS::run(){    //this is the XPS thread loop
         }
         if(sw.XPS_ip.changed() || sw.XPS_port.changed()) {killGroups();disconnect();}  //if the user changes the IP or port setting we disconnect
 
-        std::this_thread::sleep_for (std::chrono::milliseconds(1));    //TODO remove this sleep (XPS)
-
+        std::this_thread::sleep_for (std::chrono::milliseconds(1));
         if (connected)
             flushQueue();
 
@@ -90,7 +87,6 @@ void XPS::clearPVTqueue(){
     upPVTfile.clear();
     ftpmx.unlock();
 }
-
 std::string XPS::copyPVToverFTP(std::string name){
     ftpmx.lock();
     std::ostringstream os;

@@ -28,7 +28,7 @@
 #include "opencv2/opencv.hpp"
 
 #include "mutex_containers.h"
-#include "utility.h"
+#include "UTIL/utility.h"
 #include "globals.h"
 #include "sharedvars.h"
 
