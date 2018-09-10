@@ -25,7 +25,7 @@ void MainWindow::sync_settings(){
 
 void MainWindow::on_e_xps_ip_editingFinished()      {lineedit_fun(ui->e_xps_ip,&sw.XPS_ip);}
 void MainWindow::on_e_xps_port_editingFinished()    {spinbox_fun(ui->e_xps_port,&sw.XPS_port);}
-void MainWindow::on_e_xps_xyz_editingFinished()   {lineedit_fun(ui->e_xps_xyz,&sw.XYZ_groupname);}
+void MainWindow::on_e_xps_xyz_editingFinished()     {lineedit_fun(ui->e_xps_xyz,&sw.XYZ_groupname);}
 void MainWindow::on_e_xps_timeout_editingFinished() {spinbox_fun(ui->e_xps_timeout,&sw.XPS_keepalive);}
 
 void MainWindow::on_e_rpty_ip_editingFinished()     {lineedit_fun(ui->e_rpty_ip,&sw.RPTY_ip);}
@@ -46,12 +46,12 @@ void MainWindow::on_sl_expo_valueChanged(int value) {
 void MainWindow::on_btn_X_dec_released(){go.pXPS->XYZMoveRelative(-1,0,0,false);}
 void MainWindow::on_btn_Y_dec_released(){go.pXPS->XYZMoveRelative(0,-1,0,false);}
 void MainWindow::on_btn_Z_dec_released(){go.pXPS->XYZMoveRelative(0,0,-1,false);}
-void MainWindow::on_btn_X_min_released(){sw.Xaxis_min.set(sw.Xaxis_position.get());}
-void MainWindow::on_btn_Y_min_released(){sw.Yaxis_min.set(sw.Yaxis_position.get());}
-void MainWindow::on_btn_Z_min_released(){sw.Zaxis_min.set(sw.Zaxis_position.get());}
-void MainWindow::on_btn_X_max_released(){sw.Xaxis_max.set(sw.Xaxis_position.get());}
-void MainWindow::on_btn_Y_max_released(){sw.Yaxis_max.set(sw.Yaxis_position.get());}
-void MainWindow::on_btn_Z_max_released(){sw.Zaxis_max.set(sw.Zaxis_position.get());}
+void MainWindow::on_btn_X_min_released(){go.pXPS->setLimit(XPS::minX);}
+void MainWindow::on_btn_Y_min_released(){go.pXPS->setLimit(XPS::minY);}
+void MainWindow::on_btn_Z_min_released(){go.pXPS->setLimit(XPS::minZ);}
+void MainWindow::on_btn_X_max_released(){go.pXPS->setLimit(XPS::maxX);}
+void MainWindow::on_btn_Y_max_released(){go.pXPS->setLimit(XPS::maxY);}
+void MainWindow::on_btn_Z_max_released(){go.pXPS->setLimit(XPS::maxZ);}
 void MainWindow::on_btn_X_inc_released(){go.pXPS->XYZMoveRelative(1,0,0,false);}
 void MainWindow::on_btn_Y_inc_released(){go.pXPS->XYZMoveRelative(0,1,0,false);}
 void MainWindow::on_btn_Z_inc_released(){go.pXPS->XYZMoveRelative(0,0,1,false);}

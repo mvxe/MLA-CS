@@ -37,7 +37,7 @@ void MAKO::run(){    //this is the MAKO thread loop
             sw.MAKO_reco.set(false);
         }
 
-        iuScope.work();                                                                                                        //add other cameras here too
+        iuScope.work();                                                                                                         //add other cameras here too
         std::this_thread::sleep_for (std::chrono::milliseconds(1));                                                             //TODO fix this delay with timers
 
         if(sw.MAKO_end.get()){

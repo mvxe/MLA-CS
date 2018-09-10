@@ -48,9 +48,6 @@ private slots:
 
     void on_btn_home_released();
 
-    void on_dial_valueChanged(int value);
-
-
     void on_btn_X_dec_released();
 
     void on_btn_Y_dec_released();

@@ -84,7 +84,7 @@
            <string/>
           </property>
           <property name="pixmap">
-           <pixmap resource="icons/icon.qrc">:/emblem-nowrite.svg</pixmap>
+           <pixmap resource="../icons/icon.qrc">:/emblem-nowrite.svg</pixmap>
           </property>
           <property name="scaledContents">
            <bool>true</bool>
@@ -112,7 +112,7 @@
            <string/>
           </property>
           <property name="pixmap">
-           <pixmap resource="icons/icon.qrc">:/emblem-nowrite.svg</pixmap>
+           <pixmap resource="../icons/icon.qrc">:/emblem-nowrite.svg</pixmap>
           </property>
           <property name="scaledContents">
            <bool>true</bool>
@@ -141,7 +141,7 @@
            <string/>
           </property>
           <property name="pixmap">
-           <pixmap resource="icons/icon.qrc">:/emblem-nowrite.svg</pixmap>
+           <pixmap resource="../icons/icon.qrc">:/emblem-nowrite.svg</pixmap>
           </property>
           <property name="scaledContents">
            <bool>true</bool>
@@ -231,7 +231,7 @@
          </spacer>
         </item>
         <item row="0" column="2">
-         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0,0">
+         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0">
           <property name="spacing">
            <number>5</number>
           </property>
@@ -253,7 +253,7 @@
              <string>Kill</string>
             </property>
             <property name="icon">
-             <iconset resource="icons/icon.qrc">
+             <iconset resource="../icons/icon.qrc">
               <normaloff>:/emblem-ok.svg</normaloff>:/emblem-ok.svg</iconset>
             </property>
             <property name="autoDefault">
@@ -276,7 +276,7 @@
              <string>Home</string>
             </property>
             <property name="icon">
-             <iconset resource="icons/icon.qrc">
+             <iconset resource="../icons/icon.qrc">
               <normaloff>:/emblem-nowrite.svg</normaloff>:/emblem-nowrite.svg</iconset>
             </property>
            </widget>
@@ -349,19 +349,6 @@
            </widget>
           </item>
           <item>
-           <widget class="QDial" name="dial">
-            <property name="maximum">
-             <number>100</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="wrapping">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
            <spacer name="verticalSpacer_3">
             <property name="orientation">
              <enum>Qt::Vertical</enum>
@@ -391,7 +378,7 @@
            <string/>
           </property>
           <property name="pixmap">
-           <pixmap resource="icons/icon.qrc">:/emblem-nowrite.svg</pixmap>
+           <pixmap resource="../icons/icon.qrc">:/emblem-nowrite.svg</pixmap>
           </property>
           <property name="scaledContents">
            <bool>false</bool>
@@ -789,7 +776,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="icons/icon.qrc"/>
+  <include location="../icons/icon.qrc"/>
  </resources>
  <connections/>
 </ui>

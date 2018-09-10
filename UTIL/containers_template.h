@@ -1,11 +1,10 @@
 #ifndef CONTAINERSTEMPLATE_H
 #define CONTAINERSTEMPLATE_H
-#include <sstream>
+#include "containers.h"         //include not needed, but qtcreator recognizes external types and colors them if It's there
 
 /*     FILE SAVE CONTAINER - CC_SAVE        */
 
-template <typename T>
-cc_save<T>::cc_save(T& var, T initial, _savelst* vec, std::string name): val(var){
+template <typename T> cc_save<T>::cc_save(T& var, T initial, _savelst* vec, std::string name): val(var){
     val = initial;
     tfvec=nullptr;
     if(vec!=nullptr){
@@ -21,8 +20,7 @@ cc_save<T>::cc_save(T& var, T initial, _savelst* vec, std::string name): val(var
         tfvec=&vec->back();
     }
 }
-template <typename T>
-cc_save<T>::~cc_save(){
+template <typename T> cc_save<T>::~cc_save(){
     if (tfvec!=nullptr){
         std::ostringstream ss;
         ss<<val;

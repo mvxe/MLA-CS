@@ -68,17 +68,6 @@ void mtlabel::wheelEvent(QWheelEvent *event){
     if(go.pXPS->connected)
         go.pXPS->XYZMoveRelative(0,0,(double)event->delta()*sw.xps_z_sen.get()/1000000);
 }
-void MainWindow::on_dial_valueChanged(int value){
-    int change=dialval-value;
-    dialval=value;
-    if (abs(change)>(ui->dial->maximum()-ui->dial->minimum())/2){
-        if (abs(change)>0) change-=(ui->dial->maximum()-ui->dial->minimum())/2;
-        else change+=(ui->dial->maximum()-ui->dial->minimum())/2;
-    }
-    if(go.pXPS->connected)
-        go.pXPS->XYZMoveRelative(0,0,(double)change*sw.xps_z_sen.get()/1000000);
-}
-
 
 void MainWindow::on_btm_kill_released(){        //TODO: this is just a GUI_disable timer test, remove
     sw.GUI_disable.set(true,5);
@@ -87,11 +76,13 @@ void MainWindow::on_btm_kill_released(){        //TODO: this is just a GUI_disab
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
     std::cout<<go.pXPS->listPVTfiles();
 
-    go.pXPS->addToPVTqueue("1 1 1 1 1 1 1\n");
-    go.pXPS->addToPVTqueue("1 0 0 0 0 0 0\n");
-    go.pXPS->addToPVTqueue("1 -1 -1 -1 -1 -1 -1\n");
-    go.pXPS->addToPVTqueue("1 0 0 0 0 0 0\n");
-    std::cout<<go.pXPS->copyPVToverFTP("test.txt");
-    go.pXPS->clearPVTqueue();
-    go.pXPS->execPVTQueue("test.txt");
+    pPVTobj po = go.pXPS->createNewPVTobj(sw.XYZ_groupname.get(), "test666.txt");
+    po->add(1,1,1,1,1,1,1);
+    po->add(1,0,0,0,0,0,0);
+    po->add(-1,-1,-1,-1,-1,-1,-1);
+    po->add(1,0,0,0,0,0,0);
+    std::cout<<go.pXPS->copyPVToverFTP(po);
+    std::cout<<go.pXPS->verifyPVTobj(po).retstr;
+    std::cout<<go.pXPS->execPVTobj(po).retstr;
+    go.pXPS->destroyPVTobj(po);
 }
