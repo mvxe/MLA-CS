@@ -4,11 +4,7 @@ PVTobj::PVTobj():verified(false){}
 void PVTobj::clear(){
     data.str(std::string());
 }
-template<typename... Args>
-void PVTobj::add(double val, Args... vals){
-    data<<val<<" ";
-    add(vals...);
-}
+
 void PVTobj::add(double val){
     data<<val<<"\n";
 }
@@ -93,6 +89,7 @@ void XPS::flushQueue(){
 pPVTobj XPS::createNewPVTobj(std::string motion_group, std::string filename){
     pPVTobj a = new PVTobj;
     a->groupname=motion_group;
+    a->filename=filename;
     return a;
 }
 void XPS::destroyPVTobj(pPVTobj obj){
@@ -123,19 +120,19 @@ std::string XPS::copyPVToverFTP(pPVTobj obj){
     obj->verified=false;
     return os.str();
 }
-xps_ret XPS::verifyPVTobj(pPVTobj obj){
+xps_dat XPS::verifyPVTobj(pPVTobj obj){
     xps_ret ret;
     execCommand(&ret, "MultipleAxesPVTVerification (",obj->groupname,",",obj->filename,")");
     ret.block_till_done();
-    if (ret.retval==0) obj->verified=true;
-    return ret;
+    obj->verified=(ret.v.retval==0);
+    return ret.v;
 }
-xps_ret XPS::execPVTobj(pPVTobj obj){
+xps_dat XPS::execPVTobj(pPVTobj obj){
     xps_ret ret;
-    if (!obj->verified) return ret;  //retval should be -9999 indicating an error
+    if (!obj->verified) return ret.v;  //retval should be -9999 indicating an error
     execCommand(&ret, "MultipleAxesPVTExecution (",obj->groupname,",",obj->filename,",1)");
     ret.block_till_done();
-    return ret;
+    return ret.v;
 }
 
 std::string XPS::listPVTfiles(){

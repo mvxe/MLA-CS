@@ -2,6 +2,14 @@
 #define XPS_TEMPLATE_H
 #include "xps.h"
 
+template<typename... Args>
+void PVTobj::add(double val, Args... vals){
+    data<<val<<" ";
+    add(vals...);
+}
+
+    /*~~~ XPS ~~~*/
+
 template <typename T>
 void XPS::execCommand(T value){
     std::stringstream* nstrm=new std::stringstream();

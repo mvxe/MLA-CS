@@ -74,12 +74,10 @@ void MainWindow::on_btm_kill_released(){        //TODO: this is just a GUI_disab
 }
 
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
-    std::cout<<go.pXPS->listPVTfiles();
-
     pPVTobj po = go.pXPS->createNewPVTobj(sw.XYZ_groupname.get(), "test666.txt");
     po->add(1,1,1,1,1,1,1);
     po->add(1,0,0,0,0,0,0);
-    po->add(-1,-1,-1,-1,-1,-1,-1);
+    po->add(1,-1,-1,-1,-1,-1,-1);
     po->add(1,0,0,0,0,0,0);
     std::cout<<go.pXPS->copyPVToverFTP(po);
     std::cout<<go.pXPS->verifyPVTobj(po).retstr;

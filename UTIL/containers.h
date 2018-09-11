@@ -26,6 +26,10 @@ protected:
 
 /*     MUXED STRING CONTAINER FOR XPS QUEUE        */
 
+struct xps_dat{
+    std::string retstr;
+    int retval;
+};
 class xps_ret{
 public:
     xps_ret();
@@ -33,8 +37,7 @@ public:
     bool check_if_done();               //for client function, returns true if data can be accessed
     void set_value(std::string val);    //for server(xps) function , these three are thread safe
 
-    std::string retstr;                 //once one of the first two commands indicate it is done, the client can directly access the two vars (DO NOT DESTROY OBJECT BEFORE IT RETURNS A VALUE!! unless you like segfaults, that is)
-    int retval;
+    xps_dat v;                 //once one of the first two commands indicate it is done, the client can directly access the two vars (DO NOT DESTROY OBJECT BEFORE IT RETURNS A VALUE!! unless you like segfaults, that is)
 protected:
     std::mutex mx;
     bool done;

@@ -66,8 +66,8 @@ public:
     pPVTobj createNewPVTobj(std::string motion_group, std::string filename);        //TODO make automatic filename generation
     void destroyPVTobj(pPVTobj obj);                                    //deallocates it
     std::string copyPVToverFTP(pPVTobj obj);                            //if successful, returns an empty string, else a string containing the error message
-    xps_ret verifyPVTobj(pPVTobj obj);                                  //returns the verification result
-    xps_ret execPVTobj(pPVTobj obj);
+    xps_dat verifyPVTobj(pPVTobj obj);                                  //returns the verification result
+    xps_dat execPVTobj(pPVTobj obj);
 
     void XYZMoveRelative(double dX, double dY, double dZ, bool limit=true);      //TODO generalize this for n variables with templates, and generalize axisp, and add groupname
     void XYZMoveAbsolute(double  X, double  Y, double  Z, bool limit=true);
