@@ -5,7 +5,7 @@ void MainWindow::sync_settings(){
     ui->sl_expo->blockSignals(true);
     ui->e_xps_ip->setText(QString::fromStdString(sw.XPS_ip.get()));
     ui->e_xps_port->setValue(sw.XPS_port.get());
-    ui->e_xps_xyz->setText(QString::fromStdString(sw.XYZ_groupname.get()));
+    ui->e_xps_xyz->setText(QString::fromStdString(go.pXPS->groupGetName(XPS::mgroup_XYZ)));
     ui->e_xps_timeout->setValue(sw.XPS_keepalive.get());
 
     ui->e_rpty_ip->setText(QString::fromStdString(sw.RPTY_ip.get()));
@@ -25,7 +25,8 @@ void MainWindow::sync_settings(){
 
 void MainWindow::on_e_xps_ip_editingFinished()      {lineedit_fun(ui->e_xps_ip,&sw.XPS_ip);}
 void MainWindow::on_e_xps_port_editingFinished()    {spinbox_fun(ui->e_xps_port,&sw.XPS_port);}
-void MainWindow::on_e_xps_xyz_editingFinished()     {lineedit_fun(ui->e_xps_xyz,&sw.XYZ_groupname);}
+void MainWindow::on_e_xps_xyz_editingFinished()     {go.pXPS->groupSetName(XPS::mgroup_XYZ, ui->e_xps_xyz->text().toStdString());           //TODO add call to reset XPS
+                                                     ui->e_xps_xyz->clearFocus();}
 void MainWindow::on_e_xps_timeout_editingFinished() {spinbox_fun(ui->e_xps_timeout,&sw.XPS_keepalive);}
 
 void MainWindow::on_e_rpty_ip_editingFinished()     {lineedit_fun(ui->e_rpty_ip,&sw.RPTY_ip);}
@@ -43,18 +44,18 @@ void MainWindow::on_sl_expo_valueChanged(int value) {
     }
 }
 
-void MainWindow::on_btn_X_dec_released(){go.pXPS->XYZMoveRelative(-1,0,0,false);}
-void MainWindow::on_btn_Y_dec_released(){go.pXPS->XYZMoveRelative(0,-1,0,false);}
-void MainWindow::on_btn_Z_dec_released(){go.pXPS->XYZMoveRelative(0,0,-1,false);}
-void MainWindow::on_btn_X_min_released(){go.pXPS->setLimit(XPS::minX);}
-void MainWindow::on_btn_Y_min_released(){go.pXPS->setLimit(XPS::minY);}
-void MainWindow::on_btn_Z_min_released(){go.pXPS->setLimit(XPS::minZ);}
-void MainWindow::on_btn_X_max_released(){go.pXPS->setLimit(XPS::maxX);}
-void MainWindow::on_btn_Y_max_released(){go.pXPS->setLimit(XPS::maxY);}
-void MainWindow::on_btn_Z_max_released(){go.pXPS->setLimit(XPS::maxZ);}
-void MainWindow::on_btn_X_inc_released(){go.pXPS->XYZMoveRelative(1,0,0,false);}
-void MainWindow::on_btn_Y_inc_released(){go.pXPS->XYZMoveRelative(0,1,0,false);}
-void MainWindow::on_btn_Z_inc_released(){go.pXPS->XYZMoveRelative(0,0,1,false);}
+void MainWindow::on_btn_X_dec_released(){go.pXPS->MoveRelative(XPS::mgroup_XYZ,-1,0,0,false);}
+void MainWindow::on_btn_Y_dec_released(){go.pXPS->MoveRelative(XPS::mgroup_XYZ,0,-1,0,false);}
+void MainWindow::on_btn_Z_dec_released(){go.pXPS->MoveRelative(XPS::mgroup_XYZ,0,0,-1,false);}
+void MainWindow::on_btn_X_min_released(){go.pXPS->setLimit(XPS::mgroup_XYZ,0,XPS::min);}
+void MainWindow::on_btn_Y_min_released(){go.pXPS->setLimit(XPS::mgroup_XYZ,1,XPS::min);}
+void MainWindow::on_btn_Z_min_released(){go.pXPS->setLimit(XPS::mgroup_XYZ,2,XPS::min);}
+void MainWindow::on_btn_X_max_released(){go.pXPS->setLimit(XPS::mgroup_XYZ,0,XPS::max);}
+void MainWindow::on_btn_Y_max_released(){go.pXPS->setLimit(XPS::mgroup_XYZ,1,XPS::max);}
+void MainWindow::on_btn_Z_max_released(){go.pXPS->setLimit(XPS::mgroup_XYZ,2,XPS::max);}
+void MainWindow::on_btn_X_inc_released(){go.pXPS->MoveRelative(XPS::mgroup_XYZ,1,0,0,false);}
+void MainWindow::on_btn_Y_inc_released(){go.pXPS->MoveRelative(XPS::mgroup_XYZ,0,1,0,false);}
+void MainWindow::on_btn_Z_inc_released(){go.pXPS->MoveRelative(XPS::mgroup_XYZ,0,0,1,false);}
 
 void MainWindow::GUI_update(){
     if (sw.XPS_connected.changed())

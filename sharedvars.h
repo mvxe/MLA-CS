@@ -39,17 +39,6 @@ public:
 class sharedvars : sharedvarsba{    //the vars to be saved in a file have two additional arguments: ...,&var,"varname")
 public:
     /* global access to XPS functions */
-    //XPS* XPSa;
-    std::mutex XPS_sav;
-    mxvar<double> Xaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Xaxis_position");
-    mxvar<double> Yaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Yaxis_position");
-    mxvar<double> Zaxis_position = mxvar<double>(&XPS_sav,0.,&var,"Zaxis_position");
-    mxvar<double> Xaxis_min = mxvar<double>(&XPS_sav,-9999.,&var,"Xaxis_min");
-    mxvar<double> Yaxis_min = mxvar<double>(&XPS_sav,-9999.,&var,"Yaxis_min");
-    mxvar<double> Zaxis_min = mxvar<double>(&XPS_sav,-9999.,&var,"Zaxis_min");
-    mxvar<double> Xaxis_max = mxvar<double>(&XPS_sav, 9999.,&var,"Xaxis_max");
-    mxvar<double> Yaxis_max = mxvar<double>(&XPS_sav, 9999.,&var,"Yaxis_max");
-    mxvar<double> Zaxis_max = mxvar<double>(&XPS_sav, 9999.,&var,"Zaxis_max");
 
     /* global GUI vars */
     std::mutex GUI_GL;
@@ -59,7 +48,6 @@ public:
     std::mutex GUI_XPS;
     mxvar_ip XPS_ip = mxvar_ip(&GUI_XPS, std::string("192.168.0.254"),&var,"XPS_ip");
     mxvar_port XPS_port = mxvar_port(&GUI_XPS, 5001,&var,"XPS_port");
-    mxvar<std::string> XYZ_groupname = mxvar<std::string>(&GUI_XPS,std::string("M"),&var,"XYZ_groupname");
     mxvar<int> XPS_keepalive = mxvar<int>(&GUI_XPS, 500,&var,"XPS_keepalive");     //keepalive and connect timeout, in ms
     mxva<bool> XPS_end = mxva<bool>(&GUI_XPS,false);                               //for signaling the XPS thread it's time to close
     mxva<bool> XPS_connected = mxva<bool>(&GUI_XPS,false);                         //XPS thread -> GUI

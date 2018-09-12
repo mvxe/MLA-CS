@@ -61,12 +61,12 @@ void mtlabel::mousePressEvent(QMouseEvent *event){
     double disp_x=-(event->pos().x()-size().width()/2.)/size().width();
     double disp_y=-(event->pos().y()-size().height()/2.)/size().height();
     if(go.pXPS->connected)
-        go.pXPS->XYZMoveRelative(disp_x*sw.xps_x_sen.get()/100,disp_y*sw.xps_y_sen.get()/100,0);
+        go.pXPS->MoveRelative(XPS::mgroup_XYZ,disp_x*sw.xps_x_sen.get()/100,disp_y*sw.xps_y_sen.get()/100,0);
 }
 
 void mtlabel::wheelEvent(QWheelEvent *event){
     if(go.pXPS->connected)
-        go.pXPS->XYZMoveRelative(0,0,(double)event->delta()*sw.xps_z_sen.get()/1000000);
+        go.pXPS->MoveRelative(XPS::mgroup_XYZ,0,0,(double)event->delta()*sw.xps_z_sen.get()/1000000);
 }
 
 void MainWindow::on_btm_kill_released(){        //TODO: this is just a GUI_disable timer test, remove
@@ -74,7 +74,7 @@ void MainWindow::on_btm_kill_released(){        //TODO: this is just a GUI_disab
 }
 
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
-    pPVTobj po = go.pXPS->createNewPVTobj(sw.XYZ_groupname.get(), "test666.txt");
+    pPVTobj po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZ, "test666.txt");
     po->add(1,1,1,1,1,1,1);
     po->add(1,0,0,0,0,0,0);
     po->add(1,-1,-1,-1,-1,-1,-1);

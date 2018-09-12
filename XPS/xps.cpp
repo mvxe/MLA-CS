@@ -30,11 +30,11 @@ void XPS::run(){    //this is the XPS thread loop
             else{
                     //connecting...
                 connect(sw.XPS_keepalive.get());
-                if (connected) {initGroup(sw.XYZ_groupname.get());homeGroup(sw.XYZ_groupname.get());}
+                if (connected) {initGroups();homeGroups();}
             }
             sw.XPS_ip.resolved.set(resname);
         }
-        if(sw.XPS_ip.changed() || sw.XPS_port.changed()) {killGroup(sw.XYZ_groupname.get());disconnect();}  //if the user changes the IP or port setting we disconnect
+        if(sw.XPS_ip.changed() || sw.XPS_port.changed()) {killGroups();disconnect();}  //if the user changes the IP or port setting we disconnect
 
         std::this_thread::sleep_for (std::chrono::milliseconds(1));
         if (connected)
@@ -42,7 +42,7 @@ void XPS::run(){    //this is the XPS thread loop
 
         if(sw.XPS_end.get()){
             if (connected){
-                killGroup(sw.XYZ_groupname.get());
+                killGroups();
                 disconnect();
             }
             std::cout<<"XPS thread exited.\n";
@@ -53,18 +53,28 @@ void XPS::run(){    //this is the XPS thread loop
 }
 
 
-void XPS::initGroup(std::string groupname){                 //add a queue containing groups, add command initGroups that inits them all, do this for commands below too
-    execCommand("GroupInitialize (",groupname,")");
+void XPS::initGroup(GroupID ID){                 //add a queue containing groups, add command initGroups that inits them all, do this for commands below too
+    execCommand("GroupInitialize (",groupGetName(ID),")");
     flushQueue();
 }
-void XPS::homeGroup(std::string groupname){
-    execCommand("GroupHomeSearchAndRelativeMove (",groupname, ",", pos.posX, ",", pos.posY, ",", pos.posZ,")");
+void XPS::initGroups(){
+    for (int i=0;i!=_GROUP_NUM;i++) initGroup(groups[i].ID);
+}
+void XPS::homeGroup(GroupID ID){
+    execCommand("GroupHomeSearchAndRelativeMove (",groupGetName(ID), ",", axisCoords[ID].pos[0],",",axisCoords[ID].pos[1],",",axisCoords[ID].pos[2],")");
     flushQueue();
 }
-void XPS::killGroup(std::string groupname){
-    execCommand("GroupKill (",groupname,")");
+void XPS::homeGroups(){
+    for (int i=0;i!=_GROUP_NUM;i++) homeGroup(groups[i].ID);
+}
+void XPS::killGroup(GroupID ID){
+    execCommand("GroupKill (",groupGetName(ID),")");
     flushQueue();
 }
+void XPS::killGroups(){
+    for (int i=0;i!=_GROUP_NUM;i++) killGroup(groups[i].ID);
+}
+
 void XPS::flushQueue(){
     std::string tmp[2];
     mpq.lock();
@@ -86,9 +96,9 @@ void XPS::flushQueue(){
     mpq.unlock();
 }
 
-pPVTobj XPS::createNewPVTobj(std::string motion_group, std::string filename){
+pPVTobj XPS::createNewPVTobj(GroupID ID, std::string filename){
     pPVTobj a = new PVTobj;
-    a->groupname=motion_group;
+    a->groupname=groupGetName(ID);
     a->filename=filename;
     return a;
 }
@@ -155,45 +165,48 @@ std::string XPS::listPVTfiles(){
     return os.str();
 }
 
-void XPS::XYZMoveRelative(double dX,double dY, double dZ, bool limit){
-    std::lock_guard<std::mutex>lock(posmx);
-    pos.posX+=dX; pos.posY+=dY; pos.posZ+=dZ;
-    _XYZMoveAbsolute(limit);
+void XPS::MoveRelative(GroupID ID, double dX,double dY, double dZ, bool limit){
+    std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
+    axisCoords[ID].pos[0]+=dX; axisCoords[ID].pos[1]+=dY; axisCoords[ID].pos[2]+=dZ;
+    _MoveAbsolute(ID, limit);
 }
-void XPS::XYZMoveAbsolute(double X,double Y, double Z, bool limit){
-    std::lock_guard<std::mutex>lock(posmx);
-    pos.posX=X;   pos.posY=Y;   pos.posZ=Z;
-    _XYZMoveAbsolute(limit);
+void XPS::MoveAbsolute(GroupID ID, double X,double Y, double Z, bool limit){
+    std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
+    axisCoords[ID].pos[0]=X;   axisCoords[ID].pos[1]=Y;   axisCoords[ID].pos[2]=Z;
+    _MoveAbsolute(ID, limit);
 }
-XPS::axisp XPS::getXYZpos(){
-    std::lock_guard<std::mutex>lock(posmx);
-    return pos;
+XPS::raxis XPS::getPos(GroupID ID){
+    std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
+    return raxis(&axisCoords[ID]);
 }
-void XPS::getXYZpos(XPS::axisp& rpos){
-    std::lock_guard<std::mutex>lock(posmx);
-    rpos=pos;
+void XPS::getPos(GroupID ID, raxis& pos){
+    std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
+    pos=raxis(&axisCoords[ID]);
 }
 
-void XPS::_XYZMoveAbsolute(bool limit){
-    if(limit) XPS::axisp_restrict_pos(pos);
-    execCommand("GroupMoveAbsolute (",sw.XYZ_groupname.get(),",",pos.posX,",",pos.posY,",",pos.posZ,")");           //TODO perhaps implement move return value
+void XPS::_MoveAbsolute(GroupID ID, bool limit){        //the mutex should be locked by caller
+    if(limit) XPS::_restrict_pos(axisCoords[ID]);
+    execCommand("GroupMoveAbsolute (",groupGetName(ID),",",axisCoords[ID].pos[0],",",axisCoords[ID].pos[1],",",axisCoords[ID].pos[2],")");           //TODO perhaps implement move return value
 }
-void XPS::setLimit(elimit lim){
-    std::lock_guard<std::mutex>lock(posmx);
-    switch(lim){
-        case minX: pos.minX=pos.posX; break;
-        case minY: pos.minY=pos.posY; break;
-        case minZ: pos.minZ=pos.posZ; break;
-        case maxX: pos.maxX=pos.posX; break;
-        case maxY: pos.maxY=pos.posY; break;
-        case maxZ: pos.maxZ=pos.posZ; break;
+void XPS::setLimit(GroupID ID, int axis, elimit lim){   //the mutex should be locked by caller
+    if(axis<0||axis>=axisCoords[ID].num) {std::cerr<<"You tried using setlimit on a nonexistant axis.\n";return;}
+    if(lim==min)
+        axisCoords[ID].min[axis]=axisCoords[ID].pos[axis];
+    else if(lim==max)
+        axisCoords[ID].max[axis]=axisCoords[ID].pos[axis];
+}
+void XPS::_restrict_pos(axis& pos){                     //the mutex should be locked by caller
+    for(int i=0; i!=pos.num; i++){
+        if(pos.pos[i]<pos.min[i]) pos.pos[i]=pos.min[i];
+        else if(pos.pos[i]>pos.max[i]) pos.pos[i]=pos.max[i];
     }
 }
-void XPS::axisp_restrict_pos(axisp &poss){
-    if     (poss.minX>poss.posX) poss.posX=poss.minX;
-    else if(poss.maxX<poss.posX) poss.posX=poss.maxX;
-    if     (poss.minY>poss.posY) poss.posY=poss.minY;
-    else if(poss.maxY<poss.posY) poss.posY=poss.maxY;
-    if     (poss.minZ>poss.posZ) poss.posZ=poss.minZ;
-    else if(poss.maxZ<poss.posZ) poss.posZ=poss.maxZ;
+
+void XPS::groupSetName(GroupID ID, std::string name){
+    std::lock_guard<std::mutex>lock(gmx);
+    groups[ID].groupname=name;
+}
+std::string XPS::groupGetName(GroupID ID){
+    std::lock_guard<std::mutex>lock(gmx);
+    return groups[ID].groupname;
 }

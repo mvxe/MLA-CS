@@ -63,7 +63,8 @@ HEADERS += \
     UTIL/utility.h \
     UTIL/containers.h \
     UTIL/containers_template.h \
-    XPS/xps_template.h
+    XPS/xps_template.h \
+    XPS/hardcoded.h
 
 SOURCES += \
     MAKO/mako.cpp \
