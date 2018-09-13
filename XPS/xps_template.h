@@ -21,7 +21,7 @@ void XPS::execCommandStr(T value){
     eexecCommandStr(nstrm, nullptr, value);
 }
 template <typename T>
-void XPS::execCommandStr(xps_ret* ret ,T value){
+void XPS::execCommandStr(exec_ret* ret ,T value){
     std::stringstream* nstrm=new std::stringstream();
     return eexecCommandStr(nstrm, ret, value);
 }
@@ -31,7 +31,7 @@ void XPS::execCommandStr(T value, Args... args){
     eexecCommandStr(nstrm, nullptr, value, args...);
 }
 template<typename T, typename... Args>
-void XPS::execCommandStr(xps_ret* ret, T value, Args... args){
+void XPS::execCommandStr(exec_ret* ret, T value, Args... args){
     std::stringstream* nstrm=new std::stringstream();
     return eexecCommandStr(nstrm, ret, value, args...);
 }
@@ -43,7 +43,7 @@ void XPS::execCommand(std::string command, T value){
     eexecCommand(nstrm, nullptr, value);
 }
 template <typename T>
-void XPS::execCommand(xps_ret* ret ,std::string command, T value){
+void XPS::execCommand(exec_ret* ret ,std::string command, T value){
     std::stringstream* nstrm=new std::stringstream();
     *nstrm<<command<<"(";
     return eexecCommand(nstrm, ret, value);
@@ -55,14 +55,14 @@ void XPS::execCommand(std::string command, T value, Args... args){
     eexecCommand(nstrm, nullptr, value, args...);
 }
 template<typename T, typename... Args>
-void XPS::execCommand(xps_ret* ret, std::string command, T value, Args... args){
+void XPS::execCommand(exec_ret* ret, std::string command, T value, Args... args){
     std::stringstream* nstrm=new std::stringstream();
     *nstrm<<command<<"(";
     return eexecCommand(nstrm, ret, value, args...);
 }
 
 template <typename T>
-void XPS::eexecCommandStr(std::stringstream* strm, xps_ret* ret, T value){
+void XPS::eexecCommandStr(std::stringstream* strm, exec_ret* ret, T value){
     *strm<<value;
     {std::lock_guard<std::mutex>lock(mpq);
         priority_queue.push({strm->str(),ret});}
@@ -71,13 +71,13 @@ void XPS::eexecCommandStr(std::stringstream* strm, xps_ret* ret, T value){
     delete strm;
 }
 template<typename T, typename... Args>
-void XPS::eexecCommandStr(std::stringstream* strm, xps_ret* ret, T value, Args... args){
+void XPS::eexecCommandStr(std::stringstream* strm, exec_ret* ret, T value, Args... args){
     *strm<<value;
     return eexecCommandStr(strm, ret, args...);
 }
 
 template <typename T>
-void XPS::eexecCommand(std::stringstream* strm, xps_ret* ret, T value){
+void XPS::eexecCommand(std::stringstream* strm, exec_ret* ret, T value){
     *strm<<value<<")";
     {std::lock_guard<std::mutex>lock(mpq);
         priority_queue.push({strm->str(),ret});}
@@ -86,7 +86,7 @@ void XPS::eexecCommand(std::stringstream* strm, xps_ret* ret, T value){
     delete strm;
 }
 template<typename T, typename... Args>
-void XPS::eexecCommand(std::stringstream* strm, xps_ret* ret, T value, Args... args){
+void XPS::eexecCommand(std::stringstream* strm, exec_ret *ret, T value, Args... args){
     *strm<<value<<",";
     return eexecCommand(strm, ret, args...);
 }

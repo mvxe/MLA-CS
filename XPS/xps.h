@@ -45,7 +45,7 @@ class XPS : public TCP_con, public xps_hardcoded{
 private:
     struct execss{
         std::string comm;       //contains the command string to be executed
-        xps_ret* ret;           //see UTIL/containers for available functions, set to nullptr if no return is desired
+        exec_ret* ret;          //see UTIL/containers for available functions, set to nullptr if no return is desired
     };
 public:
     class raxis{
@@ -60,13 +60,13 @@ public:
 
     template <typename T>                     void execCommandStr(T value);
     template <typename T, typename... Args>   void execCommandStr(T value, Args... args);                  //exectue a command without return, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
-    template <typename T>                     void execCommandStr(xps_ret* ret, T value);
-    template <typename T, typename... Args>   void execCommandStr(xps_ret* ret, T value, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see xps_ret in UTIL/containers
+    template <typename T>                     void execCommandStr(exec_ret* ret, T value);
+    template <typename T, typename... Args>   void execCommandStr(exec_ret* ret, T value, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see xps_ret in UTIL/containers
 
     template <typename T>                     void execCommand(std::string command, T value);              //same as above command, except it automatically adds brackets and comas, for example  <command>(<arg0>,<arg1>,<arg2>...) and sends that to eexecCommandStr
     template <typename T, typename... Args>   void execCommand(std::string command, T value, Args... args);
-    template <typename T>                     void execCommand(xps_ret* ret, std::string command, T value);
-    template <typename T, typename... Args>   void execCommand(xps_ret* ret, std::string command, T value, Args... args);
+    template <typename T>                     void execCommand(exec_ret* ret, std::string command, T value);
+    template <typename T, typename... Args>   void execCommand(exec_ret* ret, std::string command, T value, Args... args);
 
     void initGroup(GroupID ID);
     void initGroups();
@@ -80,8 +80,8 @@ public:
     pPVTobj createNewPVTobj(GroupID ID, std::string filename);
     void destroyPVTobj(pPVTobj obj);                                    //deallocates it
     std::string copyPVToverFTP(pPVTobj obj);                            //if successful, returns an empty string, else a string containing the error message
-    xps_dat verifyPVTobj(pPVTobj obj);                                  //returns the verification result
-    xps_dat execPVTobj(pPVTobj obj);
+    exec_dat verifyPVTobj(pPVTobj obj);                                  //returns the verification result
+    exec_dat execPVTobj(pPVTobj obj);
 
     std::atomic<bool> limit;        //set to false to disable limits for the next move command (it is automatically set to true afterwards), the atomic type is thread safe
     template<typename... Args>  void MoveRelative(GroupID ID, double val, Args... vals);
@@ -98,11 +98,11 @@ public:
     std::string groupGetName(GroupID ID);
 
 private:
-    template <typename T>                    void eexecCommandStr(std::stringstream* strm, xps_ret* ret, T value);
-    template <typename T, typename... Args>  void eexecCommandStr(std::stringstream* strm, xps_ret* ret, T value, Args... args);
+    template <typename T>                    void eexecCommandStr(std::stringstream* strm, exec_ret* ret, T value);
+    template <typename T, typename... Args>  void eexecCommandStr(std::stringstream* strm, exec_ret* ret, T value, Args... args);
 
-    template <typename T>                    void eexecCommand(std::stringstream* strm, xps_ret* ret, T value);
-    template <typename T, typename... Args>  void eexecCommand(std::stringstream* strm, xps_ret* ret, T value, Args... args);
+    template <typename T>                    void eexecCommand(std::stringstream* strm, exec_ret* ret, T value);
+    template <typename T, typename... Args>  void eexecCommand(std::stringstream* strm, exec_ret* ret, T value, Args... args);
 
     template<typename... Args>  void _MoveRelative(int n, GroupID ID, double val, Args... vals);
     void _MoveRelative(int n, GroupID ID, double val);

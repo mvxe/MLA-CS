@@ -34,22 +34,22 @@ protected:
     _fo* tfvec;
 };
 
-/*########## xps_dat ##########
- * provides a muxed container for XPS queue
+/*########## exec_dat ##########
+ * provides a muxed container for exec queue
  */
 
-struct xps_dat{
+struct exec_dat{
     std::string retstr;
     int retval;
 };
-class xps_ret{
+class exec_ret{
 public:
-    xps_ret();
-    bool block_till_done();             //for client function, returns true if an error value was given by the xps
+    exec_ret();
+    bool block_till_done();             //for client function, returns true if an error value was given
     bool check_if_done();               //for client function, returns true if data can be accessed
-    void set_value(std::string val);    //for server(xps) function , these three are thread safe
+    void set_value(std::string val);    //for server thread function , these three are thread safe
 
-    xps_dat v;                 //once one of the first two commands indicate it is done, the client can directly access the two vars (DO NOT DESTROY OBJECT BEFORE IT RETURNS A VALUE!! unless you like segfaults, that is)
+    exec_dat v;                 //once one of the first two commands indicate it is done, the client can directly access the two vars (DO NOT DESTROY OBJECT BEFORE IT RETURNS A VALUE!! unless you like segfaults, that is)
 protected:
     std::mutex mx;
     bool done;

@@ -128,15 +128,15 @@ std::string XPS::copyPVToverFTP(pPVTobj obj){
     obj->verified=false;
     return os.str();
 }
-xps_dat XPS::verifyPVTobj(pPVTobj obj){
-    xps_ret ret;
+exec_dat XPS::verifyPVTobj(pPVTobj obj){
+    exec_ret ret;
     execCommand(&ret, "MultipleAxesPVTVerification",groupGetName(obj->ID),obj->filename);
     ret.block_till_done();
     obj->verified=(ret.v.retval==0);
     return ret.v;
 }
-xps_dat XPS::execPVTobj(pPVTobj obj){
-    xps_ret ret;
+exec_dat XPS::execPVTobj(pPVTobj obj){
+    exec_ret ret;
     if (!obj->verified) return ret.v;  //retval should be -9999 indicating an error
     execCommand(&ret, "MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
     ret.block_till_done();

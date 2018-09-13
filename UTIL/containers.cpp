@@ -1,9 +1,9 @@
 #include "containers.h"
 
-/*########## xps_dat ##########*/
+/*########## exec_dat ##########*/
 
-xps_ret::xps_ret(): done(false) {v.retval=-9999;}
-bool xps_ret::block_till_done(){
+exec_ret::exec_ret(): done(false) {v.retval=-9999;}
+bool exec_ret::block_till_done(){
     for(;;){
         {std::lock_guard<std::mutex>lock(mx);
             if(done) break;}
@@ -11,11 +11,11 @@ bool xps_ret::block_till_done(){
     }
     return (v.retval!=0);
 }
-bool xps_ret::check_if_done(){
+bool exec_ret::check_if_done(){
     std::lock_guard<std::mutex>lock(mx);      //just as a ref, the mutex is unlocked after lk destructs, which happens AFTER the return var is copied so this is thread safe
     return done;
 }
-void xps_ret::set_value(std::string val){
+void exec_ret::set_value(std::string val){
     std::lock_guard<std::mutex>lock(mx);
     if(done) return;    //to prevent multiple access, just in case
     v.retstr=val;
