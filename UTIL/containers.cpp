@@ -1,10 +1,6 @@
 #include "containers.h"
 
-/*     FILE SAVE CONTAINER - CC_SAVE        */
-
-    // see mutex_containers_impl.h
-
-/*     MUXED STRING CONTAINER FOR XPS QUEUE        */
+/*########## xps_dat ##########*/
 
 xps_ret::xps_ret(): done(false) {v.retval=-9999;}
 bool xps_ret::block_till_done(){
@@ -27,3 +23,39 @@ void xps_ret::set_value(std::string val){
     tmp>>v.retval;
     done=true;
 }
+
+
+
+
+
+/*########## som functions for internal use ##########*/
+#include <globals.h>    //here to prevent excessive interlinking
+void _containers_internal::quit(){
+    go.quit();
+}
+
+        /*########## tsvar_save_ip ##########*/
+
+        bool tsvar_save_ip::check(std::string nvar){
+            int n = 0;
+            int nums[4];
+            for (int i=0;i!=nvar.size();i++){
+                if (nvar[i]=='.') n++;
+                else if (nvar[i]>='0' && nvar[i]<='9');
+                else {      //character not a number or dot: let it go, maybe its a hostname}
+                    is_name=true;
+                    return false;
+                }
+            }
+            if (n!=3 || sscanf(nvar.c_str(),"%d.%d.%d.%d",&nums[0],&nums[1],&nums[2],&nums[3])!=4) return true;     //must be three dots and three numbers
+            for (int i=0;i!=4;i++) if (nums[i]<0 || nums[i]>255) return true;
+            is_name=false;
+            return false;
+        }
+
+        /*########## tsvar_save_port ##########*/
+
+        bool tsvar_save_port::check(int nvar){
+            if (nvar<0 || nvar>65535) return true;
+            return false;
+        }

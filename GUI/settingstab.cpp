@@ -3,10 +3,10 @@
 
 void MainWindow::sync_settings(){
     ui->sl_expo->blockSignals(true);
-    ui->e_xps_ip->setText(QString::fromStdString(sw.XPS_ip.get()));
-    ui->e_xps_port->setValue(sw.XPS_port.get());
+    ui->e_xps_ip->setText(QString::fromStdString(go.pXPS->IP.get()));
+    ui->e_xps_port->setValue(go.pXPS->port.get());
     ui->e_xps_xyz->setText(QString::fromStdString(go.pXPS->groupGetName(XPS::mgroup_XYZ)));
-    ui->e_xps_timeout->setValue(sw.XPS_keepalive.get());
+    ui->e_xps_timeout->setValue(go.pXPS->keepalive.get());
 
     ui->e_rpty_ip->setText(QString::fromStdString(sw.RPTY_ip.get()));
     ui->e_rpty_port->setValue(sw.RPTY_port.get());
@@ -23,11 +23,13 @@ void MainWindow::sync_settings(){
 }
 
 
-void MainWindow::on_e_xps_ip_editingFinished()      {lineedit_fun(ui->e_xps_ip,&sw.XPS_ip);}
-void MainWindow::on_e_xps_port_editingFinished()    {spinbox_fun(ui->e_xps_port,&sw.XPS_port);}
-void MainWindow::on_e_xps_xyz_editingFinished()     {go.pXPS->groupSetName(XPS::mgroup_XYZ, ui->e_xps_xyz->text().toStdString());           //TODO add call to reset XPS
-                                                     ui->e_xps_xyz->clearFocus();}
-void MainWindow::on_e_xps_timeout_editingFinished() {spinbox_fun(ui->e_xps_timeout,&sw.XPS_keepalive);}
+void MainWindow::on_e_xps_ip_editingFinished()      {lineedit_fun(ui->e_xps_ip,&go.pXPS->IP);}
+void MainWindow::on_e_xps_port_editingFinished()    {spinbox_fun(ui->e_xps_port,&go.pXPS->port);}
+void MainWindow::on_e_xps_xyz_editingFinished()     {ui->e_xps_xyz->blockSignals(true); //this prevents two signals to emmit when pressing enter (a QT bug workaround)
+                                                     go.pXPS->groupSetName(XPS::mgroup_XYZ, ui->e_xps_xyz->text().toStdString());
+                                                     ui->e_xps_xyz->clearFocus();
+                                                     ui->e_xps_xyz->blockSignals(false);}
+void MainWindow::on_e_xps_timeout_editingFinished() {spinbox_fun(ui->e_xps_timeout,&go.pXPS->keepalive);}
 
 void MainWindow::on_e_rpty_ip_editingFinished()     {lineedit_fun(ui->e_rpty_ip,&sw.RPTY_ip);}
 void MainWindow::on_e_rpty_port_editingFinished()   {spinbox_fun(ui->e_rpty_port,&sw.RPTY_port);}
@@ -58,15 +60,17 @@ void MainWindow::on_btn_Y_inc_released(){go.pXPS->limit=false; go.pXPS->MoveRela
 void MainWindow::on_btn_Z_inc_released(){go.pXPS->limit=false; go.pXPS->MoveRelative(XPS::mgroup_XYZ,0,0,1);}
 
 void MainWindow::GUI_update(){
-    if (sw.XPS_connected.changed())
-        ui->si_XPS->setPixmap(sw.XPS_connected.get()?*px_online:*px_offline);
+    if (xps_con!=go.pXPS->connected){
+        xps_con=go.pXPS->connected;
+        ui->si_XPS->setPixmap(xps_con?*px_online:*px_offline);
+    }
     if (sw.iuScope_connected.changed())
         ui->si_iuScope->setPixmap(sw.iuScope_connected.get()?*px_online:*px_offline);
     if (sw.RPTY_connected.changed())
         ui->si_RPTY->setPixmap(sw.RPTY_connected.get()?*px_online:*px_offline);
 
-    if (sw.XPS_ip.resolved.changed())
-        ui->e_xps_ip_resolved->setText(QString::fromStdString(sw.XPS_ip.is_name?sw.XPS_ip.resolved.get():" "));
+    if (go.pXPS->IP.resolved.changed())
+        ui->e_xps_ip_resolved->setText(QString::fromStdString(go.pXPS->IP.is_name?go.pXPS->IP.resolved.get():" "));
 
     if(sw.iuScope_expo.changed())
         ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",sw.iuScope_expo.get()," us")));

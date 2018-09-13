@@ -84,6 +84,7 @@ private:
     QPixmap* px_offline;
 
     int dialval;
+    bool xps_con;
 };
 
 class mtlabel : public QLabel{

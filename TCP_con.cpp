@@ -42,11 +42,11 @@ void TCP_con::connect(int timeout_ms){
 
     sock = socket(hints.ai_family, hints.ai_socktype, hints.ai_protocol);
     if (sock < 0){
-        std::cerr << "Cannot open socket.\n";
+        std::cerr << "ERROR: Cannot open socket.\n";
         go.quit();
     }
     if (setsockopt (sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout))<0){   //receive timeout fucks it up: setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout))<0 ||
-        std::cerr << "Cannot set socket timeout.\n";
+        std::cerr << "ERROR: Cannot set socket timeout.\n";
         go.quit();
     }
     int err = ::connect(sock, (struct sockaddr *)&servernm , sizeof(servernm));

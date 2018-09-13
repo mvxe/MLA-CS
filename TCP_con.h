@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <string.h> //for bzero
+#include <atomic>
 
 /* this is a class that can be used for TCP communication*/
 #define BLOCK_SIZE	1024
@@ -24,12 +25,10 @@ public:
     int write(std::string write_string);                        //returns number of characters written
     int read(std::string &read_string);                         //returns number of characters read
     int rw(std::string write_string,std::string &read_string);  //returns number of characters read
-    //TODO implement TCL scripts
-    //TODO implement PVT support
-    const bool& connected;
+    const std::atomic<bool>& connected;                         //thread safe var to see if connected
 
 protected:
-    bool _connected;
+    std::atomic<bool> _connected;
     struct addrinfo *captr, hints;   //captr is nullptr if unresolved
     struct sockaddr_in servernm;
     int sock;

@@ -21,34 +21,33 @@ XPS::~XPS(){
 void XPS::run(){    //this is the XPS thread loop
     std::string tmp;
     for (;;){
-        sw.XPS_connected.set(connected);
-        while (!connected && !sw.XPS_end.get()){
+        while (!connected && !end.get()){
                 //resolving...
             std::string resname;    //this is when user enters hostname instead of ip
-            if (resolve(sw.XPS_ip.get(), sw.XPS_port.get(), &resname)){
+            if (resolve(IP.get(), port.get(), &resname)){
                 resname = "cannot resolve this hostname";
-                std::this_thread::sleep_for (std::chrono::milliseconds(sw.XPS_keepalive.get()));
+                std::this_thread::sleep_for (std::chrono::milliseconds(keepalive.get()));
             }
             else{
                     //connecting...
-                connect(sw.XPS_keepalive.get());
-                if (connected) {initGroups();homeGroups();}
+                connect(keepalive.get());
+                if (connected) {initGroups();homeGroups();flushQueue();}
             }
-            sw.XPS_ip.resolved.set(resname);
+            IP.resolved.set(resname);
         }
-        if(sw.XPS_ip.changed() || sw.XPS_port.changed()) {killGroups();disconnect();}  //if the user changes the IP or port setting we disconnect
+        if(connected && (IP.changed() || port.changed())) {killGroups();flushQueue();disconnect();}  //if the user changes the IP or port setting we disconnect
 
         std::this_thread::sleep_for (std::chrono::milliseconds(1));
         if (connected)
             flushQueue();
 
-        if(sw.XPS_end.get()){
+        if(end.get()){
             if (connected){
                 killGroups();
+                flushQueue();
                 disconnect();
             }
             std::cout<<"XPS thread exited.\n";
-            sw.XPS_end.set(false);
             return;
         }
     }
@@ -57,21 +56,18 @@ void XPS::run(){    //this is the XPS thread loop
 
 void XPS::initGroup(GroupID ID){                 //add a queue containing groups, add command initGroups that inits them all, do this for commands below too
     execCommand("GroupInitialize",groupGetName(ID));
-    flushQueue();
 }
 void XPS::initGroups(){
     for (int i=0;i!=_GROUP_NUM;i++) initGroup(groups[i].ID);
 }
 void XPS::homeGroup(GroupID ID){
     execCommand("GroupHomeSearchAndRelativeMove",groupGetName(ID), axisCoords[ID].pos[0], axisCoords[ID].pos[1], axisCoords[ID].pos[2]);
-    flushQueue();
 }
 void XPS::homeGroups(){
     for (int i=0;i!=_GROUP_NUM;i++) homeGroup(groups[i].ID);
 }
 void XPS::killGroup(GroupID ID){
     execCommand("GroupKill",groupGetName(ID));
-    flushQueue();
 }
 void XPS::killGroups(){
     for (int i=0;i!=_GROUP_NUM;i++) killGroup(groups[i].ID);
@@ -114,7 +110,7 @@ std::string XPS::copyPVToverFTP(pPVTobj obj){
     try{
         cURLpp::Easy ftpHandle;
         if (obj->data.str().size()==0) return "stream is empty!\n";
-        ftpHandle.setOpt(cURLpp::Options::Url(util::toString("ftp://",sw.XPS_ip.get(),TRAJ_PATH,obj->filename).c_str()));
+        ftpHandle.setOpt(cURLpp::Options::Url(util::toString("ftp://",IP.get(),TRAJ_PATH,obj->filename).c_str()));
         ftpHandle.setOpt(cURLpp::Options::UserPwd("Administrator:Administrator"));
         ftpHandle.setOpt(cURLpp::Options::ReadStream(&obj->data));
         ftpHandle.setOpt(cURLpp::Options::InfileSize(obj->data.str().size()));
@@ -152,7 +148,7 @@ std::string XPS::listPVTfiles(){
     std::lock_guard<std::mutex>lock(ftpmx);
     try{
         cURLpp::Easy ftpHandle;
-        ftpHandle.setOpt(cURLpp::Options::Url(util::toString("ftp://",sw.XPS_ip.get(),TRAJ_PATH).c_str()));
+        ftpHandle.setOpt(cURLpp::Options::Url(util::toString("ftp://",IP.get(),TRAJ_PATH).c_str()));
         ftpHandle.setOpt(cURLpp::Options::UserPwd("Administrator:Administrator"));
         curlpp::options::WriteStream ws(&os);
         ftpHandle.setOpt(ws);
@@ -217,8 +213,13 @@ void XPS::_restrict_pos(axis& pos){ //the mutex should be locked by caller
 }
 
 void XPS::groupSetName(GroupID ID, std::string name){
-    std::lock_guard<std::mutex>lock(gmx);
-    groups[ID].groupname=name;
+    if(connected) killGroup(ID);
+    {std::lock_guard<std::mutex>lock(gmx);
+    groups[ID].groupname=name;}
+    if(connected){
+        initGroup(ID);
+        homeGroup(ID);
+    }
 }
 std::string XPS::groupGetName(GroupID ID){
     std::lock_guard<std::mutex>lock(gmx);

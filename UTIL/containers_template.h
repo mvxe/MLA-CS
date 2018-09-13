@@ -2,7 +2,7 @@
 #define CONTAINERSTEMPLATE_H
 #include "containers.h"         //include not needed, but qtcreator recognizes external types and colors them if It's there
 
-/*     FILE SAVE CONTAINER - CC_SAVE        */
+/*########## cc_save ##########*/
 
 template <typename T> cc_save<T>::cc_save(T& var, T initial, _savelst* vec, std::string name): val(var){
     val = initial;
@@ -26,6 +26,43 @@ template <typename T> cc_save<T>::~cc_save(){
         ss<<val;
         tfvec->strval=ss.str();
     }
+}
+
+
+/*########## tsvar ##########*/
+
+template <typename T>
+tsvar<T>::tsvar(std::mutex *mxn, T initial): mx(mxn){
+    var = initial;
+    change = false;
+}
+template <typename T>
+bool tsvar<T>::set(T nvar){
+    if(check(nvar)) return true;
+    std::lock_guard<std::mutex>lock(*mx);
+    var = nvar;
+    change = true;
+    return false;
+}
+template <typename T>
+T tsvar<T>::get(bool silent){
+    std::lock_guard<std::mutex>lock(*mx);
+    if (!silent) change = false;
+    return var;
+}
+template <typename T>
+bool tsvar<T>::changed(){
+    std::lock_guard<std::mutex>lock(*mx);
+    return change;
+}
+template <typename T>
+bool tsvar<T>::check(T nvar){
+    return false;
+}
+template <typename T>
+void tsvar<T>::err(T initial){
+    std::cerr << "ERROR: A container of tsvar was initialized with an invalid value ( " << initial << " ).\n";
+    _containers_internal::quit();
 }
 
 #endif // CONTAINERSTEMPLATE_H

@@ -32,7 +32,7 @@ void globals::cleanup(){
     MAKO_thread.join();
     delete pMAKO;
 
-    sw.XPS_end.set(true);
+    go.pXPS->end.set(true);
     XPS_thread.join();
     delete pXPS;
 

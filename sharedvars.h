@@ -44,14 +44,8 @@ public:
     std::mutex GUI_GL;
     mxbool GUI_disable = mxbool(&GUI_GL);
 
-    /* GUI <-> XPS thread communication */
-    std::mutex GUI_XPS;
-    mxvar_ip XPS_ip = mxvar_ip(&GUI_XPS, std::string("192.168.0.254"),&var,"XPS_ip");
-    mxvar_port XPS_port = mxvar_port(&GUI_XPS, 5001,&var,"XPS_port");
-    mxvar<int> XPS_keepalive = mxvar<int>(&GUI_XPS, 500,&var,"XPS_keepalive");     //keepalive and connect timeout, in ms
-    mxva<bool> XPS_end = mxva<bool>(&GUI_XPS,false);                               //for signaling the XPS thread it's time to close
-    mxva<bool> XPS_connected = mxva<bool>(&GUI_XPS,false);                         //XPS thread -> GUI
 
+    std::mutex GUI_XPS;
         //these vars are really GUI only
     mxvar<int> xps_x_sen = mxvar<int>(&GUI_XPS,100,&var,"xps_x_sen");
     mxvar<int> xps_y_sen = mxvar<int>(&GUI_XPS,100,&var,"xps_y_sen");

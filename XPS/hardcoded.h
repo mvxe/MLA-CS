@@ -58,6 +58,12 @@ protected:
     cc_save<double>* save_axisCoords[3*8*_GROUP_NUM];   //not all of these are used
     axis axisCoords[_GROUP_NUM];    //this contains current positions, min and max limits for all group axes, and automatically saves and reads them from a config file
 public:
+    std::mutex smx;
+    tsvar_save_ip IP = tsvar_save_ip(&smx, "192.168.0.254", &go.config.save, "XPS_IP");
+    tsvar_save_port port = tsvar_save_port(&smx, 5001, &go.config.save, "XPS_port");
+    tsvar_save<unsigned> keepalive = tsvar_save<unsigned>(&smx, 500, &go.config.save, "XPS_keepalive");     //keepalive and connect timeout, in ms
+    tsvar<bool> end = tsvar<bool>(&smx, false);                                                             //for signaling the XPS thread it's time to close
+
     xps_hardcoded(){
         for (int i=0;i!=_GROUP_NUM;i++){
             save_groupnames[i]=new cc_save<std::string>(groups[i].groupname, groups[i].groupname, &go.config.save, util::toString("groupname_",i));    //read group names from config file (new calls the cc_save constructor which reads the old value from config file, if it exists)
@@ -79,7 +85,6 @@ public:
             }
         }
     }
-
 };
 
 

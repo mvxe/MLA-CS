@@ -8,18 +8,18 @@ MAKO::MAKO() : vsys( AVT::VmbAPI::VimbaSystem::GetInstance()), iuScope(this, sw.
     sw.MAKO_cam_desc.set(new std::vector<_dcams>());
     VmbErrorType errc = vsys.Startup();
     if (errc!=VmbErrorSuccess){
-        std::cerr<<"Vimba system startup error: "<<errc<<".\n";
+        std::cerr<<"ERROR: Vimba system startup error: "<<errc<<".\n";
         go.quit();
     }
     errc = vsys.RegisterCameraListObserver(AVT::VmbAPI::ICameraListObserverPtr(new CamObserver()));
     if (errc!=VmbErrorSuccess){
-        std::cerr<<"Vimba system event error: "<<errc<<".\n";
+        std::cerr<<"ERROR: Vimba system event error: "<<errc<<".\n";
         go.quit();
     }
 }
 MAKO::~MAKO(){
     if (vsys.Shutdown()!=VmbErrorSuccess){
-        std::cerr<<"Vimba system shutdown error.\n";
+        std::cerr<<"ERROR: Vimba system shutdown error.\n";
         go.quit();
     }
 }
@@ -72,7 +72,7 @@ void MAKO::list_cams(){
         sw.MAKO_cam_desc.get()->back().description = "";
     }
     else {
-        std::cerr<<"Vimba error getting cameras: "<<errc<<".\n";
+        std::cerr<<"ERROR: Vimba error getting cameras: "<<errc<<".\n";
         go.quit();
     }
 }
