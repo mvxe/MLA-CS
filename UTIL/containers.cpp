@@ -24,10 +24,6 @@ void xps_ret::set_value(std::string val){
     done=true;
 }
 
-
-
-
-
 /*########## som functions for internal use ##########*/
 #include <globals.h>    //here to prevent excessive interlinking
 void _containers_internal::quit(){
@@ -59,3 +55,20 @@ void _containers_internal::quit(){
             if (nvar<0 || nvar>65535) return true;
             return false;
         }
+
+
+/*########## tsbool ##########
+bool container with expiration time*/
+
+tsbool::tsbool(std::mutex *mxn) : mx(mxn), var(false){time(&mf);}
+void tsbool::set(bool nvar, double expt){
+    std::lock_guard<std::mutex>lock(*mx);
+    exp_time=expt;
+    var = nvar;
+    time(&mf);
+}
+bool tsbool::get(){
+    std::lock_guard<std::mutex>lock(*mx);
+    if (difftime(time(NULL),mf)>exp_time) var = false;
+    return var;
+}

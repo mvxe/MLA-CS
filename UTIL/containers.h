@@ -113,6 +113,22 @@ protected:
             bool check(int nvar) override;
         };
 
+/*########## tsbool ##########
+bool container with expiration time*/
+
+class tsbool{
+public:
+    tsbool(std::mutex *mxn);
+    void set(bool nvar, double expt=0);      //after exp time this returns to false
+    bool get();
+protected:
+    double exp_time;
+    time_t mf;
+    std::mutex *mx;
+    bool var;
+};
+
+
 #include "containers_template.h"
 
 #endif // CONTAINERS_H
