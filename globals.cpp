@@ -1,4 +1,5 @@
 #include "globals.h"
+#include "mainwindow.h".h"
 #include "UTIL/utility.h"
 #include "MAKO/frame_queues.h"
 #include "XPS/xps.h"
@@ -7,7 +8,7 @@ globals go;
 
 globals::globals() : started(false){}
 globals::~globals(){}
-void globals::startup(){
+void globals::startup(int argc, char *argv[]){
     if (started) return; started=true;
 
     cURLpp::initialize(CURL_GLOBAL_ALL);     //we init the curl lib needed for FTP
@@ -17,6 +18,11 @@ void globals::startup(){
 
     pMAKO=new MAKO();
     MAKO_thread = std::thread(&MAKO::run, pMAKO);
+
+    qapp = new QApplication(argc, argv);
+    MainWindow w(qapp);
+    w.show();
+    qapp->exec();
 }
 void globals::cleanup(){
     if (!go_mx.try_lock()) return;
@@ -33,6 +39,9 @@ void globals::cleanup(){
     cURLpp::terminate();                    //we terminate curl
     std::cout<<"All threads exited successfully!\n";
     go_mx.unlock();
+}
+void globals::quit(){
+    qapp->quit();
 }
 
         /* config_save */

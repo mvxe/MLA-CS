@@ -15,6 +15,7 @@ class MainWindow : public QMainWindow , public GUI_slots_baseclass
 public:
     explicit MainWindow(QApplication* qapp, QWidget *parent = 0);
     ~MainWindow();
+
 private slots:
     void sync_settings();
     void GUI_update();

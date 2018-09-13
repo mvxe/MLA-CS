@@ -21,6 +21,7 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
 MainWindow::~MainWindow(){
     delete ui;
 }
+
 void MainWindow::program_exit(){
     timer->stop();
     go.cleanup();
@@ -79,8 +80,8 @@ void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
     po->add(1,0,0,0,0,0,0);
     po->add(1,-1,-1,-1,-1,-1,-1);
     po->add(1,0,0,0,0,0,0);
-    std::cout<<go.pXPS->copyPVToverFTP(po);
-    std::cout<<go.pXPS->verifyPVTobj(po).retstr;
-    std::cout<<go.pXPS->execPVTobj(po).retstr;
+    std::cout<<go.pXPS->copyPVToverFTP(po)<<"\n";
+    std::cout<<go.pXPS->verifyPVTobj(po).retstr<<"\n";
+    std::cout<<go.pXPS->execPVTobj(po).retstr<<"\n";
     go.pXPS->destroyPVTobj(po);
 }

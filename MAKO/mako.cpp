@@ -1,4 +1,5 @@
 #include "mako.h"
+#include "globals.h"
 
 MAKO::MAKO() : vsys( AVT::VmbAPI::VimbaSystem::GetInstance()), iuScope(this, sw.iuScopeID, sw.iuScope_connected){             //init new cameras here!
     sw.iuScope_st=&iuScope;
@@ -8,18 +9,18 @@ MAKO::MAKO() : vsys( AVT::VmbAPI::VimbaSystem::GetInstance()), iuScope(this, sw.
     VmbErrorType errc = vsys.Startup();
     if (errc!=VmbErrorSuccess){
         std::cerr<<"Vimba system startup error: "<<errc<<".\n";
-        exit (EXIT_FAILURE);
+        go.quit();
     }
     errc = vsys.RegisterCameraListObserver(AVT::VmbAPI::ICameraListObserverPtr(new CamObserver()));
     if (errc!=VmbErrorSuccess){
         std::cerr<<"Vimba system event error: "<<errc<<".\n";
-        exit (EXIT_FAILURE);
+        go.quit();
     }
 }
 MAKO::~MAKO(){
     if (vsys.Shutdown()!=VmbErrorSuccess){
         std::cerr<<"Vimba system shutdown error.\n";
-        exit (EXIT_FAILURE);
+        go.quit();
     }
 }
 
@@ -72,6 +73,6 @@ void MAKO::list_cams(){
     }
     else {
         std::cerr<<"Vimba error getting cameras: "<<errc<<".\n";
-        exit (EXIT_FAILURE);
+        go.quit();
     }
 }

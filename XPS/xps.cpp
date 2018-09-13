@@ -5,13 +5,15 @@ void PVTobj::clear(){
     data.str(std::string());
 }
 
-void PVTobj::add(double val){
+void PVTobj::_add(int n, double val){
+    n++;
+    if(n!=(1+2*go.pXPS->groups[ID].AxisNum)) {std::cerr<<"ERROR: You tried to add a line into a PVT file with the wrong number of parameters for group "<<go.pXPS->groupGetName(ID)<<", gave "<<n<<" pars but "<<go.pXPS->groups[ID].AxisNum<<" axes are defined for this group.\n"; go.quit();}
     data<<val<<"\n";
 }
 
     /*~~~ XPS ~~~*/
 
-XPS::XPS() : _writef(false){
+XPS::XPS() : _writef(false), limit(true){
     TCP_con();
 }
 XPS::~XPS(){
@@ -54,21 +56,21 @@ void XPS::run(){    //this is the XPS thread loop
 
 
 void XPS::initGroup(GroupID ID){                 //add a queue containing groups, add command initGroups that inits them all, do this for commands below too
-    execCommand("GroupInitialize (",groupGetName(ID),")");
+    execCommand("GroupInitialize",groupGetName(ID));
     flushQueue();
 }
 void XPS::initGroups(){
     for (int i=0;i!=_GROUP_NUM;i++) initGroup(groups[i].ID);
 }
 void XPS::homeGroup(GroupID ID){
-    execCommand("GroupHomeSearchAndRelativeMove (",groupGetName(ID), ",", axisCoords[ID].pos[0],",",axisCoords[ID].pos[1],",",axisCoords[ID].pos[2],")");
+    execCommand("GroupHomeSearchAndRelativeMove",groupGetName(ID), axisCoords[ID].pos[0], axisCoords[ID].pos[1], axisCoords[ID].pos[2]);
     flushQueue();
 }
 void XPS::homeGroups(){
     for (int i=0;i!=_GROUP_NUM;i++) homeGroup(groups[i].ID);
 }
 void XPS::killGroup(GroupID ID){
-    execCommand("GroupKill (",groupGetName(ID),")");
+    execCommand("GroupKill",groupGetName(ID));
     flushQueue();
 }
 void XPS::killGroups(){
@@ -98,7 +100,7 @@ void XPS::flushQueue(){
 
 pPVTobj XPS::createNewPVTobj(GroupID ID, std::string filename){
     pPVTobj a = new PVTobj;
-    a->groupname=groupGetName(ID);
+    a->ID=ID;
     a->filename=filename;
     return a;
 }
@@ -132,7 +134,7 @@ std::string XPS::copyPVToverFTP(pPVTobj obj){
 }
 xps_dat XPS::verifyPVTobj(pPVTobj obj){
     xps_ret ret;
-    execCommand(&ret, "MultipleAxesPVTVerification (",obj->groupname,",",obj->filename,")");
+    execCommand(&ret, "MultipleAxesPVTVerification",groupGetName(obj->ID),obj->filename);
     ret.block_till_done();
     obj->verified=(ret.v.retval==0);
     return ret.v;
@@ -140,7 +142,7 @@ xps_dat XPS::verifyPVTobj(pPVTobj obj){
 xps_dat XPS::execPVTobj(pPVTobj obj){
     xps_ret ret;
     if (!obj->verified) return ret.v;  //retval should be -9999 indicating an error
-    execCommand(&ret, "MultipleAxesPVTExecution (",obj->groupname,",",obj->filename,",1)");
+    execCommand(&ret, "MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
     ret.block_till_done();
     return ret.v;
 }
@@ -165,16 +167,7 @@ std::string XPS::listPVTfiles(){
     return os.str();
 }
 
-void XPS::MoveRelative(GroupID ID, double dX,double dY, double dZ, bool limit){
-    std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
-    axisCoords[ID].pos[0]+=dX; axisCoords[ID].pos[1]+=dY; axisCoords[ID].pos[2]+=dZ;
-    _MoveAbsolute(ID, limit);
-}
-void XPS::MoveAbsolute(GroupID ID, double X,double Y, double Z, bool limit){
-    std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
-    axisCoords[ID].pos[0]=X;   axisCoords[ID].pos[1]=Y;   axisCoords[ID].pos[2]=Z;
-    _MoveAbsolute(ID, limit);
-}
+
 XPS::raxis XPS::getPos(GroupID ID){
     std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
     return raxis(&axisCoords[ID]);
@@ -184,18 +177,39 @@ void XPS::getPos(GroupID ID, raxis& pos){
     pos=raxis(&axisCoords[ID]);
 }
 
-void XPS::_MoveAbsolute(GroupID ID, bool limit){        //the mutex should be locked by caller
+void XPS::MoveRelative(GroupID ID, double val){
+    std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
+    _MoveRelative(0, ID, val);
+}
+void XPS::MoveAbsolute(GroupID ID, double val){
+    std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
+    _MoveAbsolute(0, ID, val);
+}
+void XPS::_MoveRelative(int n, GroupID ID, double val){
+    axisCoords[ID].pos[n]+=val; n++;
+    if(n!=groups[ID].AxisNum) {std::cerr<<"ERROR: You called MoveRelative with the wrong number of parameters for group "<<groupGetName(ID)<<", gave "<<n<<" pars but "<<groups[ID].AxisNum<<" axes are defined for this group.\n"; go.quit();}
+    __MoveAbsolute(ID);
+}
+void XPS::_MoveAbsolute(int n, GroupID ID, double val){
+    axisCoords[ID].pos[n]=val; n++;
+    if(n!=groups[ID].AxisNum) {std::cerr<<"ERROR: You called MoveAbsolute with the wrong number of parameters for group "<<groupGetName(ID)<<", gave "<<n<<" pars but "<<groups[ID].AxisNum<<" axes are defined for this group.\n"; go.quit();}
+    __MoveAbsolute(ID);
+}
+
+void XPS::__MoveAbsolute(GroupID ID){ //the mutex should be locked by caller
     if(limit) XPS::_restrict_pos(axisCoords[ID]);
-    execCommand("GroupMoveAbsolute (",groupGetName(ID),",",axisCoords[ID].pos[0],",",axisCoords[ID].pos[1],",",axisCoords[ID].pos[2],")");           //TODO perhaps implement move return value
+    else limit=true;
+    execCommand("GroupMoveAbsolute",groupGetName(ID),axisCoords[ID].pos[0],axisCoords[ID].pos[1],axisCoords[ID].pos[2]);           //TODO perhaps implement move return value
 }
 void XPS::setLimit(GroupID ID, int axis, elimit lim){   //the mutex should be locked by caller
-    if(axis<0||axis>=axisCoords[ID].num) {std::cerr<<"You tried using setlimit on a nonexistant axis.\n";return;}
+    std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
+    if(axis<0||axis>=axisCoords[ID].num) {std::cerr<<"ERROR: You tried using setlimit on axis no "<<axis+1<<", but group has ",axisCoords[ID].num," axes.\n";go.quit();return;}
     if(lim==min)
         axisCoords[ID].min[axis]=axisCoords[ID].pos[axis];
     else if(lim==max)
         axisCoords[ID].max[axis]=axisCoords[ID].pos[axis];
 }
-void XPS::_restrict_pos(axis& pos){                     //the mutex should be locked by caller
+void XPS::_restrict_pos(axis& pos){ //the mutex should be locked by caller
     for(int i=0; i!=pos.num; i++){
         if(pos.pos[i]<pos.min[i]) pos.pos[i]=pos.min[i];
         else if(pos.pos[i]>pos.max[i]) pos.pos[i]=pos.max[i];

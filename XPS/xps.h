@@ -6,6 +6,7 @@
 #include <queue>
 #include <thread>
 #include <array>
+#include <atomic>
 
 #include "TCP_con.h"
 #include "sharedvars.h"
@@ -26,10 +27,11 @@ public:
     PVTobj();
     void clear();
     template<typename... Args>  void add(double val, Args... vals);
-    void add(double val);
 private:
+    template<typename... Args>  void _add(int n, double val, Args... vals);
+    void _add(int n, double val);           //no PVT file row has only one var(time), so we set this private
+    xps_hardcoded::GroupID ID;
     std::string filename;
-    std::string groupname;
     std::stringstream data;
     bool verified;
 };
@@ -39,6 +41,7 @@ typedef PVTobj* pPVTobj;
 
 class XPS : public TCP_con, public xps_hardcoded{
     friend class globals;    //to be able to call run()
+    friend void PVTobj::_add(int n, double val);    //needs access to groups for axisnum
 private:
     struct execss{
         std::string comm;       //contains the command string to be executed
@@ -55,10 +58,15 @@ public:
     XPS();
     ~XPS();
 
-    template <typename T>                     void execCommand(T value);
-    template <typename T, typename... Args>   void execCommand(T value, Args... args);                  //exectue a command without return, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
-    template <typename T>                     void execCommand(xps_ret* ret, T value);
-    template <typename T, typename... Args>   void execCommand(xps_ret* ret, T value, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see xps_ret in UTIL/containers
+    template <typename T>                     void execCommandStr(T value);
+    template <typename T, typename... Args>   void execCommandStr(T value, Args... args);                  //exectue a command without return, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
+    template <typename T>                     void execCommandStr(xps_ret* ret, T value);
+    template <typename T, typename... Args>   void execCommandStr(xps_ret* ret, T value, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see xps_ret in UTIL/containers
+
+    template <typename T>                     void execCommand(std::string command, T value);              //same as above command, except it automatically adds brackets and comas, for example  <command>(<arg0>,<arg1>,<arg2>...) and sends that to eexecCommandStr
+    template <typename T, typename... Args>   void execCommand(std::string command, T value, Args... args);
+    template <typename T>                     void execCommand(xps_ret* ret, std::string command, T value);
+    template <typename T, typename... Args>   void execCommand(xps_ret* ret, std::string command, T value, Args... args);
 
     void initGroup(GroupID ID);
     void initGroups();
@@ -75,8 +83,12 @@ public:
     xps_dat verifyPVTobj(pPVTobj obj);                                  //returns the verification result
     xps_dat execPVTobj(pPVTobj obj);
 
-    void MoveRelative(GroupID ID, double dX, double dY, double dZ, bool limit=true);      //TODO generalize this for n variables with templates, and generalize axisp, and add groupname
-    void MoveAbsolute(GroupID ID, double  X, double  Y, double  Z, bool limit=true);
+    std::atomic<bool> limit;        //set to false to disable limits for the next move command (it is automatically set to true afterwards), the atomic type is thread safe
+    template<typename... Args>  void MoveRelative(GroupID ID, double val, Args... vals);
+    void MoveRelative(GroupID ID, double val);
+    template<typename... Args>  void MoveAbsolute(GroupID ID, double val, Args... vals);
+    void MoveAbsolute(GroupID ID, double val);
+
     raxis getPos(GroupID ID);
     void getPos(GroupID ID, raxis& pos);
     enum elimit { min, max };
@@ -86,17 +98,24 @@ public:
     std::string groupGetName(GroupID ID);
 
 private:
+    template <typename T>                    void eexecCommandStr(std::stringstream* strm, xps_ret* ret, T value);
+    template <typename T, typename... Args>  void eexecCommandStr(std::stringstream* strm, xps_ret* ret, T value, Args... args);
+
     template <typename T>                    void eexecCommand(std::stringstream* strm, xps_ret* ret, T value);
-    template<typename T, typename... Args>   void eexecCommand(std::stringstream* strm, xps_ret* ret, T value, Args... args);
+    template <typename T, typename... Args>  void eexecCommand(std::stringstream* strm, xps_ret* ret, T value, Args... args);
+
+    template<typename... Args>  void _MoveRelative(int n, GroupID ID, double val, Args... vals);
+    void _MoveRelative(int n, GroupID ID, double val);
+    template<typename... Args>  void _MoveAbsolute(int n, GroupID ID, double val, Args... vals);
+    void _MoveAbsolute(int n, GroupID ID, double val);
     void flushQueue();
-    void _MoveAbsolute(GroupID ID, bool limit=true);
+    void __MoveAbsolute(GroupID ID);
     void _restrict_pos(axis& pos);                  //checks if pox? is within min? and max?, if not, sets it to min?/max?
 
     void run();
 
     std::queue<execss> priority_queue;
     std::mutex mpq;                     //queue access mutex
-    std::mutex gmx;                     //group access mutex
     bool _writef;
 
     std::mutex ftpmx;

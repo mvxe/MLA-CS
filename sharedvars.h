@@ -51,6 +51,8 @@ public:
     mxvar<int> XPS_keepalive = mxvar<int>(&GUI_XPS, 500,&var,"XPS_keepalive");     //keepalive and connect timeout, in ms
     mxva<bool> XPS_end = mxva<bool>(&GUI_XPS,false);                               //for signaling the XPS thread it's time to close
     mxva<bool> XPS_connected = mxva<bool>(&GUI_XPS,false);                         //XPS thread -> GUI
+
+        //these vars are really GUI only
     mxvar<int> xps_x_sen = mxvar<int>(&GUI_XPS,100,&var,"xps_x_sen");
     mxvar<int> xps_y_sen = mxvar<int>(&GUI_XPS,100,&var,"xps_y_sen");
     mxvar<int> xps_z_sen = mxvar<int>(&GUI_XPS,100,&var,"xps_z_sen");
