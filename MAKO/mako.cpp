@@ -1,10 +1,7 @@
 #include "mako.h"
 #include "globals.h"
 
-MAKO::MAKO() : vsys( AVT::VmbAPI::VimbaSystem::GetInstance()), iuScope(this, sw.iuScopeID, sw.iuScope_connected){             //init new cameras here!
-    sw.iuScope_st=&iuScope;
-    sw.iuScope_img=iuScope.FQsPCcam.getNewFQ();                                                                               //add image queues here!
-
+MAKO::MAKO() : vsys( AVT::VmbAPI::VimbaSystem::GetInstance()){
     sw.MAKO_cam_desc.set(new std::vector<_dcams>());
     VmbErrorType errc = vsys.Startup();
     if (errc!=VmbErrorSuccess){

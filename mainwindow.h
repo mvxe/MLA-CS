@@ -85,6 +85,9 @@ private:
 
     int dialval;
     bool xps_con;
+    bool iuScope_con;
+
+    FQ* iuScope_img;    //the framequeue for display
 };
 
 class mtlabel : public QLabel{

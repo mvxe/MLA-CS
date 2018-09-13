@@ -1,15 +1,15 @@
-#ifndef HARDCODED_H
-#define HARDCODED_H
+#ifndef _CONFIG_XPS_H
+#define _CONFIG_XPS_H
 
 /* New stages and motion groups have to be
  * defined here before they can be used
  * elsewhere in the code. See next section!*/
 
-class xps_hardcoded{
+class xps_config{
 public:
     class axis{
         friend class XPS;                       //we only want XPS to access the mutex, when it returns a axis type the user has nothing with the mutex
-        friend class xps_hardcoded;             //to be able to initialize _num and thus num
+        friend class xps_config;                //to be able to initialize _num and thus num
     public:
         axis():num(_num){}
         double pos[8], min[8], max[8];          //the extra axes are simply not used, the small extra memory usage is not worth fixing by more complicated solutions
@@ -64,7 +64,7 @@ public:
     tsvar_save<unsigned> keepalive = tsvar_save<unsigned>(&smx, 500, &go.config.save, "XPS_keepalive");     //keepalive and connect timeout, in ms
     tsvar<bool> end = tsvar<bool>(&smx, false);                                                             //for signaling the XPS thread it's time to close
 
-    xps_hardcoded(){
+    xps_config(){
         for (int i=0;i!=_GROUP_NUM;i++){
             save_groupnames[i]=new cc_save<std::string>(groups[i].groupname, groups[i].groupname, &go.config.save, util::toString("groupname_",i));    //read group names from config file (new calls the cc_save constructor which reads the old value from config file, if it exists)
             for (int j=0;j!=groups[i].AxisNum;j++){
@@ -75,7 +75,7 @@ public:
             axisCoords[i]._num=groups[i].AxisNum;
         }
     }
-    ~xps_hardcoded(){
+    ~xps_config(){
         for (int i=0;i!=_GROUP_NUM;i++){
             delete save_groupnames[i];                  //save group names to config file (delete calls the cc_save destructor which queues the new value for saving into config file)
             for (int j=0;j!=groups[i].AxisNum;j++){
@@ -89,4 +89,4 @@ public:
 
 
 
-#endif // HARDCODED_H
+#endif // _CONFIG_XPS_H

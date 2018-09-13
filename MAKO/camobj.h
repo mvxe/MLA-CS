@@ -5,6 +5,7 @@
 #include "vmbwrap.h"
 #include "frame_queues.h"
 #include "sharedvars.h"
+#include "UTIL/containers.h"
 #include <vector>
 
 const int N_FRAMES_MAKO_VMB  = 15;   //queue length of CAMOBJ<->VIMBA communication
@@ -12,6 +13,7 @@ class MAKO;
 
 class camobj{
     friend class MAKO;
+    friend class mako_config;
 public:
 
     struct _cam{
@@ -25,16 +27,20 @@ public:
     T get(char* atr);
     VmbErrorType run(char* atr);
 
-    mxvar<std::string> &ID;     //pointer to the ID thread safe string, for GUI
-    mxva<bool> &connected;      //pointer to the connected flag thread safe string, for GUI
+    std::mutex mkmx;
+    tsvar_save<std::string> ID;                 //thread safe access to camera ID
+    const std::atomic<bool>& connected;         //thread safe access to camera status
 
+    FQsPC FQsPCcam;
 private:
-    camobj(MAKO *cobj, mxvar<std::string> &ID, mxva<bool> &connected);
+    std::atomic<bool> _connected;
+    camobj(MAKO *cobj, std::string strID);
     _cam cptr;
 
     void start();
     void work();                                //call this periodically
-    void end();
+    void end();     //mutexed
+    void _end();    //not mutexed
     void con_cam(bool ch);
 
     MAKO *cobj;
@@ -49,7 +55,6 @@ private:
     double ackFPS;
     int format_enum;
 
-    FQsPC FQsPCcam;
     bool ackstatus;                                     //acquisition status
 
     std::mutex mtx;
@@ -59,23 +64,17 @@ private:
 
 template <typename T>
 VmbErrorType camobj::set(char* atr, T nvar){
-    mtx.lock();
-    VmbErrorType ret=wfun::set<T>(cam.ptr, atr, nvar);
-    mtx.unlock();
-    return ret;
+    std::lock_guard<std::mutex>lock(mtx);
+    return wfun::set<T>(cam.ptr, atr, nvar);
 }
 template <typename T>
 T camobj::get(char* atr){
-    mtx.lock();
-    T ret=wfun::get<T>(cam.ptr, atr);
-    mtx.unlock();
-    return ret;
+    std::lock_guard<std::mutex>lock(mtx);
+    return wfun::get<T>(cam.ptr, atr);
 }
 inline VmbErrorType camobj::run(char* atr){
-    mtx.lock();
-    VmbErrorType ret=wfun::run(cam.ptr, atr);
-    mtx.unlock();
-    return ret;
+    std::lock_guard<std::mutex>lock(mtx);
+    return wfun::run(cam.ptr, atr);
 }
 
 #endif // CAMOBJ_H

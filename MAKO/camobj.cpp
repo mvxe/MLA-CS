@@ -1,6 +1,6 @@
 #include "mako.h"
 
-camobj::camobj(MAKO *cobj, mxvar<std::string> &ID, mxva<bool> &connected) : cobj(cobj),connected(connected), ID(ID), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB), ackstatus(false), FQsPCcam(){}
+camobj::camobj(MAKO *cobj, std::string strID) : cobj(cobj), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB), ackstatus(false), FQsPCcam(), ID(&mkmx,strID,&go.config.save,strID), connected(_connected), _connected(false){}
 
 void camobj::start(){
     VMBo = AVT::VmbAPI::IFrameObserverPtr(new FrameObserver(cam.ptr, &FQsPCcam));
@@ -50,10 +50,9 @@ void camobj::start(){
     for (int i=0; i!=VMBframes.size();i++) cam.ptr->QueueFrame(VMBframes[i]);
 }
 void camobj::work(){
-    mtx.lock();
-    if (connected.get(true)==false){
+    std::lock_guard<std::mutex>lock(mtx);
+    if (!_connected){
         ackstatus=false;
-        mtx.unlock();
         return;
     }
     bool doack=false;
@@ -65,10 +64,12 @@ void camobj::work(){
         wfun::run(cam.ptr,"AcquisitionStop");
         ackstatus=false;
     }
-    mtx.unlock();
 }
 void camobj::end(){
-    mtx.lock();
+    std::lock_guard<std::mutex>lock(mtx);
+    _end();
+}
+void camobj::_end(){
     if (ackstatus) wfun::run(cam.ptr,"AcquisitionStop");
     ackstatus=false;
     cam.ptr->EndCapture();
@@ -79,14 +80,13 @@ void camobj::end(){
         VMBframes[i].reset();
     }
     VMBo.reset();
-    mtx.unlock();
 }
 void camobj::con_cam(bool ch){
-    mtx.lock();
+    std::lock_guard<std::mutex>lock(mtx);
     if (cam.ptr!=nullptr){
-        if (ch && (cam.ID == ID.get())) {mtx.unlock();return;}
+        if (ch && (cam.ID == ID.get())) return;
         sw.MVM_ignore.set(true);
-        end();
+        _end();
         cam.ptr->Close();
         cam.ptr.reset();
     }
@@ -102,9 +102,8 @@ void camobj::con_cam(bool ch){
         if (found){
             sw.MVM_ignore.set(true);
             if (cam.ptr->Open(VmbAccessModeFull) == VmbErrorSuccess){
-                connected.set(true);
+                _connected=true;
                 start();
-                mtx.unlock();
                 return;
             }else{
                 sw.MVM_ignore.set(false);
@@ -112,6 +111,5 @@ void camobj::con_cam(bool ch){
             }
         }
     }
-    connected.set(false);
-    mtx.unlock();
+    _connected=false;
 }

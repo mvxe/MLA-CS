@@ -34,10 +34,7 @@ public:
 //  var_save somefile2 = var_save("somefile2.conf");               //more save files can be added here, access by config.save
 
     XPS* pXPS;
-    MAKO* pMAKO;
-
-    FQ* iuScope_img;                                              //iuScope -> GUI
-    camobj* iuScope_st;                                           //for accessing camera features and settings (the thread safe functions are public, but check if its live first)
+    MAKO* pMAKO;    //you can access cameras and frame queues through this, see MAKO/_config.h for members
 
     void startup(int argc, char *argv[]);                         //subsequent calls of this are ignored
     void cleanup();

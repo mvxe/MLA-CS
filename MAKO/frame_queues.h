@@ -17,11 +17,12 @@ public:
     unsigned getMatNumber();        //get total number of allocated matrices
     unsigned getFullNumber();       //get the number of full matrices
 
-    cv::Mat* getAFreeMatPtr();      //these two functions are used by the vimba api observer to put new frames into the queue
+    FQ* getNewFQ();                 //returns a pointer to a new frame queue
+    void setCamFPS(double nfps);    //set the camera framerate, essential of proper image sorting into queues (this is thread safe)
+
+    cv::Mat* getAFreeMatPtr();      //these two functions are used by the vimba api observer to put new frames into the queue           //TODO these two functions should not be exposed to the user
     void enqueueMat(unsigned int timestamp);     //they are not thread safe, so use them only in one observer function
 
-    FQ* getNewFQ();                 //returns a pointer to a new frame queue
-    void setCamFPS(double nfps);  //set the camera framerate, essential of proper image sorting into queues (this is thread safe)
 private:
     struct _used{
         cv::Mat* mat;

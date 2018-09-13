@@ -16,6 +16,8 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     menu->setToolTipsVisible(true);
     ui->cam1_select->setMenu(menu);
     connect(menu, SIGNAL(aboutToShow()), this, SLOT(cam1_select_show()));
+
+    iuScope_img=go.pMAKO->iuScope.FQsPCcam.getNewFQ();    //make new image queue
 }
 
 MainWindow::~MainWindow(){
@@ -29,8 +31,8 @@ void MainWindow::program_exit(){
 
 void MainWindow::on_tabWidget_currentChanged(int index){
     ui->centralWidget->setFocus();  //prevents random textboxes from receiving focus after tab switch
-    if (ui->tabWidget->tabText(index)=="Camera") sw.iuScope_img->setUserFps(30.,50);
-    else sw.iuScope_img->setUserFps(0.);
+    if (ui->tabWidget->tabText(index)=="Camera") iuScope_img->setUserFps(30.,50);
+    else iuScope_img->setUserFps(0.);
 }
 
 
@@ -38,7 +40,7 @@ void MainWindow::cam1_select_show(){   //on_cam1_select pressed, should update u
     updateCamMenu();
 }
 void MainWindow::on_cam1_select_triggered(QAction *arg1){   //on_cam1_select action selected
-    sw.iuScopeID.set(arg1->text().toStdString());
+    go.pMAKO->iuScope.ID.set(arg1->text().toStdString());
     ui->cam1_select->setText("camera ID: "+arg1->text());
     sw.MAKO_reco.set(true);
 }

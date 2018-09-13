@@ -17,7 +17,7 @@
 #include "mutex_containers.h"
 #include "UTIL/containers.h"
 #include "globals.h"
-#include "hardcoded.h"
+#include "_config.h"
 
 #define TRAJ_PATH "/public/Trajectories/"
 
@@ -30,7 +30,7 @@ public:
 private:
     template<typename... Args>  void _add(int n, double val, Args... vals);
     void _add(int n, double val);           //no PVT file row has only one var(time), so we set this private
-    xps_hardcoded::GroupID ID;
+    xps_config::GroupID ID;
     std::string filename;
     std::stringstream data;
     bool verified;
@@ -39,7 +39,7 @@ typedef PVTobj* pPVTobj;
 
     /*~~~ XPS ~~~*/
 
-class XPS : public TCP_con, public xps_hardcoded{
+class XPS : public TCP_con, public xps_config{
     friend class globals;    //to be able to call run()
     friend void PVTobj::_add(int n, double val);    //needs access to groups for axisnum
 private:
