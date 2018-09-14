@@ -1,0 +1,4 @@
+#ifndef _CONFIG_TAB_CAMERA_H
+#define _CONFIG_TAB_CAMERA_H
+
+#endif // _CONFIG_TAB_CAMERA_H

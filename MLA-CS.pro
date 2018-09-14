@@ -23,7 +23,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 
-CONFIG += c++17
+CONFIG += c++17 object_parallel_to_source           #without object_parallel_to_source you cmake doesnt diferentiate between same named files in different folders
 
 FORMS += \
     GUI/mainwindow.ui
@@ -65,7 +65,13 @@ HEADERS += \
     UTIL/containers_template.h \
     XPS/xps_template.h \
     XPS/_config.h \
-    MAKO/_config.h
+    MAKO/_config.h \
+    GUI/TAB_CAMERA/_config.h \
+    GUI/TAB_CONNECTION/tab_main.h \
+    GUI/TAB_CONNECTION/_config.h \
+    GUI/TAB_SETTINGS/tab_main.h \
+    GUI/TAB_SETTINGS/_config.h \
+    GUI/TAB_CAMERA/tab_main.h
 
 SOURCES += \
     MAKO/mako.cpp \
@@ -81,7 +87,10 @@ SOURCES += \
     GUI/slots_baseclass.cpp \
     GUI/mainwindow.cpp \
     MAKO/camobj.cpp \
-    UTIL/containers.cpp
+    UTIL/containers.cpp \
+    GUI/TAB_CONNECTION/tab_main.cpp \
+    GUI/TAB_SETTINGS/tab_main.cpp \
+    GUI/TAB_CAMERA/tab_main.cpp
 
 
 unix {
