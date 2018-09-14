@@ -13,7 +13,7 @@ void PVTobj::_add(int n, double val, Args... vals){
     _add(n+1, vals...);
 }
 
-    /*~~~ XPS ~~~*/
+/*########## XPS ##########*/
 
 template <typename T>
 void XPS::execCommandStr(T value){

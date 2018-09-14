@@ -7,11 +7,12 @@
 #include "sharedvars.h"
 #include "UTIL/containers.h"
 #include <vector>
+#include "_config.h"
 
 const int N_FRAMES_MAKO_VMB  = 15;   //queue length of CAMOBJ<->VIMBA communication
 class MAKO;
 
-class camobj{
+class camobj: public camobj_config{
     friend class MAKO;
     friend class mako_config;
 public:
@@ -28,12 +29,12 @@ public:
     VmbErrorType run(char* atr);
 
     std::mutex mkmx;
-    tsvar_save<std::string> ID;                 //thread safe access to camera ID
-    const std::atomic<bool>& connected;         //thread safe access to camera status
+    tsvar_save<std::string> ID;                             //thread safe access to camera ID
+    const std::atomic<bool>& connected{_connected};         //thread safe access to camera status
 
-    FQsPC FQsPCcam;
+    FQsPC FQsPCcam;                                         //use this to get frame queue from camera, see frame_queues.h for commands
 private:
-    std::atomic<bool> _connected;
+    std::atomic<bool> _connected{false};
     camobj(MAKO *cobj, std::string strID);
     _cam cptr;
 
@@ -44,18 +45,18 @@ private:
     void con_cam(bool ch);
 
     MAKO *cobj;
-    int lost_frames_MAKO_VMB;
+    int lost_frames_MAKO_VMB{0};
     std::deque<int> frames;
     _cam cam;
 
     AVT::VmbAPI::IFrameObserverPtr VMBo;
-    AVT::VmbAPI::FramePtrVector VMBframes;        //CAMOBJ<->VIMBA frames
+    AVT::VmbAPI::FramePtrVector VMBframes{N_FRAMES_MAKO_VMB};        //CAMOBJ<->VIMBA frames
     int Xsize;
     int Ysize;
     double ackFPS;
     int format_enum;
 
-    bool ackstatus;                                     //acquisition status
+    bool ackstatus{false};                                     //acquisition status
 
     std::mutex mtx;
 };

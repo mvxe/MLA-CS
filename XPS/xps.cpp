@@ -1,6 +1,6 @@
 #include "xps.h"
 
-PVTobj::PVTobj():verified(false){}
+PVTobj::PVTobj(){}
 void PVTobj::clear(){
     data.str(std::string());
 }
@@ -11,9 +11,9 @@ void PVTobj::_add(int n, double val){
     data<<val<<"\n";
 }
 
-    /*~~~ XPS ~~~*/
+/*########## XPS ##########*/
 
-XPS::XPS() : _writef(false), limit(true){
+XPS::XPS(){
     TCP_con();
 }
 XPS::~XPS(){
@@ -21,7 +21,7 @@ XPS::~XPS(){
 void XPS::run(){    //this is the XPS thread loop
     std::string tmp;
     for (;;){
-        while (!connected && !end.get()){
+        while (!connected && !end){
                 //resolving...
             std::string resname;    //this is when user enters hostname instead of ip
             if (resolve(IP.get(), port.get(), &resname)){
@@ -41,7 +41,7 @@ void XPS::run(){    //this is the XPS thread loop
         if (connected)
             flushQueue();
 
-        if(end.get()){
+        if(end){
             if (connected){
                 killGroups();
                 flushQueue();
@@ -120,10 +120,10 @@ std::string XPS::copyPVToverFTP(pPVTobj obj){
         ftpHandle.perform();
     }
     catch( cURLpp::RuntimeError &e ){
-        os<<e.what()<<std::endl;
+        os<<e.what()<<"\n";
     }
     catch( cURLpp::LogicError &e ){
-        os<<e.what()<<std::endl;
+        os<<e.what()<<"\n";
     }
     obj->verified=false;
     return os.str();
@@ -155,10 +155,10 @@ std::string XPS::listPVTfiles(){
         ftpHandle.perform();
     }
     catch( cURLpp::RuntimeError &e ){
-        os<<e.what()<<std::endl;
+        os<<e.what()<<"\n";
     }
     catch( cURLpp::LogicError &e ){
-        os<<e.what()<<std::endl;
+        os<<e.what()<<"\n";
     }
     return os.str();
 }

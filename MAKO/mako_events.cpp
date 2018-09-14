@@ -4,9 +4,9 @@ void CamObserver::CameraListChanged ( AVT::VmbAPI::CameraPtr pCam , AVT::VmbAPI:
 {
     //NOTE: Apparently, reason is always UpdateTriggerPluggedOut, regardles of type of the actual event. Must be a bug in the api. I apply a workaround.
     //cam.Close() and cam.Open() triggers this, so I use MVM_ignore flag
-    if(sw.MVM_ignore.get()) sw.MVM_ignore.set(false);
-    else sw.MAKO_list.set(true);                        //TODO now that frame queues are implemented, this is broken (program freezes on camera disconnected)
-    sw.MAKO_reco.set(true);
+    if(go.pMAKO->MVM_ignore) go.pMAKO->MVM_ignore=false;
+    else go.pMAKO->MVM_list=true;                        //TODO now that frame queues are implemented, this is broken (program freezes on camera disconnected)
+    go.pMAKO->MAKO_reco=true;
 }
 
 FrameObserver::FrameObserver(AVT::VmbAPI::CameraPtr pCamera, FQsPC *FQsPCcam) : IFrameObserver(pCamera), FQsPCcam(FQsPCcam){}

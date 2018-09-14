@@ -31,7 +31,7 @@ public:
     ~cc_save();
     T& val;
 protected:
-    _fo* tfvec;
+    _fo* tfvec{nullptr};
 };
 
 /*########## exec_dat ##########
@@ -44,15 +44,14 @@ struct exec_dat{
 };
 class exec_ret{
 public:
-    exec_ret();
     bool block_till_done();             //for client function, returns true if an error value was given
     bool check_if_done();               //for client function, returns true if data can be accessed
     void set_value(std::string val);    //for server thread function , these three are thread safe
 
-    exec_dat v;                 //once one of the first two commands indicate it is done, the client can directly access the two vars (DO NOT DESTROY OBJECT BEFORE IT RETURNS A VALUE!! unless you like segfaults, that is)
+    exec_dat v{"",-9999};               //once one of the first two commands indicate it is done, the client can directly access the two vars (DO NOT DESTROY OBJECT BEFORE IT RETURNS A VALUE!! unless you like segfaults, that is)
 protected:
     std::mutex mx;
-    bool done;
+    bool done{false};
 };
 
 
@@ -74,7 +73,7 @@ public:
 protected:
     std::mutex* mx;
     T var;
-    bool change;
+    bool change{false};
     bool virtual check(T nvar);         //function added to start of set() to check if the provided value is invalid (returns false if the value is valid)
     void err(T initial);                //constructors of derived classes with overriden check should also call "if (check(initial)) err(initial);"
 };
@@ -125,7 +124,7 @@ protected:
     double exp_time;
     time_t mf;
     std::mutex *mx;
-    bool var;
+    bool var{false};
 };
 
 

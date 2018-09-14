@@ -13,8 +13,6 @@
 #include <UTIL/containers.h>
 class XPS;
 class MAKO;
-class FQ;
-class camobj;
 
 class var_save{
 public:
@@ -30,8 +28,8 @@ public:
     globals();
     ~globals();
 
-    var_save config = var_save("mla_cs2.conf");                    //this is initialized before everything else and before the globals() is called  //TODO change filename
-//  var_save somefile2 = var_save("somefile2.conf");               //more save files can be added here, access by config.save
+    var_save config{"general.conf"};                    //this is initialized before everything else and before the globals() is called
+    var_save cams_config{"cameras.conf"};
 
     XPS* pXPS;
     MAKO* pMAKO;    //you can access cameras and frame queues through this, see MAKO/_config.h for members
@@ -42,7 +40,7 @@ public:
             /* use go.quit() in any thread if you need to quit the program*/
 private:
     std::mutex go_mx;
-    bool started;
+    bool started{false};
     std::thread XPS_thread;
     std::thread MAKO_thread;
     QApplication* qapp;

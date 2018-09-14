@@ -16,7 +16,6 @@
 
 #include "mutex_containers.h"
 #include "UTIL/containers.h"
-#include "globals.h"
 #include "_config.h"
 
 #define TRAJ_PATH "/public/Trajectories/"
@@ -33,11 +32,11 @@ private:
     xps_config::GroupID ID;
     std::string filename;
     std::stringstream data;
-    bool verified;
+    bool verified{false};
 };
 typedef PVTobj* pPVTobj;
 
-    /*~~~ XPS ~~~*/
+/*########## XPS ##########*/
 
 class XPS : public TCP_con, public xps_config{
     friend class globals;    //to be able to call run()
@@ -83,7 +82,7 @@ public:
     exec_dat verifyPVTobj(pPVTobj obj);                                  //returns the verification result
     exec_dat execPVTobj(pPVTobj obj);
 
-    std::atomic<bool> limit;        //set to false to disable limits for the next move command (it is automatically set to true afterwards), the atomic type is thread safe
+    std::atomic<bool> limit{true};        //set to false to disable limits for the next move command (it is automatically set to true afterwards), the atomic type is thread safe
     template<typename... Args>  void MoveRelative(GroupID ID, double val, Args... vals);
     void MoveRelative(GroupID ID, double val);
     template<typename... Args>  void MoveAbsolute(GroupID ID, double val, Args... vals);
@@ -116,7 +115,7 @@ private:
 
     std::queue<execss> priority_queue;
     std::mutex mpq;                     //queue access mutex
-    bool _writef;
+    bool _writef{false};
 
     std::mutex ftpmx;
 };

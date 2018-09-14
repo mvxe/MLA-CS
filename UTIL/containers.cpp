@@ -2,7 +2,6 @@
 
 /*########## exec_dat ##########*/
 
-exec_ret::exec_ret(): done(false) {v.retval=-9999;}
 bool exec_ret::block_till_done(){
     for(;;){
         {std::lock_guard<std::mutex>lock(mx);
@@ -60,7 +59,7 @@ void _containers_internal::quit(){
 /*########## tsbool ##########
 bool container with expiration time*/
 
-tsbool::tsbool(std::mutex *mxn) : mx(mxn), var(false){time(&mf);}
+tsbool::tsbool(std::mutex *mxn) : mx(mxn) {time(&mf);}
 void tsbool::set(bool nvar, double expt){
     std::lock_guard<std::mutex>lock(*mx);
     exp_time=expt;

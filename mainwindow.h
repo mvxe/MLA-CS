@@ -80,12 +80,12 @@ private:
     std::vector<QAction*> actptrs;
     QTimer *timer;
 
-    QPixmap* px_online;
-    QPixmap* px_offline;
+    QPixmap px_online{":/emblem-ok.svg"};
+    QPixmap px_offline{":/emblem-nowrite.svg"};
 
-    int dialval;
-    bool xps_con;
-    bool iuScope_con;
+    int dialval{0};
+    bool xps_con{false};
+    bool iuScope_con{false};
 
     FQ* iuScope_img;    //the framequeue for display
 };

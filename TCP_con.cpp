@@ -3,7 +3,7 @@
 
 /* this is a class that can be used for TCP communication*/
 
-TCP_con::TCP_con () : connected(_connected), _connected(false){
+TCP_con::TCP_con (){
     captr = nullptr;
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;

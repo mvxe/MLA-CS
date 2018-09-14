@@ -15,10 +15,10 @@ void MainWindow::sync_settings(){
     ui->sl_xsens->setValue(sw.xps_x_sen.get());
     ui->sl_ysens->setValue(sw.xps_y_sen.get());
     ui->sl_zsens->setValue(sw.xps_z_sen.get());
-    ui->sl_expo->setValue(sw.iuScope_expo.get()*1000);
-    ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",sw.iuScope_expo.get()," us")));
+    ui->sl_expo->setValue(go.pMAKO->iuScope->expo.get()*1000);
+    ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pMAKO->iuScope->expo.get()," us")));
 
-    if (!go.pMAKO->iuScope.ID.get().empty()) ui->cam1_select->setText(QString::fromStdString("camera ID: "+go.pMAKO->iuScope.ID.get()));
+    if (!go.pMAKO->iuScope->ID.get().empty()) ui->cam1_select->setText(QString::fromStdString("camera ID: "+go.pMAKO->iuScope->ID.get()));
     ui->sl_expo->blockSignals(false);
 }
 
@@ -39,10 +39,9 @@ void MainWindow::on_sl_xsens_valueChanged(int value){slider_fun(ui->sl_xsens,&sw
 void MainWindow::on_sl_ysens_valueChanged(int value){slider_fun(ui->sl_ysens,&sw.xps_y_sen,value);}
 void MainWindow::on_sl_zsens_valueChanged(int value){slider_fun(ui->sl_zsens,&sw.xps_z_sen,value);}
 void MainWindow::on_sl_expo_valueChanged(int value) {
-    if(go.pMAKO->iuScope.connected){
-        go.pMAKO->iuScope.set<double>("ExposureTime",value/1000);
-        sw.iuScope_expo.set(go.pMAKO->iuScope.get<double>("ExposureTime"));
-        //std::cerr<<"exposure(us)="<<sw.iuScope_expo.get(true)<<"\n";
+    if(go.pMAKO->iuScope->connected){
+        go.pMAKO->iuScope->set<double>("ExposureTime",value/1000);
+        go.pMAKO->iuScope->expo.set(go.pMAKO->iuScope->get<double>("ExposureTime"));
     }
 }
 
@@ -62,25 +61,25 @@ void MainWindow::on_btn_Z_inc_released(){go.pXPS->limit=false; go.pXPS->MoveRela
 void MainWindow::GUI_update(){
     if (xps_con!=go.pXPS->connected){
         xps_con=go.pXPS->connected;
-        ui->si_XPS->setPixmap(xps_con?*px_online:*px_offline);
+        ui->si_XPS->setPixmap(xps_con?px_online:px_offline);
     }
-    if (iuScope_con!=go.pMAKO->iuScope.connected){
-        iuScope_con=go.pMAKO->iuScope.connected;
-        ui->si_iuScope->setPixmap(iuScope_con?*px_online:*px_offline);
+    if (iuScope_con!=go.pMAKO->iuScope->connected){
+        iuScope_con=go.pMAKO->iuScope->connected;
+        ui->si_iuScope->setPixmap(iuScope_con?px_online:px_offline);
     }
     if (sw.RPTY_connected.changed())
-        ui->si_RPTY->setPixmap(sw.RPTY_connected.get()?*px_online:*px_offline);
+        ui->si_RPTY->setPixmap(sw.RPTY_connected.get()?px_online:px_offline);
 
     if (go.pXPS->IP.resolved.changed())
         ui->e_xps_ip_resolved->setText(QString::fromStdString(go.pXPS->IP.is_name?go.pXPS->IP.resolved.get():" "));
 
-    if(sw.iuScope_expo.changed())
-        ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",sw.iuScope_expo.get()," us")));
+    if(go.pMAKO->iuScope->expo.changed())
+        ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pMAKO->iuScope->expo.get()," us")));
 
     const cv::Mat* dmat=iuScope_img->getUserMat();
     if (dmat!=nullptr){
         ui->camera_stream->setPixmap(QPixmap::fromImage(QImage(dmat->data, dmat->cols, dmat->rows, dmat->step, QImage::Format_Indexed8).copy()));      //.copy() is here to make an actual copy, otherwise it segfaults when the other thread frees the mat //TODO generalize Format_Indexed8
-        //std::cerr<<"timestamp: "<<sw.iuScope_img->getUserTimestamp()<<"\n";
+        //std::cerr<<"timestamp: "<<iuScope_img->getUserTimestamp()<<"\n";
         iuScope_img->freeUserMat();
     }
 

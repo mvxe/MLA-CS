@@ -25,10 +25,10 @@ public:
     int write(std::string write_string);                        //returns number of characters written
     int read(std::string &read_string);                         //returns number of characters read
     int rw(std::string write_string,std::string &read_string);  //returns number of characters read
-    const std::atomic<bool>& connected;                         //thread safe var to see if connected
+    const std::atomic<bool>& connected{_connected};             //thread safe var to see if connected
 
 protected:
-    std::atomic<bool> _connected;
+    std::atomic<bool> _connected{false};
     struct addrinfo *captr, hints;   //captr is nullptr if unresolved
     struct sockaddr_in servernm;
     int sock;

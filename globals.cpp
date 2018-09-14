@@ -6,11 +6,10 @@
 #include "MAKO/mako.h"
 globals go;
 
-globals::globals() : started(false){}
+globals::globals(){}
 globals::~globals(){}
 void globals::startup(int argc, char *argv[]){
     if (started) return; started=true;
-
     cURLpp::initialize(CURL_GLOBAL_ALL);     //we init the curl lib needed for FTP
 
     pXPS=new XPS();
@@ -28,11 +27,11 @@ void globals::cleanup(){
     if (!go_mx.try_lock()) return;
     std::cout<<"Sending end signals to all threads...\n";
 
-    sw.MAKO_end.set(true);
+    go.pMAKO->end=true;
     MAKO_thread.join();
     delete pMAKO;
 
-    go.pXPS->end.set(true);
+    go.pXPS->end=true;
     XPS_thread.join();
     delete pXPS;
 

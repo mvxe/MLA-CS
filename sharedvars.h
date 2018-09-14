@@ -21,20 +21,6 @@ protected:
     std::stringstream buffer;   //contains a backup of conf file
 };
 
-struct _dcams{
-    std::string ID;
-    std::string description;
-};
-
-
-class _tqueue{
-public:
-    _tqueue(std::mutex* mux) : fps(mux,0), i(mux,0), isbusy(mux,false){}
-    std::queue<cv::Mat*> qu;
-    mxva<unsigned> fps;          //rounds to the closest divisor by two of the actual framerate (ie 9999 of 168 fps gives 168, 33 of 168 fps gives 28 fps, 0 means no acquisition)
-    mxva<int> i;                 //for framerate reduction
-    mxva<bool> isbusy;           //to be somewhat threadsafe, the thread that uses the images keeps this flag on while accessing the matrix so that the main thread doesnt overwrite it (this should cause skipped frames and some flashy errors onscreen)
-};
 
 class sharedvars : sharedvarsba{    //the vars to be saved in a file have two additional arguments: ...,&var,"varname")
 public:
@@ -53,19 +39,10 @@ public:
 
     /* GUI <-> MAKO thread communication */
     std::mutex GUI_MAKO;
-    mxva<bool> MAKO_init_done = mxva<bool>(&GUI_MAKO,false);
-    mxvar<int> MAKO_keepalive = mxvar<int>(&GUI_MAKO, 500,&var,"MAKO_keepalive");   //in ms
-    mxva<bool> MAKO_end = mxva<bool>(&GUI_MAKO,false);
-    mxva<std::vector<_dcams>*> MAKO_cam_desc = mxva<std::vector<_dcams>*>(&GUI_MAKO,nullptr);
-    mxva<bool> MAKO_list = mxva<bool>(&GUI_MAKO,true);
-    mxva<bool> MAKO_reco = mxva<bool>(&GUI_MAKO,true);
 
-    mxvar<double> iuScope_expo = mxvar<double>(&GUI_MAKO,442,&var,"iuScope_expo");          //in us
+    //mxvar<double> iuScope_expo = mxvar<double>(&GUI_MAKO,442,&var,"iuScope_expo");          //in us
 
 
-    /*MAKO <-> Vimba events internal*/
-    std::mutex MAKO_VMB;
-    mxva<bool> MVM_ignore = mxva<bool>(&MAKO_VMB,false);
 
     /* GUI <-> RPTY thread communication */
     std::mutex GUI_RPTY;

@@ -19,8 +19,9 @@ public:
 
     FQ* getNewFQ();                 //returns a pointer to a new frame queue
     void setCamFPS(double nfps);    //set the camera framerate, essential of proper image sorting into queues (this is thread safe)
+        //TODO implement destroy FQ
 
-    cv::Mat* getAFreeMatPtr();      //these two functions are used by the vimba api observer to put new frames into the queue           //TODO these two functions should not be exposed to the user
+    cv::Mat* getAFreeMatPtr();                   //these two functions are used by the vimba api observer to put new frames into the queue           //TODO these two functions should not be exposed to the user, just FrameObserver::FrameReceived
     void enqueueMat(unsigned int timestamp);     //they are not thread safe, so use them only in one observer function
 
 private:
@@ -36,8 +37,10 @@ private:
     std::deque<_used> mat_ptr_full;         //contains pointers to actual data that is waiting to be processed
     std::deque<FQ> user_queues;             //contains of the user queues
     std::mutex userqmx;
-    double fps;
+    double fps{30};
 };
+
+/*########## FQ ##########*/
 
 class FQ      //frame queue,        this should be accessed from  the user thread only
 {
@@ -58,10 +61,10 @@ public:
 private:
     std::queue<_img> full;
     std::deque<cv::Mat**> free;
-    double fps;                 //rounds to the closest divisor by two of the actual framerate (ie 9999 of 168 fps gives 168, 33 of 168 fps gives 28 fps, 0 means no acquisition)
+    double fps{0};                 //rounds to the closest divisor by two of the actual framerate (ie 9999 of 168 fps gives 168, 33 of 168 fps gives 28 fps, 0 means no acquisition)
     unsigned maxfr;
     unsigned div;
-    int i;                      //for framerate reduction
+    int i{1};                      //for framerate reduction
     std::mutex umx;
 };
 

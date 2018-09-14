@@ -1,6 +1,6 @@
 #include "mako.h"
 
-camobj::camobj(MAKO *cobj, std::string strID) : cobj(cobj), lost_frames_MAKO_VMB(0), VMBframes(N_FRAMES_MAKO_VMB), ackstatus(false), FQsPCcam(), ID(&mkmx,strID,&go.config.save,strID), connected(_connected), _connected(false){}
+camobj::camobj(MAKO *cobj, std::string strID) : camobj_config(strID), cobj(cobj), ID(&mkmx,strID,&go.config.save,strID){}
 
 void camobj::start(){
     VMBo = AVT::VmbAPI::IFrameObserverPtr(new FrameObserver(cam.ptr, &FQsPCcam));
@@ -33,9 +33,9 @@ void camobj::start(){
     std::cerr<<"format="<<format_enum<<"\n";
 
     //wfun::set<double>(cam.ptr,"ExposureTime",1000.);
-    wfun::set<double>(cam.ptr,"ExposureTime",sw.iuScope_expo.get());        //TODO run this only if uiScope
-    sw.iuScope_expo.set(wfun::get<double>(cam.ptr,"ExposureTime"));
-    std::cerr<<"exposure(us)="<<sw.iuScope_expo.get()<<"\n";
+    wfun::set<double>(cam.ptr,"ExposureTime",expo.get());
+    expo.set(wfun::get<double>(cam.ptr,"ExposureTime"));
+    std::cerr<<"exposure(us)="<<expo.get()<<"\n";
 
     ackFPS=wfun::get<double>(cam.ptr,"AcquisitionFrameRate");
     FQsPCcam.setCamFPS(ackFPS);
@@ -85,7 +85,7 @@ void camobj::con_cam(bool ch){
     std::lock_guard<std::mutex>lock(mtx);
     if (cam.ptr!=nullptr){
         if (ch && (cam.ID == ID.get())) return;
-        sw.MVM_ignore.set(true);
+        cobj->MVM_ignore=true;
         _end();
         cam.ptr->Close();
         cam.ptr.reset();
@@ -100,13 +100,13 @@ void camobj::con_cam(bool ch){
             }
         }
         if (found){
-            sw.MVM_ignore.set(true);
+            cobj->MVM_ignore=true;
             if (cam.ptr->Open(VmbAccessModeFull) == VmbErrorSuccess){
                 _connected=true;
                 start();
                 return;
             }else{
-                sw.MVM_ignore.set(false);
+                cobj->MVM_ignore=false;
                 cam.ptr.reset();
             }
         }

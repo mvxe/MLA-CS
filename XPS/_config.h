@@ -1,5 +1,6 @@
 #ifndef _CONFIG_XPS_H
 #define _CONFIG_XPS_H
+#include "globals.h"
 
 /* New stages and motion groups have to be
  * defined here before they can be used
@@ -26,7 +27,7 @@ public:
         std::string groupname;
         const std::string description;
     };
-
+    std::atomic<bool> end{false};
 
 
 
@@ -57,12 +58,12 @@ protected:
     cc_save<std::string>* save_groupnames[_GROUP_NUM];
     cc_save<double>* save_axisCoords[3*8*_GROUP_NUM];   //not all of these are used
     axis axisCoords[_GROUP_NUM];    //this contains current positions, min and max limits for all group axes, and automatically saves and reads them from a config file
-public:
     std::mutex smx;
-    tsvar_save_ip IP = tsvar_save_ip(&smx, "192.168.0.254", &go.config.save, "XPS_IP");
-    tsvar_save_port port = tsvar_save_port(&smx, 5001, &go.config.save, "XPS_port");
-    tsvar_save<unsigned> keepalive = tsvar_save<unsigned>(&smx, 500, &go.config.save, "XPS_keepalive");     //keepalive and connect timeout, in ms
-    tsvar<bool> end = tsvar<bool>(&smx, false);                                                             //for signaling the XPS thread it's time to close
+public:
+    tsvar_save_ip IP{&smx, "192.168.0.254", &go.config.save, "XPS_IP"};
+    tsvar_save_port port{&smx, 5001, &go.config.save, "XPS_port"};
+    tsvar_save<unsigned> keepalive{&smx, 500, &go.config.save, "XPS_keepalive"};     //keepalive and connect timeout, in ms
+                                                          //for signaling the XPS thread it's time to close
 
     xps_config(){
         for (int i=0;i!=_GROUP_NUM;i++){

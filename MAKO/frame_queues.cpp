@@ -1,6 +1,6 @@
 #include "frame_queues.h"
 
-FQsPC::FQsPC() : fps(30){}
+FQsPC::FQsPC(){}
 bool FQsPC::isThereInterest(){
     std::lock_guard<std::mutex>lock(userqmx);
     for (int i=0;i!=user_queues.size();i++)
@@ -77,7 +77,7 @@ void FQsPC::reclaim(){
 }
 
 
-FQ::FQ() : fps(0), i(1){}
+FQ::FQ(){}
 void FQ::setUserFps(double nfps, unsigned maxframes){
     std::lock_guard<std::mutex>lock(umx);
     fps=nfps;

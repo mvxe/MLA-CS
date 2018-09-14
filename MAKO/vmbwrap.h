@@ -33,8 +33,6 @@ struct img_form{                         //to convert vimba formats to standard 
     cv::ColorConversionCodes ccc;        //opencv uses the bgr scheme, so others have to be converted to this, if the code is -1, do not convert  (https://docs.opencv.org/3.1.0/d7/d1b/group__imgproc__misc.html)
 };
 namespace imgfor{
-
-
     const static img_form convmat[] = {
     {VmbPixelFormatMono8,CV_8U,"VmbPixelFormatMono8",(cv::ColorConversionCodes)-1},  // Monochrome, 8 bits (PFNC:Mono8)
     {VmbPixelFormatMono10,CV_16U,"VmbPixelFormatMono10",(cv::ColorConversionCodes)-1},  // Monochrome, 10 bits in 16 bits (PFNC:Mono10)

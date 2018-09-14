@@ -5,8 +5,7 @@
 /*########## cc_save ##########*/
 
 template <typename T> cc_save<T>::cc_save(T& var, T initial, _savelst* vec, std::string name): val(var){
-    val = initial;
-    tfvec=nullptr;
+    val=initial;
     if(vec!=nullptr){
         for (int i=0;i!=vec->size();i++){
             if (name.compare((*vec)[i].strname)==0){
@@ -32,10 +31,7 @@ template <typename T> cc_save<T>::~cc_save(){
 /*########## tsvar ##########*/
 
 template <typename T>
-tsvar<T>::tsvar(std::mutex *mxn, T initial): mx(mxn){
-    var = initial;
-    change = false;
-}
+tsvar<T>::tsvar(std::mutex *mxn, T initial): mx(mxn), var(initial){}
 template <typename T>
 bool tsvar<T>::set(T nvar){
     if(check(nvar)) return true;
@@ -64,5 +60,6 @@ void tsvar<T>::err(T initial){
     std::cerr << "ERROR: A container of tsvar was initialized with an invalid value ( " << initial << " ).\n";
     _containers_internal::quit();
 }
+
 
 #endif // CONTAINERSTEMPLATE_H
