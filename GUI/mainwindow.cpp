@@ -80,7 +80,9 @@ void MainWindow::on_btm_kill_released(){        //TODO: this is just a diable ti
         ret.block_till_done();
         std::cerr<<ret.v.retstr<<"\n";
     }
-
+//    0,XPS-DRV02;XMS50,EndOfAPI
+//    0,XPS-DRV02;XMS100,EndOfAPI
+//    0,XPS-DRV03;VP-25XL,EndOfAPI
 }
 
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove

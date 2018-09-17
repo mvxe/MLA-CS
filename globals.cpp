@@ -9,35 +9,30 @@ void globals::startup(int argc, char *argv[]){
     if (started) return; started=true;
     cURLpp::initialize(CURL_GLOBAL_ALL);     //we init the curl lib needed for FTP
 
-    pXPS=new XPS();
-    XPS_thread = std::thread(&XPS::run, pXPS);
-
-    pMAKO=new MAKO();
-    MAKO_thread = std::thread(&MAKO::run, pMAKO);
-
-    pRPTY=new RPTY();
-    RPTY_thread = std::thread(&RPTY::run, pRPTY);
+    pXPS=newThread(new XPS());      //pXPS=dynamic_cast<XPS*>(threads.top().obj);   //I leave this as a reference to myself of how to cast base class to derived
+    pMAKO=newThread(new MAKO());
+    pRPTY=newThread(new RPTY());
 
     qapp = new QApplication(argc, argv);
     MainWindow w(qapp);
     w.show();
     qapp->exec();
 }
+template <typename T>
+T* globals::newThread(T* procedure){
+    if (!dynamic_cast<protooth*>(procedure)) {
+        std::cerr << "ERROR: You called newThread on a class not derived from protooth.\n";
+        quit();
+    }
+    threads.emplace(procedure);
+    return procedure;
+}
 void globals::cleanup(){
     if (!go_mx.try_lock()) return;
     std::cout<<"Sending end signals to all threads...\n";
 
-    go.pMAKO->end=true;
-    MAKO_thread.join();
-    delete pMAKO;
-
-    go.pXPS->end=true;
-    XPS_thread.join();
-    delete pXPS;
-
-    go.pRPTY->end=true;
-    RPTY_thread.join();
-    delete pRPTY;
+    while(!threads.empty())
+        threads.pop();      //this destroys them(safely calling their destructors
 
     cURLpp::terminate();                    //we terminate curl
     std::cout<<"All threads exited successfully!\n";
@@ -76,4 +71,18 @@ var_save::~var_save(){  //at program end we write to file
     for (int i=0;i!=save.size();i++)
         ofile << save[i].strname << _CODE0_ << save[i].strval << _CODE1_;
     ofile.close();
+}
+
+/*########## othr & protooth ##########*/
+
+protooth::~protooth(){}
+void protooth::run(){}
+othr::othr(protooth* newobj): obj(newobj){
+    thr=new std::thread(&protooth::run, obj);
+}
+othr::~othr(){
+    obj->end=true;
+    thr->join();
+    delete obj;
+    delete thr;
 }

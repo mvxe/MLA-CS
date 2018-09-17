@@ -36,8 +36,7 @@ typedef PVTobj* pPVTobj;
 
 /*########## XPS ##########*/
 
-class XPS : public TCP_con, public xps_config{
-    friend class globals;    //to be able to call run()
+class XPS : public TCP_con, public xps_config, public protooth{
     friend void PVTobj::_add(int n, double val);    //needs access to groups for axisnum
 private:
     struct execss{

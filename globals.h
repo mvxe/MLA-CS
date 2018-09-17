@@ -10,6 +10,7 @@
 #include <thread>
 #include <string>
 #include <atomic>
+#include <stack>
 #include <UTIL/containers.h>
 #include <UTIL/utility.h>
 class XPS;
@@ -26,6 +27,24 @@ private:
     std::string filename;
 };
 
+class protooth{              //abstract class for all classes to be in threads
+    friend class othr;
+public:
+    virtual ~protooth();     //if its virtual, destroying its pointer will call the derived class destructor
+    std::atomic<bool> end{false};
+private:
+    virtual void run();
+};
+
+class othr{
+public:
+    othr(protooth* newobj);
+    ~othr();
+    protooth* obj;
+protected:
+    std::thread* thr;
+};
+
 class globals{  //global objects with thread safe public functions
 public:
     globals();
@@ -36,20 +55,19 @@ public:
     var_save gui_config{"gui.conf"};
     var_save pos_config{"positioners.conf"};
 
-    XPS* pXPS;
+    XPS* pXPS;      //you can access stages through this
     MAKO* pMAKO;    //you can access cameras and frame queues through this, see MAKO/_config.h for members
-    RPTY* pRPTY;
+    RPTY* pRPTY;    //you can access red pitaya functions through this
 
     void startup(int argc, char *argv[]);                         //subsequent calls of this are ignored
+    template <typename T> T* newThread(T* procedure);             //with this you can create a new thread calling any object derived from protooth/procedure, example:  procedure* ptr=newThread(new procedure());
     void cleanup();
     void quit();                                                  //sends quit signal to the app, equivalent to clicking X on the window (not sure if thread safe, but its for exit on error anyway, to trigger apis cleanup before exit)
             /* use go.quit() in any thread if you need to quit the program*/
 private:
     std::mutex go_mx;
     bool started{false};
-    std::thread XPS_thread;
-    std::thread MAKO_thread;
-    std::thread RPTY_thread;
+    std::stack<othr> threads;
     QApplication* qapp;
 };
 

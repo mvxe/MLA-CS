@@ -27,8 +27,6 @@ public:
         std::string groupname;
         const std::string description;
     };
-    std::atomic<bool> end{false};
-
 
 
 

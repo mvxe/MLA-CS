@@ -6,8 +6,7 @@
 #include "UTIL/containers.h"
 #include "_config.h"
 
-class RPTY : public TCP_con, public rpty_config{
-    friend class globals;    //to be able to call run()
+class RPTY : public TCP_con, public rpty_config, public protooth{
 public:
     RPTY();
     ~RPTY();

@@ -6,9 +6,8 @@
 #include "DEV/MAKO/frame_queues.h"
 #include <vector>
 
-class MAKO : public mako_config{
+class MAKO : public mako_config, public protooth{
     friend class camobj;
-    friend class globals;    //to be able to call run()
 public:
     MAKO();
     ~MAKO();
