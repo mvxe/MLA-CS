@@ -1,4 +1,4 @@
-#ifndef INCLUDES_H
+#ifndef GUI_INCLUDES_H
 #define INCLUDES_H
 
 #include <QMainWindow>
@@ -13,7 +13,6 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <string>
-#include "sharedvars.h"
 #include "globals.h"
 
 #endif // INCLUDES_H

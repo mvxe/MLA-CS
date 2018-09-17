@@ -739,6 +739,13 @@
               </item>
              </layout>
             </item>
+            <item row="7" column="2">
+             <widget class="QLabel" name="e_rpty_ip_resolved">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
            </layout>
           </item>
           <item>

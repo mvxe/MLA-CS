@@ -3,15 +3,21 @@
 
 #include "GUI/includes.h"
 #include "GUI/slots_baseclass.h"
+#include "GUI/TAB_CAMERA/_config.h"
+#include "GUI/TAB_CONNECTION/_config.h"
+#include "GUI/TAB_SETTINGS/_config.h"
+class FQ;
 
 namespace Ui {
 class MainWindow;
+class tab_camera;
+class tab_settings;
+class tab_connection;
 }
 
-class MainWindow : public QMainWindow , public GUI_slots_baseclass
+class MainWindow : public QMainWindow , public GUI_slots_baseclass, public tab_camera, public tab_settings, public tab_connection
 {
     Q_OBJECT
-
 public:
     explicit MainWindow(QApplication* qapp, QWidget *parent = 0);
     ~MainWindow();
@@ -86,6 +92,7 @@ private:
     int dialval{0};
     bool xps_con{false};
     bool iuScope_con{false};
+    bool rpty_con{false};
 
     FQ* iuScope_img;    //the framequeue for display
 };
@@ -94,6 +101,8 @@ class mtlabel : public QLabel{
     using QLabel::QLabel;
     void mousePressEvent(QMouseEvent *event);
     void wheelEvent(QWheelEvent *event);
+public:
+    MainWindow* pmw;
 };
 
 

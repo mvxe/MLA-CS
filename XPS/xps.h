@@ -9,12 +9,10 @@
 #include <atomic>
 
 #include "TCP_con.h"
-#include "sharedvars.h"
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
 
-#include "mutex_containers.h"
 #include "UTIL/containers.h"
 #include "_config.h"
 

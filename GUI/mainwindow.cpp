@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "../includes.h"
 
 MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainWindow(parent), ui(new Ui::MainWindow) {
     connect(qapp,SIGNAL(aboutToQuit()),this,SLOT(program_exit()));
@@ -16,6 +17,7 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     connect(menu, SIGNAL(aboutToShow()), this, SLOT(cam1_select_show()));
 
     iuScope_img=go.pMAKO->iuScope->FQsPCcam.getNewFQ();    //make new image queue
+    ui->camera_stream->pmw=this;
 }
 
 MainWindow::~MainWindow(){
@@ -62,16 +64,16 @@ void mtlabel::mousePressEvent(QMouseEvent *event){
     double disp_x=-(event->pos().x()-size().width()/2.)/size().width();
     double disp_y=-(event->pos().y()-size().height()/2.)/size().height();
     if(go.pXPS->connected)
-        go.pXPS->MoveRelative(XPS::mgroup_XYZ,disp_x*sw.xps_x_sen.get()/100,disp_y*sw.xps_y_sen.get()/100,0);
+        go.pXPS->MoveRelative(XPS::mgroup_XYZ,disp_x*pmw->xps_x_sen/100,disp_y*pmw->xps_y_sen/100,0);
 }
 
 void mtlabel::wheelEvent(QWheelEvent *event){
     if(go.pXPS->connected)
-        go.pXPS->MoveRelative(XPS::mgroup_XYZ,0,0,(double)event->delta()*sw.xps_z_sen.get()/1000000);
+        go.pXPS->MoveRelative(XPS::mgroup_XYZ,0,0,(double)event->delta()*pmw->xps_z_sen/1000000);
 }
 
-void MainWindow::on_btm_kill_released(){        //TODO: this is just a GUI_disable timer test, remove
-    sw.GUI_disable.set(true,5);
+void MainWindow::on_btm_kill_released(){        //TODO: this is just a diable timer test, remove
+    disable.set(true,5);
 }
 
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove

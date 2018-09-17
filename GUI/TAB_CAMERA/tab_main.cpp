@@ -1,6 +1,2 @@
-#include "tab_main.h"
-
-tab_camera::tab_camera()
-{
-
-}
+#include "mainwindow.h"
+#include "../../includes.h"

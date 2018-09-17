@@ -47,9 +47,6 @@ DEPENDPATH += $$PWD/../Vimba_2_1
 HEADERS += \
     MAKO/mako.h \
     XPS/xps.h \
-    mutex_containers.h \
-    mutex_containers_impl.h \
-    sharedvars.h \
     TCP_con.h \
     includes.h \
     MAKO/mako_events.h \
@@ -67,18 +64,15 @@ HEADERS += \
     XPS/_config.h \
     MAKO/_config.h \
     GUI/TAB_CAMERA/_config.h \
-    GUI/TAB_CONNECTION/tab_main.h \
     GUI/TAB_CONNECTION/_config.h \
-    GUI/TAB_SETTINGS/tab_main.h \
     GUI/TAB_SETTINGS/_config.h \
-    GUI/TAB_CAMERA/tab_main.h
+    RPTY/rpty.h \
+    RPTY/_config.h
 
 SOURCES += \
     MAKO/mako.cpp \
     XPS/xps.cpp \
     main.cpp \
-    mutex_containers.cpp \
-    sharedvars.cpp \
     TCP_con.cpp \
     MAKO/mako_events.cpp \
     MAKO/frame_queues.cpp \
@@ -90,7 +84,8 @@ SOURCES += \
     UTIL/containers.cpp \
     GUI/TAB_CONNECTION/tab_main.cpp \
     GUI/TAB_SETTINGS/tab_main.cpp \
-    GUI/TAB_CAMERA/tab_main.cpp
+    GUI/TAB_CAMERA/tab_main.cpp \
+    RPTY/rpty.cpp
 
 
 unix {

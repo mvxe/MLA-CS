@@ -4,8 +4,8 @@
 #include <VimbaCPP/Include/VimbaCPP.h>
 #include "vmbwrap.h"
 #include "frame_queues.h"
-#include "sharedvars.h"
 #include "UTIL/containers.h"
+#include "UTIL/utility.h"
 #include <vector>
 #include "_config.h"
 

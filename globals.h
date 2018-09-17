@@ -11,8 +11,10 @@
 #include <string>
 #include <QApplication>
 #include <UTIL/containers.h>
+#include <UTIL/utility.h>
 class XPS;
 class MAKO;
+class RPTY;
 
 class var_save{
 public:
@@ -30,9 +32,11 @@ public:
 
     var_save config{"general.conf"};                    //this is initialized before everything else and before the globals() is called
     var_save cams_config{"cameras.conf"};
+    var_save gui_config{"gui.conf"};
 
     XPS* pXPS;
     MAKO* pMAKO;    //you can access cameras and frame queues through this, see MAKO/_config.h for members
+    RPTY* pRPTY;
 
     void startup(int argc, char *argv[]);                         //subsequent calls of this are ignored
     void cleanup();
@@ -43,6 +47,7 @@ private:
     bool started{false};
     std::thread XPS_thread;
     std::thread MAKO_thread;
+    std::thread RPTY_thread;
     QApplication* qapp;
 };
 

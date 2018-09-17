@@ -4,6 +4,7 @@
 #include "MAKO/frame_queues.h"
 #include "XPS/xps.h"
 #include "MAKO/mako.h"
+#include "RPTY/rpty.h"
 globals go;
 
 globals::globals(){}
@@ -17,6 +18,9 @@ void globals::startup(int argc, char *argv[]){
 
     pMAKO=new MAKO();
     MAKO_thread = std::thread(&MAKO::run, pMAKO);
+
+    pRPTY=new RPTY();
+    RPTY_thread = std::thread(&RPTY::run, pRPTY);
 
     qapp = new QApplication(argc, argv);
     MainWindow w(qapp);
@@ -34,6 +38,10 @@ void globals::cleanup(){
     go.pXPS->end=true;
     XPS_thread.join();
     delete pXPS;
+
+    go.pRPTY->end=true;
+    RPTY_thread.join();
+    delete pRPTY;
 
     cURLpp::terminate();                    //we terminate curl
     std::cout<<"All threads exited successfully!\n";

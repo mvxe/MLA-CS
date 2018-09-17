@@ -13,11 +13,8 @@ void PVTobj::_add(int n, double val){
 
 /*########## XPS ##########*/
 
-XPS::XPS(){
-    TCP_con();
-}
-XPS::~XPS(){
-}
+XPS::XPS(){}
+XPS::~XPS(){}
 void XPS::run(){    //this is the XPS thread loop
     std::string tmp;
     for (;;){
