@@ -6,6 +6,7 @@
 #include "GUI/TAB_CAMERA/_config.h"
 #include "GUI/TAB_CONNECTION/_config.h"
 #include "GUI/TAB_SETTINGS/_config.h"
+#include "GUI/TAB_POSITIONERS/_config.h"
 class FQ;
 
 namespace Ui {
@@ -15,7 +16,7 @@ class tab_settings;
 class tab_connection;
 }
 
-class MainWindow : public QMainWindow , public GUI_slots_baseclass, public tab_camera, public tab_settings, public tab_connection
+class MainWindow : public QMainWindow , public GUI_slots_baseclass, public tab_camera, public tab_settings, public tab_connection, public tab_positioners
 {
     Q_OBJECT
 public:

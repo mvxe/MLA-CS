@@ -34,6 +34,7 @@ public:
     var_save config{"general.conf"};                    //this is initialized before everything else and before the globals() is called
     var_save cams_config{"cameras.conf"};
     var_save gui_config{"gui.conf"};
+    var_save pos_config{"positioners.conf"};
 
     XPS* pXPS;
     MAKO* pMAKO;    //you can access cameras and frame queues through this, see MAKO/_config.h for members

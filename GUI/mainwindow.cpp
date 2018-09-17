@@ -73,7 +73,14 @@ void mtlabel::wheelEvent(QWheelEvent *event){
 }
 
 void MainWindow::on_btm_kill_released(){        //TODO: this is just a diable timer test, remove
-    disable.set(true,5);
+    //disable.set(true,5);
+    for (int i=0;i!=8;i++){
+        exec_ret ret;
+        go.pXPS->execCommand(&ret, "HardwareDriverAndStageGet", i,  "char *");
+        ret.block_till_done();
+        std::cerr<<ret.v.retstr<<"\n";
+    }
+
 }
 
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove

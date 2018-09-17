@@ -67,7 +67,8 @@ HEADERS += \
     DEV/RPTY/_config.h \
     GUI/mainwindow.h \
     GUI/gui_includes.h \
-    DEV/TCP_con.h
+    DEV/TCP_con.h \
+    GUI/TAB_POSITIONERS/_config.h
 
 SOURCES += \
     DEV/MAKO/mako.cpp \
@@ -85,7 +86,8 @@ SOURCES += \
     GUI/TAB_SETTINGS/tab_main.cpp \
     GUI/TAB_CAMERA/tab_main.cpp \
     DEV/RPTY/rpty.cpp \
-    DEV/TCP_con.cpp
+    DEV/TCP_con.cpp \
+    GUI/TAB_POSITIONERS/tab_main.cpp
 
 
 unix {
