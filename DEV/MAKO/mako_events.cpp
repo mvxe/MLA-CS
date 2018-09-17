@@ -1,4 +1,4 @@
-#include "mako.h"
+#include "DEV/MAKO/mako.h"
 
 void CamObserver::CameraListChanged ( AVT::VmbAPI::CameraPtr pCam , AVT::VmbAPI::UpdateTriggerType reason )
 {

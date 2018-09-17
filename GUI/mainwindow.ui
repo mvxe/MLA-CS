@@ -779,7 +779,7 @@
   <customwidget>
    <class>mtlabel</class>
    <extends>QLabel</extends>
-   <header>mainwindow.h</header>
+   <header>GUI/mainwindow.h</header>
   </customwidget>
  </customwidgets>
  <resources>

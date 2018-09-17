@@ -1,4 +1,5 @@
-#include "RPTY/rpty.h"
+#include "DEV/RPTY/rpty.h"
+#include "globals.h"
 
 RPTY::RPTY(){}
 RPTY::~RPTY(){}

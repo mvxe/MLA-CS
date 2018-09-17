@@ -1,5 +1,5 @@
-#include "mainwindow.h"
-#include "../../includes.h"
+#include "GUI/mainwindow.h"
+#include "includes.h"
 
 void MainWindow::on_btn_X_dec_released(){go.pXPS->limit=false; go.pXPS->MoveRelative(XPS::mgroup_XYZ,-1,0,0);}
 void MainWindow::on_btn_Y_dec_released(){go.pXPS->limit=false; go.pXPS->MoveRelative(XPS::mgroup_XYZ,0,-1,0);}

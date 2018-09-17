@@ -45,47 +45,47 @@ INCLUDEPATH += $$PWD/../Vimba_2_1
 DEPENDPATH += $$PWD/../Vimba_2_1
 
 HEADERS += \
-    MAKO/mako.h \
-    XPS/xps.h \
-    TCP_con.h \
+    DEV/MAKO/mako.h \
+    DEV/XPS/xps.h \
     includes.h \
-    MAKO/mako_events.h \
-    MAKO/vmbwrap.h \
-    MAKO/frame_queues.h \
+    DEV/MAKO/mako_events.h \
+    DEV/MAKO/vmbwrap.h \
+    DEV/MAKO/frame_queues.h \
     globals.h \
     GUI/slots_baseclass.h \
-    GUI/includes.h \
-    mainwindow.h \
-    MAKO/camobj.h \
+    DEV/MAKO/camobj.h \
     UTIL/utility.h \
     UTIL/containers.h \
     UTIL/containers_template.h \
-    XPS/xps_template.h \
-    XPS/_config.h \
-    MAKO/_config.h \
+    DEV/XPS/xps_template.h \
+    DEV/XPS/_config.h \
+    DEV/MAKO/_config.h \
     GUI/TAB_CAMERA/_config.h \
     GUI/TAB_CONNECTION/_config.h \
     GUI/TAB_SETTINGS/_config.h \
-    RPTY/rpty.h \
-    RPTY/_config.h
+    DEV/RPTY/rpty.h \
+    DEV/RPTY/_config.h \
+    GUI/mainwindow.h \
+    GUI/gui_includes.h \
+    DEV/TCP_con.h
 
 SOURCES += \
-    MAKO/mako.cpp \
-    XPS/xps.cpp \
+    DEV/MAKO/mako.cpp \
+    DEV/XPS/xps.cpp \
     main.cpp \
-    TCP_con.cpp \
-    MAKO/mako_events.cpp \
-    MAKO/frame_queues.cpp \
+    DEV/MAKO/mako_events.cpp \
+    DEV/MAKO/frame_queues.cpp \
     globals.cpp \
     GUI/settingstab.cpp \
     GUI/slots_baseclass.cpp \
     GUI/mainwindow.cpp \
-    MAKO/camobj.cpp \
+    DEV/MAKO/camobj.cpp \
     UTIL/containers.cpp \
     GUI/TAB_CONNECTION/tab_main.cpp \
     GUI/TAB_SETTINGS/tab_main.cpp \
     GUI/TAB_CAMERA/tab_main.cpp \
-    RPTY/rpty.cpp
+    DEV/RPTY/rpty.cpp \
+    DEV/TCP_con.cpp
 
 
 unix {

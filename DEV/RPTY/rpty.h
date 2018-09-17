@@ -1,7 +1,7 @@
 #ifndef RPTY_H
 #define RPTY_H
 
-#include "TCP_con.h"
+#include "DEV/TCP_con.h"
 
 #include "UTIL/containers.h"
 #include "_config.h"

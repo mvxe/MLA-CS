@@ -1,4 +1,5 @@
-#include "xps.h"
+#include "DEV/XPS/xps.h"
+#include "globals.h"
 
 PVTobj::PVTobj(){}
 void PVTobj::clear(){

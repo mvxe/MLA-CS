@@ -1,10 +1,6 @@
-#include "globals.h"
-#include "mainwindow.h".h"
-#include "UTIL/utility.h"
-#include "MAKO/frame_queues.h"
-#include "XPS/xps.h"
-#include "MAKO/mako.h"
-#include "RPTY/rpty.h"
+#include "GUI/mainwindow.h"
+#include <QApplication>
+#include "includes.h"
 globals go;
 
 globals::globals(){}
@@ -51,7 +47,7 @@ void globals::quit(){
     qapp->quit();
 }
 
-        /* config_save */
+/* config_save */
 
 #define _CODE0_ " [val] "
 #define _NCHC0_ 7                  //num of characters in code

@@ -1,6 +1,6 @@
-#include "mainwindow.h"
+#include "GUI/mainwindow.h"
 #include "ui_mainwindow.h"
-#include "../includes.h"
+#include "includes.h"
 
 
 void MainWindow::sync_settings(){

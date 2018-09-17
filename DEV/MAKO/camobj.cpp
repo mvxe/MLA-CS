@@ -1,4 +1,4 @@
-#include "mako.h"
+#include "DEV/MAKO/mako.h"
 
 camobj::camobj(MAKO *cobj, std::string strID) : camobj_config(strID), cobj(cobj), ID(&mkmx,strID,&go.config.save,strID){}
 

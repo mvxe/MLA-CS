@@ -2,10 +2,8 @@
 #define CAMOBJ_H
 
 #include <VimbaCPP/Include/VimbaCPP.h>
-#include "vmbwrap.h"
-#include "frame_queues.h"
-#include "UTIL/containers.h"
-#include "UTIL/utility.h"
+#include "DEV/MAKO/vmbwrap.h"
+#include "DEV/MAKO/frame_queues.h"
 #include <vector>
 #include "_config.h"
 

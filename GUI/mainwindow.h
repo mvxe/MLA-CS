@@ -1,7 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "GUI/includes.h"
+#include "GUI/gui_includes.h"
 #include "GUI/slots_baseclass.h"
 #include "GUI/TAB_CAMERA/_config.h"
 #include "GUI/TAB_CONNECTION/_config.h"
@@ -38,45 +38,25 @@ private slots:
     void on_e_rpty_port_editingFinished();
 
     void on_tabWidget_currentChanged(int index);
-
     void on_cam1_select_triggered(QAction *arg1);
-
     void cam1_select_show();
-
     void on_sl_xsens_valueChanged(int value);
-
     void on_sl_ysens_valueChanged(int value);
-
     void on_sl_zsens_valueChanged(int value);
-
     void on_sl_expo_valueChanged(int value);
-
     void on_btm_kill_released();
-
     void on_btn_home_released();
-
     void on_btn_X_dec_released();
-
     void on_btn_Y_dec_released();
-
     void on_btn_Z_dec_released();
-
     void on_btn_X_min_released();
-
     void on_btn_Y_min_released();
-
     void on_btn_Z_min_released();
-
     void on_btn_X_max_released();
-
     void on_btn_Y_max_released();
-
     void on_btn_Z_max_released();
-
     void on_btn_X_inc_released();
-
     void on_btn_Y_inc_released();
-
     void on_btn_Z_inc_released();
 
 private:

@@ -1,9 +1,9 @@
 #ifndef MAKO_H
 #define MAKO_H
 
-#include "camobj.h"
-#include "vmbwrap.h"
-#include "frame_queues.h"
+#include "DEV/MAKO/camobj.h"
+#include "DEV/MAKO/vmbwrap.h"
+#include "DEV/MAKO/frame_queues.h"
 #include <vector>
 
 class MAKO : public mako_config{

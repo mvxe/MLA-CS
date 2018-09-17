@@ -1,5 +1,5 @@
 #ifndef GUI_INCLUDES_H
-#define INCLUDES_H
+#define GUI_INCLUDES_H
 
 #include <QMainWindow>
 #include <QString>
@@ -12,7 +12,6 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QWheelEvent>
-#include <string>
 #include "globals.h"
 
-#endif // INCLUDES_H
+#endif // GUI_INCLUDES_H

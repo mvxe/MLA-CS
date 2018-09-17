@@ -1,6 +1,6 @@
-#include "mainwindow.h"
+#include "GUI/mainwindow.h"
 #include "ui_mainwindow.h"
-#include "../includes.h"
+#include "includes.h"
 
 MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainWindow(parent), ui(new Ui::MainWindow) {
     connect(qapp,SIGNAL(aboutToQuit()),this,SLOT(program_exit()));

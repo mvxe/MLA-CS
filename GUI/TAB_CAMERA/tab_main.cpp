@@ -1,2 +1,2 @@
-#include "mainwindow.h"
-#include "../../includes.h"
+#include "GUI/mainwindow.h"
+#include "includes.h"

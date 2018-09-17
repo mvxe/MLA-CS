@@ -9,12 +9,13 @@
 #include <mutex>
 #include <thread>
 #include <string>
-#include <QApplication>
+#include <atomic>
 #include <UTIL/containers.h>
 #include <UTIL/utility.h>
 class XPS;
 class MAKO;
 class RPTY;
+class QApplication;
 
 class var_save{
 public:

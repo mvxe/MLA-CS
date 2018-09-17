@@ -1,5 +1,4 @@
 #include "GUI/slots_baseclass.h"
-#include "../includes.h"
 
     /* this handles (most) lineedit events*/
 void GUI_slots_baseclass::lineedit_fun(QLineEdit* obj, tsvar<std::string> *var){
