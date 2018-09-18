@@ -2,6 +2,4 @@
 
 procedure::procedure(){}
 procedure::~procedure(){}
-void procedure::run(){
-
-}
+void procedure::run(){}

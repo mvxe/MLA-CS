@@ -11,10 +11,10 @@ class procedure: public protooth
 {
 public:
     procedure();
-    ~procedure();
+    virtual ~procedure();
     std::atomic<bool> end{false};           //this can be used by the creator thread or go.cleanup() to shut down the thread
 private:
-    void run();
+    virtual void run();                     //this function gets called by the new thread
 };
 
 #endif // PROCEDURE_H

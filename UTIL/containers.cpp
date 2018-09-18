@@ -8,11 +8,17 @@ bool exec_ret::block_till_done(){
             if(done) break;}
         std::this_thread::sleep_for (std::chrono::milliseconds(1));
     }
+    std::lock_guard<std::mutex>lock(mx);
     return (v.retval!=0);
 }
 bool exec_ret::check_if_done(){
     std::lock_guard<std::mutex>lock(mx);      //just as a ref, the mutex is unlocked after lk destructs, which happens AFTER the return var is copied so this is thread safe
     return done;
+}
+void exec_ret::reset(){
+    std::lock_guard<std::mutex>lock(mx);
+    done=false;
+    v.retval=-9999;
 }
 void exec_ret::set_value(std::string val){
     std::lock_guard<std::mutex>lock(mx);

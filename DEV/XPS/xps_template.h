@@ -51,7 +51,7 @@ void XPS::execCommand(exec_ret* ret ,std::string command, T value){
 template<typename T, typename... Args>
 void XPS::execCommand(std::string command, T value, Args... args){
     std::stringstream* nstrm=new std::stringstream();
-    *nstrm<<command<<" (";
+    *nstrm<<command<<"(";
     eexecCommand(nstrm, nullptr, value, args...);
 }
 template<typename T, typename... Args>
@@ -65,6 +65,7 @@ template <typename T>
 void XPS::eexecCommandStr(std::stringstream* strm, exec_ret* ret, T value){
     *strm<<value;
     {std::lock_guard<std::mutex>lock(mpq);
+        if(ret!=nullptr) ret->reset();
         priority_queue.push({strm->str(),ret});}
     strm->str("");
     strm->clear();
@@ -80,6 +81,7 @@ template <typename T>
 void XPS::eexecCommand(std::stringstream* strm, exec_ret* ret, T value){
     *strm<<value<<")";
     {std::lock_guard<std::mutex>lock(mpq);
+        if(ret!=nullptr) ret->reset();
         priority_queue.push({strm->str(),ret});}
     strm->str("");
     strm->clear();

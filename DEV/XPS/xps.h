@@ -59,8 +59,10 @@ public:
     template <typename T>                     void execCommandStr(exec_ret* ret, T value);
     template <typename T, typename... Args>   void execCommandStr(exec_ret* ret, T value, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see xps_ret in UTIL/containers
 
+                                              void execCommand(std::string command);
     template <typename T>                     void execCommand(std::string command, T value);              //same as above command, except it automatically adds brackets and comas, for example  <command>(<arg0>,<arg1>,<arg2>...) and sends that to eexecCommandStr
     template <typename T, typename... Args>   void execCommand(std::string command, T value, Args... args);
+                                              void execCommand(exec_ret* ret, std::string command);
     template <typename T>                     void execCommand(exec_ret* ret, std::string command, T value);
     template <typename T, typename... Args>   void execCommand(exec_ret* ret, std::string command, T value, Args... args);
 

@@ -9,7 +9,7 @@ void globals::startup(int argc, char *argv[]){
     if (started) return; started=true;
     cURLpp::initialize(CURL_GLOBAL_ALL);     //we init the curl lib needed for FTP
 
-    pXPS=newThread(new XPS());      //pXPS=dynamic_cast<XPS*>(threads.top().obj);   //I leave this as a reference to myself of how to cast base class to derived
+    pXPS=newThread(new XPS());
     pMAKO=newThread(new MAKO());
     pRPTY=newThread(new RPTY());
 
@@ -32,7 +32,7 @@ void globals::cleanup(){
     std::cout<<"Sending end signals to all threads...\n";
 
     while(!threads.empty())
-        threads.pop();      //this destroys them(safely calling their destructors
+        threads.pop();      //this destroys them(safely calling their destructors)
 
     cURLpp::terminate();                    //we terminate curl
     std::cout<<"All threads exited successfully!\n";

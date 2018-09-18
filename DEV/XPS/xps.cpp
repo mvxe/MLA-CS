@@ -29,7 +29,7 @@ void XPS::run(){    //this is the XPS thread loop
             else{
                     //connecting...
                 connect(keepalive.get());
-                if (connected) {initGroups();homeGroups();flushQueue();}
+                if (connected) {go.pXPS->execCommand("GPIODigitalSet","GPIO3.DO", 1,0);initGroups();homeGroups();flushQueue();}     //TODO put into same function
             }
             IP.resolved.set(resname);
         }
@@ -41,6 +41,7 @@ void XPS::run(){    //this is the XPS thread loop
 
         if(end){
             if (connected){
+                go.pXPS->execCommand("GPIODigitalSet","GPIO3.DO", 1,1);     //TODO put into same function and call here and above
                 killGroups();
                 flushQueue();
                 disconnect();
@@ -222,4 +223,15 @@ void XPS::groupSetName(GroupID ID, std::string name){
 std::string XPS::groupGetName(GroupID ID){
     std::lock_guard<std::mutex>lock(gmx);
     return groups[ID].groupname;
+}
+
+void XPS::execCommand(std::string command){
+    std::stringstream* nstrm=new std::stringstream();
+    *nstrm<<command;
+    eexecCommand(nstrm, nullptr, "(");
+}
+void XPS::execCommand(exec_ret* ret ,std::string command){
+    std::stringstream* nstrm=new std::stringstream();
+    *nstrm<<command;
+    return eexecCommand(nstrm, ret, "(");
 }

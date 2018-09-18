@@ -46,6 +46,7 @@ class exec_ret{
 public:
     bool block_till_done();             //for client function, returns true if an error value was given
     bool check_if_done();               //for client function, returns true if data can be accessed
+    void reset();                       //for server to reset the ret, this is needed if it is reused for multiple commands
     void set_value(std::string val);    //for server thread function , these three are thread safe
 
     exec_dat v{"",-9999};               //once one of the first two commands indicate it is done, the client can directly access the two vars (DO NOT DESTROY OBJECT BEFORE IT RETURNS A VALUE!! unless you like segfaults, that is)
