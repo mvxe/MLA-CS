@@ -9,9 +9,9 @@ void globals::startup(int argc, char *argv[]){
     if (started) return; started=true;
     cURLpp::initialize(CURL_GLOBAL_ALL);     //we init the curl lib needed for FTP
 
-    pXPS=newThread(new XPS());
-    pMAKO=newThread(new MAKO());
-    pRPTY=newThread(new RPTY());
+    pXPS =newThread<XPS> ()->obj;
+    pMAKO=newThread<MAKO>()->obj;
+    pRPTY=newThread<RPTY>()->obj;
 
     qapp = new QApplication(argc, argv);
     MainWindow w(qapp);
@@ -19,20 +19,29 @@ void globals::startup(int argc, char *argv[]){
     qapp->exec();
 }
 template <typename T>
-T* globals::newThread(T* procedure){
-    if (!dynamic_cast<protooth*>(procedure)) {
-        std::cerr << "ERROR: You called newThread on a class not derived from protooth.\n";
-        quit();
+othr<T>* globals::newThread(){
+    if (!std::is_base_of<protooth, T>::value) {
+        std::cerr << "ERROR: You called newThread on a class not derived from protooth/procedure.\n";
+        quit(); return nullptr;
     }
-    threads.emplace(procedure);
-    return procedure;
+    threads.emplace_front(new othr<T>());
+    return dynamic_cast<othr<T>*>(threads.front());
+}
+void globals::killThread(base_othr*& thro){
+    delete thro;
+    for (std::list<base_othr*>::iterator it1=threads.begin(); it1!=threads.end(); ++it1)
+        if(*it1==thro) {
+            threads.erase(it1);
+            break;
+        }
+    thro=nullptr;
 }
 void globals::cleanup(){
     if (!go_mx.try_lock()) return;
     std::cout<<"Sending end signals to all threads...\n";
 
     while(!threads.empty())
-        threads.pop();      //this destroys them(safely calling their destructors)
+        killThread(threads.front());        //this destroys them(safely calling their destructors)
 
     cURLpp::terminate();                    //we terminate curl
     std::cout<<"All threads exited successfully!\n";
@@ -71,18 +80,4 @@ var_save::~var_save(){  //at program end we write to file
     for (int i=0;i!=save.size();i++)
         ofile << save[i].strname << _CODE0_ << save[i].strval << _CODE1_;
     ofile.close();
-}
-
-/*########## othr & protooth ##########*/
-
-protooth::~protooth(){}
-void protooth::run(){}
-othr::othr(protooth* newobj): obj(newobj){
-    thr=new std::thread(&protooth::run, obj);
-}
-othr::~othr(){
-    obj->end=true;
-    thr->join();
-    delete obj;
-    delete thr;
 }

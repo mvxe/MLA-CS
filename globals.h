@@ -10,7 +10,7 @@
 #include <thread>
 #include <string>
 #include <atomic>
-#include <stack>
+#include <list>
 #include <UTIL/containers.h>
 #include <UTIL/utility.h>
 class XPS;
@@ -28,22 +28,42 @@ private:
 };
 
 class protooth{              //abstract class for all classes to be in threads
-    friend class othr;
+    friend class base_othr;
 public:
-    virtual ~protooth();     //if its virtual, destroying its pointer will call the derived class destructor
+    virtual ~protooth(){*done=true;}                     //if its virtual, destroying its pointer will call the derived class destructor
     std::atomic<bool> end{false};
+    std::atomic<bool>* done;
 private:
-    virtual void run();
+    virtual void run()=0;
 };
 
-class othr{
+class base_othr{
 public:
-    othr(protooth* newobj);
-    ~othr();
-    protooth* obj;
+    virtual ~base_othr(){}
+    std::atomic<bool> done{false};      //this flag indicates whether the thread has closed, it is then safe to destroy this object. It is automatically set by the destructor od any protooth derived class.
 protected:
     std::thread* thr;
 };
+template <typename T>
+class othr: public base_othr{
+public:
+    othr();
+    ~othr();
+    T* obj;
+};
+template <typename T>
+othr<T>::othr(){
+    obj=new T();
+    obj->done=&done;
+    thr=new std::thread(&protooth::run, obj);
+}
+template <typename T>
+othr<T>::~othr(){
+    obj->end=true;
+    thr->join();
+    delete obj;
+    delete thr;
+}
 
 class globals{  //global objects with thread safe public functions
 public:
@@ -60,14 +80,16 @@ public:
     RPTY* pRPTY;    //you can access red pitaya functions through this
 
     void startup(int argc, char *argv[]);                         //subsequent calls of this are ignored
-    template <typename T> T* newThread(T* procedure);             //with this you can create a new thread calling any object derived from protooth/procedure, example:  procedure* ptr=newThread(new procedure());
+    template <typename T> othr<T>* newThread();                   //with this you can create a new thread calling any object derived from protooth/procedure, example:  XPS* pXPS=newThread<XPS>()->obj; or othr<proc> name=newThread<proc>();
+    void killThread(base_othr *&thro);                            //this kills the thread, ie if the thread is still running it sends an end flag and waits till its done, if its done its simply deallocated and removed from the list
+                                                                  //you may check if the thread is done by looking at the base_othr.done or directly at the objects done variable, however after killThread is called the object WILL be deallocated
     void cleanup();
     void quit();                                                  //sends quit signal to the app, equivalent to clicking X on the window (not sure if thread safe, but its for exit on error anyway, to trigger apis cleanup before exit)
             /* use go.quit() in any thread if you need to quit the program*/
 private:
     std::mutex go_mx;
     bool started{false};
-    std::stack<othr> threads;
+    std::list<base_othr*> threads;
     QApplication* qapp;
 };
 
