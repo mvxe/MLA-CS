@@ -19,7 +19,7 @@ public:
 
     FQ* getNewFQ();                 //returns a pointer to a new frame queue
     void setCamFPS(double nfps);    //set the camera framerate, essential of proper image sorting into queues (this is thread safe)
-        //TODO implement destroy FQ
+    void deleteFQ(FQ* fq);          //TODO implement destroy FQ and free data
 
     cv::Mat* getAFreeMatPtr();                   //these two functions are used by the vimba api observer to put new frames into the queue           //TODO these two functions should not be exposed to the user, just FrameObserver::FrameReceived
     void enqueueMat(unsigned int timestamp);     //they are not thread safe, so use them only in one observer function

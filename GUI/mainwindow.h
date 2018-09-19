@@ -66,6 +66,7 @@ private:
     QMenu *menu;
     std::vector<QAction*> actptrs;
     QTimer *timer;
+    QShortcut *shortcut;
 
     QPixmap px_online{":/emblem-ok.svg"};
     QPixmap px_offline{":/emblem-nowrite.svg"};

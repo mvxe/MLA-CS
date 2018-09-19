@@ -9,6 +9,7 @@ void globals::startup(int argc, char *argv[]){
     if (started) return; started=true;
     cURLpp::initialize(CURL_GLOBAL_ALL);     //we init the curl lib needed for FTP
 
+    newThread<killme>();            //so that I can kill it in the terminal if qt freezes, which is often over ssh
     pXPS =newThread<XPS> ()->obj;
     pMAKO=newThread<MAKO>()->obj;
     pRPTY=newThread<RPTY>()->obj;
@@ -16,16 +17,12 @@ void globals::startup(int argc, char *argv[]){
     qapp = new QApplication(argc, argv);
     MainWindow w(qapp);
     w.show();
-    qapp->exec();
-}
-template <typename T>
-othr<T>* globals::newThread(){
-    if (!std::is_base_of<protooth, T>::value) {
-        std::cerr << "ERROR: You called newThread on a class not derived from protooth/procedure.\n";
-        quit(); return nullptr;
+    try {
+        qapp->exec();
+    } catch (...) {
+        cleanup();
+        return;
     }
-    threads.emplace_front(new othr<T>());
-    return dynamic_cast<othr<T>*>(threads.front());
 }
 void globals::killThread(base_othr*& thro){
     delete thro;
@@ -81,3 +78,4 @@ var_save::~var_save(){  //at program end we write to file
         ofile << save[i].strname << _CODE0_ << save[i].strval << _CODE1_;
     ofile.close();
 }
+

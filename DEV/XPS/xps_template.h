@@ -4,12 +4,12 @@
 
 template<typename... Args>
 void PVTobj::add(double val, Args... vals){
-    data<<val<<" ";
+    pvtqueue.push(val);
     _add(1, vals...);
 }
 template<typename... Args>
 void PVTobj::_add(int n, double val, Args... vals){
-    data<<val<<" ";
+    pvtqueue.push(val);
     _add(n+1, vals...);
 }
 

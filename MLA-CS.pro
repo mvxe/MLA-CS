@@ -69,7 +69,9 @@ HEADERS += \
     GUI/gui_includes.h \
     DEV/TCP_con.h \
     GUI/TAB_POSITIONERS/_config.h \
-    PROCEDURES/procedure.h
+    PROCEDURES/procedure.h \
+    PROCEDURES/UTIL/find_focus.h \
+    PROCEDURES/_incl_procedures.h
 
 SOURCES += \
     DEV/MAKO/mako.cpp \
@@ -89,7 +91,8 @@ SOURCES += \
     DEV/RPTY/rpty.cpp \
     DEV/TCP_con.cpp \
     GUI/TAB_POSITIONERS/tab_main.cpp \
-    PROCEDURES/procedure.cpp
+    PROCEDURES/procedure.cpp \
+    PROCEDURES/UTIL/find_focus.cpp
 
 
 unix {

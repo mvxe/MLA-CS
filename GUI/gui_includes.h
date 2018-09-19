@@ -12,6 +12,8 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QShortcut>
 #include "globals.h"
+#include "PROCEDURES/_incl_procedures.h"
 
 #endif // GUI_INCLUDES_H

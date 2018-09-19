@@ -53,6 +53,9 @@ FQ* FQsPC::getNewFQ(){
     user_queues.emplace_back();
     return &user_queues.back();
 }
+void FQsPC::deleteFQ(FQ* fq){
+    fq->setUserFps(0);
+}
 void FQsPC::setCamFPS(double nfps){
     std::lock_guard<std::mutex>lock(userqmx);
     fps=nfps;

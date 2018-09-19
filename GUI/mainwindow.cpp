@@ -4,6 +4,7 @@
 
 MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainWindow(parent), ui(new Ui::MainWindow) {
     connect(qapp,SIGNAL(aboutToQuit()),this,SLOT(program_exit()));
+    shortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q),this,SLOT(program_exit()));
 
     ui->setupUi(this);
     sync_settings();
@@ -88,6 +89,7 @@ void MainWindow::on_btm_kill_released(){        //TODO: this is just a diable ti
     //else  {go.pXPS->execCommand(&ret, "GPIODigitalSet","GPIO3.DO", 1,0);lol=true;}
     //ret.block_till_done(); std::cerr<<ret.v.retstr<<"\n";
 
+    go.newThread<PFindFocus>();
 }
 
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
@@ -112,9 +114,8 @@ void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
     po->add(1,0,0,0,0,0,0);
     po->add(1,-1,-1,-1,-1,-1,-1);
     po->add(1,0,0,0,0,0,0);
-    std::cout<<go.pXPS->copyPVToverFTP(po)<<"\n";
     std::cout<<go.pXPS->verifyPVTobj(po).retstr<<"\n";
-    std::cout<<go.pXPS->execPVTobj(po).retstr<<"\n";
+    std::cout<<go.pXPS->execPVTobjB(po).retstr<<"\n";
     go.pXPS->destroyPVTobj(po);
 
     go.pXPS->execCommand("GPIODigitalSet","GPIO3.DO", 1,0);

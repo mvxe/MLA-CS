@@ -11,8 +11,10 @@
 #include <string>
 #include <atomic>
 #include <list>
+#include <iostream>
 #include <UTIL/containers.h>
 #include <UTIL/utility.h>
+
 class XPS;
 class MAKO;
 class RPTY;
@@ -93,6 +95,34 @@ private:
     QApplication* qapp;
 };
 
+/*########## TEMPLATE FUNCTIONS ##########*/
+
+template <typename T>
+othr<T>* globals::newThread(){
+    if (!std::is_base_of<protooth, T>::value) {
+        std::cerr << "ERROR: You called newThread on a class not derived from protooth/procedure.\n";
+        quit(); return nullptr;
+    }
+    threads.emplace_front(new othr<T>());
+    return dynamic_cast<othr<T>*>(threads.front());
+}
+
+/*####################*/
+
 extern globals go;
+
+class killme: public protooth{      //TODO make this nonblocking
+public:
+    void run(){
+        std::string txt;
+        for(;;){
+            std::cin>>txt;
+            if (txt.find("exit")!=std::string::npos) break;
+        }
+        go.cleanup();
+        exit(0);
+    }
+    ~killme(){}
+};
 
 #endif // GLOBALS_H

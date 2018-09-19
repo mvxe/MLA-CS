@@ -30,6 +30,7 @@ private:
     xps_config::GroupID ID;
     std::string filename;
     std::stringstream data;
+    std::queue<double> pvtqueue;
     bool verified{false};
 };
 typedef PVTobj* pPVTobj;
@@ -77,9 +78,10 @@ public:
 
     pPVTobj createNewPVTobj(GroupID ID, std::string filename);
     void destroyPVTobj(pPVTobj obj);                                    //deallocates it
-    std::string copyPVToverFTP(pPVTobj obj);                            //if successful, returns an empty string, else a string containing the error message
-    exec_dat verifyPVTobj(pPVTobj obj);                                  //returns the verification result
-    exec_dat execPVTobj(pPVTobj obj);
+    exec_dat verifyPVTobj(pPVTobj obj);                                 //returns the verification result, on error also clears the queue
+    void execPVTobj(pPVTobj obj);                                       //non blocking
+    exec_dat execPVTobjB(pPVTobj obj);                                  //blocks until done
+    void clearPVTobj(pPVTobj obj);                                      //clears the queue
 
     std::atomic<bool> limit{true};        //set to false to disable limits for the next move command (it is automatically set to true afterwards), the atomic type is thread safe
     template<typename... Args>  void MoveRelative(GroupID ID, double val, Args... vals);
@@ -106,6 +108,7 @@ private:
     void _MoveRelative(int n, GroupID ID, double val);
     template<typename... Args>  void _MoveAbsolute(int n, GroupID ID, double val, Args... vals);
     void _MoveAbsolute(int n, GroupID ID, double val);
+    std::string _copyPVToverFTP(pPVTobj obj);
     void flushQueue();
     void __MoveAbsolute(GroupID ID);
     void _restrict_pos(axis& pos);                  //checks if pox? is within min? and max?, if not, sets it to min?/max?
@@ -118,7 +121,6 @@ private:
 
     std::mutex ftpmx;
 };
-
 
 #include "xps_template.h"
 
