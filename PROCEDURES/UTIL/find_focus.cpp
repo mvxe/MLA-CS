@@ -1,5 +1,6 @@
 #include "find_focus.h"
 #include "includes.h"
+#include "UTIL/IMGPROC/BASIC/imgproc_basic_stats.h"
 
 PFindFocus::PFindFocus(double len, double speed): len(len), speed(speed){
 }
@@ -26,18 +27,31 @@ bool PFindFocus::startup(){
     po->add(1,          0,0,0,0,0.1  ,0);
     if(go.pXPS->verifyPVTobj(po).retval!=0)       //this will block and exec after MoveAbsolute is done
         return true;
-    go.pXPS->execPVTobj(po);                       //we dont block here, gotta start processing frames
+    go.pXPS->execPVTobj(po, &ret);                //we dont block here, gotta start processing frames
 
     framequeue->setUserFps(99999);  //set max fps
 }
 void PFindFocus::cleanup(){
-    std::cerr<<framequeue->getFullNumber()<<" = full\n";
+    std::cerr<<framequeue->getFullNumber()<<" = left\n";
     framequeue->setUserFps(0);
+    while (proc_frame());
+
     go.pMAKO->iuScope->FQsPCcam.deleteFQ(framequeue);
     go.pXPS->execCommand("GPIODigitalSet","GPIO3.DO", 1,0);
     go.pXPS->destroyPVTobj(po);
 }
 bool PFindFocus::work(){
+    proc_frame();
+    if (ret.check_if_done()) return true;
+    else return false;
+}
 
-    return true;
+bool PFindFocus::proc_frame(){
+    mat=framequeue->getUserMat();
+    if (mat!=nullptr){
+        std::cerr<<"mat value: "<<imgproc_basic_stats::get_avg_value(mat)<<"\n";
+        framequeue->freeUserMat();
+        return true;
+    }
+    return false;
 }

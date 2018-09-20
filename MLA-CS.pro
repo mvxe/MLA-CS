@@ -71,7 +71,8 @@ HEADERS += \
     GUI/TAB_POSITIONERS/_config.h \
     PROCEDURES/procedure.h \
     PROCEDURES/UTIL/find_focus.h \
-    PROCEDURES/_incl_procedures.h
+    PROCEDURES/_incl_procedures.h \
+    UTIL/IMGPROC/BASIC/imgproc_basic_stats.h
 
 SOURCES += \
     DEV/MAKO/mako.cpp \
@@ -92,7 +93,8 @@ SOURCES += \
     DEV/TCP_con.cpp \
     GUI/TAB_POSITIONERS/tab_main.cpp \
     PROCEDURES/procedure.cpp \
-    PROCEDURES/UTIL/find_focus.cpp
+    PROCEDURES/UTIL/find_focus.cpp \
+    UTIL/IMGPROC/BASIC/imgproc_basic_stats.cpp
 
 
 unix {

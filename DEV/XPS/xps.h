@@ -79,7 +79,7 @@ public:
     pPVTobj createNewPVTobj(GroupID ID, std::string filename);
     void destroyPVTobj(pPVTobj obj);                                    //deallocates it
     exec_dat verifyPVTobj(pPVTobj obj);                                 //returns the verification result, on error also clears the queue
-    void execPVTobj(pPVTobj obj);                                       //non blocking
+    void execPVTobj(pPVTobj obj, exec_ret* ret=nullptr);                //non blocking, with optional return, which can be used to check if its done
     exec_dat execPVTobjB(pPVTobj obj);                                  //blocks until done
     void clearPVTobj(pPVTobj obj);                                      //clears the queue
 

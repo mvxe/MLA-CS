@@ -45,7 +45,7 @@ struct exec_dat{
 class exec_ret{
 public:
     bool block_till_done();             //for client function, returns true if an error value was given
-    bool check_if_done();               //for client function, returns true if data can be accessed
+    bool check_if_done();               //for client function, returns true if command has executed and data can be accessed
     void reset();                       //for server to reset the ret, this is needed if it is reused for multiple commands
     void set_value(std::string val);    //for server thread function , these three are thread safe
 

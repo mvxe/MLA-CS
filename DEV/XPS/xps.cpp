@@ -159,9 +159,10 @@ exec_dat XPS::verifyPVTobj(pPVTobj obj){
     if(!obj->verified) clearPVTobj(obj);
     return ret.v;
 }
-void XPS::execPVTobj(pPVTobj obj){
+void XPS::execPVTobj(pPVTobj obj, exec_ret* ret){
     if (!obj->verified) return;  //retval should be -9999 indicating an error
-    execCommand("MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
+    if (ret!=nullptr) execCommand(ret, "MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
+    else execCommand("MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
     syncPos(obj->ID);
 }
 exec_dat XPS::execPVTobjB(pPVTobj obj){

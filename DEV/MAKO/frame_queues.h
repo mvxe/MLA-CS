@@ -3,6 +3,8 @@
 
 #include <string>
 #include <deque>
+#include <stack>
+#include <list>
 #include <mutex>
 #include "opencv2/opencv.hpp"
 
@@ -32,9 +34,9 @@ private:
     };
 
     void reclaim();
-    std::deque<cv::Mat> mat_reservoar;      //contains the actual image data
+    std::stack<cv::Mat> mat_reservoar;      //contains the actual image data
     std::queue<cv::Mat*> mat_ptr_free;      //contains pointers to actual data that is free
-    std::deque<_used> mat_ptr_full;         //contains pointers to actual data that is waiting to be processed
+    std::list<_used> mat_ptr_full;          //contains pointers to actual data that is waiting to be processed
     std::deque<FQ> user_queues;             //contains of the user queues
     std::mutex userqmx;
     double fps{30};

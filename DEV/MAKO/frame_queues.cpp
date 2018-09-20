@@ -3,16 +3,18 @@
 FQsPC::FQsPC(){}
 bool FQsPC::isThereInterest(){
     std::lock_guard<std::mutex>lock(userqmx);
-    for (int i=0;i!=user_queues.size();i++)
+    for (int i=0;i!=user_queues.size();i++){
+        std::lock_guard<std::mutex>lock(user_queues[i].umx);
         if (user_queues[i].fps!=0) return true;
+    }
     return false;
 }
 cv::Mat* FQsPC::getAFreeMatPtr(){
     if (mat_ptr_free.empty()){
         reclaim();
         if (mat_ptr_free.empty()){
-            mat_reservoar.emplace_back();
-            mat_ptr_free.push(&mat_reservoar.back());
+            mat_reservoar.emplace();
+            mat_ptr_free.push(&mat_reservoar.top());
         }
     }
     return mat_ptr_free.front();
@@ -63,19 +65,19 @@ void FQsPC::setCamFPS(double nfps){
 void FQsPC::reclaim(){
     for (int i=0;i!=user_queues.size();i++){
         std::lock_guard<std::mutex>lock(user_queues[i].umx);
-        for (int k=0;k!=mat_ptr_full.size();k++)
+        for (std::list<_used>::iterator it=mat_ptr_full.begin();it!=mat_ptr_full.end();it++)
             for (int j=0;j!=user_queues[i].free.size();j++)
-                if(user_queues[i].free[j]==(&mat_ptr_full[k].mat)){
-                    mat_ptr_full[k].users--;
+                if(user_queues[i].free[j]==(&(*it).mat)){
+                    (*it).users--;
                     user_queues[i].free.erase(user_queues[i].free.begin()+j);
                     j--;
                 }
     }
-    for (int k=0;k!=mat_ptr_full.size();k++)
-        if(mat_ptr_full[k].users==0){
-            mat_ptr_free.push(mat_ptr_full[k].mat);
-            mat_ptr_full.erase(mat_ptr_full.begin()+k);
-            k--;
+    for (std::list<_used>::iterator it=mat_ptr_full.begin();it!=mat_ptr_full.end();it++)
+        if((*it).users==0){
+            mat_ptr_free.push((*it).mat);
+            it=mat_ptr_full.erase(it);
+            it--;
         }
 }
 

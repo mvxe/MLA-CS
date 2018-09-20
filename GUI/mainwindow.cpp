@@ -88,7 +88,7 @@ void MainWindow::on_btm_kill_released(){        //TODO: this is just a diable ti
     //if (lol) {go.pXPS->execCommand(&ret, "GPIODigitalSet","GPIO3.DO", 1,1);lol=false;}
     //else  {go.pXPS->execCommand(&ret, "GPIODigitalSet","GPIO3.DO", 1,0);lol=true;}
     //ret.block_till_done(); std::cerr<<ret.v.retstr<<"\n";
-
+    //iuScope_img->setUserFps(0.);
     go.newThread<PFindFocus>(5, 1);
 }
 
