@@ -2,7 +2,7 @@
 #include "includes.h"
 #include "UTIL/IMGPROC/BASIC/imgproc_basic_stats.h"
 
-PFindFocus::PFindFocus(double len, double speed): len(len), speed(speed){
+PFindFocus::PFindFocus(double len, double speed, unsigned char threshold): len(len), speed(speed), threshold(threshold){
 }
 bool PFindFocus::startup(){
     if(!go.pMAKO->iuScope->connected || !go.pXPS->connected) return true;
@@ -47,10 +47,27 @@ bool PFindFocus::work(){
 }
 
 bool PFindFocus::proc_frame(){
+    double val, valCn;
     mat=framequeue->getUserMat();
     if (mat!=nullptr){
-        std::cerr<<"mat value: "<<imgproc_basic_stats::get_avg_value(mat)<<"\n";
+        unsigned int newTs=framequeue->getUserTimestamp();
+        //std::cerr<<"mat value: "<<imgproc_basic_stats::get_avg_value(mat)<<"\n";
+        if(!endPtFl){
+            val=imgproc_basic_stats::get_avg_value(mat);
+            if (startPtFl){
+                if (val<threshold)
+                    endPtFl=true;
+                else{
+                    valCn=imgproc_basic_stats::get_contrast(mat, val);
+                    std::cerr<<"valCn: "<<valCn<<" val: "<<val<<" ts: "<< newTs-lastTs <<"\n";
+
+                }
+            }
+            else if (val>threshold)
+                startPtFl=true;
+        }
         framequeue->freeUserMat();
+        lastTs=newTs;
         return true;
     }
     return false;

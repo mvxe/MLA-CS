@@ -10,7 +10,7 @@ namespace cv {
 
 class PFindFocus: public procedure{
 public:
-    PFindFocus(double len, double speed);
+    PFindFocus(double len, double speed, unsigned char threshold);
 private:
     bool startup();
     void cleanup();
@@ -24,6 +24,10 @@ private:
     const cv::Mat* mat;
     double len;    //mm
     double speed;  //mm/s
+    unsigned char threshold;
+    bool endPtFl{false};
+    bool startPtFl{false};
+    unsigned int lastTs{0};
 };
 
 #endif // FIND_FOCUS_H

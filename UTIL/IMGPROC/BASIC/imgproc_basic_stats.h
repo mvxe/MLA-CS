@@ -8,6 +8,7 @@ namespace cv {
 
 namespace imgproc_basic_stats {
     double get_avg_value(const cv::Mat* mat);
+    double get_contrast(const cv::Mat* mat, double avg);
 }
 
 #endif // IMGPROC_BASIC_STATS_H
