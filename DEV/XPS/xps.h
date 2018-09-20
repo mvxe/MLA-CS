@@ -88,6 +88,8 @@ public:
     void MoveRelative(GroupID ID, double val);
     template<typename... Args>  void MoveAbsolute(GroupID ID, double val, Args... vals);
     void MoveAbsolute(GroupID ID, double val);
+    void syncPos(GroupID ID);                                           //pulls the current position from the xps and updates axisCoords
+
 
     raxis getPos(GroupID ID);
     void getPos(GroupID ID, raxis& pos);
@@ -111,7 +113,8 @@ private:
     std::string _copyPVToverFTP(pPVTobj obj);
     void flushQueue();
     void __MoveAbsolute(GroupID ID);
-    void _restrict_pos(axis& pos);                  //checks if pox? is within min? and max?, if not, sets it to min?/max?
+    void _restrict_pos(axis& pos);                          //checks if pox? is within min? and max?, if not, sets it to min?/max?
+    void _syncPosHandle(GroupID ID, exec_ret* ret);
 
     void run();
 

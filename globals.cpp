@@ -9,7 +9,8 @@ void globals::startup(int argc, char *argv[]){
     if (started) return; started=true;
     cURLpp::initialize(CURL_GLOBAL_ALL);     //we init the curl lib needed for FTP
 
-    newThread<killme>();            //so that I can kill it in the terminal if qt freezes, which is often over ssh
+
+    cinthr=new std::thread(&cinlisten::run, new cinlisten());            //so that I can kill it in the terminal if qt freezes, which is often over ssh -x
     pXPS =newThread<XPS> ()->obj;
     pMAKO=newThread<MAKO>()->obj;
     pRPTY=newThread<RPTY>()->obj;

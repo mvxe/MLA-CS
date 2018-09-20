@@ -162,12 +162,14 @@ exec_dat XPS::verifyPVTobj(pPVTobj obj){
 void XPS::execPVTobj(pPVTobj obj){
     if (!obj->verified) return;  //retval should be -9999 indicating an error
     execCommand("MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
+    syncPos(obj->ID);
 }
 exec_dat XPS::execPVTobjB(pPVTobj obj){
     exec_ret ret;
     if (!obj->verified) return ret.v;  //retval should be -9999 indicating an error
     execCommand(&ret, "MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
     ret.block_till_done();
+    syncPos(obj->ID);
     return ret.v;
 }
 void XPS::clearPVTobj(pPVTobj obj){
@@ -242,6 +244,28 @@ void XPS::_restrict_pos(axis& pos){ //the mutex should be locked by caller
         if(pos.pos[i]<pos.min[i]) pos.pos[i]=pos.min[i];
         else if(pos.pos[i]>pos.max[i]) pos.pos[i]=pos.max[i];
     }
+}
+void XPS::syncPos(GroupID ID){
+    exec_ret* ret = new exec_ret();
+    std::stringstream buf;
+    buf<<groupGetName(ID);
+    for (int i=0;i!=groups[ID].AxisNum;i++) buf<<",double *";
+    execCommand(ret,"GroupPositionSetpointGet",buf.str());
+    std::thread handle (&XPS::_syncPosHandle,this,ID,ret);
+    handle.detach();
+}
+void XPS::_syncPosHandle(GroupID ID, exec_ret* ret){
+    ret->block_till_done();
+    if(ret->v.retval==0){
+        std::istringstream cs(ret->v.retstr); cs.ignore();
+        std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
+        for (int i=0;i!=axisCoords[ID].num;i++){
+            cs.ignore();
+            cs>>axisCoords[ID].pos[i];
+        }
+        std::cerr<<"Setpoint: "<<ret->v.retstr<<"\n";
+    }
+    delete ret;
 }
 
 void XPS::groupSetName(GroupID ID, std::string name){

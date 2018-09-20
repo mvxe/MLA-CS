@@ -92,6 +92,7 @@ private:
     std::mutex go_mx;
     bool started{false};
     std::list<base_othr*> threads;
+    std::thread* cinthr;
     QApplication* qapp;
 };
 
@@ -111,7 +112,7 @@ othr<T>* globals::newThread(){
 
 extern globals go;
 
-class killme: public protooth{      //TODO make this nonblocking
+class cinlisten{
 public:
     void run(){
         std::string txt;
@@ -119,10 +120,11 @@ public:
             std::cin>>txt;
             if (txt.find("exit")!=std::string::npos) break;
         }
-        go.cleanup();
+        std::thread ttry(&globals::quit, &go);                          //we tell QT to exit nicely
+        std::this_thread::sleep_for (std::chrono::seconds(2));          //after 2 seconds if QT hasnt exited, stop threads and kill QT
+        go.cleanup();                                                   //this does nothing if threads started to getting killed
         exit(0);
     }
-    ~killme(){}
 };
 
 #endif // GLOBALS_H

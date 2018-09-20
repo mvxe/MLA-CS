@@ -1,6 +1,7 @@
 #ifndef CONTAINERSTEMPLATE_H
 #define CONTAINERSTEMPLATE_H
 #include "containers.h"         //include not needed, but qtcreator recognizes external types and colors them if It's there
+#include <iomanip>
 
 /*########## cc_save ##########*/
 
@@ -22,7 +23,8 @@ template <typename T> cc_save<T>::cc_save(T& var, T initial, _savelst* vec, std:
 template <typename T> cc_save<T>::~cc_save(){
     if (tfvec!=nullptr){
         std::ostringstream ss;
-        ss<<val;
+        if (std::is_floating_point<T>::value) ss<<std::fixed<<std::setprecision(6)<<val;
+        else ss<<val;
         tfvec->strval=ss.str();
     }
 }
