@@ -7,15 +7,16 @@ class PVTobj;
 
 class PFindFocus: public procedure{
 public:
-    PFindFocus();
+    PFindFocus(double len, double speed);
 private:
-    bool init();
+    bool startup();
     void cleanup();
     bool work();
 
     FQ* framequeue;
     PVTobj* po;
-    double len;
+    double len;    //mm
+    double speed;  //mm/s
 };
 
 #endif // FIND_FOCUS_H

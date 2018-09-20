@@ -7,14 +7,14 @@
 #define PROCEDURE_H
 
 
-class procedure: public protooth{
+class procedure: public protooth{           //see PROCEDURES/procedure.h run() for how these functions are called
 public:
     procedure();
     virtual ~procedure();
     std::atomic<bool> end{false};           // this can be used by the creator thread or go.cleanup() to shut down the thread
 
 protected:
-    virtual bool init();                    /* you may override this function, it gets called on thread start (NOTE: this and cleanup are executed in the new thread, in contrast to constructor and destructor actually executed on the thread calling newThread and killThread)
+    virtual bool startup();                 /* you may override this function, it gets called on thread start (NOTE: this and cleanup are executed in the new thread, in contrast to constructor and destructor actually executed on the thread calling newThread and killThread)
                                              * return true on failed init, it will stop the thread without calling work()
                                              */
     virtual void cleanup();                 // you may override this function, it gets called on thread end

@@ -2,10 +2,10 @@
 
 procedure::procedure(){}
 procedure::~procedure(){}
-bool procedure::init(){return false;}
+bool procedure::startup(){return false;}
 void procedure::cleanup(){}
 void procedure::run(){
-    if (init()) {cleanup();return;}
+    if (startup()) {cleanup();return;}
     for (;;){
         if(end || work()){
             cleanup();

@@ -89,7 +89,7 @@ void MainWindow::on_btm_kill_released(){        //TODO: this is just a diable ti
     //else  {go.pXPS->execCommand(&ret, "GPIODigitalSet","GPIO3.DO", 1,0);lol=true;}
     //ret.block_till_done(); std::cerr<<ret.v.retstr<<"\n";
 
-    go.newThread<PFindFocus>();
+    go.newThread<PFindFocus>(5, 1);
 }
 
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove

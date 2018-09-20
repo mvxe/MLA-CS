@@ -49,13 +49,13 @@ protected:
 template <typename T>
 class othr: public base_othr{
 public:
-    othr();
+    template <typename... Args> othr(Args... args);
     ~othr();
     T* obj;
 };
-template <typename T>
-othr<T>::othr(){
-    obj=new T();
+template <typename T> template <typename... Args>
+othr<T>::othr(Args... args){
+    obj=new T(args...);
     obj->done=&done;
     thr=new std::thread(&protooth::run, obj);
 }
@@ -81,12 +81,12 @@ public:
     MAKO* pMAKO;    //you can access cameras and frame queues through this, see MAKO/_config.h for members
     RPTY* pRPTY;    //you can access red pitaya functions through this
 
-    void startup(int argc, char *argv[]);                         //subsequent calls of this are ignored
-    template <typename T> othr<T>* newThread();                   //with this you can create a new thread calling any object derived from protooth/procedure, example:  XPS* pXPS=newThread<XPS>()->obj; or othr<proc> name=newThread<proc>();
-    void killThread(base_othr *&thro);                            //this kills the thread, ie if the thread is still running it sends an end flag and waits till its done, if its done its simply deallocated and removed from the list
-                                                                  //you may check if the thread is done by looking at the base_othr.done or directly at the objects done variable, however after killThread is called the object WILL be deallocated
+    void startup(int argc, char *argv[]);                                           //subsequent calls of this are ignored
+    template <typename T, typename... Args> othr<T>* newThread(Args... args);       //with this you can create a new thread calling any object derived from protooth/procedure, example:  XPS* pXPS=newThread<XPS>()->obj; or othr<proc> name=newThread<proc>();
+    void killThread(base_othr *&thro);                                              //this kills the thread, ie if the thread is still running it sends an end flag and waits till its done, if its done its simply deallocated and removed from the list
+                                                                                    //you may check if the thread is done by looking at the base_othr.done or directly at the objects done variable, however after killThread is called the object WILL be deallocated
     void cleanup();
-    void quit();                                                  //sends quit signal to the app, equivalent to clicking X on the window (not sure if thread safe, but its for exit on error anyway, to trigger apis cleanup before exit)
+    void quit();                                                                    //sends quit signal to the app, equivalent to clicking X on the window (not sure if thread safe, but its for exit on error anyway, to trigger apis cleanup before exit)
             /* use go.quit() in any thread if you need to quit the program*/
 private:
     std::mutex go_mx;
@@ -98,13 +98,13 @@ private:
 
 /*########## TEMPLATE FUNCTIONS ##########*/
 
-template <typename T>
-othr<T>* globals::newThread(){
+template <typename T, typename... Args>
+othr<T>* globals::newThread(Args... args){
     if (!std::is_base_of<protooth, T>::value) {
         std::cerr << "ERROR: You called newThread on a class not derived from protooth/procedure.\n";
         quit(); return nullptr;
     }
-    threads.emplace_front(new othr<T>());
+    threads.emplace_front(new othr<T>(args...));
     return dynamic_cast<othr<T>*>(threads.front());
 }
 

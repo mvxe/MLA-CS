@@ -1,11 +1,9 @@
 #include "find_focus.h"
 #include "includes.h"
-PFindFocus::PFindFocus(){
 
+PFindFocus::PFindFocus(double len, double speed): len(len), speed(speed){
 }
-
-bool PFindFocus::init(){
-    const double _SPEED=1;  //mm/s
+bool PFindFocus::startup(){
     if(!go.pMAKO->iuScope->connected || !go.pXPS->connected) return true;
     framequeue=go.pMAKO->iuScope->FQsPCcam.getNewFQ();
 
@@ -22,10 +20,10 @@ bool PFindFocus::init(){
     go.pXPS->MoveAbsolute(XPS::mgroup_XYZ,pos.pos[0],pos.pos[1],pos.min[2]);
     po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZ, "PFindFocus.txt");
 
-    len=(pos.max[2]-pos.min[2]-2);
-    po->add(1,          0,0,0,0,1  ,_SPEED);
-    po->add(len/_SPEED ,0,0,0,0,len,_SPEED);
-    po->add(1,          0,0,0,0,1  ,0);
+    if(len>(pos.max[2]-pos.min[2]-2)) return true;
+    po->add(1,          0,0,0,0,0.1  ,speed);
+    po->add(len/speed  ,0,0,0,0,len  ,speed);
+    po->add(1,          0,0,0,0,0.1  ,0);
     if(go.pXPS->verifyPVTobj(po).retval!=0)       //this will block and exec after MoveAbsolute is done
         return true;
     go.pXPS->execPVTobj(po);                       //we dont block here, gotta start processing frames
