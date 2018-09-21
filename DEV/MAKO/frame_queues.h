@@ -34,7 +34,6 @@ private:
     };
 
     void reclaim();
-    std::stack<cv::Mat> mat_reservoar;      //contains the actual image data
     std::queue<cv::Mat*> mat_ptr_free;      //contains pointers to actual data that is free
     std::list<_used> mat_ptr_full;          //contains pointers to actual data that is waiting to be processed
     std::deque<FQ> user_queues;             //contains of the user queues

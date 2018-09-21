@@ -11,8 +11,11 @@ double imgproc_basic_stats::get_avg_value(const cv::Mat *mat){
 
 double imgproc_basic_stats::get_contrast(const cv::Mat* mat, double avg){
     long double total=0;
-    for (int i=0;i!=mat->rows;i++)
-       for (int j=0;j!=mat->cols;j++)
-           total+=pow(avg-mat->at<unsigned char>(i,j),2);
+    for (int i=0;i!=mat->rows-1;i++)
+       for (int j=0;j!=mat->cols-1;j++){
+           total+=pow(mat->at<unsigned char>(i,j)-mat->at<unsigned char>(i+1,j),4);
+           total+=pow(mat->at<unsigned char>(i,j)-mat->at<unsigned char>(i,j+1),4);
+           total+=pow(mat->at<unsigned char>(i,j)-mat->at<unsigned char>(i+1,j+1),4);
+       }
     return static_cast<double>(total/mat->rows/mat->cols);
 }

@@ -24,8 +24,8 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
     }
     cv::Mat* freeMat = FQsPCcam->getAFreeMatPtr();
     if (freeMat->rows!=ysize || freeMat->cols!=xsize){    //the allocated matrix is of the wrong size/type
-        freeMat->release();
-        *(freeMat)=cv::Mat(ysize, xsize, imgfor::ocv_type_get(form).ocv_type);
+        delete freeMat;
+        freeMat=new cv::Mat(ysize, xsize, imgfor::ocv_type_get(form).ocv_type);
         //std::cerr<<"typename: "<<imgfor::ocv_type_get(form).vmb_name<<" ,  ocv type: "<<imgfor::ocv_type_get(form).ocv_type<<"\n";
     }
     VmbUint32_t bufsize;
@@ -35,14 +35,16 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
         m_pCamera->QueueFrame ( pFrame ); return;
     }
 
-    pFrame->GetImage(freeMat->data);
+    uchar* dataPtr;
+    pFrame->GetImage(dataPtr);
+    std::memcpy(freeMat->data, dataPtr, bufsize);
+
     if (imgfor::ocv_type_get(form).ccc!=(cv::ColorConversionCodes)-1) cvtColor(*freeMat, *freeMat, imgfor::ocv_type_get(form).ccc);   //color conversion if img is not monochrome or bgr
 
     VmbUint64_t timestamp;
     pFrame->GetTimestamp(timestamp);
     FQsPCcam->enqueueMat(timestamp);
 
-    //std::cerr<<"Total mat number: "<<FQsPCcam->getMatNumber()<<" ,Full mat number: "<<FQsPCcam->getFullNumber()<<"\n";
     m_pCamera->QueueFrame ( pFrame );
 }
 

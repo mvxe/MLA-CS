@@ -13,8 +13,7 @@ cv::Mat* FQsPC::getAFreeMatPtr(){
     if (mat_ptr_free.empty()){
         reclaim();
         if (mat_ptr_free.empty()){
-            mat_reservoar.emplace();
-            mat_ptr_free.push(&mat_reservoar.top());
+            mat_ptr_free.push(new cv::Mat());
         }
     }
     return mat_ptr_free.front();
@@ -23,7 +22,7 @@ void FQsPC::enqueueMat(unsigned int timestamp){
     unsigned camfps;
     {std::lock_guard<std::mutex>lock(userqmx);
         camfps=fps;}
-    mat_ptr_full.emplace_front(_used{mat_ptr_free.front(),0,timestamp});
+    mat_ptr_full.push_front({mat_ptr_free.front(),0,timestamp});
     for (int i=0;i!=user_queues.size();i++){
         std::lock_guard<std::mutex>lock(user_queues[i].umx);
         if (user_queues[i].fps!=0){
@@ -44,7 +43,7 @@ void FQsPC::enqueueMat(unsigned int timestamp){
     reclaim();
 }
 unsigned FQsPC::getMatNumber(){
-    return mat_reservoar.size();
+    return (mat_ptr_full.size()+mat_ptr_free.size());
 }
 unsigned FQsPC::getFullNumber(){
     return mat_ptr_full.size();
@@ -73,12 +72,11 @@ void FQsPC::reclaim(){
                     j--;
                 }
     }
-    for (std::list<_used>::iterator it=mat_ptr_full.begin();it!=mat_ptr_full.end();it++)
+    for (std::list<_used>::iterator it=mat_ptr_full.begin();it!=mat_ptr_full.end();)
         if((*it).users==0){
             mat_ptr_free.push((*it).mat);
             it=mat_ptr_full.erase(it);
-            it--;
-        }
+        } else it++;
 }
 
 

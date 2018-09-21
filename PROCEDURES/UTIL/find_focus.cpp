@@ -31,14 +31,20 @@ bool PFindFocus::startup(){
 
     framequeue->setUserFps(99999);  //set max fps
 }
+int aaa=0;
+int bbb=0;
+
 void PFindFocus::cleanup(){
     std::cerr<<framequeue->getFullNumber()<<" = left\n";
+    std::cerr<<aaa<<" = aaa "<<bbb<<" = bbb \n";
     framequeue->setUserFps(0);
-    while (proc_frame());
-
-    go.pMAKO->iuScope->FQsPCcam.deleteFQ(framequeue);
     go.pXPS->execCommand("GPIODigitalSet","GPIO3.DO", 1,0);
     go.pXPS->destroyPVTobj(po);
+
+    while (proc_frame());
+    std::cerr<<aaa<<" = aaa "<<bbb<<" = bbb \n";
+
+    go.pMAKO->iuScope->FQsPCcam.deleteFQ(framequeue);
 }
 bool PFindFocus::work(){
     proc_frame();
@@ -51,14 +57,16 @@ bool PFindFocus::proc_frame(){
     mat=framequeue->getUserMat();
     if (mat!=nullptr){
         unsigned int newTs=framequeue->getUserTimestamp();
-        //std::cerr<<"mat value: "<<imgproc_basic_stats::get_avg_value(mat)<<"\n";
+        std::cerr<<"mat value: "<<imgproc_basic_stats::get_avg_value(mat)<<" ts: "<< newTs-lastTs<<"\n";
+        bbb++;
         if(!endPtFl){
             val=imgproc_basic_stats::get_avg_value(mat);
             if (startPtFl){
                 if (val<threshold)
                     endPtFl=true;
                 else{
-                    valCn=imgproc_basic_stats::get_contrast(mat, val);
+                    valCn=0;//imgproc_basic_stats::get_contrast(mat, val);
+                    aaa++;
                     std::cerr<<"valCn: "<<valCn<<" val: "<<val<<" ts: "<< newTs-lastTs <<"\n";
 
                 }
@@ -68,7 +76,10 @@ bool PFindFocus::proc_frame(){
         }
         framequeue->freeUserMat();
         lastTs=newTs;
-        return true;
     }
-    return false;
+    //else std::this_thread::sleep_for (std::chrono::milliseconds(1));
+    //std::cerr<<framequeue->getFullNumber()<<" = left\n";
+
+    if(framequeue->getFullNumber()) return true;
+    else return false;
 }
