@@ -9,7 +9,7 @@ void CamObserver::CameraListChanged ( AVT::VmbAPI::CameraPtr pCam , AVT::VmbAPI:
     go.pMAKO->MAKO_reco=true;
 }
 
-FrameObserver::FrameObserver(AVT::VmbAPI::CameraPtr pCamera, FQsPC *FQsPCcam) : IFrameObserver(pCamera), FQsPCcam(FQsPCcam){}
+FrameObserver::FrameObserver(AVT::VmbAPI::CameraPtr pCamera, FQsPC *FQsPCcam, camobj *Camobj) : IFrameObserver(pCamera), FQsPCcam(FQsPCcam), Camobj(Camobj){}
 
 //THERE IS NO ANCILLIARY DATA FOR MAKO CAMERA, TRYING TO ACCESS IT WILL SEGFAULT
 void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
@@ -35,17 +35,18 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
         m_pCamera->QueueFrame ( pFrame ); return;
     }
 
-    uchar* dataPtr;
-    pFrame->GetImage(dataPtr);
-    std::memcpy(freeMat->data, dataPtr, bufsize);
+    pFrame->GetImage(freeMat->data);
+    Camobj->linkFrameToMat(pFrame, freeMat);
 
     if (imgfor::ocv_type_get(form).ccc!=(cv::ColorConversionCodes)-1) cvtColor(*freeMat, *freeMat, imgfor::ocv_type_get(form).ccc);   //color conversion if img is not monochrome or bgr
 
     VmbUint64_t timestamp;
     pFrame->GetTimestamp(timestamp);
     FQsPCcam->enqueueMat(timestamp);
-
-    m_pCamera->QueueFrame ( pFrame );
+    freeMat = FQsPCcam->getAFreeMatPtr();
+    if (freeMat!=nullptr)
+        if (Camobj->requeueFrame(freeMat)) return;
+    Camobj->newFrame();
 }
 
 

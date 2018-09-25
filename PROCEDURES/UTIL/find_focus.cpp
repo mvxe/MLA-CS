@@ -57,7 +57,7 @@ bool PFindFocus::proc_frame(){
     mat=framequeue->getUserMat();
     if (mat!=nullptr){
         unsigned int newTs=framequeue->getUserTimestamp();
-        std::cerr<<"mat value: "<<imgproc_basic_stats::get_avg_value(mat)<<" ts: "<< newTs-lastTs<<"\n";
+        //std::cerr<<"mat value: "<<imgproc_basic_stats::get_avg_value(mat)<<" ts: "<< newTs-lastTs<<"\n";
         bbb++;
         if(!endPtFl){
             val=imgproc_basic_stats::get_avg_value(mat);

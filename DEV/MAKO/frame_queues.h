@@ -16,14 +16,14 @@ public:
     FQsPC();
 
     bool isThereInterest();         //if this returns false dont bother filling a new matrix, nobody is interested in frames
-    unsigned getMatNumber();        //get total number of allocated matrices
+    unsigned getFreeNumber();       //get the number of free matrices
     unsigned getFullNumber();       //get the number of full matrices
 
     FQ* getNewFQ();                 //returns a pointer to a new frame queue
     void setCamFPS(double nfps);    //set the camera framerate, essential of proper image sorting into queues (this is thread safe)
     void deleteFQ(FQ* fq);          //TODO implement destroy FQ and free data
 
-    cv::Mat* getAFreeMatPtr();                   //these two functions are used by the vimba api observer to put new frames into the queue           //TODO these two functions should not be exposed to the user, just FrameObserver::FrameReceived
+    cv::Mat* getAFreeMatPtr();      //these two functions are used by the vimba api observer to put new frames into the queue           //TODO these two functions should not be exposed to the user, just FrameObserver::FrameReceived
     void enqueueMat(unsigned int timestamp);     //they are not thread safe, so use them only in one observer function
 
 private:

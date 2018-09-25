@@ -3,9 +3,9 @@
 camobj::camobj(MAKO *cobj, std::string strID) : camobj_config(strID), cobj(cobj), ID(&mkmx,strID,&go.config.save,strID){}
 
 void camobj::start(){
-    VMBo = AVT::VmbAPI::IFrameObserverPtr(new FrameObserver(cam.ptr, &FQsPCcam));
+    VMBo = AVT::VmbAPI::IFrameObserverPtr(new FrameObserver(cam.ptr, &FQsPCcam, this));
 
-    VmbInt64_t nPLS=wfun::get<VmbInt64_t>(cam.ptr,"PayloadSize");
+    nPLS=wfun::get<VmbInt64_t>(cam.ptr,"PayloadSize");
     Xsize=wfun::get<VmbInt64_t>(cam.ptr,"Width");
     Ysize=wfun::get<VmbInt64_t>(cam.ptr,"Height");
     format_enum=wfun::get<VmbInt64_t>(cam.ptr,"PixelFormat");
@@ -41,14 +41,35 @@ void camobj::start(){
     FQsPCcam.setCamFPS(ackFPS);
     std::cerr<<"ackFPS="<<ackFPS<<"\n";
 
-    for (int i=0; i!=VMBframes.size();i++){
-        VMBframes[i].reset(new AVT::VmbAPI::Frame(nPLS));
-        VMBframes[i]->RegisterObserver(VMBo);
-        cam.ptr->AnnounceFrame(VMBframes[i]);
-    }
-    if (cam.ptr->StartCapture()!=VmbErrorSuccess) {end(); return;}
-    for (int i=0; i!=VMBframes.size();i++) cam.ptr->QueueFrame(VMBframes[i]);
+    newFrame();
+    if (cam.ptr->StartCapture()!=VmbErrorSuccess) {_end(); return;}
 }
+void camobj::newFrame(){
+    VMBframes.emplace_back();
+    VMBframes.back().MatPtr=nullptr;
+    VMBframes.back().FramePtr.reset(new AVT::VmbAPI::Frame(nPLS));
+    VMBframes.back().FramePtr->RegisterObserver(VMBo);
+    cam.ptr->AnnounceFrame(VMBframes.back().FramePtr);
+    cam.ptr->QueueFrame(VMBframes.back().FramePtr);
+}
+bool camobj::requeueFrame(cv::Mat* MatPtr){
+    for (int i=0;i!=VMBframes.size();i++)
+        if (VMBframes[i].MatPtr==MatPtr){
+            VMBframes[i].MatPtr=nullptr;
+            cam.ptr->QueueFrame(VMBframes[i].FramePtr);
+            return true;
+        }
+    return false;
+}
+void camobj::linkFrameToMat(AVT::VmbAPI::FramePtr FramePtr, cv::Mat* MatPtr){
+    for (int i=0;i!=VMBframes.size();i++)
+        if (VMBframes[i].FramePtr==FramePtr){
+            VMBframes[i].MatPtr=MatPtr;
+            return;
+        }
+}
+
+
 void camobj::work(){
     std::lock_guard<std::mutex>lock(mtx);
     if (!_connected){
@@ -75,9 +96,10 @@ void camobj::_end(){
     cam.ptr->EndCapture();
     cam.ptr->FlushQueue();
     cam.ptr->RevokeAllFrames();
-    for (int i=0; i!=VMBframes.size();i++){
-        VMBframes[i]->UnregisterObserver();
-        VMBframes[i].reset();
+    while (!VMBframes.empty()){
+        VMBframes.back().FramePtr->UnregisterObserver();
+        VMBframes.back().FramePtr.reset();
+        VMBframes.pop_back();
     }
     VMBo.reset();
 }

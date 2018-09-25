@@ -42,8 +42,8 @@ void FQsPC::enqueueMat(unsigned int timestamp){
     else mat_ptr_free.pop();
     reclaim();
 }
-unsigned FQsPC::getMatNumber(){
-    return (mat_ptr_full.size()+mat_ptr_free.size());
+unsigned FQsPC::getFreeNumber(){
+    return mat_ptr_free.size();
 }
 unsigned FQsPC::getFullNumber(){
     return mat_ptr_full.size();

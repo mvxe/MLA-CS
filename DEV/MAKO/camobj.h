@@ -13,6 +13,7 @@ class MAKO;
 class camobj: public camobj_config{
     friend class MAKO;
     friend class mako_config;
+    friend class FrameObserver;
 public:
 
     struct _cam{
@@ -42,13 +43,22 @@ private:
     void _end();    //not mutexed
     void con_cam(bool ch);
 
+    void newFrame();
+    bool requeueFrame(cv::Mat* MatPtr);
+    void linkFrameToMat(AVT::VmbAPI::FramePtr FramePtr, cv::Mat* MatPtr);
+
     MAKO *cobj;
     int lost_frames_MAKO_VMB{0};
     std::deque<int> frames;
     _cam cam;
 
+    struct FMP{
+        AVT::VmbAPI::FramePtr FramePtr;
+        cv::Mat* MatPtr;
+    };
     AVT::VmbAPI::IFrameObserverPtr VMBo;
-    AVT::VmbAPI::FramePtrVector VMBframes{N_FRAMES_MAKO_VMB};        //CAMOBJ<->VIMBA frames
+    std::vector<FMP> VMBframes;        //CAMOBJ<->VIMBA frames
+    VmbInt64_t nPLS;
     int Xsize;
     int Ysize;
     double ackFPS;
