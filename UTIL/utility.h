@@ -14,6 +14,25 @@ private:
     static std::string ttoString(std::stringstream* strm, T value);
     template<typename T, typename... Args>
     static std::string ttoString(std::stringstream* strm, T value, Args... args);
+
+public:
+    class doTimes{      //doIt() returns false N times and then true
+    public:
+        doTimes(unsigned times): toGo(times), iniT(times), times(iniT){}
+        bool doIt(){
+            if (toGo==0) return true;
+            toGo--;
+            return false;
+        }
+        void reset(unsigned times=0){
+            if (times!=0) iniT=times;
+            toGo=iniT;
+        }
+        const unsigned& times;
+    private:
+        unsigned toGo;
+        unsigned iniT;
+    };
 };
 
 template <typename T>

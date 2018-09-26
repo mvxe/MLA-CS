@@ -264,7 +264,7 @@ void XPS::_syncPosHandle(GroupID ID, exec_ret* ret){
             cs.ignore();
             cs>>axisCoords[ID].pos[i];
         }
-        std::cerr<<"Setpoint: "<<ret->v.retstr<<"\n";
+        //std::cerr<<"Setpoint: "<<ret->v.retstr<<"\n";
     }
     delete ret;
 }

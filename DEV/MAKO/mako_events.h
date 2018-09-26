@@ -14,6 +14,7 @@ public :
 private:
     FQsPC *FQsPCcam;
     camobj *Camobj;
+    std::mutex prot;
 };
 
 #endif // MAKO_EVENTS_H

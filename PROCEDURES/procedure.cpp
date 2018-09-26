@@ -9,7 +9,8 @@ void procedure::run(){
     for (;;){
         if(end || work()){
             cleanup();
-            end = true;
+            end=true;
+            *done=true;
             return;
         }
     }

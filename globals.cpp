@@ -26,16 +26,21 @@ void globals::startup(int argc, char *argv[]){
     }
 }
 void globals::killThread(base_othr*& thro){
-    delete thro;
-    for (std::list<base_othr*>::iterator it1=threads.begin(); it1!=threads.end(); ++it1)
+    std::lock_guard<std::mutex>lock(tdmx);
+    bool found=false;
+    for (std::list<base_othr*>::iterator it1=threads.begin(); it1!=threads.end(); ++it1){
         if(*it1==thro) {
             threads.erase(it1);
-            break;
+            found = true; break;
         }
+    }
+    if (found) delete thro;
+    else std::cout<<"Something went wrong in globals::killThread.\n";
     thro=nullptr;
 }
-void globals::cleanup(){
+void globals::cleanup(){ 
     if (!go_mx.try_lock()) return;
+
     std::cout<<"Sending end signals to all threads...\n";
 
     while(!threads.empty())

@@ -32,7 +32,7 @@ private:
 class protooth{              //abstract class for all classes to be in threads
     friend class base_othr;
 public:
-    virtual ~protooth(){*done=true;}                     //if its virtual, destroying its pointer will call the derived class destructor
+    virtual ~protooth(){}                     //if its virtual, destroying its pointer will call the derived class destructor
     std::atomic<bool> end{false};
     std::atomic<bool>* done;
 private:
@@ -92,6 +92,7 @@ private:
     std::mutex go_mx;
     bool started{false};
     std::list<base_othr*> threads;
+    std::mutex tdmx;
     std::thread* cinthr;
     QApplication* qapp;
 };
@@ -100,6 +101,7 @@ private:
 
 template <typename T, typename... Args>
 othr<T>* globals::newThread(Args... args){
+    std::lock_guard<std::mutex>lock(tdmx);
     if (!std::is_base_of<protooth, T>::value) {
         std::cerr << "ERROR: You called newThread on a class not derived from protooth/procedure.\n";
         quit(); return nullptr;

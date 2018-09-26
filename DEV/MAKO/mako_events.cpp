@@ -22,6 +22,7 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
         std::cerr<<"The PixelFormat type is not supported(this should have been prevented by GUI selector)! Skipping frame.\n";
         m_pCamera->QueueFrame ( pFrame ); return;
     }
+  std::lock_guard<std::mutex>lock(prot);
     cv::Mat* freeMat = FQsPCcam->getAFreeMatPtr();
     if (freeMat->rows!=ysize || freeMat->cols!=xsize){    //the allocated matrix is of the wrong size/type
         delete freeMat;
