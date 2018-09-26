@@ -12,7 +12,7 @@ bool PFindFocus::startup(){
     framequeue=go.pMAKO->iuScope->FQsPCcam.getNewFQ();
 
     //go.pXPS->execCommand("PositionerCorrectorAutoTuning",go.pXPS->groupGetName(XPS::mgroup_XYZ), 1);
-    go.pXPS->execCommand("GPIODigitalSet","GPIO3.DO", 1,1);
+    go.pXPS->setGPIO(XPS::iuScopeLED,false);
     go.pXPS->execCommand("EventExtendedConfigurationTriggerSet", util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".PVT.ElementNumberStart"),2,0,0,0);
     go.pXPS->execCommand("EventExtendedConfigurationActionSet", "GPIO3.DO.DOSet",1,0,0,0);
     go.pXPS->execCommand("EventExtendedStart","int *");
@@ -27,9 +27,9 @@ bool PFindFocus::startup(){
     po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZ, "PFindFocus.txt");
 
     if(len>(pos.max[2]-minpos-2*addOfs))
-        len=(pos.max[2]-minpos-2*addOfs);
+       len=(pos.max[2]-minpos-2*addOfs);
     po->add(1,          0,0,0,0,addOfs  ,speed);
-    po->add(len/speed  ,0,0,0,0,len  ,speed);
+    po->add(len/speed  ,0,0,0,0,len     ,speed);
     po->add(1,          0,0,0,0,addOfs  ,0);
     if(go.pXPS->verifyPVTobj(po).retval!=0)       //this will block and exec after MoveAbsolute is done
         return true;
@@ -56,7 +56,7 @@ bool PFindFocus::work(){
 void PFindFocus::cleanup(){
     //std::cerr<<framequeue->getFullNumber()<<" = left\n";
     framequeue->setUserFps(0);
-    go.pXPS->execCommand("GPIODigitalSet","GPIO3.DO", 1,0);
+    go.pXPS->setGPIO(XPS::iuScopeLED,true);
     go.pXPS->destroyPVTobj(po);
 
     while (proc_frame());

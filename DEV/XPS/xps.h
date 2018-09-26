@@ -99,6 +99,9 @@ public:
     void groupSetName(GroupID ID, std::string name);
     std::string groupGetName(GroupID ID);
 
+    void setGPIO(GPIOID ID, bool value);
+    bool getGPIO(GPIOID ID);
+
 private:
     template <typename T>                    void eexecCommandStr(std::stringstream* strm, exec_ret* ret, T value);
     template <typename T, typename... Args>  void eexecCommandStr(std::stringstream* strm, exec_ret* ret, T value, Args... args);

@@ -27,7 +27,15 @@ public:
         std::string groupname;
         const std::string description;
     };
-
+    enum GPIOID: int;
+    struct GPIO{
+        const GPIOID ID;
+        const std::string name;
+        const unsigned mask;
+        unsigned value;
+        const std::string description;
+        const bool inverted;
+    };
 
 
     /*       ##########################################    <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <--
@@ -45,6 +53,22 @@ protected:
 //   ,{mgroup_GR2, 1, "GR2", "some group with 1 stage"}
     };
     std::mutex gmx;     //group access mutex
+
+
+    /*       ##########################################    <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <--
+     *      ######### Here we add some devices #########    <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <--
+     *       ##########################################    <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <--
+     */
+
+public:
+    enum GPIOID: int { iuScopeLED };
+protected:
+    const static int _GPIO_NUM=1;
+    GPIO GPIOs[_GPIO_NUM]={
+      {iuScopeLED, "GPIO3.DO", 1, 0, "LED light source for the interferometric microscope.", true}
+    };
+    std::mutex dmx;     //devices access mutex
+
 
 
     /*       ##########################################

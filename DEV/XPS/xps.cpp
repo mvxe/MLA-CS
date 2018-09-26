@@ -29,7 +29,7 @@ void XPS::run(){    //this is the XPS thread loop
             else{
                     //connecting...
                 connect(keepalive.get());
-                if (connected) {go.pXPS->execCommand("GPIODigitalSet","GPIO3.DO", 1,0);initGroups();homeGroups();flushQueue();}     //TODO put into same function
+                if (connected) {go.pXPS->setGPIO(XPS::iuScopeLED,true);initGroups();homeGroups();flushQueue();}     //TODO put into same function
             }
             IP.resolved.set(resname);
         }
@@ -41,7 +41,7 @@ void XPS::run(){    //this is the XPS thread loop
 
         if(end){
             if (connected){
-                go.pXPS->execCommand("GPIODigitalSet","GPIO3.DO", 1,1);     //TODO put into same function and call here and above
+                go.pXPS->setGPIO(XPS::iuScopeLED,false);     //TODO put into same function and call here and above
                 killGroups();
                 flushQueue();
                 disconnect();
@@ -292,4 +292,19 @@ void XPS::execCommand(exec_ret* ret ,std::string command){
     std::stringstream* nstrm=new std::stringstream();
     *nstrm<<command;
     return eexecCommand(nstrm, ret, "(");
+}
+
+
+
+void XPS::setGPIO(GPIOID ID, bool value){
+    std::lock_guard<std::mutex>lock(dmx);
+    if(GPIOs[ID].inverted) value=!value;
+    GPIOs[ID].value=value?GPIOs[ID].mask:0;
+    execCommand("GPIODigitalSet",GPIOs[ID].name, GPIOs[ID].mask,GPIOs[ID].value);
+}
+bool XPS::getGPIO(GPIOID ID){
+    std::lock_guard<std::mutex>lock(dmx);
+    bool res=(GPIOs[ID].value==GPIOs[ID].mask);
+    if(GPIOs[ID].inverted) res=!res;
+    return res;
 }

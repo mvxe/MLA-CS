@@ -93,7 +93,7 @@ void MainWindow::on_btm_kill_released(){        //TODO: this is just a diable ti
 }
 
 void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
-    go.pXPS->execCommand("GPIODigitalSet","GPIO3.DO", 1,1);
+    go.pXPS->setGPIO(XPS::iuScopeLED,false);
 
     //go.pXPS->execCommand("EventExtendedConfigurationTriggerSet", "Always", 0, 0, 0, 0, util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".Z.SGamma.ConstantVelocityStart"),0,0,0,0);
     go.pXPS->execCommand("EventExtendedConfigurationTriggerSet", util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".PVT.ElementNumberStart"),3,0,0,0);
@@ -118,5 +118,5 @@ void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
     std::cout<<go.pXPS->execPVTobjB(po).retstr<<"\n";
     go.pXPS->destroyPVTobj(po);
 
-    go.pXPS->execCommand("GPIODigitalSet","GPIO3.DO", 1,0);
+    go.pXPS->setGPIO(XPS::iuScopeLED,true);
 }
