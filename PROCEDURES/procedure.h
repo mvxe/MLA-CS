@@ -42,4 +42,5 @@ protected:
     virtual void run()=0;                   // this function gets called by the new thread, it needs to be redefined by the user
 };
 
+
 #endif // PROCEDURE_H

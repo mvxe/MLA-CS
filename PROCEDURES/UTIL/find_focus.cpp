@@ -1,7 +1,7 @@
 #include "find_focus.h"
 #include "includes.h"
 
-PFindFocus::PFindFocus(double min, double len, double spee, unsigned char threshold, unsigned recursived): minpos(min), len(len), speed(spee), threshold(threshold), addOfs(speed), recursived(recursived){
+PFindFocus::PFindFocus(double min, double len, double speed, unsigned char threshold, unsigned recursived): minpos(min), len(len), speed(speed), threshold(threshold), addOfs(speed), recursived(recursived){
     lastMat = new cv::Mat;
 }
 PFindFocus::~PFindFocus(){
@@ -13,12 +13,6 @@ bool PFindFocus::startup(){
 
     //go.pXPS->execCommand("PositionerCorrectorAutoTuning",go.pXPS->groupGetName(XPS::mgroup_XYZ), 1);
     go.pXPS->setGPIO(XPS::iuScopeLED,false);
-    go.pXPS->execCommand("EventExtendedConfigurationTriggerSet", util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".PVT.ElementNumberStart"),2,0,0,0);
-    go.pXPS->execCommand("EventExtendedConfigurationActionSet", "GPIO3.DO.DOSet",1,0,0,0);
-    go.pXPS->execCommand("EventExtendedStart","int *");
-    go.pXPS->execCommand("EventExtendedConfigurationTriggerSet", util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".PVT.ElementNumberStart"),3,0,0,0);
-    go.pXPS->execCommand("EventExtendedConfigurationActionSet", "GPIO3.DO.DOSet",1,1,0,0);
-    go.pXPS->execCommand("EventExtendedStart","int *");
 
     XPS::raxis pos=go.pXPS->getPos(XPS::mgroup_XYZ);
     posx=pos.pos[0]; posy=pos.pos[1];
@@ -29,7 +23,9 @@ bool PFindFocus::startup(){
     if(len>(pos.max[2]-minpos-2*addOfs))
        len=(pos.max[2]-minpos-2*addOfs);
     po->add(1,          0,0,0,0,addOfs  ,speed);
+    po->addAction("GPIO3.DO.DOSet",1,0,0,0);            //TODO also actions like go.pXPS->setGPIO(XPS::iuScopeLED,false);
     po->add(len/speed  ,0,0,0,0,len     ,speed);
+    po->addAction("GPIO3.DO.DOSet",1,1,0,0);
     po->add(1,          0,0,0,0,addOfs  ,0);
     if(go.pXPS->verifyPVTobj(po).retval!=0)       //this will block and exec after MoveAbsolute is done
         return true;

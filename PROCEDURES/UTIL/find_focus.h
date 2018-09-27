@@ -26,7 +26,7 @@ private:
     cv::Mat* lastMat;
     double len;    //mm
     double speed;  //mm/s
-    double& addOfs;
+    double addOfs;
     unsigned char threshold;
     bool endPtFl{false};
     bool startPtFl{false};

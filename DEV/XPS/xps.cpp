@@ -4,12 +4,15 @@
 PVTobj::PVTobj(){}
 void PVTobj::clear(){
     data.str(std::string());
+    while (!pvtqueue.empty()) pvtqueue.pop();
+    while (!cmdQueue.empty()) cmdQueue.pop();
 }
 
 void PVTobj::_add(int n, double val){
     n++;
     if(n!=(1+2*go.pXPS->groups[ID].AxisNum)) {std::cerr<<"ERROR: You tried to add a line into a PVT file with the wrong number of parameters for group "<<go.pXPS->groupGetName(ID)<<", gave "<<n<<" pars but "<<go.pXPS->groups[ID].AxisNum<<" axes are defined for this group.\n"; go.quit();}
     pvtqueue.push(val);
+    cmdWasLast=false;
 }
 
 /*########## XPS ##########*/
@@ -133,6 +136,10 @@ exec_dat XPS::verifyPVTobj(pPVTobj obj){
     std::lock_guard<std::mutex>lock(axisCoords[obj->ID].mx);
     XPS::raxis taxis{axisCoords};
     const int oline=(1+2*axisCoords[obj->ID].num);
+    if(obj->cmdWasLast){
+        obj->pvtqueue.push(0.1);
+        for (int i=0;i!=2*go.pXPS->groups[obj->ID].AxisNum;i++) obj->pvtqueue.push(0);
+    }
     while(!obj->pvtqueue.empty()){
         obj->data<<obj->pvtqueue.front();
         obj->pvtqueue.pop();
@@ -140,7 +147,7 @@ exec_dat XPS::verifyPVTobj(pPVTobj obj){
             obj->data<<" "<<obj->pvtqueue.front();
             taxis.pos[i]+=obj->pvtqueue.front();
             if(taxis.pos[i]<taxis.min[i] || taxis.pos[i]>taxis.max[i]){
-                clearPVTobj(obj);
+                obj->clear();
                 return {"-999,out of sw defined bounds",-999};
             }
             obj->pvtqueue.pop();
@@ -157,11 +164,15 @@ exec_dat XPS::verifyPVTobj(pPVTobj obj){
     execCommand(&ret, "MultipleAxesPVTVerification",groupGetName(obj->ID),obj->filename);
     ret.block_till_done();
     obj->verified=(ret.v.retval==0);
-    if(!obj->verified) clearPVTobj(obj);
+    if(!obj->verified) obj->clear();
     return ret.v;
 }
 void XPS::execPVTobj(pPVTobj obj, exec_ret* ret){
     if (!obj->verified) return;  //retval should be -9999 indicating an error
+    while(!obj->cmdQueue.empty()){
+        execCommandStr(obj->cmdQueue.front());
+        obj->cmdQueue.pop();
+    }
     if (ret!=nullptr) execCommand(ret, "MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
     else execCommand("MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
     syncPos(obj->ID);
@@ -169,14 +180,14 @@ void XPS::execPVTobj(pPVTobj obj, exec_ret* ret){
 exec_dat XPS::execPVTobjB(pPVTobj obj){
     exec_ret ret;
     if (!obj->verified) return ret.v;  //retval should be -9999 indicating an error
+    while(!obj->cmdQueue.empty()){
+        execCommandStr(obj->cmdQueue.front());
+        obj->cmdQueue.pop();
+    }
     execCommand(&ret, "MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
     ret.block_till_done();
     syncPos(obj->ID);
     return ret.v;
-}
-void XPS::clearPVTobj(pPVTobj obj){
-    while (!obj->pvtqueue.empty()) obj->pvtqueue.pop();
-    obj->data.str(std::string());
 }
 
 std::string XPS::listPVTfiles(){

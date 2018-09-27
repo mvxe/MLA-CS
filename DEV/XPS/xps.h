@@ -24,6 +24,7 @@ public:
     PVTobj();
     void clear();
     template<typename... Args>  void add(double val, Args... vals);
+    template<typename... Args>  void addAction(Args... vals);
 private:
     template<typename... Args>  void _add(int n, double val, Args... vals);
     void _add(int n, double val);           //no PVT file row has only one var(time), so we set this private
@@ -31,6 +32,8 @@ private:
     std::string filename;
     std::stringstream data;
     std::queue<double> pvtqueue;
+    std::queue<std::string> cmdQueue;
+    bool cmdWasLast{false};
     bool verified{false};
 };
 typedef PVTobj* pPVTobj;
@@ -38,7 +41,8 @@ typedef PVTobj* pPVTobj;
 /*########## XPS ##########*/
 
 class XPS : public TCP_con, public xps_config, public protooth{
-    friend void PVTobj::_add(int n, double val);    //needs access to groups for axisnum
+    friend void PVTobj::_add(int n, double val);                               //needs access to groups for axisnum
+    template<typename... Args> friend void PVTobj::addAction(Args... vals);    //needs access to groups for axisnum
 private:
     struct execss{
         std::string comm;       //contains the command string to be executed
@@ -66,6 +70,7 @@ public:
                                               void execCommand(exec_ret* ret, std::string command);
     template <typename T>                     void execCommand(exec_ret* ret, std::string command, T value);
     template <typename T, typename... Args>   void execCommand(exec_ret* ret, std::string command, T value, Args... args);
+                                                //TODO rewrite execCommandStr and execCommand using util::toString
 
     void initGroup(GroupID ID);
     void initGroups();
@@ -81,7 +86,6 @@ public:
     exec_dat verifyPVTobj(pPVTobj obj);                                 //returns the verification result, on error also clears the queue
     void execPVTobj(pPVTobj obj, exec_ret* ret=nullptr);                //non blocking, with optional return, which can be used to check if its done
     exec_dat execPVTobjB(pPVTobj obj);                                  //blocks until done
-    void clearPVTobj(pPVTobj obj);                                      //clears the queue
 
     std::atomic<bool> limit{true};        //set to false to disable limits for the next move command (it is automatically set to true afterwards), the atomic type is thread safe
     template<typename... Args>  void MoveRelative(GroupID ID, double val, Args... vals);
