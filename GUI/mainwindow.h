@@ -60,6 +60,10 @@ private slots:
     void on_btn_Y_inc_released();
     void on_btn_Z_inc_released();
 
+    void on_btn_focus_released();
+
+    void on_btn_depthdmap_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;

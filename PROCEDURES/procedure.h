@@ -11,8 +11,8 @@ class procedure: public protooth{           //see PROCEDURES/procedure.h run() f
 public:
     procedure();
     virtual ~procedure();                   // note: this is called when the thread object is destroyed by killThread(), and not when run() returns
-    std::atomic<bool> end{false};           // this can be used by the creator thread or go.cleanup() to shut down the thread
-
+    //inherited: std::atomic<bool> end{false};, this can be used by the creator thread or go.cleanup() to shut down the thread
+    //inherited: std::atomic<bool> done{false};, this can be used by the thread to signal its done executing, is automatically set to true just before return from run()
 protected:
     virtual bool startup();                 /* you may override this function, it gets called on thread start (NOTE: this and cleanup are executed in the new thread, in contrast to constructor and destructor actually executed on the thread calling newThread and killThread)
                                              * return true on failed init, it will stop the thread without calling work()
@@ -36,7 +36,8 @@ private:
 class sproc: public protooth{               //see PROCEDURES/procedure.h run() for how these functions are called
 public:
     virtual ~sproc(){}                      // note: this is called when the thread object is destroyed by killThread(), and not when run() returns
-    std::atomic<bool> end{false};           // this can be used by the creator thread or go.cleanup() to shut down the thread, check it periodically from run() and if true do a cleanup and call return asap
+    //inherited: std::atomic<bool> end{false};, this can be used by the creator thread or go.cleanup() to shut down the thread, check it periodically from run() and if true do a cleanup and call return asap
+    //inherited: std::atomic<bool> done{false};, this can be used by the thread to signal its done executing, you should set it to true at the end of your run() function
 protected:
     virtual void run()=0;                   // this function gets called by the new thread, it needs to be redefined by the user
 };

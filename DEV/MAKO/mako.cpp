@@ -48,6 +48,7 @@ void MAKO::run(){    //this is the MAKO thread loop
                 if (_c[i].ptr->cam.ptr!=nullptr)
                     _c[i].ptr->end();
             std::cout<<"MAKO thread exited.\n";
+            done=true;
             return;
         }
     }

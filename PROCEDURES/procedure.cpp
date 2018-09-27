@@ -10,7 +10,7 @@ void procedure::run(){
         if(end || work()){
             cleanup();
             end=true;
-            *done=true;
+            done=true;
             return;
         }
     }

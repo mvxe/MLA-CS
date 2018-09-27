@@ -47,6 +47,7 @@ void XPS::run(){    //this is the XPS thread loop
                 disconnect();
             }
             std::cout<<"XPS thread exited.\n";
+            done=true;
             return;
         }
     }

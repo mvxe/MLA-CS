@@ -72,7 +72,8 @@ HEADERS += \
     PROCEDURES/procedure.h \
     PROCEDURES/UTIL/find_focus.h \
     PROCEDURES/_incl_procedures.h \
-    UTIL/IMGPROC/BASIC/imgproc_basic_stats.h
+    UTIL/IMGPROC/BASIC/imgproc_basic_stats.h \
+    PROCEDURES/UTIL/get_depth_map.h
 
 SOURCES += \
     DEV/MAKO/mako.cpp \
@@ -94,7 +95,8 @@ SOURCES += \
     GUI/TAB_POSITIONERS/tab_main.cpp \
     PROCEDURES/procedure.cpp \
     PROCEDURES/UTIL/find_focus.cpp \
-    UTIL/IMGPROC/BASIC/imgproc_basic_stats.cpp
+    UTIL/IMGPROC/BASIC/imgproc_basic_stats.cpp \
+    PROCEDURES/UTIL/get_depth_map.cpp
 
 
 unix {

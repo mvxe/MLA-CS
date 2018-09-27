@@ -34,15 +34,17 @@ class protooth{              //abstract class for all classes to be in threads
 public:
     virtual ~protooth(){}                     //if its virtual, destroying its pointer will call the derived class destructor
     std::atomic<bool> end{false};
-    std::atomic<bool>* done;
+    std::atomic<bool> done{false};            //this flag indicates whether the thread is done
 private:
     virtual void run()=0;
 };
 
 class base_othr{
 public:
+    base_othr(std::atomic<bool>& end, std::atomic<bool>& done): end(end), done(done){}
     virtual ~base_othr(){}
-    std::atomic<bool> done{false};      //this flag indicates whether the thread has closed, it is then safe to destroy this object. It is automatically set by the destructor od any protooth derived class.
+    std::atomic<bool>& end;
+    std::atomic<bool>& done;
 protected:
     std::thread* thr;
 };
@@ -54,9 +56,7 @@ public:
     T* obj;
 };
 template <typename T> template <typename... Args>
-othr<T>::othr(Args... args){
-    obj=new T(args...);
-    obj->done=&done;
+othr<T>::othr(Args... args): obj(new T(args...)), base_othr(obj->end,obj->done){
     thr=new std::thread(&protooth::run, obj);
 }
 template <typename T>

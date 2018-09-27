@@ -32,6 +32,7 @@ void RPTY::run(){
                 disconnect();
             }
             std::cout<<"RPTY thread exited.\n";
+            done=true;
             return;
         }
     }

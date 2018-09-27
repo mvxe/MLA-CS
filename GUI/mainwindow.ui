@@ -21,7 +21,7 @@
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab_con">
        <property name="contextMenuPolicy">
@@ -231,7 +231,7 @@
          </spacer>
         </item>
         <item row="0" column="2">
-         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0">
+         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0,0,0">
           <property name="spacing">
            <number>5</number>
           </property>
@@ -252,10 +252,6 @@
             <property name="text">
              <string>Kill</string>
             </property>
-            <property name="icon">
-             <iconset resource="../icons/icon.qrc">
-              <normaloff>:/emblem-ok.svg</normaloff>:/emblem-ok.svg</iconset>
-            </property>
             <property name="autoDefault">
              <bool>false</bool>
             </property>
@@ -275,9 +271,19 @@
             <property name="text">
              <string>Home</string>
             </property>
-            <property name="icon">
-             <iconset resource="../icons/icon.qrc">
-              <normaloff>:/emblem-nowrite.svg</normaloff>:/emblem-nowrite.svg</iconset>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_focus">
+            <property name="text">
+             <string>Focus</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_depthdmap">
+            <property name="text">
+             <string>Depth Map</string>
             </property>
            </widget>
           </item>

@@ -73,7 +73,7 @@ void mtlabel::wheelEvent(QWheelEvent *event){
         go.pXPS->MoveRelative(XPS::mgroup_XYZ,0,0,(double)event->delta()*pmw->xps_z_sen/1000000);
 }
 
-void MainWindow::on_btm_kill_released(){        //TODO: this is just a diable timer test, remove
+void MainWindow::on_btm_kill_released(){
     //disable.set(true,5);
 //    for (int i=0;i!=8;i++){
 //        exec_ret ret;
@@ -89,34 +89,18 @@ void MainWindow::on_btm_kill_released(){        //TODO: this is just a diable ti
     //else  {go.pXPS->execCommand(&ret, "GPIODigitalSet","GPIO3.DO", 1,0);lol=true;}
     //ret.block_till_done(); std::cerr<<ret.v.retstr<<"\n";
     //iuScope_img->setUserFps(0.);
+    go.pXPS->killGroups();
+}
+
+void MainWindow::on_btn_home_released(){
+    go.pXPS->initGroups();
+    go.pXPS->homeGroups();
+}
+
+void MainWindow::on_btn_focus_released(){
     go.newThread<PFindFocus>(-999, 1, 0.1, 50, 0);
 }
 
-void MainWindow::on_btn_home_released(){        //TODO: this is a test, remove
-    go.pXPS->setGPIO(XPS::iuScopeLED,false);
+void MainWindow::on_btn_depthdmap_released(){
 
-    //go.pXPS->execCommand("EventExtendedConfigurationTriggerSet", "Always", 0, 0, 0, 0, util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".Z.SGamma.ConstantVelocityStart"),0,0,0,0);
-    go.pXPS->execCommand("EventExtendedConfigurationTriggerSet", util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".PVT.ElementNumberStart"),3,0,0,0);
-    //go.pXPS->execCommand("EventExtendedConfigurationTriggerSet", util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".PVT.TrajectoryStart"),0,0,0,0);
-    go.pXPS->execCommand("EventExtendedConfigurationActionSet", "GPIO3.DO.DOSet",1,0,0,0);
-    go.pXPS->execCommand("EventExtendedStart","int *");
-
-    //go.pXPS->execCommand("EventExtendedConfigurationTriggerSet", "Always", 0, 0, 0, 0, util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".Z.SGamma.ConstantVelocityEnd"),0,0,0,0);
-    go.pXPS->execCommand("EventExtendedConfigurationTriggerSet", util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".PVT.ElementNumberStart"),4,0,0,0);
-    //go.pXPS->execCommand("EventExtendedConfigurationTriggerSet", util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".PVT.TrajectoryEnd"),0,0,0,0);
-    go.pXPS->execCommand("EventExtendedConfigurationActionSet", "GPIO3.DO.DOSet",1,1,0,0);
-    go.pXPS->execCommand("EventExtendedStart","int *");
-
-
-    pPVTobj po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZ, "test666.txt");
-    po->add(1,1,1,1,1,1,1);
-    po->add(1,0,0,0,0,0,0);
-    po->add(1,0,0,0,0,0,0);
-    po->add(1,-1,-1,-1,-1,-1,-1);
-    po->add(1,0,0,0,0,0,0);
-    std::cout<<go.pXPS->verifyPVTobj(po).retstr<<"\n";
-    std::cout<<go.pXPS->execPVTobjB(po).retstr<<"\n";
-    go.pXPS->destroyPVTobj(po);
-
-    go.pXPS->setGPIO(XPS::iuScopeLED,true);
 }
