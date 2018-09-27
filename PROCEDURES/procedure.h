@@ -10,7 +10,7 @@
 class procedure: public protooth{           //see PROCEDURES/procedure.h run() for how these functions are called
 public:
     procedure();
-    virtual ~procedure();
+    virtual ~procedure();                   // note: this is called when the thread object is destroyed by killThread(), and not when run() returns
     std::atomic<bool> end{false};           // this can be used by the creator thread or go.cleanup() to shut down the thread
 
 protected:
@@ -24,6 +24,21 @@ protected:
                                              */
 private:
     virtual void run() final;                             // this function gets called by the new thread
+};
+
+
+/*############### ALTERNATIVELY, A SECOND TYPE OF PROCEDURE BELOW ###############
+ * this one is simpler and has only a base (run()), but you should
+ * check end variable to check and handle possible end
+ * requests from outside
+ */
+
+class sproc: public protooth{               //see PROCEDURES/procedure.h run() for how these functions are called
+public:
+    virtual ~sproc(){}                      // note: this is called when the thread object is destroyed by killThread(), and not when run() returns
+    std::atomic<bool> end{false};           // this can be used by the creator thread or go.cleanup() to shut down the thread, check it periodically from run() and if true do a cleanup and call return asap
+protected:
+    virtual void run()=0;                   // this function gets called by the new thread, it needs to be redefined by the user
 };
 
 #endif // PROCEDURE_H
