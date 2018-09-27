@@ -295,18 +295,6 @@ std::string XPS::groupGetName(GroupID ID){
     return groups[ID].groupname;
 }
 
-void XPS::execCommand(std::string command){
-    std::stringstream* nstrm=new std::stringstream();
-    *nstrm<<command;
-    eexecCommand(nstrm, nullptr, "(");
-}
-void XPS::execCommand(exec_ret* ret ,std::string command){
-    std::stringstream* nstrm=new std::stringstream();
-    *nstrm<<command;
-    return eexecCommand(nstrm, ret, "(");
-}
-
-
 
 void XPS::setGPIO(GPIOID ID, bool value){
     std::lock_guard<std::mutex>lock(dmx);

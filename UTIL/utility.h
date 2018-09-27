@@ -71,7 +71,8 @@ std::string util::toCmdString(Args... args){
 }
 template <typename T>
 std::string util::_toCmdString(std::stringstream* strm, T value){
-    *strm<<value<<")";
+    if(!strm->str().empty()) *strm<<value<<")";
+    else *strm<<value<<"()";
     std::string ret=strm->str();
     strm->str("");
     strm->clear();

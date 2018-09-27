@@ -59,18 +59,11 @@ public:
     XPS();
     ~XPS();
 
-    template <typename T>                     void execCommandStr(T value);
-    template <typename T, typename... Args>   void execCommandStr(T value, Args... args);                  //exectue a command without return, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
-    template <typename T>                     void execCommandStr(exec_ret* ret, T value);
-    template <typename T, typename... Args>   void execCommandStr(exec_ret* ret, T value, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see xps_ret in UTIL/containers
+    template <typename... Args>   void execCommandStr(Args... args);                   //exectue a command without return, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
+    template <typename... Args>   void execCommandStr(exec_ret* ret, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see xps_ret in UTIL/containers
 
-                                              void execCommand(std::string command);
-    template <typename T>                     void execCommand(std::string command, T value);              //same as above command, except it automatically adds brackets and comas, for example  <command>(<arg0>,<arg1>,<arg2>...) and sends that to eexecCommandStr
-    template <typename T, typename... Args>   void execCommand(std::string command, T value, Args... args);
-                                              void execCommand(exec_ret* ret, std::string command);
-    template <typename T>                     void execCommand(exec_ret* ret, std::string command, T value);
-    template <typename T, typename... Args>   void execCommand(exec_ret* ret, std::string command, T value, Args... args);
-                                                //TODO rewrite execCommandStr and execCommand using util::toString
+    template <typename... Args>   void execCommand(Args... args);                      //same as above command, except it automatically adds brackets and comas, for example  <command>(<arg0>,<arg1>,<arg2>...)
+    template <typename... Args>   void execCommand(exec_ret* ret, Args... args);
 
     void initGroup(GroupID ID);
     void initGroups();
@@ -107,12 +100,6 @@ public:
     bool getGPIO(GPIOID ID);
 
 private:
-    template <typename T>                    void eexecCommandStr(std::stringstream* strm, exec_ret* ret, T value);
-    template <typename T, typename... Args>  void eexecCommandStr(std::stringstream* strm, exec_ret* ret, T value, Args... args);
-
-    template <typename T>                    void eexecCommand(std::stringstream* strm, exec_ret* ret, T value);
-    template <typename T, typename... Args>  void eexecCommand(std::stringstream* strm, exec_ret* ret, T value, Args... args);
-
     template<typename... Args>  void _MoveRelative(int n, GroupID ID, double val, Args... vals);
     void _MoveRelative(int n, GroupID ID, double val);
     template<typename... Args>  void _MoveAbsolute(int n, GroupID ID, double val, Args... vals);

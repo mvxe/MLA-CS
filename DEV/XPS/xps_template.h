@@ -22,82 +22,28 @@ void PVTobj::addAction(Args... vals){
 
 /*########## XPS ##########*/
 
-template <typename T>
-void XPS::execCommandStr(T value){
-    std::stringstream* nstrm=new std::stringstream();
-    eexecCommandStr(nstrm, nullptr, value);
+template <typename... Args>
+void XPS::execCommandStr(Args... args){
+    std::lock_guard<std::mutex>lock(mpq);
+    priority_queue.push({util::toString(args...),nullptr});
 }
-template <typename T>
-void XPS::execCommandStr(exec_ret* ret ,T value){
-    std::stringstream* nstrm=new std::stringstream();
-    return eexecCommandStr(nstrm, ret, value);
-}
-template<typename T, typename... Args>
-void XPS::execCommandStr(T value, Args... args){
-    std::stringstream* nstrm=new std::stringstream();
-    eexecCommandStr(nstrm, nullptr, value, args...);
-}
-template<typename T, typename... Args>
-void XPS::execCommandStr(exec_ret* ret, T value, Args... args){
-    std::stringstream* nstrm=new std::stringstream();
-    return eexecCommandStr(nstrm, ret, value, args...);
+template <typename... Args>
+void XPS::execCommandStr(exec_ret* ret, Args... args){
+    std::lock_guard<std::mutex>lock(mpq);
+    if(ret!=nullptr) ret->reset();
+    priority_queue.push({util::toString(args...),ret});
 }
 
-template <typename T>
-void XPS::execCommand(std::string command, T value){
-    std::stringstream* nstrm=new std::stringstream();
-    *nstrm<<command<<"(";
-    eexecCommand(nstrm, nullptr, value);
+template <typename... Args>
+void XPS::execCommand(Args... args){
+    std::lock_guard<std::mutex>lock(mpq);
+    priority_queue.push({util::toCmdString(args...),nullptr});
 }
-template <typename T>
-void XPS::execCommand(exec_ret* ret ,std::string command, T value){
-    std::stringstream* nstrm=new std::stringstream();
-    *nstrm<<command<<"(";
-    return eexecCommand(nstrm, ret, value);
-}
-template<typename T, typename... Args>
-void XPS::execCommand(std::string command, T value, Args... args){
-    std::stringstream* nstrm=new std::stringstream();
-    *nstrm<<command<<"(";
-    eexecCommand(nstrm, nullptr, value, args...);
-}
-template<typename T, typename... Args>
-void XPS::execCommand(exec_ret* ret, std::string command, T value, Args... args){
-    std::stringstream* nstrm=new std::stringstream();
-    *nstrm<<command<<"(";
-    return eexecCommand(nstrm, ret, value, args...);
-}
-
-template <typename T>
-void XPS::eexecCommandStr(std::stringstream* strm, exec_ret* ret, T value){
-    *strm<<value;
-    {std::lock_guard<std::mutex>lock(mpq);
-        if(ret!=nullptr) ret->reset();
-        priority_queue.push({strm->str(),ret});}
-    strm->str("");
-    strm->clear();
-    delete strm;
-}
-template<typename T, typename... Args>
-void XPS::eexecCommandStr(std::stringstream* strm, exec_ret* ret, T value, Args... args){
-    *strm<<value;
-    return eexecCommandStr(strm, ret, args...);
-}
-
-template <typename T>
-void XPS::eexecCommand(std::stringstream* strm, exec_ret* ret, T value){
-    *strm<<value<<")";
-    {std::lock_guard<std::mutex>lock(mpq);
-        if(ret!=nullptr) ret->reset();
-        priority_queue.push({strm->str(),ret});}
-    strm->str("");
-    strm->clear();
-    delete strm;
-}
-template<typename T, typename... Args>
-void XPS::eexecCommand(std::stringstream* strm, exec_ret *ret, T value, Args... args){
-    *strm<<value<<",";
-    return eexecCommand(strm, ret, args...);
+template <typename... Args>
+void XPS::execCommand(exec_ret* ret, Args... args){
+    std::lock_guard<std::mutex>lock(mpq);
+    if(ret!=nullptr) ret->reset();
+    priority_queue.push({util::toCmdString(args...),ret});
 }
 
 /*##############*/
