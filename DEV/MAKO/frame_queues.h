@@ -49,18 +49,18 @@ class FQ      //frame queue,        this should be accessed from  the user threa
 public:
     FQ();
     void setUserFps(double nfps, unsigned maxframes = 0);   //sets the framerate, set to zero if not in use to avoid piling up of data, see below, the optional parameter maxframes halves the framerate when the full queue size reaches maxframes, and ups it again at maxframes/2 up to fps
-    cv::Mat const* getUserMat();        //gets the pointer to the last matrix
-    unsigned int getUserTimestamp();    //gets the timestamp of the last matrix
-    void freeUserMat();                 //tells the class its safe to free the matrix (if this isnt called, the above call will return the pointer to the same old matrix)
-    unsigned getFullNumber();           //get the number of full matrices (return the number of frames waiting to be processed by this user)
-    unsigned getFreeNumber();           //get the number of free matrices
+    cv::Mat const* getUserMat(unsigned N=0);                //gets the pointer to the N-th (oldest if no argument) matrix, if non existant, return nullptr (the larger the N, the newer the matrix)
+    unsigned int getUserTimestamp(unsigned N=0);            //gets the timestamp of the N-th (oldest if no argument) matrix
+    void freeUserMat(unsigned N=0);                         //tells the class its safe to free N-th (oldest if no argument) matrix (if this isnt called, the above call will return the pointer to the same old matrix)
+    unsigned getFullNumber();                               //get the number of full matrices (return the number of frames waiting to be processed by this user)
+    unsigned getFreeNumber();                               //get the number of free matrices
 
     struct _img{
         cv::Mat** ptr;
         long unsigned timestamp;     //timestamp (this is the internal camera timestamp)
     };
 private:
-    std::queue<_img> full;
+    std::deque<_img> full;
     std::deque<cv::Mat**> free;
     double fps{0};                 //rounds to the closest divisor by two of the actual framerate (ie 9999 of 168 fps gives 168, 33 of 168 fps gives 28 fps, 0 means no acquisition)
     unsigned maxfr;

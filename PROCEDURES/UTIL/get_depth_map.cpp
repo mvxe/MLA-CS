@@ -7,7 +7,7 @@ pGetDepthMap::~pGetDepthMap(){
 }
 void pGetDepthMap::run(){
     if(!go.pMAKO->iuScope->connected || !go.pXPS->connected) return;
-    //framequeue=go.pMAKO->iuScope->FQsPCcam.getNewFQ();
+    framequeue=go.pMAKO->iuScope->FQsPCcam.getNewFQ();
 
     go.pXPS->setGPIO(XPS::iuScopeLED,false);
 
@@ -22,11 +22,17 @@ void pGetDepthMap::run(){
     if(go.pXPS->verifyPVTobj(po).retval!=0) return;                                 //this will block and exec after MoveAbsolute is done
     go.pXPS->execPVTobj(po, &ret);                                                  //we dont block here, gotta start processing frames
 
-    //framequeue->setUserFps(99999);  //set max fps
+std::cout<<"toal mats: "<<go.pMAKO->iuScope->FQsPCcam.getFullNumber()<<"+"<<go.pMAKO->iuScope->FQsPCcam.getFreeNumber()<<",in this:"<<framequeue->getFullNumber()<<"\n";
+    framequeue->setUserFps(99999);  //set max fps
 
+    while (!ret.check_if_done());
+
+    framequeue->setUserFps(0);
+std::cout<<"toal mats: "<<go.pMAKO->iuScope->FQsPCcam.getFullNumber()<<"+"<<go.pMAKO->iuScope->FQsPCcam.getFreeNumber()<<",in this:"<<framequeue->getFullNumber()<<"\n";
 
 
     go.pXPS->setGPIO(XPS::iuScopeLED,true);
+    go.pMAKO->iuScope->FQsPCcam.deleteFQ(framequeue);
     done=true;
     end=true;
 }

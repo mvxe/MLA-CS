@@ -32,7 +32,7 @@ void FQsPC::enqueueMat(unsigned int timestamp){
             //std::cerr<<"camfps/fps: "<<user_queues[i].div<<"\n";
             if (user_queues[i].i>=user_queues[i].div){
                 user_queues[i].i=1;
-                user_queues[i].full.push({&mat_ptr_full.front().mat,timestamp});
+                user_queues[i].full.push_back({&mat_ptr_full.front().mat,timestamp});
                 mat_ptr_full.front().users++;
             }
             else user_queues[i].i++;
@@ -56,6 +56,8 @@ FQ* FQsPC::getNewFQ(){
 }
 void FQsPC::deleteFQ(FQ* fq){
     fq->setUserFps(0);
+    while(fq->getFullNumber()) fq->freeUserMat();
+    //TODO implement destroy queue object
 }
 void FQsPC::setCamFPS(double nfps){
     std::lock_guard<std::mutex>lock(userqmx);
@@ -86,19 +88,19 @@ void FQ::setUserFps(double nfps, unsigned maxframes){
     fps=nfps;
     maxfr=maxframes;
 }
-cv::Mat const* FQ::getUserMat(){
+cv::Mat const* FQ::getUserMat(unsigned N){
     std::lock_guard<std::mutex>lock(umx);
-    return (full.empty())?nullptr:(*full.front().ptr);
+    return (N>=full.size())?nullptr:(*full[N].ptr);
 }
-unsigned int FQ::getUserTimestamp(){
+unsigned int FQ::getUserTimestamp(unsigned N){
     std::lock_guard<std::mutex>lock(umx);
-    return (full.empty())?0:(full.front().timestamp);
+    return (N>=full.size())?0:(full[N].timestamp);
 }
-void FQ::freeUserMat(){
+void FQ::freeUserMat(unsigned N){
     std::lock_guard<std::mutex>lock(umx);
-    if (!full.empty()){
-        free.push_back(full.front().ptr);
-        full.pop();
+    if (N<full.size()){
+        free.push_back(full[N].ptr);
+        full.erase(full.begin()+N);
     }
 }
 unsigned FQ::getFullNumber(){
