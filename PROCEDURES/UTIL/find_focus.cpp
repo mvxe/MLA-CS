@@ -23,9 +23,9 @@ bool PFindFocus::startup(){
     if(len>(pos.max[2]-minpos-2*addOfs))
        len=(pos.max[2]-minpos-2*addOfs);
     po->add(1,          0,0,0,0,addOfs  ,speed);
-    po->addAction("GPIO3.DO.DOSet",1,0,0,0);            //TODO also actions like go.pXPS->setGPIO(XPS::iuScopeLED,false);
+    po->addAction(XPS::iuScopeLED,true);
     po->add(len/speed  ,0,0,0,0,len     ,speed);
-    po->addAction("GPIO3.DO.DOSet",1,1,0,0);
+    po->addAction(XPS::iuScopeLED,false);
     po->add(1,          0,0,0,0,addOfs  ,0);
     if(go.pXPS->verifyPVTobj(po).retval!=0)       //this will block and exec after MoveAbsolute is done
         return true;

@@ -25,6 +25,7 @@ public:
     void clear();
     template<typename... Args>  void add(double val, Args... vals);
     template<typename... Args>  void addAction(Args... vals);
+    void addAction(xps_config::GPIOID ID, bool value);
 private:
     template<typename... Args>  void _add(int n, double val, Args... vals);
     void _add(int n, double val);           //no PVT file row has only one var(time), so we set this private
@@ -98,6 +99,7 @@ public:
 
     void setGPIO(GPIOID ID, bool value);
     bool getGPIO(GPIOID ID);
+    const GPIO& getGPIOobj(GPIOID ID);
 
 private:
     template<typename... Args>  void _MoveRelative(int n, GroupID ID, double val, Args... vals);

@@ -15,6 +15,10 @@ void PVTobj::_add(int n, double val){
     cmdWasLast=false;
 }
 
+void PVTobj::addAction(xps_config::GPIOID ID, bool value){
+    addAction(util::toString(go.pXPS->getGPIOobj(ID).name,".DOSet"),go.pXPS->getGPIOobj(ID).mask,(value^go.pXPS->getGPIOobj(ID).inverted)?go.pXPS->getGPIOobj(ID).mask:0,0,0);
+}
+
 /*########## XPS ##########*/
 
 XPS::XPS(){}
@@ -307,4 +311,7 @@ bool XPS::getGPIO(GPIOID ID){
     bool res=(GPIOs[ID].value==GPIOs[ID].mask);
     if(GPIOs[ID].inverted) res=!res;
     return res;
+}
+const XPS::GPIO& XPS::getGPIOobj(GPIOID ID){
+    return GPIOs[ID];
 }

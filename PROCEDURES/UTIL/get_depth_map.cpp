@@ -13,14 +13,14 @@ void pGetDepthMap::run(){
 
     po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZ, "pGetDepthMap.txt");
     po->add(1,          0,0,0,0,-range/2-addOfs  ,0);
-    po->add(1,          0,0,0,0,addOfs           ,speed);
-    po->addAction("GPIO3.DO.DOSet",1,0,0,0);
+    po->add(1,          0,0,0,0,addOfs           ,speed);                           //same as po->addAction("GPIO3.DO.DOSet",1,0,0,0);
+    po->addAction(XPS::iuScopeLED,true);
     po->add(range/speed,0,0,0,0,range            ,speed);
-    po->addAction("GPIO3.DO.DOSet",1,1,0,0);
+    po->addAction(XPS::iuScopeLED,false);                                           //same as po->addAction("GPIO3.DO.DOSet",1,1,0,0);
     po->add(1,          0,0,0,0,addOfs           ,0);
     po->add(1,          0,0,0,0,-range/2-addOfs  ,0);
-    if(go.pXPS->verifyPVTobj(po).retval!=0) return;       //this will block and exec after MoveAbsolute is done
-    go.pXPS->execPVTobj(po, &ret);                        //we dont block here, gotta start processing frames
+    if(go.pXPS->verifyPVTobj(po).retval!=0) return;                                 //this will block and exec after MoveAbsolute is done
+    go.pXPS->execPVTobj(po, &ret);                                                  //we dont block here, gotta start processing frames
 
     //framequeue->setUserFps(99999);  //set max fps
 
