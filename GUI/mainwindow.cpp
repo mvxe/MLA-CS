@@ -102,6 +102,5 @@ void MainWindow::on_btn_focus_released(){
 }
 
 void MainWindow::on_btn_depthdmap_released(){
-    go.newThread<pGetDepthMap>(0.1, 0.1, 50);
-
+    go.newThread<pGetDepthMap>(0.02, 0.001, 50);
 }
