@@ -39,7 +39,9 @@ private:
     virtual void run()=0;
 };
 
+class globals;
 class base_othr{
+    friend class globals;
 public:
     base_othr(std::atomic<bool>& end, std::atomic<bool>& done): end(end), done(done){}
     virtual ~base_othr(){}
@@ -47,6 +49,7 @@ public:
     std::atomic<bool>& done;
 protected:
     std::thread* thr;
+    std::atomic<bool> errord{false};
 };
 template <typename T>
 class othr: public base_othr{
@@ -61,13 +64,16 @@ othr<T>::othr(Args... args): obj(new T(args...)), base_othr(obj->end,obj->done){
 }
 template <typename T>
 othr<T>::~othr(){
-    obj->end=true;
-    thr->join();
-    delete obj;
-    delete thr;
+    if (!errord){
+        obj->end=true;
+        thr->join();
+        delete obj;
+        delete thr;
+    }
 }
 
 class globals{  //global objects with thread safe public functions
+    friend void cleanTerminate();
 public:
     globals();
     ~globals();
@@ -84,10 +90,12 @@ public:
     void startup(int argc, char *argv[]);                                           //subsequent calls of this are ignored
     template <typename T, typename... Args> othr<T>* newThread(Args... args);       //with this you can create a new thread calling any object derived from protooth/procedure, example:  XPS* pXPS=newThread<XPS>()->obj; or othr<proc> name=newThread<proc>();
     void killThread(base_othr *&thro);                                              //this kills the thread, ie if the thread is still running it sends an end flag and waits till its done, if its done its simply deallocated and removed from the list
-                                                                                    //you may check if the thread is done by looking at the base_othr.done or directly at the objects done variable, however after killThread is called the object WILL be deallocated
+                                                                                    //you may check if the thread is done by looking at the base_othr.done or directly at the objects done variable, however after killThread is called the object WILL be deallocated                                                           
     void cleanup();
     void quit();                                                                    //sends quit signal to the app, equivalent to clicking X on the window (not sure if thread safe, but its for exit on error anyway, to trigger apis cleanup before exit)
             /* use go.quit() in any thread if you need to quit the program*/
+
+    void markErrord();          //if the thread throws an exception
 private:
     std::mutex go_mx;
     bool started{false};

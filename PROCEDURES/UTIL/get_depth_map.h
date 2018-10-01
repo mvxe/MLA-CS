@@ -16,11 +16,17 @@ public:
 private:
     void run();
 
+    void single();
+    void multiple();
+
     FQ* framequeue;
     PVTobj* po;
     exec_ret ret;
     double range, speed, threshold;
     double addOfs;
+
+    const cv::Mat* mat;
+    int NMat{0};
 };
 
 #endif // GET_DEPTH_MAP_H
