@@ -18,10 +18,8 @@ MAKO::MAKO(){
 }
 MAKO::~MAKO(){
     for(int i=0;i!=_CAM_NUM;i++) delete _c[i].ptr;
-    if (vsys.Shutdown()!=VmbErrorSuccess){
+    if (vsys.Shutdown()!=VmbErrorSuccess)
         std::cerr<<"ERROR: Vimba system shutdown error.\n";
-        go.quit();
-    }
 }
 
 void MAKO::run(){    //this is the MAKO thread loop

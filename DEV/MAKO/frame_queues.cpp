@@ -23,6 +23,11 @@ void FQsPC::enqueueMat(unsigned int timestamp){
     {std::lock_guard<std::mutex>lock(userqmx);
         camfps=fps;}
     mat_ptr_full.push_front({mat_ptr_free.front(),0,timestamp});
+    if ((mat_ptr_free.front())->rows==0){
+        std::cerr<<"ERROR: FQ::enqueueMat says rows are 0. Will not enqueue, returning.\n";
+        mat_ptr_full.pop_front();
+        return;
+    }
     for (int i=0;i!=user_queues.size();i++){
         std::lock_guard<std::mutex>lock(user_queues[i].umx);
         if (user_queues[i].fps!=0){

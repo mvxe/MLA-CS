@@ -263,26 +263,25 @@ void XPS::_restrict_pos(axis& pos){ //the mutex should be locked by caller
     }
 }
 void XPS::syncPos(GroupID ID){
-    exec_ret* ret = new exec_ret();
+    std::thread handle (&XPS::_syncPosHandle,this,ID);
+    handle.detach();
+}
+void XPS::_syncPosHandle(GroupID ID){
+    std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
+    exec_ret ret;
     std::stringstream buf;
     buf<<groupGetName(ID);
     for (int i=0;i!=groups[ID].AxisNum;i++) buf<<",double *";
-    execCommand(ret,"GroupPositionSetpointGet",buf.str());
-    std::thread handle (&XPS::_syncPosHandle,this,ID,ret);
-    handle.detach();
-}
-void XPS::_syncPosHandle(GroupID ID, exec_ret* ret){
-    ret->block_till_done();
-    if(ret->v.retval==0){
-        std::istringstream cs(ret->v.retstr); cs.ignore();
-        std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
+    execCommand(&ret,"GroupPositionSetpointGet",buf.str());
+    ret.block_till_done();
+    if(ret.v.retval==0){
+        std::istringstream cs(ret.v.retstr); cs.ignore();
+
         for (int i=0;i!=axisCoords[ID].num;i++){
             cs.ignore();
             cs>>axisCoords[ID].pos[i];
         }
-        //std::cerr<<"Setpoint: "<<ret->v.retstr<<"\n";
     }
-    delete ret;
 }
 
 void XPS::groupSetName(GroupID ID, std::string name){

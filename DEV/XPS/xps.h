@@ -110,7 +110,7 @@ private:
     void flushQueue();
     void __MoveAbsolute(GroupID ID);
     void _restrict_pos(axis& pos);                          //checks if pox? is within min? and max?, if not, sets it to min?/max?
-    void _syncPosHandle(GroupID ID, exec_ret* ret);
+    void _syncPosHandle(GroupID ID);
 
     void run();
 

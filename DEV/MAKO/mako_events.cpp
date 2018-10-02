@@ -12,6 +12,7 @@ void CamObserver::CameraListChanged ( AVT::VmbAPI::CameraPtr pCam , AVT::VmbAPI:
 FrameObserver::FrameObserver(AVT::VmbAPI::CameraPtr pCamera, FQsPC *FQsPCcam, camobj *Camobj) : IFrameObserver(pCamera), FQsPCcam(FQsPCcam), Camobj(Camobj){}
 
 //THERE IS NO ANCILLIARY DATA FOR MAKO CAMERA, TRYING TO ACCESS IT WILL SEGFAULT
+std::mutex FrameObserver::prot;
 void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
     VmbUint32_t xsize,ysize;
     VmbPixelFormatType form;
@@ -24,6 +25,7 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
     }
   std::lock_guard<std::mutex>lock(prot);
     cv::Mat* freeMat = FQsPCcam->getAFreeMatPtr();
+
     if (freeMat->rows!=ysize || freeMat->cols!=xsize){    //the allocated matrix is of the wrong size/type
         delete freeMat;
         freeMat=new cv::Mat(ysize, xsize, imgfor::ocv_type_get(form).ocv_type);
@@ -39,7 +41,7 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
     pFrame->GetImage(freeMat->data);
     Camobj->linkFrameToMat(pFrame, freeMat);
 
-    if (imgfor::ocv_type_get(form).ccc!=(cv::ColorConversionCodes)-1) cvtColor(*freeMat, *freeMat, imgfor::ocv_type_get(form).ccc);   //color conversion if img is not monochrome or bgr
+    if (imgfor::ocv_type_get(form).ccc!=(cv::ColorConversionCodes)-1) {std::cerr<<"converted color\n"; cvtColor(*freeMat, *freeMat, imgfor::ocv_type_get(form).ccc);}   //color conversion if img is not monochrome or bgr
 
     VmbUint64_t timestamp;
     pFrame->GetTimestamp(timestamp);
