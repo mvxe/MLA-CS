@@ -24,7 +24,7 @@ public:
     void deleteFQ(FQ* fq);          //TODO implement destroy FQ and free data
 
     cv::Mat* getAFreeMatPtr();      //these two functions are used by the vimba api observer to put new frames into the queue           //TODO these two functions should not be exposed to the user, just FrameObserver::FrameReceived
-    void enqueueMat(unsigned int timestamp);     //they are not thread safe, so use them only in one observer function
+    void enqueueMat(cv::Mat* mat, unsigned int timestamp);
 
 private:
     struct _used{
@@ -38,6 +38,7 @@ private:
     std::list<_used> mat_ptr_full;          //contains pointers to actual data that is waiting to be processed
     std::deque<FQ> user_queues;             //contains of the user queues
     std::mutex userqmx;
+    std::mutex apicbmx;
     double fps{30};
 };
 

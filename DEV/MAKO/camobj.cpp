@@ -41,7 +41,7 @@ void camobj::start(){
     FQsPCcam.setCamFPS(ackFPS);
     std::cerr<<"ackFPS="<<ackFPS<<"\n";
 
-    newFrame(); newFrame();
+    for (int i=0;i!=NUM_QUEUED_FRAMES;i++) newFrame();
     if (cam.ptr->StartCapture()!=VmbErrorSuccess) {_end(); return;}
 }
 void camobj::newFrame(){

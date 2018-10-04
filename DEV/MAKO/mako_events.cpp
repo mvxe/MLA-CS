@@ -12,30 +12,29 @@ void CamObserver::CameraListChanged ( AVT::VmbAPI::CameraPtr pCam , AVT::VmbAPI:
 FrameObserver::FrameObserver(AVT::VmbAPI::CameraPtr pCamera, FQsPC *FQsPCcam, camobj *Camobj) : IFrameObserver(pCamera), FQsPCcam(FQsPCcam), Camobj(Camobj){}
 
 //THERE IS NO ANCILLIARY DATA FOR MAKO CAMERA, TRYING TO ACCESS IT WILL SEGFAULT
-std::mutex FrameObserver::prot;
 void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
     VmbUint32_t xsize,ysize;
     VmbPixelFormatType form;
     pFrame->GetWidth(xsize);
     pFrame->GetHeight(ysize);
     pFrame->GetPixelFormat(form);
+
     if (imgfor::ocv_type_get(form).ocv_type==-1){
         std::cerr<<"The PixelFormat type is not supported(this should have been prevented by GUI selector)! Skipping frame.\n";
         m_pCamera->QueueFrame ( pFrame ); return;
     }
-  std::lock_guard<std::mutex>lock(prot);
+
     cv::Mat* freeMat = FQsPCcam->getAFreeMatPtr();
+    if(freeMat==nullptr){
+        freeMat=new cv::Mat(ysize, xsize, imgfor::ocv_type_get(form).ocv_type);
+        Camobj->newFrame();
+    }
+    else if (!Camobj->requeueFrame(freeMat)) {Camobj->newFrame(); std::cout<<"WARNING: this shouldnt happen, see FrameObserver\n";}
 
     if (freeMat->rows!=ysize || freeMat->cols!=xsize){    //the allocated matrix is of the wrong size/type
         delete freeMat;
         freeMat=new cv::Mat(ysize, xsize, imgfor::ocv_type_get(form).ocv_type);
         //std::cerr<<"typename: "<<imgfor::ocv_type_get(form).vmb_name<<" ,  ocv type: "<<imgfor::ocv_type_get(form).ocv_type<<"\n";
-    }
-    VmbUint32_t bufsize;
-    pFrame->GetImageSize(bufsize);
-    if (bufsize!=(freeMat->dataend - freeMat->datastart)){
-        std::cerr<<"Image buffer from Vimba of wrong size(this should not be possible) "<< bufsize <<"  "<<(freeMat->dataend - freeMat->datastart) <<" ! Skipping frame.\n";
-        m_pCamera->QueueFrame ( pFrame ); return;
     }
 
     pFrame->GetImage(freeMat->data);
@@ -45,11 +44,7 @@ void FrameObserver::FrameReceived(const AVT::VmbAPI::FramePtr pFrame){
 
     VmbUint64_t timestamp;
     pFrame->GetTimestamp(timestamp);
-    FQsPCcam->enqueueMat(timestamp);
-    freeMat = FQsPCcam->getAFreeMatPtr();
-    if (freeMat!=nullptr)
-        if (Camobj->requeueFrame(freeMat)) return;
-    Camobj->newFrame();
+    FQsPCcam->enqueueMat(freeMat, timestamp);
 }
 
 

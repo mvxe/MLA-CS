@@ -10,20 +10,23 @@ bool FQsPC::isThereInterest(){
     return false;
 }
 cv::Mat* FQsPC::getAFreeMatPtr(){
+    std::lock_guard<std::mutex>lock(apicbmx);
     if (mat_ptr_free.empty()){
         reclaim();
-        if (mat_ptr_free.empty()){
-            mat_ptr_free.push(new cv::Mat());
-        }
+        if (mat_ptr_free.empty())
+            return nullptr;
     }
-    return mat_ptr_free.front();
+    cv::Mat* ret=mat_ptr_free.front();
+    mat_ptr_free.pop();
+    return ret;
 }
-void FQsPC::enqueueMat(unsigned int timestamp){
+void FQsPC::enqueueMat(cv::Mat* mat, unsigned int timestamp){
     unsigned camfps;
     {std::lock_guard<std::mutex>lock(userqmx);
         camfps=fps;}
-    mat_ptr_full.push_front({mat_ptr_free.front(),0,timestamp});
-    if ((mat_ptr_free.front())->rows==0){
+    std::lock_guard<std::mutex>lock(apicbmx);
+    mat_ptr_full.push_front({mat,0,timestamp});
+    if ((mat)->rows==0){
         std::cerr<<"ERROR: FQ::enqueueMat says rows are 0. Will not enqueue, returning.\n";
         mat_ptr_full.pop_front();
         return;
@@ -43,8 +46,10 @@ void FQsPC::enqueueMat(unsigned int timestamp){
             else user_queues[i].i++;
         }
     }
-    if(mat_ptr_full.front().users==0) mat_ptr_full.pop_front();
-    else mat_ptr_free.pop();
+    if(mat_ptr_full.front().users==0){
+        mat_ptr_full.pop_front();
+        mat_ptr_free.push(mat);
+    }
     reclaim();
 }
 unsigned FQsPC::getFreeNumber(){

@@ -7,7 +7,7 @@
 #include <vector>
 #include "_config.h"
 
-const int N_FRAMES_MAKO_VMB  = 15;   //queue length of CAMOBJ<->VIMBA communication
+const int NUM_QUEUED_FRAMES  = 5;   //queue length of CAMOBJ<->VIMBA communication
 class MAKO;
 
 class camobj: public camobj_config{
