@@ -1,5 +1,6 @@
 #include "get_depth_map.h"
 #include "includes.h"
+#include <opencv2/phase_unwrapping.hpp>
 pGetDepthMap::pGetDepthMap(double range, double offset, double speed, unsigned char threshold): range(range), offset(offset), speed(speed), threshold(threshold), addOfs(speed){
 }
 pGetDepthMap::~pGetDepthMap(){
@@ -64,6 +65,7 @@ void pGetDepthMap::multiple(){
     mat=framequeue->getUserMat(0);
     cv::Mat mat2D(mat->rows, NMat, CV_32F, cv::Scalar::all(0));
     cv::Mat fft2D;
+    cv::Mat mat2DDepth(mat->rows, mat->cols, CV_32F, cv::Scalar::all(0));
     for(int k=0;k!=mat->cols;k++){
         for(int i=0;i!=NMat;i++){
             mat=framequeue->getUserMat(i);
@@ -73,7 +75,34 @@ void pGetDepthMap::multiple(){
         cv::dft(mat2D, fft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
         if(end) return;
         std::cerr<<"done with dft"<<k<<"\n";
+        fft2D.col(0).setTo(cv::Scalar::all(0));
+        for(int j=0;j!=mat->rows;j++){
+            int max=0;
+            int maxLoc=0;
+            for(int i=0;i!=NMat;i++){
+                if(std::abs(fft2D.at<std::complex<float>>(j, i)) > max){
+                    max=std::abs(fft2D.at<std::complex<float>>(j, i));
+                    maxLoc=i;
+                }
+            }
+            mat2DDepth.at<float>(j,k)=std::arg(fft2D.at<std::complex<float>>(j, maxLoc));
+        }
     }
+
+    cv::Mat wrapped;
+    mat2DDepth.convertTo(wrapped, CV_16U, (1<<16)/M_PI/2, (1<<16)/2);
+    imwrite( "depthImage-wrapped.png", wrapped );
+
+    cv::Mat unwrapped;
+    cv::phase_unwrapping::HistogramPhaseUnwrapping::Params params;
+    //mat2DDepth.convertTo(wrapped, CV_32FC1, 0.5/M_PI);
+    mat2DDepth.convertTo(wrapped, CV_32FC1);
+    params.width = wrapped.cols;
+    params.height = wrapped.rows;
+    cv::Ptr<cv::phase_unwrapping::HistogramPhaseUnwrapping> phaseUnwrapping = cv::phase_unwrapping::HistogramPhaseUnwrapping::create(params);
+    phaseUnwrapping->unwrapPhaseMap(wrapped, unwrapped);
+    unwrapped.convertTo(unwrapped, CV_16U, (1<<16)/M_PI/2, (1<<16)/2);
+    imwrite( "depthImage-unwrapped.png", unwrapped );
 
   std::ofstream ofile;
   ofile.open ("MEASUREMENT2.dat",std::ofstream::trunc);

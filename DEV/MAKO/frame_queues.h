@@ -39,6 +39,7 @@ private:
     std::deque<FQ> user_queues;             //contains of the user queues
     std::mutex userqmx;
     std::mutex apicbmx;
+
     double fps{30};
 };
 
