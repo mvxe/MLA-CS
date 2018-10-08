@@ -3,6 +3,7 @@
 #include "includes.h"
 
 MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainWindow(parent), ui(new Ui::MainWindow) {
+    onDisplay=new cv::Mat();
     connect(qapp,SIGNAL(aboutToQuit()),this,SLOT(program_exit()));
     shortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q),this,SLOT(program_exit()));
 
@@ -23,6 +24,7 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
 
 MainWindow::~MainWindow(){
     delete ui;
+    delete onDisplay;
 }
 
 void MainWindow::program_exit(){
@@ -32,7 +34,7 @@ void MainWindow::program_exit(){
 
 void MainWindow::on_tabWidget_currentChanged(int index){
     ui->centralWidget->setFocus();  //prevents random textboxes from receiving focus after tab switch
-    if (ui->tabWidget->tabText(index)=="Camera") iuScope_img->setUserFps(30.,50);
+    if (ui->tabWidget->tabText(index)=="Camera") iuScope_img->setUserFps(30.,5);
     else iuScope_img->setUserFps(0.);
 }
 

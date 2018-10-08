@@ -34,9 +34,9 @@ void FQsPC::enqueueMat(cv::Mat* mat, unsigned int timestamp){
     for (int i=0;i!=user_queues.size();i++){
         std::lock_guard<std::mutex>lock(user_queues[i].umx);
         if (user_queues[i].fps!=0){
-            if (user_queues[i].maxfr==0 || user_queues[i].full.size()==0) user_queues[i].div=round(camfps/user_queues[i].fps);
-            else if (user_queues[i].full.size()<=user_queues[i].maxfr/2 && user_queues[i].div!=round(camfps/user_queues[i].fps)) user_queues[i].div-=1;
-            else if (user_queues[i].full.size()>=user_queues[i].maxfr) user_queues[i].div+=1;
+            if (user_queues[i].maxfr==0 || user_queues[i].full.size()<user_queues[i].maxfr) user_queues[i].div=round(camfps/user_queues[i].fps);
+            else {user_queues[i].div=0; continue;}
+
             //std::cerr<<"camfps/fps: "<<user_queues[i].div<<"\n";
             if (user_queues[i].i>=user_queues[i].div){
                 user_queues[i].i=1;

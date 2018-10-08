@@ -46,7 +46,7 @@ void MainWindow::on_sl_expo_valueChanged(int value) {
         go.pMAKO->iuScope->expo.set(go.pMAKO->iuScope->get<double>("ExposureTime"));
     }
 }
-
+int N=0;
 void MainWindow::GUI_update(){
     if (xps_con!=go.pXPS->connected){
         xps_con=go.pXPS->connected;
@@ -71,7 +71,13 @@ void MainWindow::GUI_update(){
 
     const cv::Mat* dmat=iuScope_img->getUserMat();
     if (dmat!=nullptr){
-        ui->camera_stream->setPixmap(QPixmap::fromImage(QImage(dmat->data, dmat->cols, dmat->rows, dmat->step, QImage::Format_Indexed8).copy()));      //.copy() is here to make an actual copy, otherwise it segfaults when the other thread frees the mat //TODO generalize Format_Indexed8
+        double aspect=(double)dmat->rows/dmat->cols;
+        cv::Size dsize(ui->camera_stream->width(),aspect*ui->camera_stream->width());
+        ui->camera_stream->setFixedHeight(aspect*ui->camera_stream->width());
+        cv::resize(*dmat, *onDisplay, dsize, 0, 0, cv::INTER_AREA);
+        ui->camera_stream->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
+                //if we wanted to make an actual copy, we'd use QImage(dmat->data, dmat->cols, dmat->rows, dmat->step, QImage::Format_Indexed8).copy()
+                //but here resize copies into onDisplay
         //std::cerr<<"timestamp: "<<iuScope_img->getUserTimestamp()<<"\n";
         iuScope_img->freeUserMat();
     }

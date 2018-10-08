@@ -50,7 +50,7 @@ class FQ      //frame queue,        this should be accessed from  the user threa
     friend class FQsPC;
 public:
     FQ();
-    void setUserFps(double nfps, unsigned maxframes = 0);   //sets the framerate, set to zero if not in use to avoid piling up of data, see below, the optional parameter maxframes halves the framerate when the full queue size reaches maxframes, and ups it again at maxframes/2 up to fps
+    void setUserFps(double nfps, unsigned maxframes = 0);   //sets the framerate, set to zero if not in use to avoid piling up of data, see below, the optional parameter maxframes doesnt add new frames untill the total number is smaller than maxframes
     cv::Mat const* getUserMat(unsigned N=0);                //gets the pointer to the N-th (oldest if no argument) matrix, if non existant, return nullptr (the larger the N, the newer the matrix)
     unsigned int getUserTimestamp(unsigned N=0);            //gets the timestamp of the N-th (oldest if no argument) matrix
     void freeUserMat(unsigned N=0);                         //tells the class its safe to free N-th (oldest if no argument) matrix (if this isnt called, the above call will return the pointer to the same old matrix)

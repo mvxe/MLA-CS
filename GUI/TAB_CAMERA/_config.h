@@ -5,6 +5,8 @@
 class tab_camera{
 private:
     std::mutex dismx;
+protected:
+    cv::Mat* onDisplay;
 public:
     tsbool disable{&dismx};
 
