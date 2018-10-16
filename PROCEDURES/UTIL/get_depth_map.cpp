@@ -75,11 +75,10 @@ void pGetDepthMap::multiple(){
         cv::dft(mat2D, fft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
         if(end) return;
         std::cerr<<"done with dft"<<k<<"\n";
-        fft2D.col(0).setTo(cv::Scalar::all(0));
         for(int j=0;j!=mat->rows;j++){
-            int max=0;
+            float max=0;
             int maxLoc=0;
-            for(int i=0;i!=NMat;i++){
+            for(int i=NMat/50;i!=NMat/4;i++){
                 if(std::abs(fft2D.at<std::complex<float>>(j, i)) > max){
                     max=std::abs(fft2D.at<std::complex<float>>(j, i));
                     maxLoc=i;

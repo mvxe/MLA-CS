@@ -92,6 +92,10 @@ void MainWindow::on_btm_kill_released(){
     //ret.block_till_done(); std::cerr<<ret.v.retstr<<"\n";
     //iuScope_img->setUserFps(0.);
     go.pXPS->killGroups();
+//    exec_ret ret;
+//    go.pXPS->execCommand(&ret,"PositionerCorrectorAutoTuning",util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".Z"), 1,"double *","double *","double *");
+//    ret.block_till_done();
+//    std::cerr<<ret.v.retstr<<"\n";
 }
 
 void MainWindow::on_btn_home_released(){
