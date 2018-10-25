@@ -64,28 +64,41 @@ cleanup:
 void pGetDepthMap::multiple(){
     mat=framequeue->getUserMat(0);
     cv::Mat mat2D(mat->rows, NMat, CV_32F, cv::Scalar::all(0));
+//    cv::UMat Umat2D;
     cv::Mat fft2D;
+//    cv::UMat Ufft2D;
     cv::Mat mat2DDepth(mat->rows, mat->cols, CV_32F, cv::Scalar::all(0));
+
+    int maxLoc=0;
     for(int k=0;k!=mat->cols;k++){
         for(int i=0;i!=NMat;i++){
             mat=framequeue->getUserMat(i);
             for(int j=0;j!=mat->rows;j++)
                 mat2D.at<float>(j,i)=mat->at<unsigned char>(j,k); //TODO perhaps this can be optimized by opencv functions
         }
+//        Umat2D=mat2D.getUMat(cv::ACCESS_READ);
+//        cv::dft(Umat2D, Ufft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
+//        fft2D=Ufft2D.getMat(cv::ACCESS_READ);
         cv::dft(mat2D, fft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
         if(end) return;
         std::cerr<<"done with dft"<<k<<"\n";
-        for(int j=0;j!=mat->rows;j++){
+
+        if (maxLoc==0){  //we only do it for first col, no need for more
             float max=0;
-            int maxLoc=0;
             for(int i=NMat/50;i!=NMat/4;i++){
-                if(std::abs(fft2D.at<std::complex<float>>(j, i)) > max){
-                    max=std::abs(fft2D.at<std::complex<float>>(j, i));
+                if(std::abs(fft2D.at<std::complex<float>>(mat->rows/2, i)) > max){
+                    max=std::abs(fft2D.at<std::complex<float>>(mat->rows/2, i));
                     maxLoc=i;
                 }
             }
+            std::cerr<<"max="<<maxLoc<<"\n";
+        }
+
+        for(int j=0;j!=mat->rows;j++){
             mat2DDepth.at<float>(j,k)=std::arg(fft2D.at<std::complex<float>>(j, maxLoc));
         }
+
+
     }
 
     cv::Mat wrapped;
@@ -109,7 +122,6 @@ void pGetDepthMap::multiple(){
         ofile<<i<<" "<<mat2D.at<float>(500, i)<<" "<<std::abs(fft2D.at<std::complex<float>>(500, i))<<" "<<std::arg(fft2D.at<std::complex<float>>(500, i))<<"\n";
     }
   ofile.close();
-
 }
 
 void pGetDepthMap::single(){
