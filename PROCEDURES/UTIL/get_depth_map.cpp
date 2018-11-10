@@ -1,6 +1,7 @@
 #include "get_depth_map.h"
 #include "includes.h"
 #include <opencv2/phase_unwrapping.hpp>
+#include <chrono>
 pGetDepthMap::pGetDepthMap(double range, double offset, double speed, unsigned char threshold): range(range), offset(offset), speed(speed), threshold(threshold), addOfs(speed){
 }
 pGetDepthMap::~pGetDepthMap(){
@@ -63,29 +64,51 @@ cleanup:
 
 void pGetDepthMap::multiple(){
     mat=framequeue->getUserMat(0);
-    cv::Mat mat2D(mat->rows, NMat, CV_32F, cv::Scalar::all(0));
-//    cv::UMat Umat2D;
+    cv::UMat Umat2D;
+    cv::UMat Ufft2D;
+
+    int NMat_opt=cv::getOptimalDFTSize(NMat);
+    std::cout<<"Mats= "<<NMat<<", optimal="<<NMat_opt<<"\n";
+
+    cv::Mat mat2D(NMat_opt, mat->cols, CV_32F, cv::Scalar::all(0));
     cv::Mat fft2D;
-//    cv::UMat Ufft2D;
     cv::Mat mat2DDepth(mat->rows, mat->cols, CV_32F, cv::Scalar::all(0));
 
+
+    std::chrono::time_point<std::chrono::system_clock> A;
+    std::chrono::time_point<std::chrono::system_clock> B;
+//    std::chrono::time_point<std::chrono::system_clock> C;
+//    std::chrono::time_point<std::chrono::system_clock> D;
+
+
     int maxLoc=0;
-    for(int k=0;k!=mat->cols;k++){
-        for(int i=0;i!=NMat;i++){
-            mat=framequeue->getUserMat(i);
-            for(int j=0;j!=mat->rows;j++)
-                mat2D.at<float>(j,i)=mat->at<unsigned char>(j,k); //TODO perhaps this can be optimized by opencv functions
+
+
+    A=std::chrono::system_clock::now();
+    for(int k=0;k!=mat->rows;k++){
+//        A=std::chrono::system_clock::now();
+        for(int i=0;i!=NMat_opt;i++){
+            if(i<NMat) mat=framequeue->getUserMat(i);
+            mat->row(k).copyTo(mat2D.row(i));
         }
-//        Umat2D=mat2D.getUMat(cv::ACCESS_READ);
-//        cv::dft(Umat2D, Ufft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
-//        fft2D=Ufft2D.getMat(cv::ACCESS_READ);
-        cv::dft(mat2D, fft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
+        cv::transpose(mat2D,mat2D);
+//        B=std::chrono::system_clock::now();
+
+        Umat2D=mat2D.getUMat(cv::ACCESS_READ);
+        cv::dft(Umat2D, Ufft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
+            //fft2D=Ufft2D.getMat(cv::ACCESS_READ);     //this wont work as its asynchronous
+        Ufft2D.copyTo(fft2D);
+//        cv::dft(mat2D, fft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
+//        C=std::chrono::system_clock::now();
+
+
+
         if(end) return;
         std::cerr<<"done with dft"<<k<<"\n";
 
         if (maxLoc==0){  //we only do it for first col, no need for more
             float max=0;
-            for(int i=NMat/50;i!=NMat/4;i++){
+            for(int i=NMat_opt/50;i!=NMat_opt/4;i++){
                 if(std::abs(fft2D.at<std::complex<float>>(mat->rows/2, i)) > max){
                     max=std::abs(fft2D.at<std::complex<float>>(mat->rows/2, i));
                     maxLoc=i;
@@ -94,10 +117,14 @@ void pGetDepthMap::multiple(){
             std::cerr<<"max="<<maxLoc<<"\n";
         }
 
-        for(int j=0;j!=mat->rows;j++){
-            mat2DDepth.at<float>(j,k)=std::arg(fft2D.at<std::complex<float>>(j, maxLoc));
+        for(int j=0;j!=mat->cols;j++){
+            mat2DDepth.at<float>(k,j)=std::arg(fft2D.at<std::complex<float>>(j, maxLoc));
         }
-
+        mat2D=mat2D.reshape(0,mat2D.cols);    //we dont use transpose here, because we overwrite the data later anyway, and reshape just changes the header
+//        D=std::chrono::system_clock::now();
+//        std::cout<<"copy mat "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
+//        std::cout<<"calc dft "<<std::chrono::duration_cast<std::chrono::microseconds>(C - B).count()<<" microseconds\n";
+//        std::cout<<"copy dft "<<std::chrono::duration_cast<std::chrono::microseconds>(D - C).count()<<" microseconds\n";
 
     }
 
@@ -114,15 +141,20 @@ void pGetDepthMap::multiple(){
     cv::Ptr<cv::phase_unwrapping::HistogramPhaseUnwrapping> phaseUnwrapping = cv::phase_unwrapping::HistogramPhaseUnwrapping::create(params);
     phaseUnwrapping->unwrapPhaseMap(wrapped, unwrapped);
     unwrapped.convertTo(unwrapped, CV_16U, (1<<16)/M_PI/2, (1<<16)/2);
+
+    B=std::chrono::system_clock::now();
+    std::cout<<"total time "<<std::chrono::duration_cast<std::chrono::milliseconds>(B - A).count()<<" milliseconds\n";
+
     imwrite( "depthImage-unwrapped.png", unwrapped );
 
   std::ofstream ofile;
   ofile.open ("MEASUREMENT2.dat",std::ofstream::trunc);
-    for(int i=0;i!=NMat;i++){
+    for(int i=0;i!=NMat_opt;i++){
         ofile<<i<<" "<<mat2D.at<float>(500, i)<<" "<<std::abs(fft2D.at<std::complex<float>>(500, i))<<" "<<std::arg(fft2D.at<std::complex<float>>(500, i))<<"\n";
     }
   ofile.close();
 }
+
 
 void pGetDepthMap::single(){
     mat=framequeue->getUserMat(0);

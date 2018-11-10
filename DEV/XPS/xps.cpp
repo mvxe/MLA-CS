@@ -36,7 +36,7 @@ void XPS::run(){    //this is the XPS thread loop
             else{
                     //connecting...
                 connect(keepalive.get());
-                if (connected) {go.pXPS->setGPIO(XPS::iuScopeLED,true);initGroups();homeGroups();flushQueue();}     //TODO put into same function
+                if (connected) {go.pXPS->setGPIO(XPS::iuScopeLED,true);go.pXPS->setGPIO(XPS::writingLaser,false); initGroups();homeGroups();flushQueue();}     //TODO put into same function
             }
             IP.resolved.set(resname);
         }
@@ -49,6 +49,7 @@ void XPS::run(){    //this is the XPS thread loop
         if(end){
             if (connected){
                 go.pXPS->setGPIO(XPS::iuScopeLED,false);     //TODO put into same function and call here and above
+                go.pXPS->setGPIO(XPS::writingLaser,false);
                 killGroups();
                 flushQueue();
                 disconnect();

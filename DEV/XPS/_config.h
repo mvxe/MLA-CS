@@ -61,11 +61,12 @@ protected:
      */
 
 public:
-    enum GPIOID: int { iuScopeLED };
+    enum GPIOID: int { iuScopeLED, writingLaser };
 protected:
-    const static int _GPIO_NUM=1;
+    const static int _GPIO_NUM=2;
     GPIO GPIOs[_GPIO_NUM]={
-      {iuScopeLED, "GPIO3.DO", 1, 0, "LED light source for the interferometric microscope.", true}
+      {iuScopeLED, "GPIO3.DO", 1, 0, "LED light source for the interferometric microscope.", true},
+      {writingLaser, "GPIO3.DO", 2, 0, "Writing laser trigger.", true}
     };
     std::mutex dmx;     //devices access mutex
 
