@@ -64,10 +64,10 @@ void MainWindow::updateCamMenu(){
 }
 
 void mtlabel::mousePressEvent(QMouseEvent *event){
-    double disp_x=-(event->pos().x()-size().width()/2.)/size().width();
-    double disp_y=-(event->pos().y()-size().height()/2.)/size().height();
+    double disp_x=-(event->pos().x()-size().width()/2.);
+    double disp_y=-(event->pos().y()-size().height()/2.);
     if(go.pXPS->connected)
-        go.pXPS->MoveRelative(XPS::mgroup_XYZ,disp_x*pmw->xps_x_sen/100,disp_y*pmw->xps_y_sen/100,0);
+        go.pXPS->MoveRelative(XPS::mgroup_XYZ,disp_x*pmw->xps_x_sen/100000,disp_y*pmw->xps_y_sen/100000,0);
 }
 
 void mtlabel::wheelEvent(QWheelEvent *event){
@@ -108,9 +108,12 @@ void MainWindow::on_btn_focus_released(){
 }
 
 void MainWindow::on_btn_depthdmap_released(){
-    go.newThread<pGetDepthMap>(0.008, -0.00144, 0.001, 50);
+    go.newThread<pGetDepthMap>(0.01, -0.00144, 0.001, 50);
 }
 
 void MainWindow::on_btn_calXY_released(){
-    go.newThread<pCalibrateXY>(0.1);
+    std::cout<<a<<" "<<xps_x_sen<<" "<<b<<" "<<xps_y_sen<<"\n";
+    xps_x_sen=a;
+    xps_y_sen=b;
+    go.newThread<pCalibrateXY>(0.03, &a, &b);
 }

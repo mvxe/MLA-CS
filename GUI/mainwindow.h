@@ -83,6 +83,9 @@ private:
     bool rpty_con{false};
 
     FQ* iuScope_img;    //the framequeue for display
+
+    double a{0},b{0}; //TODO remove this dirty fix
+
 };
 
 class mtlabel : public QLabel{

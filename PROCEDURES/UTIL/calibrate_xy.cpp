@@ -3,7 +3,7 @@
 #include <opencv2/phase_unwrapping.hpp>
 #include <chrono>
 
-pCalibrateXY::pCalibrateXY(double testDis): testDis(testDis){
+pCalibrateXY::pCalibrateXY(double testDis, double *xps_x_sen, double *xps_y_sen): testDis(testDis), xps_x_sen(xps_x_sen), xps_y_sen(xps_y_sen){
 }
 pCalibrateXY::~pCalibrateXY(){
 }
@@ -15,32 +15,34 @@ void pCalibrateXY::run(){
     go.pXPS->setGPIO(XPS::iuScopeLED,true);
     cv::Mat matA, matB, matC;
 
+    while(framequeue->getFullNumber()) framequeue->freeUserMat();
     framequeue->setUserFps(999);
     mat=nullptr;
     while(mat==nullptr) {mat=framequeue->getUserMat(); std::this_thread::sleep_for (std::chrono::milliseconds(1));}
     mat->copyTo(matA);
-    framequeue->freeUserMat();
     framequeue->setUserFps(0);
 
     go.pXPS->MoveRelative(XPS::mgroup_XYZ, testDis,0,0);        //TODO implement return value like in exec command, so that we can wait till it completes
     std::this_thread::sleep_for (std::chrono::seconds(1));          //should be enough
 
+    while(framequeue->getFullNumber()) framequeue->freeUserMat();
     framequeue->setUserFps(999);
     mat=nullptr;
     while(mat==nullptr) {mat=framequeue->getUserMat(); std::this_thread::sleep_for (std::chrono::milliseconds(1));}
     mat->copyTo(matB);
-    framequeue->freeUserMat();
     framequeue->setUserFps(0);
 
     go.pXPS->MoveRelative(XPS::mgroup_XYZ, 0,testDis,0);
     std::this_thread::sleep_for (std::chrono::seconds(1));
 
+    while(framequeue->getFullNumber()) framequeue->freeUserMat();
     framequeue->setUserFps(999);
     mat=nullptr;
     while(mat==nullptr) {mat=framequeue->getUserMat(); std::this_thread::sleep_for (std::chrono::milliseconds(1));}
     mat->copyTo(matC);
-    framequeue->freeUserMat();
     framequeue->setUserFps(0);
+
+    go.pXPS->MoveRelative(XPS::mgroup_XYZ, -testDis,-testDis,0);
 
     //now we process images:
 
@@ -54,9 +56,16 @@ void pCalibrateXY::run(){
 
 
     std::vector<cv::DMatch> matchesAB, matchesBC;
-    cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
+    cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("BruteForce-Hamming(2)");
     matcher->match(descriptors_A, descriptors_B, matchesAB, cv::Mat());
     matcher->match(descriptors_B, descriptors_C, matchesBC, cv::Mat());
+
+    for(size_t i=0; i!=matchesAB.size(); i++){
+        if(matchesAB[i].distance>minDis) {matchesAB.erase(matchesAB.begin()+i); i--;}
+    }
+    for(size_t i=0; i!=matchesBC.size(); i++){
+        if(matchesBC[i].distance>minDis) {matchesBC.erase(matchesBC.begin()+i); i--;}
+    }
 
     std::sort(matchesAB.begin(), matchesAB.end());
     std::sort(matchesBC.begin(), matchesBC.end());
@@ -68,6 +77,7 @@ void pCalibrateXY::run(){
     imwrite("imMatchesBC.jpg", imMatchesBC);
 
     std::vector<cv::Point2f> pointsA_AB, pointsB_AB, pointsB_BC, pointsC_BC;
+
 
     for(size_t i=0; i!=matchesAB.size(); i++){
         pointsA_AB.push_back(keypoints_A[matchesAB[i].queryIdx].pt);
@@ -81,16 +91,26 @@ void pCalibrateXY::run(){
     cv::Mat AB_trans=cv::findHomography(pointsA_AB, pointsB_AB, cv::RANSAC);
     cv::Mat BC_trans=cv::findHomography(pointsB_BC, pointsC_BC, cv::RANSAC);
 
-    std::cout<<"Matrix AB:\n";
+    std::cout<<"Matrix AB, matches="<<matchesAB.size()<<":\n";
     for(int i=0; i!= AB_trans.rows; i++){
         for(int j=0; j!= AB_trans.cols; j++) std::cout<<AB_trans.at<double>(i,j)<<", ";
         std::cout<<"\n";
     }
-    std::cout<<"Matrix BC:\n";
+    std::cout<<"Matrix BC, matches="<<matchesBC.size()<<":\n";
     for(int i=0; i!= BC_trans.rows; i++){
         for(int j=0; j!= BC_trans.cols; j++) std::cout<<BC_trans.at<double>(i,j)<<", ";
         std::cout<<"\n";
     }
+
+    double calibX, calibY;
+    calibX=testDis/AB_trans.at<double>(0,2);
+    calibY=testDis/BC_trans.at<double>(1,2);
+
+    std::cout<<"Approximate calibration (disregarding stageXY to cameraXY misalignment): calibX="<<calibX<<" mm/px, calibY="<<calibY<<" mm/px\n";
+    std::cout<<"Total imaging area size: "<<calibX*mat->cols<<"mm x "<<calibY*mat->rows<<"mm\n";
+
+    *xps_x_sen=calibX*100000;
+    *xps_y_sen=calibY*100000;
 
     go.pMAKO->iuScope->FQsPCcam.deleteFQ(framequeue);   //cleanup
     done=true;

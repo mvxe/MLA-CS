@@ -10,10 +10,10 @@ protected:
 public:
     tsbool disable{&dismx};
 
-    int xps_x_sen, xps_y_sen, xps_z_sen;
-    cc_save<int> xps_x_sen_save{xps_x_sen, 100,&go.gui_config.save,"xps_x_sen"};
-    cc_save<int> xps_y_sen_save{xps_y_sen, 100,&go.gui_config.save,"xps_y_sen"};
-    cc_save<int> xps_z_sen_save{xps_z_sen, 100,&go.gui_config.save,"xps_z_sen"};
+    double xps_x_sen, xps_y_sen, xps_z_sen;
+    cc_save<double> xps_x_sen_save{xps_x_sen, 100000,&go.gui_config.save,"xps_x_sen"};
+    cc_save<double> xps_y_sen_save{xps_y_sen, 100000,&go.gui_config.save,"xps_y_sen"};
+    cc_save<double> xps_z_sen_save{xps_z_sen, 100000,&go.gui_config.save,"xps_z_sen"};
 };
 
 
