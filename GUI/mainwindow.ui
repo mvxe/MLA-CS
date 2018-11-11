@@ -326,7 +326,7 @@
          </widget>
         </item>
         <item row="0" column="2">
-         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0,0,0,0">
+         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0,0,0,0,0">
           <property name="spacing">
            <number>5</number>
           </property>
@@ -386,6 +386,13 @@
            <widget class="QPushButton" name="btn_depthdmap">
             <property name="text">
              <string>Depth Map</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_wrtingTest">
+            <property name="text">
+             <string>TestWrite</string>
             </property>
            </widget>
           </item>

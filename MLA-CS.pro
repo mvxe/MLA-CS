@@ -73,7 +73,8 @@ HEADERS += \
     PROCEDURES/_incl_procedures.h \
     UTIL/IMGPROC/BASIC/imgproc_basic_stats.h \
     PROCEDURES/UTIL/get_depth_map.h \
-    PROCEDURES/UTIL/calibrate_xy.h
+    PROCEDURES/UTIL/calibrate_xy.h \
+    PROCEDURES/UTIL/writing_test.h
 
 SOURCES += \
     DEV/MAKO/mako.cpp \
@@ -97,7 +98,8 @@ SOURCES += \
     PROCEDURES/UTIL/find_focus.cpp \
     UTIL/IMGPROC/BASIC/imgproc_basic_stats.cpp \
     PROCEDURES/UTIL/get_depth_map.cpp \
-    PROCEDURES/UTIL/calibrate_xy.cpp
+    PROCEDURES/UTIL/calibrate_xy.cpp \
+    PROCEDURES/UTIL/writing_test.cpp
 
 
 unix {

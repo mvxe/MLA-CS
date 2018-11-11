@@ -66,6 +66,8 @@ private slots:
 
     void on_btn_calXY_released();
 
+    void on_btn_wrtingTest_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;

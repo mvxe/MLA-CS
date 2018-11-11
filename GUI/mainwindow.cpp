@@ -117,3 +117,7 @@ void MainWindow::on_btn_calXY_released(){
     xps_y_sen=b;
     go.newThread<pCalibrateXY>(0.03, &a, &b);
 }
+
+void MainWindow::on_btn_wrtingTest_released(){
+    go.newThread<pWritingTest>();
+}
