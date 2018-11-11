@@ -12,6 +12,7 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QFileDialog>
 #include <QShortcut>
 #include "globals.h"
 #include "PROCEDURES/_incl_procedures.h"

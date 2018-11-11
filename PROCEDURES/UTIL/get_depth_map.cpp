@@ -2,7 +2,8 @@
 #include "includes.h"
 #include <opencv2/phase_unwrapping.hpp>
 #include <chrono>
-pGetDepthMap::pGetDepthMap(double range, double offset, double speed, unsigned char threshold): range(range), offset(offset), speed(speed), threshold(threshold), addOfs(speed){
+
+pGetDepthMap::pGetDepthMap(double range, double offset, double speed, unsigned char threshold, std::string filename): range(range), offset(offset), speed(speed), threshold(threshold), addOfs(speed), filename(filename){
 }
 pGetDepthMap::~pGetDepthMap(){
 }
@@ -130,7 +131,7 @@ void pGetDepthMap::multiple(){
 
     cv::Mat wrapped;
     mat2DDepth.convertTo(wrapped, CV_16U, (1<<16)/M_PI/2, (1<<16)/2);
-    imwrite( "depthImage-wrapped.png", wrapped );
+    imwrite(filename, wrapped);
 
     cv::Mat unwrapped;
     cv::phase_unwrapping::HistogramPhaseUnwrapping::Params params;
@@ -145,7 +146,11 @@ void pGetDepthMap::multiple(){
     B=std::chrono::system_clock::now();
     std::cout<<"total time "<<std::chrono::duration_cast<std::chrono::milliseconds>(B - A).count()<<" milliseconds\n";
 
-    imwrite( "depthImage-unwrapped.png", unwrapped );
+    std::size_t found = filename.find(".");
+    if (found!=std::string::npos)
+        filename.insert(found,"-unwrapped");
+    else filename+="-unwrapped";
+    imwrite(filename, unwrapped );
 
   std::ofstream ofile;
   ofile.open ("MEASUREMENT2.dat",std::ofstream::trunc);

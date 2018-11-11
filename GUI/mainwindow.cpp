@@ -108,7 +108,9 @@ void MainWindow::on_btn_focus_released(){
 }
 
 void MainWindow::on_btn_depthdmap_released(){
-    go.newThread<pGetDepthMap>(0.01, -0.00144, 0.001, 50);
+    QString fileName = QFileDialog::getSaveFileName(this,tr("Image"), "",tr("Images (*.png *.xpm *.jpg)"));
+    if(fileName.isEmpty()) return;
+    go.newThread<pGetDepthMap>(0.01, -0.00144, 0.001, 50, fileName.toStdString());
 }
 
 void MainWindow::on_btn_calXY_released(){
@@ -120,4 +122,14 @@ void MainWindow::on_btn_calXY_released(){
 
 void MainWindow::on_btn_wrtingTest_released(){
     go.newThread<pWritingTest>();
+}
+
+void MainWindow::on_btn_save_img_released(){
+    const cv::Mat* dmat=nullptr;
+    do{
+        dmat=iuScope_img->getUserMat();
+    } while (dmat==nullptr);
+    QString fileName = QFileDialog::getSaveFileName(this,tr("Image"), "",tr("Images (*.png *.xpm *.jpg)"));
+    std::cout<<"Saving image to "<<fileName.toStdString()<<"\n";
+    imwrite(fileName.toStdString(), *dmat);
 }

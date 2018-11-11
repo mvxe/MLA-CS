@@ -68,6 +68,8 @@ private slots:
 
     void on_btn_wrtingTest_released();
 
+    void on_btn_save_img_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;

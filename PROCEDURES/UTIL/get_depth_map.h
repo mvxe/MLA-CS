@@ -11,7 +11,7 @@ namespace cv {
 class pGetDepthMap: public sproc
 {
 public:
-    pGetDepthMap(double range, double offset, double speed, unsigned char threshold);
+    pGetDepthMap(double range, double offset, double speed, unsigned char threshold, std::string filename);
     ~pGetDepthMap();
 private:
     void run();
@@ -24,6 +24,7 @@ private:
     exec_ret ret;
     double range, offset, speed, threshold;
     double addOfs;
+    std::string filename;
 
     const cv::Mat* mat;
     int NMat{0};
