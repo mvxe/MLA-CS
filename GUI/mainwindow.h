@@ -64,6 +64,8 @@ private slots:
 
     void on_btn_depthdmap_released();
 
+    void on_btn_calXY_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;

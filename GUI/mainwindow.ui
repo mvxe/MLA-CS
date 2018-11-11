@@ -326,7 +326,7 @@
          </widget>
         </item>
         <item row="0" column="2">
-         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0,0,0">
+         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0,0,0,0">
           <property name="spacing">
            <number>5</number>
           </property>
@@ -372,6 +372,13 @@
            <widget class="QPushButton" name="btn_focus">
             <property name="text">
              <string>Focus</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_calXY">
+            <property name="text">
+             <string>CalibrateXY</string>
             </property>
            </widget>
           </item>

@@ -110,3 +110,7 @@ void MainWindow::on_btn_focus_released(){
 void MainWindow::on_btn_depthdmap_released(){
     go.newThread<pGetDepthMap>(0.008, -0.00144, 0.001, 50);
 }
+
+void MainWindow::on_btn_calXY_released(){
+    go.newThread<pCalibrateXY>(0.1);
+}
