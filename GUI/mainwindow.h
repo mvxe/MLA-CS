@@ -3,10 +3,10 @@
 
 #include "GUI/gui_includes.h"
 #include "GUI/slots_baseclass.h"
-#include "GUI/TAB_CAMERA/_config.h"
-#include "GUI/TAB_CONNECTION/_config.h"
-#include "GUI/TAB_SETTINGS/_config.h"
-#include "GUI/TAB_POSITIONERS/_config.h"
+#include "GUI/TAB_CAMERA/tab_camera.h"
+#include "GUI/TAB_DEVICES/tab_devices.h"
+#include "GUI/TAB_SETTINGS/tab_settings.h"
+#include "GUI/TAB_POSITIONERS/tab_positioners.h"
 class FQ;
 
 namespace Ui {
@@ -14,9 +14,10 @@ class MainWindow;
 class tab_camera;
 class tab_settings;
 class tab_connection;
+class tab_devices;
 }
 
-class MainWindow : public QMainWindow , public GUI_slots_baseclass, public tab_camera, public tab_settings, public tab_connection, public tab_positioners
+class MainWindow : public QMainWindow , public GUI_slots_baseclass, public tab_camera, public tab_settings, public tab_positioners
 {
     Q_OBJECT
 public:
@@ -90,6 +91,7 @@ private:
 
     double a{0},b{0}; //TODO remove this dirty fix
 
+    tab_devices* tabDev;
 };
 
 class mtlabel : public QLabel{

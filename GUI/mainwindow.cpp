@@ -20,11 +20,15 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
 
     iuScope_img=go.pMAKO->iuScope->FQsPCcam.getNewFQ();    //make new image queue
     ui->camera_stream->pmw=this;
+
+    tabDev=new tab_devices(ui->tab_dev);
+
 }
 
 MainWindow::~MainWindow(){
     delete ui;
     delete onDisplay;
+    delete tabDev;
 }
 
 void MainWindow::program_exit(){
@@ -64,8 +68,8 @@ void MainWindow::updateCamMenu(){
 }
 
 void mtlabel::mousePressEvent(QMouseEvent *event){
-    double disp_x=-(event->pos().x()-size().width()/2.);
-    double disp_y=-(event->pos().y()-size().height()/2.);
+    double disp_x=-(event->pos().x()-size().width()/2.)/size().width()*1280;
+    double disp_y=-(event->pos().y()-size().height()/2.)/size().height()*1024;
     if(go.pXPS->connected)
         go.pXPS->MoveRelative(XPS::mgroup_XYZ,disp_x*pmw->xps_x_sen/100000,disp_y*pmw->xps_y_sen/100000,0);
 }

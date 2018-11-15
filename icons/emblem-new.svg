@@ -6,12 +6,12 @@
      xmlns="http://www.w3.org/2000/svg"
      xmlns:xlink="http://www.w3.org/1999/xlink"
      width="128" height="128" version="1.1">
-    <title>Clarity Icon</title>
+    <title>Plus Icon</title>
     <desc>This icon is a part of Clarity icon theme for gtk</desc>
     <metadata>
         <rdf:RDF>
             <cc:Work rdf:about="">
-                <dc:title>Clarity Icon</dc:title>
+                <dc:title>Plus Icon</dc:title>
                 <dc:description>This icon is a part of Clarity icon theme for gtk</dc:description>
                 <dc:creator>
                     <cc:Agent>
@@ -36,5 +36,5 @@
             <stop id="stop" style="stop-color:#5D5D5D;stop-opacity:1" offset="1" />
         </linearGradient>
     </defs>
-    <path d="m 64,18.15625 c -25.315842,0 -45.84375,20.527908 -45.84375,45.84375 0,25.315842 20.527908,45.84375 45.84375,45.84375 25.315842,0 45.84375,-20.527908 45.84375,-45.84375 C 109.84375,38.684158 89.315842,18.15625 64,18.15625 z M 41.625,33.5 64,55.875 86.375,33.5 94.5,41.625 72.125,64 94.5,86.375 86.375,94.5 64,72.125 41.625,94.5 33.5,86.375 55.875,64 33.5,41.625 41.625,33.5 z" style="fill:url(#gradient);fill-opacity:1;stroke:none" />
+    <path d="m 63.984382,18.162123 c -11.73296,0 -23.45575,4.486999 -32.40625,13.437501 -17.901015,17.901004 -17.901015,46.911496 0,64.8125 17.901,17.901006 46.94275,17.901006 64.84375,0 17.900998,-17.901004 17.900998,-46.911496 0,-64.8125 -8.950499,-8.950502 -20.70454,-13.437501 -32.4375,-13.437501 z m -8.40625,18.187501 16.8125,0 0,19.25 19.25,0 0,16.8125 -19.25,0 0,19.25 -16.8125,0 0,-19.25 -19.25,0 0,-16.8125 19.25,0 0,-19.25 z" style="fill:url(#gradient);fill-opacity:1;stroke:none" />
 </svg>

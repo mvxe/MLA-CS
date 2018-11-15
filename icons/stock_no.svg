@@ -6,12 +6,12 @@
      xmlns="http://www.w3.org/2000/svg"
      xmlns:xlink="http://www.w3.org/1999/xlink"
      width="128" height="128" version="1.1">
-    <title>Clarity Icon</title>
+    <title>NO Icon</title>
     <desc>This icon is a part of Clarity icon theme for gtk</desc>
     <metadata>
         <rdf:RDF>
             <cc:Work rdf:about="">
-                <dc:title>Clarity Icon</dc:title>
+                <dc:title>NO Icon</dc:title>
                 <dc:description>This icon is a part of Clarity icon theme for gtk</dc:description>
                 <dc:creator>
                     <cc:Agent>
@@ -36,5 +36,5 @@
             <stop id="stop" style="stop-color:#5D5D5D;stop-opacity:1" offset="1" />
         </linearGradient>
     </defs>
-    <path d="m 64,18.15625 c -25.315842,0 -45.84375,20.527908 -45.84375,45.84375 0,25.315842 20.527908,45.84375 45.84375,45.84375 25.315842,0 45.84375,-20.527908 45.84375,-45.84375 C 109.84375,38.684158 89.315842,18.15625 64,18.15625 z M 41.625,33.5 64,55.875 86.375,33.5 94.5,41.625 72.125,64 94.5,86.375 86.375,94.5 64,72.125 41.625,94.5 33.5,86.375 55.875,64 33.5,41.625 41.625,33.5 z" style="fill:url(#gradient);fill-opacity:1;stroke:none" />
+    <path d="M 63.96875 8.40625 C 33.574249 8.40625 8.875 33.45649 8.875 64.03125 C 8.875 94.606011 33.584617 119.59375 63.96875 119.59375 C 94.352882 119.59375 119.125 94.616273 119.125 64.03125 C 119.125 33.446227 94.36325 8.40625 63.96875 8.40625 z M 63.96875 23.40625 C 86.165978 23.40625 104.125 41.487257 104.125 64.03125 C 104.125 72.454161 101.64077 80.263014 97.34375 86.71875 L 41.1875 30.5625 C 47.652837 26.048176 55.491657 23.40625 63.96875 23.40625 z M 30.6875 41.3125 L 86.8125 97.4375 C 80.330073 101.95562 72.463952 104.59375 63.96875 104.59375 C 41.761153 104.59375 23.875 86.585507 23.875 64.03125 C 23.875 55.589107 26.385757 47.785802 30.6875 41.3125 z " style="fill:url(#gradient);fill-opacity:1;stroke:none" />
 </svg>

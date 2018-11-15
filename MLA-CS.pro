@@ -59,22 +59,22 @@ HEADERS += \
     DEV/XPS/xps_template.h \
     DEV/XPS/_config.h \
     DEV/MAKO/_config.h \
-    GUI/TAB_CAMERA/_config.h \
-    GUI/TAB_CONNECTION/_config.h \
-    GUI/TAB_SETTINGS/_config.h \
     DEV/RPTY/rpty.h \
     DEV/RPTY/_config.h \
     GUI/mainwindow.h \
     GUI/gui_includes.h \
     DEV/TCP_con.h \
-    GUI/TAB_POSITIONERS/_config.h \
     PROCEDURES/procedure.h \
     PROCEDURES/UTIL/find_focus.h \
     PROCEDURES/_incl_procedures.h \
     UTIL/IMGPROC/BASIC/imgproc_basic_stats.h \
     PROCEDURES/UTIL/get_depth_map.h \
     PROCEDURES/UTIL/calibrate_xy.h \
-    PROCEDURES/UTIL/writing_test.h
+    PROCEDURES/UTIL/writing_test.h \
+    GUI/TAB_CAMERA/tab_camera.h \
+    GUI/TAB_POSITIONERS/tab_positioners.h \
+    GUI/TAB_SETTINGS/tab_settings.h \
+    GUI/TAB_DEVICES/tab_devices.h
 
 SOURCES += \
     DEV/MAKO/mako.cpp \
@@ -88,18 +88,18 @@ SOURCES += \
     GUI/mainwindow.cpp \
     DEV/MAKO/camobj.cpp \
     UTIL/containers.cpp \
-    GUI/TAB_CONNECTION/tab_main.cpp \
-    GUI/TAB_SETTINGS/tab_main.cpp \
-    GUI/TAB_CAMERA/tab_main.cpp \
     DEV/RPTY/rpty.cpp \
     DEV/TCP_con.cpp \
-    GUI/TAB_POSITIONERS/tab_main.cpp \
     PROCEDURES/procedure.cpp \
     PROCEDURES/UTIL/find_focus.cpp \
     UTIL/IMGPROC/BASIC/imgproc_basic_stats.cpp \
     PROCEDURES/UTIL/get_depth_map.cpp \
     PROCEDURES/UTIL/calibrate_xy.cpp \
-    PROCEDURES/UTIL/writing_test.cpp
+    PROCEDURES/UTIL/writing_test.cpp \
+    GUI/TAB_CAMERA/tab_camera.cpp \
+    GUI/TAB_POSITIONERS/tab_positioners.cpp \
+    GUI/TAB_SETTINGS/tab_settings.cpp \
+    GUI/TAB_DEVICES/tab_devices.cpp
 
 
 unix {

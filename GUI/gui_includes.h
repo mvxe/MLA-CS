@@ -13,7 +13,10 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QFileDialog>
+#include <QPushButton>
+#include <QToolButton>
 #include <QShortcut>
+#include <QVBoxLayout>
 #include "globals.h"
 #include "PROCEDURES/_incl_procedures.h"
 

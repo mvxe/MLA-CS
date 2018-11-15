@@ -32,9 +32,13 @@
     </metadata>
     <defs>
         <linearGradient x1="0" y1="128" x2="128" y2="0" id="gradient" gradientUnits="userSpaceOnUse">
-            <stop id="start" style="stop-color:#004cb2;stop-opacity:1" offset="0" />
-            <stop id="stop" style="stop-color:#afecff;stop-opacity:1" offset="1" />
+            <stop id="start" style="stop-color:#a3dc63;stop-opacity:1" offset="0" />
+            <stop id="stop" style="stop-color:#182800;stop-opacity:1" offset="1" />
         </linearGradient>
+        <filter id="shadow">
+            <feMorphology operator="dilate" in="SourceGraphic" radius="3" />
+            <feGaussianBlur stdDeviation="1.5" />
+        </filter>
     </defs>
-    <path d="m 63.962218,18.109642 c -25.3157,0 -45.8435,20.527796 -45.8435,45.8435 0,25.315704 20.5278,45.843508 45.8435,45.843508 25.3157,0 45.843502,-20.527804 45.843502,-45.843508 0,-25.315704 -20.527802,-45.8435 -45.843502,-45.8435 z m 23.12487,19.593643 9.7187,7.562459 -34.96856,44.937255 -0.25,-0.187499 -9.4687,-7.37496 -20.96863,-16.281161 7.56246,-9.718697 20.96863,16.281161 27.4061,-35.218558 z" style="fill:url(#gradient);fill-opacity:1;stroke:none"/>
+    <path d="m 63.962218,18.109642 c -25.3157,0 -45.8435,20.527796 -45.8435,45.8435 0,25.315704 20.5278,45.843508 45.8435,45.843508 25.3157,0 45.843502,-20.527804 45.843502,-45.843508 0,-25.315704 -20.527802,-45.8435 -45.843502,-45.8435 z m 23.12487,19.593643 9.7187,7.562459 -34.96856,44.937255 -0.25,-0.187499 -9.4687,-7.37496 -20.96863,-16.281161 7.56246,-9.718697 20.96863,16.281161 27.4061,-35.218558 z" style="fill:url(#gradient);fill-opacity:1;stroke:none" />
 </svg>
