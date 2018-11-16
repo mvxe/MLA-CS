@@ -23,7 +23,7 @@ void tab_devices::add_item(_dev_layout *item){
 }
 
 void tab_devices::on_add_item_clicked(){
-    //TODO: handle add device
+    std::cerr<<"TODO:implement: add device\n";     //TODO implement
 }
 
 
@@ -70,7 +70,7 @@ _dev_layout::_dev_layout(bool set){
     }
 
     QLabel* LB_stat=new QLabel;
-    LB_stat->setText("Status:");
+    LB_stat->setText("::");
 
     layout->insertWidget(layout->count()-1,TB_device);
     layout->insertWidget(layout->count()-1,LB_stat);
@@ -78,7 +78,7 @@ _dev_layout::_dev_layout(bool set){
 
     if(set){
         QLabel* LB_set=new QLabel;
-        LB_set->setText("Set:");
+        LB_set->setText("::");
         layout->insertWidget(layout->count()-1,LB_set);
     }
 }
