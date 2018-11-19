@@ -75,7 +75,8 @@ HEADERS += \
     GUI/TAB_POSITIONERS/tab_positioners.h \
     GUI/TAB_SETTINGS/tab_settings.h \
     GUI/TAB_DEVICES/tab_devices.h \
-    DEV/devices.h
+    DEV/devices.h \
+    PROCEDURES/UTIL/burn_array.h
 
 SOURCES += \
     DEV/MAKO/mako.cpp \
@@ -101,7 +102,8 @@ SOURCES += \
     GUI/TAB_POSITIONERS/tab_positioners.cpp \
     GUI/TAB_SETTINGS/tab_settings.cpp \
     GUI/TAB_DEVICES/tab_devices.cpp \
-    DEV/devices.cpp
+    DEV/devices.cpp \
+    PROCEDURES/UTIL/burn_array.cpp
 
 
 unix {

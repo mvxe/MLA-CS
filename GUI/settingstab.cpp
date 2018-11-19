@@ -89,4 +89,15 @@ void MainWindow::GUI_update(){
     else if (!ui->centralWidget->isEnabled())
         ui->centralWidget->setEnabled(true);
 
+    donth++;
+    if(donth==10){
+        donth=0;
+        if(go.pXPS->connected){ if(go.pXPS->isQueueEmpty()){
+            XPS::raxis ret = go.pXPS->getPos(XPS::mgroup_XYZ);
+            ui->lbl_position->setText(QString::fromStdString(util::toString("Position: X=", ret.pos[0], "mm , Y=", ret.pos[1], "mm , Z=", ret.pos[2], "mm")));
+        }}
+        else ui->lbl_position->setText(QString::fromStdString(util::toString("Position: NC")));
+    }
+
+
 }

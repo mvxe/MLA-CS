@@ -71,6 +71,8 @@ private slots:
 
     void on_btn_save_img_released();
 
+    void on_btn_PBurnArray_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;
@@ -92,6 +94,7 @@ private:
     double a{0},b{0}; //TODO remove this dirty fix
 
     tab_devices* tabDev;
+    int donth=0;
 };
 
 class mtlabel : public QLabel{

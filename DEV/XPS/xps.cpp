@@ -4,6 +4,7 @@
 PVTobj::PVTobj(){}
 void PVTobj::clear(){
     data.str(std::string());
+    data.clear();
     while (!pvtqueue.empty()) pvtqueue.pop();
     while (!cmdQueue.empty()) cmdQueue.pop();
 }
@@ -100,6 +101,15 @@ void XPS::flushQueue(){
         mpq.lock();
     }
     mpq.unlock();
+}
+
+bool XPS::isQueueEmpty(){
+    if (mpq.try_lock()){
+        bool empty=priority_queue.empty();
+        mpq.unlock();
+        return empty;
+    }
+    else return false;
 }
 
 pPVTobj XPS::createNewPVTobj(GroupID ID, std::string filename){

@@ -1,7 +1,5 @@
 #include "writing_test.h"
 #include "includes.h"
-#include <opencv2/phase_unwrapping.hpp>
-#include <chrono>
 
 pWritingTest::pWritingTest(){
 }
@@ -44,7 +42,7 @@ void pWritingTest::run(){
     po->add(SMT,                 0         ,  0    ,   0.1*TotDim     , 0     ,0,0);
     po->add(SMT,                 0.5*TotDim,  0    ,  -0.6*TotDim     , 0     ,0,0);
 
-
+    //WARNING: THE MAX EVENT NUMBER OF XPS IS ABOUT 32
     po->addAction(XPS::iuScopeLED,true);
     po->addAction(XPS::writingLaser,false);
 

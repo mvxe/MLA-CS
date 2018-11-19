@@ -81,6 +81,8 @@ public:
     void execPVTobj(pPVTobj obj, exec_ret* ret=nullptr);                //non blocking, with optional return, which can be used to check if its done
     exec_dat execPVTobjB(pPVTobj obj);                                  //blocks until done
 
+    bool isQueueEmpty();
+
     std::atomic<bool> limit{true};        //set to false to disable limits for the next move command (it is automatically set to true afterwards), the atomic type is thread safe
     template<typename... Args>  void MoveRelative(GroupID ID, double val, Args... vals);
     void MoveRelative(GroupID ID, double val);

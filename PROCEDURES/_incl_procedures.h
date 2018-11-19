@@ -5,5 +5,6 @@
 #include "PROCEDURES/UTIL/get_depth_map.h"
 #include "PROCEDURES/UTIL/calibrate_xy.h"
 #include "PROCEDURES/UTIL/writing_test.h"
+#include "PROCEDURES/UTIL/burn_array.h"
 
 #endif // _INCL_PROCEDURES_H
