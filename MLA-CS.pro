@@ -74,7 +74,8 @@ HEADERS += \
     GUI/TAB_CAMERA/tab_camera.h \
     GUI/TAB_POSITIONERS/tab_positioners.h \
     GUI/TAB_SETTINGS/tab_settings.h \
-    GUI/TAB_DEVICES/tab_devices.h
+    GUI/TAB_DEVICES/tab_devices.h \
+    DEV/devices.h
 
 SOURCES += \
     DEV/MAKO/mako.cpp \
@@ -99,7 +100,8 @@ SOURCES += \
     GUI/TAB_CAMERA/tab_camera.cpp \
     GUI/TAB_POSITIONERS/tab_positioners.cpp \
     GUI/TAB_SETTINGS/tab_settings.cpp \
-    GUI/TAB_DEVICES/tab_devices.cpp
+    GUI/TAB_DEVICES/tab_devices.cpp \
+    DEV/devices.cpp
 
 
 unix {
