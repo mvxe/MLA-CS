@@ -76,7 +76,8 @@ HEADERS += \
     GUI/TAB_SETTINGS/tab_settings.h \
     GUI/TAB_DEVICES/tab_devices.h \
     DEV/devices.h \
-    PROCEDURES/UTIL/burn_array.h
+    PROCEDURES/UTIL/burn_array.h \
+    DEV/device_flags.h
 
 SOURCES += \
     DEV/MAKO/mako.cpp \

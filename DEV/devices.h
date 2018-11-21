@@ -3,6 +3,7 @@
 
 #include <string>
 #include <deque>
+#include "device_flags.h"
 
 class _device_temp
 {
@@ -11,9 +12,9 @@ public:
     const int max_num_of_devices;
     const std::string type_name;
 
-    const std::deque<std::string>& getFlags() const{return flags;}
+    const std::deque<device_type>& getFlags() const{return flags;}
 protected:
-    std::deque<std::string> flags;
+    std::deque<device_type> flags;
 };
 
 #endif // DEVICES_H
