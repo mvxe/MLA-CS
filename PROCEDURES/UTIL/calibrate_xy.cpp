@@ -9,8 +9,8 @@ pCalibrateXY::~pCalibrateXY(){
 }
 
 void pCalibrateXY::run(){
-    if(!go.pMAKO->iuScope->connected || !go.pXPS->connected) return;
-    framequeue=go.pMAKO->iuScope->FQsPCcam.getNewFQ();
+    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
+    framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
 
     go.pXPS->setGPIO(XPS::iuScopeLED,true);
     cv::Mat matA, matB, matC;
@@ -112,7 +112,7 @@ void pCalibrateXY::run(){
     *xps_x_sen=calibX*100000;
     *xps_y_sen=calibY*100000;
 
-    go.pMAKO->iuScope->FQsPCcam.deleteFQ(framequeue);   //cleanup
+    go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);   //cleanup
     done=true;
     end=true;
 }

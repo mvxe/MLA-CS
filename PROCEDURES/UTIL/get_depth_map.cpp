@@ -8,8 +8,8 @@ pGetDepthMap::pGetDepthMap(double range, double offset, double speed, unsigned c
 pGetDepthMap::~pGetDepthMap(){
 }
 void pGetDepthMap::run(){
-    if(!go.pMAKO->iuScope->connected || !go.pXPS->connected) return;
-    framequeue=go.pMAKO->iuScope->FQsPCcam.getNewFQ();
+    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
+    framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
 
     go.pXPS->setGPIO(XPS::iuScopeLED,false);
 
@@ -57,10 +57,10 @@ void pGetDepthMap::run(){
 
 cleanup:
     go.pXPS->setGPIO(XPS::iuScopeLED,true);
-    go.pMAKO->iuScope->FQsPCcam.deleteFQ(framequeue);   //cleanup
+    go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);   //cleanup
     done=true;
     end=true;
-    std::cout<<"toal mats: "<<go.pMAKO->iuScope->FQsPCcam.getFullNumber()<<"+"<<go.pMAKO->iuScope->FQsPCcam.getFreeNumber()<<" Nmat:"<<NMat<<"\n";
+    std::cout<<"toal mats: "<<go.pGCAM->iuScope->FQsPCcam.getFullNumber()<<"+"<<go.pGCAM->iuScope->FQsPCcam.getFreeNumber()<<" Nmat:"<<NMat<<"\n";
 }
 
 void pGetDepthMap::multiple(){

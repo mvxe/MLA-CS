@@ -8,8 +8,8 @@ PFindFocus::~PFindFocus(){
     delete lastMat;
 }
 bool PFindFocus::startup(){
-    if(!go.pMAKO->iuScope->connected || !go.pXPS->connected) return true;
-    framequeue=go.pMAKO->iuScope->FQsPCcam.getNewFQ();
+    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return true;
+    framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
 
     //go.pXPS->execCommand("PositionerCorrectorAutoTuning",go.pXPS->groupGetName(XPS::mgroup_XYZ), 1);
     go.pXPS->setGPIO(XPS::iuScopeLED,false);
@@ -60,7 +60,7 @@ void PFindFocus::cleanup(){
     double focus=minpos+len/(totalFr)*peakFr[1];
     std::cerr<<"total frames: "<<totalFr<<" peak frame: "<<peakFr[1]<<" focus:"<<focus<<"\n";
     go.pXPS->MoveAbsolute(XPS::mgroup_XYZ,posx,posy,focus);
-    go.pMAKO->iuScope->FQsPCcam.deleteFQ(framequeue);
+    go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
     if (recursived>0){
         base_othr* a=go.newThread<PFindFocus>(focus-addOfs/10, 2*addOfs/10, speed/10, threshold, recursived-1);
         while(!a->done) std::this_thread::sleep_for (std::chrono::milliseconds(100));

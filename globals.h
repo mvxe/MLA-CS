@@ -16,7 +16,7 @@
 #include <UTIL/utility.h>
 
 class XPS;
-class MAKO;
+class GCAM;
 class RPTY;
 class QApplication;
 
@@ -84,7 +84,7 @@ public:
     var_save pos_config{"positioners.conf"};
 
     XPS* pXPS;      //you can access stages through this
-    MAKO* pMAKO;    //you can access cameras and frame queues through this, see MAKO/_config.h for members
+    GCAM* pGCAM;    //you can access cameras and frame queues through this, see GCAM/_config.h for members
     RPTY* pRPTY;    //you can access red pitaya functions through this
 
     void startup(int argc, char *argv[]);                                           //subsequent calls of this are ignored

@@ -30,9 +30,7 @@ FORMS += \
 
 LIBS += \
 
-DISTFILES += \
-    icons/emblem-nowrite.svg \
-    icons/emblem-ok.svg
+DISTFILES +=
 
 RESOURCES += \
     icons/icon.qrc \
@@ -44,20 +42,15 @@ INCLUDEPATH += /usr/include/glib-2.0 \
         /usr/include/aravis-0.6
 
 HEADERS += \
-    DEV/MAKO/mako.h \
     DEV/XPS/xps.h \
     includes.h \
-    DEV/MAKO/vmbwrap.h \
-    DEV/MAKO/frame_queues.h \
     globals.h \
     GUI/slots_baseclass.h \
-    DEV/MAKO/camobj.h \
     UTIL/utility.h \
     UTIL/containers.h \
     UTIL/containers_template.h \
     DEV/XPS/xps_template.h \
     DEV/XPS/_config.h \
-    DEV/MAKO/_config.h \
     DEV/RPTY/rpty.h \
     DEV/RPTY/_config.h \
     GUI/mainwindow.h \
@@ -76,18 +69,20 @@ HEADERS += \
     GUI/TAB_DEVICES/tab_devices.h \
     DEV/devices.h \
     PROCEDURES/UTIL/burn_array.h \
-    DEV/device_flags.h
+    DEV/device_flags.h \
+    DEV/GCAM/_config.h \
+    DEV/GCAM/arvwrap.h \
+    DEV/GCAM/camobj.h \
+    DEV/GCAM/frame_queues.h \
+    DEV/GCAM/gcam.h
 
 SOURCES += \
-    DEV/MAKO/mako.cpp \
     DEV/XPS/xps.cpp \
     main.cpp \
-    DEV/MAKO/frame_queues.cpp \
     globals.cpp \
     GUI/settingstab.cpp \
     GUI/slots_baseclass.cpp \
     GUI/mainwindow.cpp \
-    DEV/MAKO/camobj.cpp \
     UTIL/containers.cpp \
     DEV/RPTY/rpty.cpp \
     DEV/TCP_con.cpp \
@@ -102,7 +97,10 @@ SOURCES += \
     GUI/TAB_SETTINGS/tab_settings.cpp \
     GUI/TAB_DEVICES/tab_devices.cpp \
     DEV/devices.cpp \
-    PROCEDURES/UTIL/burn_array.cpp
+    PROCEDURES/UTIL/burn_array.cpp \
+    DEV/GCAM/camobj.cpp \
+    DEV/GCAM/frame_queues.cpp \
+    DEV/GCAM/gcam.cpp
 
 
 unix {

@@ -2,17 +2,17 @@
 #define CAMOBJ_H
 
 #include <arv.h>
-#include "DEV/MAKO/vmbwrap.h"
-#include "DEV/MAKO/frame_queues.h"
+#include "DEV/GCAM/arvwrap.h"
+#include "DEV/GCAM/frame_queues.h"
 #include <vector>
 #include "_config.h"
 
 const int FRAMEBUFFER_INITIAL_SIZE = 10;   //starting size of framebuffer
-class MAKO;
+class GCAM;
 
 class camobj: public camobj_config{
-    friend class MAKO;
-    friend class mako_config;
+    friend class GCAM;
+    friend class gcam_config;
     friend class FrameObserver;
 public:
     ArvDeviceStatus set(std::string atr, bool nvar);
@@ -53,8 +53,8 @@ private:
     void pushFrameIntoStream();
     void requeueFrame(cv::Mat* MatPtr);
 
-    static MAKO *cobj;
-    int lost_frames_MAKO_VMB{0};
+    static GCAM *cobj;
+    int lost_frames_GCAM_VMB{0};
 
     ArvCamera* cam{NULL};
     ArvDevice* dev{NULL};

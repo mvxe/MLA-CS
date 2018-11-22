@@ -1,10 +1,10 @@
-#ifndef _CONFIG_MAKO_H
-#define _CONFIG_MAKO_H
+#ifndef _CONFIG_GCAM_H
+#define _CONFIG_GCAM_H
 #include "globals.h"
 
 class camobj;
 
-class mako_config{
+class gcam_config{
 protected:
     std::mutex mkmx;
 public:
@@ -24,7 +24,7 @@ public:
      */
 
     const static int _CAM_NUM=1;
-    camobj* iuScope;                //add new cameras here, and also in constructor MAKO::mako (mako.cpp) and run() (mako.cpp)
+    camobj* iuScope;                //add new cameras here, and also in constructor GCAM::gcam (gcam.cpp) and run() (gcam.cpp)
         //another cam here...
     _cinit _c[_CAM_NUM]={
         {iuScope,"iuScope"}
@@ -56,4 +56,4 @@ public:
     tsvar_save<double> expo{&comx,442,&go.cams_config.save,util::toString(name,"_expo")};           //these can be used by other threads
 };
 
-#endif // _CONFIG_MAKO_H
+#endif // _CONFIG_GCAM_H

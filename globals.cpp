@@ -27,7 +27,7 @@ void globals::startup(int argc, char *argv[]){
 
     cinthr=new std::thread(&cinlisten::run, new cinlisten());            //so that I can kill it in the terminal if qt freezes, which is often over ssh -x
     pXPS =newThread<XPS> ()->obj;
-    pMAKO=newThread<MAKO>()->obj;
+    pGCAM=newThread<GCAM>()->obj;
     pRPTY=newThread<RPTY>()->obj;
 
     qapp = new QApplication(argc, argv);

@@ -18,7 +18,7 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     ui->cam1_select->setMenu(menu);
     connect(menu, SIGNAL(aboutToShow()), this, SLOT(cam1_select_show()));
 
-    iuScope_img=go.pMAKO->iuScope->FQsPCcam.getNewFQ();    //make new image queue
+    iuScope_img=go.pGCAM->iuScope->FQsPCcam.getNewFQ();    //make new image queue
     ui->camera_stream->pmw=this;
 
     tabDev=new tab_devices(ui->tab_dev);
@@ -47,9 +47,9 @@ void MainWindow::cam1_select_show(){   //on_cam1_select pressed, should update u
     updateCamMenu();
 }
 void MainWindow::on_cam1_select_triggered(QAction *arg1){   //on_cam1_select action selected
-    go.pMAKO->iuScope->selected_ID.set(arg1->text().toStdString());
+    go.pGCAM->iuScope->selected_ID.set(arg1->text().toStdString());
     ui->cam1_select->setText("camera ID: "+arg1->text());
-    go.pMAKO->iuScope->checkID=true;
+    go.pGCAM->iuScope->checkID=true;
 }
 
 void MainWindow::updateCamMenu(){
@@ -58,10 +58,10 @@ void MainWindow::updateCamMenu(){
         delete actptrs.back();
         actptrs.pop_back();
     }
-    for (int i=0;i!=go.pMAKO->cam_desc.get()->size();i++){
+    for (int i=0;i!=go.pGCAM->cam_desc.get()->size();i++){
         QAction *actx = new QAction(this);
-        actx->setText(QString::fromStdString(go.pMAKO->cam_desc.get()->at(i).ID));
-        actx->setToolTip(QString::fromStdString(go.pMAKO->cam_desc.get()->at(i).description));
+        actx->setText(QString::fromStdString(go.pGCAM->cam_desc.get()->at(i).ID));
+        actx->setToolTip(QString::fromStdString(go.pGCAM->cam_desc.get()->at(i).description));
         menu->addAction(actx);
         actptrs.push_back(actx);
     }

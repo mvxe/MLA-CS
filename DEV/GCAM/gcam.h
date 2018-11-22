@@ -1,16 +1,16 @@
-#ifndef MAKO_H
-#define MAKO_H
+#ifndef GCAM_H
+#define GCAM_H
 
-#include "DEV/MAKO/camobj.h"
-#include "DEV/MAKO/vmbwrap.h"
-#include "DEV/MAKO/frame_queues.h"
+#include "DEV/GCAM/camobj.h"
+#include "DEV/GCAM/arvwrap.h"
+#include "DEV/GCAM/frame_queues.h"
 #include <vector>
 
-class MAKO : public mako_config, public protooth{
+class GCAM : public gcam_config, public protooth{
     friend class camobj;
 public:
-    MAKO();
-    ~MAKO();
+    GCAM();
+    ~GCAM();
 
     std::atomic<bool> MVM_list{true};          //TODO these two vars should not be exposed to the user, just FrameObserver::CameraListChanged
 private:
@@ -18,5 +18,5 @@ private:
     void list_cams();
 };
 
-#endif // MAKO_H
+#endif // GCAM_H
 

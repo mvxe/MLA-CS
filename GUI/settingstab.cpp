@@ -17,10 +17,10 @@ void MainWindow::sync_settings(){
     ui->sl_xsens->setValue(xps_x_sen);
     ui->sl_ysens->setValue(xps_y_sen);
     ui->sl_zsens->setValue(xps_z_sen);
-    ui->sl_expo->setValue(go.pMAKO->iuScope->expo.get()*1000);
-    ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pMAKO->iuScope->expo.get()," us")));
+    ui->sl_expo->setValue(go.pGCAM->iuScope->expo.get()*1000);
+    ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pGCAM->iuScope->expo.get()," us")));
 
-    if (!go.pMAKO->iuScope->selected_ID.get().empty()) ui->cam1_select->setText(QString::fromStdString("camera ID: "+go.pMAKO->iuScope->selected_ID.get()));
+    if (!go.pGCAM->iuScope->selected_ID.get().empty()) ui->cam1_select->setText(QString::fromStdString("camera ID: "+go.pGCAM->iuScope->selected_ID.get()));
     ui->sl_expo->blockSignals(false);
 }
 
@@ -41,9 +41,9 @@ void MainWindow::on_sl_xsens_valueChanged(int value){xps_x_sen=value;}
 void MainWindow::on_sl_ysens_valueChanged(int value){xps_y_sen=value;}
 void MainWindow::on_sl_zsens_valueChanged(int value){xps_z_sen=value;}
 void MainWindow::on_sl_expo_valueChanged(int value) {
-    if(go.pMAKO->iuScope->connected){
-        go.pMAKO->iuScope->set("ExposureTime",value/1000.);
-        go.pMAKO->iuScope->expo.set(go.pMAKO->iuScope->get_dbl("ExposureTime"));
+    if(go.pGCAM->iuScope->connected){
+        go.pGCAM->iuScope->set("ExposureTime",value/1000.);
+        go.pGCAM->iuScope->expo.set(go.pGCAM->iuScope->get_dbl("ExposureTime"));
     }
 }
 int N=0;
@@ -52,8 +52,8 @@ void MainWindow::GUI_update(){
         xps_con=go.pXPS->connected;
         ui->si_XPS->setPixmap(xps_con?px_online:px_offline);
     }
-    if (iuScope_con!=go.pMAKO->iuScope->connected){
-        iuScope_con=go.pMAKO->iuScope->connected;
+    if (iuScope_con!=go.pGCAM->iuScope->connected){
+        iuScope_con=go.pGCAM->iuScope->connected;
         ui->si_iuScope->setPixmap(iuScope_con?px_online:px_offline);
     }
     if (rpty_con!=go.pRPTY->connected){
@@ -66,8 +66,8 @@ void MainWindow::GUI_update(){
     if (go.pRPTY->IP.resolved.changed())
         ui->e_rpty_ip_resolved->setText(QString::fromStdString(go.pRPTY->IP.is_name?go.pRPTY->IP.resolved.get():" "));
 
-    if(go.pMAKO->iuScope->expo.changed())
-        ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pMAKO->iuScope->expo.get()," us")));
+    if(go.pGCAM->iuScope->expo.changed())
+        ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pGCAM->iuScope->expo.get()," us")));
 
     const cv::Mat* dmat=iuScope_img->getUserMat();
     if (dmat!=nullptr){

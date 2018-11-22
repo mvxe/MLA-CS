@@ -1,19 +1,19 @@
-#include "DEV/MAKO/mako.h"
+#include "DEV/GCAM/gcam.h"
 #include "globals.h"
 
-MAKO::MAKO(){
+GCAM::GCAM(){
     camobj::cobj=this;
     for(int i=0;i!=_CAM_NUM;i++)
         _c[i].ptr=new camobj(_c[i].cname);
     cam_desc.set(new std::vector<_dcams>());
     arv_g_type_init();
 }
-MAKO::~MAKO(){
+GCAM::~GCAM(){
     for(int i=0;i!=_CAM_NUM;i++) delete _c[i].ptr;
     arv_shutdown();
 }
 
-void MAKO::run(){    //this is the MAKO thread loop
+void GCAM::run(){    //this is the GCAM thread loop
     for (;;){
         if (MVM_list) {
             list_cams();
@@ -28,14 +28,14 @@ void MAKO::run(){    //this is the MAKO thread loop
             for(int i=0;i!=_CAM_NUM;i++)
                 if (_c[i].ptr->cam!=NULL)
                     _c[i].ptr->end();
-            std::cout<<"MAKO thread exited.\n";
+            std::cout<<"GCAM thread exited.\n";
             done=true;
             return;
         }
     }
 }
 
-void MAKO::list_cams(){
+void GCAM::list_cams(){
     arv_update_device_list();
     int Ncams=arv_get_n_devices();
     cam_desc.get()->clear();

@@ -1,7 +1,7 @@
-#include "DEV/MAKO/mako.h"
+#include "DEV/GCAM/gcam.h"
 
 camobj::camobj(std::string strID) : camobj_config(strID), selected_ID(&mkmx,strID,&go.config.save,strID){}
-MAKO *camobj::cobj;
+GCAM *camobj::cobj;
 
 void camobj::new_frame_ready (ArvStream *stream, camobj* camm)
 {
