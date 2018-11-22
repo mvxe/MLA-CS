@@ -77,3 +77,20 @@ bool tsbool::get(){
     if (difftime(time(NULL),mf)>exp_time) var = false;
     return var;
 }
+
+/*########## cc_save ##########*/
+
+template <> cc_save<std::string>::cc_save(std::string& var, std::string initial, _savelst* vec, std::string name): val(var){            //we specialize this one because stringstream only puts the first word into the string, ignoring others after the first whitespace
+    val=initial;
+    if(vec!=nullptr){
+        for (int i=0;i!=vec->size();i++){
+            if (name.compare((*vec)[i].strname)==0){
+                val=(*vec)[i].strval;
+                tfvec=&(*vec)[i];
+                return;
+            }
+        }
+        vec->push_back({name,""});  //if it doesnt exist
+        tfvec=&vec->back();
+    }
+}

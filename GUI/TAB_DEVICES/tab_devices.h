@@ -16,7 +16,7 @@ private:
 
     QToolButton* addDev;
     std::vector<_dev_layout*> items;
-private slots:
+private Q_SLOTS:
     void on_add_item_clicked();
 };
 
@@ -54,7 +54,7 @@ private:
       {"Reconnect",":/redo.svg",SLOT(on_status_recconect())},
       {"Disable",":/gtk-media-pause.svg",SLOT(on_status_disable())}
     };
-private slots:
+private Q_SLOTS:
     void on_TB_device_clicked();
     void on_device_remove();
     void on_device_rename();

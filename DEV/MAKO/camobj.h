@@ -1,13 +1,13 @@
 #ifndef CAMOBJ_H
 #define CAMOBJ_H
 
-#include <VimbaCPP/Include/VimbaCPP.h>
+#include <arv.h>
 #include "DEV/MAKO/vmbwrap.h"
 #include "DEV/MAKO/frame_queues.h"
 #include <vector>
 #include "_config.h"
 
-const int NUM_QUEUED_FRAMES  = 5;   //queue length of CAMOBJ<->VIMBA communication
+const int FRAMEBUFFER_INITIAL_SIZE = 10;   //starting size of framebuffer
 class MAKO;
 
 class camobj: public camobj_config{
@@ -15,75 +15,66 @@ class camobj: public camobj_config{
     friend class mako_config;
     friend class FrameObserver;
 public:
-
-    struct _cam{
-        AVT::VmbAPI::CameraPtr ptr;
-        std::string ID;
-    };
-
-    template <typename T>
-    VmbErrorType set(char* atr, T nvar);
-    template <typename T>
-    T get(char* atr);
-    VmbErrorType run(char* atr);
+    ArvDeviceStatus set(std::string atr, bool nvar);
+    ArvDeviceStatus set(std::string atr, long int nvar);
+    ArvDeviceStatus set(std::string atr, double nvar);
+    ArvDeviceStatus set(std::string atr, std::string nvar);
+    bool        get_bool(std::string atr);
+    long int    get_lint(std::string atr);
+    double      get_dbl(std::string atr);
+    std::string get_str(std::string atr);
+    template <typename T> T get(std::string atr);
+    ArvDeviceStatus run(std::string atr);
 
     std::mutex mkmx;
-    tsvar_save<std::string> ID;                             //thread safe access to camera ID
+    tsvar_save<std::string> selected_ID;                    //thread safe access to select camera ID
     const std::atomic<bool>& connected{_connected};         //thread safe access to camera status
+    std::atomic<bool> checkID{true};
 
     FQsPC FQsPCcam;                                         //use this to get frame queue from camera, see frame_queues.h for commands
+
+    typedef struct {
+        GMainLoop *main_loop;
+        camobj *cam;
+        int buffer_count;
+    } ApplicationData;
 private:
     std::atomic<bool> _connected{false};
-    camobj(MAKO *cobj, std::string strID);
-    _cam cptr;
+    camobj(std::string strID);
+    static void control_lost_cb (ArvDevice *ldev);
+    static void new_frame_ready (ArvStream *stream, camobj* camm);
+    std::atomic<bool> control_lost{false};
 
     void start();
     void work();                                //call this periodically
-    void end();     //mutexed
-    void _end();    //not mutexed
-    void con_cam(bool ch);
+    void end();                                 //mutexed
+    void con_cam();
 
-    void newFrame();
-    bool requeueFrame(cv::Mat* MatPtr);
-    void linkFrameToMat(AVT::VmbAPI::FramePtr FramePtr, cv::Mat* MatPtr);
+    void pushFrameIntoStream();
+    void requeueFrame(cv::Mat* MatPtr);
 
-    MAKO *cobj;
+    static MAKO *cobj;
     int lost_frames_MAKO_VMB{0};
-    std::deque<int> frames;
-    _cam cam;
 
-    struct FMP{
-        AVT::VmbAPI::FramePtr FramePtr;
-        cv::Mat* MatPtr;
-    };
-    AVT::VmbAPI::IFrameObserverPtr VMBo;
-    std::vector<FMP> VMBframes;        //CAMOBJ<->VIMBA frames
-    VmbInt64_t nPLS;
+    ArvCamera* cam{NULL};
+    ArvDevice* dev{NULL};
+    ArvStream* str{NULL};
+    std::string ID{"none"};     //actual camera ID
+
+    GMainContext *context;
+    GMainLoop *main_loop;   //glib main loop, needed for frame buffer ready callbacks
+
+    std::queue<ArvBuffer*> FreeBuffers;
+    std::deque<ArvBuffer*> FullBuffers;
+    gint payload;
     int Xsize;
     int Ysize;
     double ackFPS;
-    int format_enum;
+    std::string format;
 
     bool ackstatus{false};                                     //acquisition status
 
     std::mutex mtx;
 };
-
-/*########### template functions ###########*/
-
-template <typename T>
-VmbErrorType camobj::set(char* atr, T nvar){
-    std::lock_guard<std::mutex>lock(mtx);
-    return wfun::set<T>(cam.ptr, atr, nvar);
-}
-template <typename T>
-T camobj::get(char* atr){
-    std::lock_guard<std::mutex>lock(mtx);
-    return wfun::get<T>(cam.ptr, atr);
-}
-inline VmbErrorType camobj::run(char* atr){
-    std::lock_guard<std::mutex>lock(mtx);
-    return wfun::run(cam.ptr, atr);
-}
 
 #endif // CAMOBJ_H

@@ -24,7 +24,7 @@ public:
     explicit MainWindow(QApplication* qapp, QWidget *parent = 0);
     ~MainWindow();
 
-private slots:
+private Q_SLOTS:
     void sync_settings();
     void GUI_update();
     void updateCamMenu();

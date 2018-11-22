@@ -20,7 +20,7 @@ void MainWindow::sync_settings(){
     ui->sl_expo->setValue(go.pMAKO->iuScope->expo.get()*1000);
     ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pMAKO->iuScope->expo.get()," us")));
 
-    if (!go.pMAKO->iuScope->ID.get().empty()) ui->cam1_select->setText(QString::fromStdString("camera ID: "+go.pMAKO->iuScope->ID.get()));
+    if (!go.pMAKO->iuScope->selected_ID.get().empty()) ui->cam1_select->setText(QString::fromStdString("camera ID: "+go.pMAKO->iuScope->selected_ID.get()));
     ui->sl_expo->blockSignals(false);
 }
 
@@ -42,8 +42,8 @@ void MainWindow::on_sl_ysens_valueChanged(int value){xps_y_sen=value;}
 void MainWindow::on_sl_zsens_valueChanged(int value){xps_z_sen=value;}
 void MainWindow::on_sl_expo_valueChanged(int value) {
     if(go.pMAKO->iuScope->connected){
-        go.pMAKO->iuScope->set<double>("ExposureTime",value/1000);
-        go.pMAKO->iuScope->expo.set(go.pMAKO->iuScope->get<double>("ExposureTime"));
+        go.pMAKO->iuScope->set("ExposureTime",value/1000.);
+        go.pMAKO->iuScope->expo.set(go.pMAKO->iuScope->get_dbl("ExposureTime"));
     }
 }
 int N=0;

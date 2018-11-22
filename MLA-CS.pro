@@ -23,7 +23,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 
-CONFIG += c++17 object_parallel_to_source           #without object_parallel_to_source you cmake doesnt diferentiate between same named files in different folders
+CONFIG += c++17 object_parallel_to_source no_keywords           #without object_parallel_to_source you cmake doesnt diferentiate between same named files in different folders, no_keywords solves a conflict with glibc
 
 FORMS += \
     GUI/mainwindow.ui
@@ -38,16 +38,15 @@ RESOURCES += \
     icons/icon.qrc \
     icons/icon.qrc
 
-unix:!macx: LIBS += -L$$PWD/../Vimba_2_1/VimbaCPP/DynamicLib/x86_64bit/ -lVimbaCPP -lVimbaC -lcurlpp -lcurl
+unix:!macx: LIBS += -lcurlpp -lcurl
 
-INCLUDEPATH += $$PWD/../Vimba_2_1
-DEPENDPATH += $$PWD/../Vimba_2_1
+INCLUDEPATH += /usr/include/glib-2.0 \
+        /usr/include/aravis-0.6
 
 HEADERS += \
     DEV/MAKO/mako.h \
     DEV/XPS/xps.h \
     includes.h \
-    DEV/MAKO/mako_events.h \
     DEV/MAKO/vmbwrap.h \
     DEV/MAKO/frame_queues.h \
     globals.h \
@@ -83,7 +82,6 @@ SOURCES += \
     DEV/MAKO/mako.cpp \
     DEV/XPS/xps.cpp \
     main.cpp \
-    DEV/MAKO/mako_events.cpp \
     DEV/MAKO/frame_queues.cpp \
     globals.cpp \
     GUI/settingstab.cpp \
@@ -109,5 +107,5 @@ SOURCES += \
 
 unix {
     CONFIG += link_pkgconfig
-    PKGCONFIG += opencv
+    PKGCONFIG += opencv glib-2.0 aravis-0.6
 }

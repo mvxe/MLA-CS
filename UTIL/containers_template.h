@@ -5,6 +5,7 @@
 
 /*########## cc_save ##########*/
 
+
 template <typename T> cc_save<T>::cc_save(T& var, T initial, _savelst* vec, std::string name): val(var){
     val=initial;
     if(vec!=nullptr){
@@ -20,6 +21,7 @@ template <typename T> cc_save<T>::cc_save(T& var, T initial, _savelst* vec, std:
         tfvec=&vec->back();
     }
 }
+
 template <typename T> cc_save<T>::~cc_save(){
     if (tfvec!=nullptr){
         std::ostringstream ss;

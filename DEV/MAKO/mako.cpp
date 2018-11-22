@@ -2,39 +2,22 @@
 #include "globals.h"
 
 MAKO::MAKO(){
+    camobj::cobj=this;
     for(int i=0;i!=_CAM_NUM;i++)
-        _c[i].ptr=new camobj(this,_c[i].cname);
+        _c[i].ptr=new camobj(_c[i].cname);
     cam_desc.set(new std::vector<_dcams>());
-    VmbErrorType errc = vsys.Startup();
-    if (errc!=VmbErrorSuccess){
-        std::cerr<<"ERROR: Vimba system startup error: "<<errc<<".\n";
-        go.quit();
-    }
-    errc = vsys.RegisterCameraListObserver(AVT::VmbAPI::ICameraListObserverPtr(new CamObserver()));
-    if (errc!=VmbErrorSuccess){
-        std::cerr<<"ERROR: Vimba system event error: "<<errc<<".\n";
-        go.quit();
-    }
+    arv_g_type_init();
 }
 MAKO::~MAKO(){
     for(int i=0;i!=_CAM_NUM;i++) delete _c[i].ptr;
-    if (vsys.Shutdown()!=VmbErrorSuccess)
-        std::cerr<<"ERROR: Vimba system shutdown error.\n";
+    arv_shutdown();
 }
 
 void MAKO::run(){    //this is the MAKO thread loop
-    bool ch=true;
     for (;;){
         if (MVM_list) {
             list_cams();
-            ch = false;
             MVM_list=false;
-        }
-        if (MAKO_reco){
-            for(int i=0;i!=_CAM_NUM;i++)
-                _c[i].ptr->con_cam(ch);
-            ch = true;
-            MAKO_reco=false;
         }
 
         for(int i=0;i!=_CAM_NUM;i++)
@@ -43,7 +26,7 @@ void MAKO::run(){    //this is the MAKO thread loop
 
         if(end){
             for(int i=0;i!=_CAM_NUM;i++)
-                if (_c[i].ptr->cam.ptr!=nullptr)
+                if (_c[i].ptr->cam!=NULL)
                     _c[i].ptr->end();
             std::cout<<"MAKO thread exited.\n";
             done=true;
@@ -53,28 +36,18 @@ void MAKO::run(){    //this is the MAKO thread loop
 }
 
 void MAKO::list_cams(){
-    cams.clear();
-    VmbErrorType errc = vsys.GetCameras(cameras);
-    if (errc == VmbErrorSuccess){
-        cam_desc.get()->clear();
-        for (int i=0;i!=cameras.size();i++){
-            cams.emplace_back();
-            cams.back().ptr = cameras[i];
-            cams.back().ptr->GetID(cams.back().ID);
-            std::string temp;
-            cam_desc.get()->emplace_back();
-            cams.back().ptr->GetID(temp); cam_desc.get()->back().ID=temp;
-            cams.back().ptr->GetName(temp); cam_desc.get()->back().description+="Name: "+temp;
-            cams.back().ptr->GetModel(temp); cam_desc.get()->back().description+="\nModel: "+temp;
-            cams.back().ptr->GetSerialNumber(temp); cam_desc.get()->back().description+="\nSerialNumber: "+temp;
-            cams.back().ptr->GetInterfaceID(temp); cam_desc.get()->back().description+="\nInterfaceID: "+temp;
-        }
+    arv_update_device_list();
+    int Ncams=arv_get_n_devices();
+    cam_desc.get()->clear();
+    for (int i=0;i!=Ncams;i++){
         cam_desc.get()->emplace_back();
-        cam_desc.get()->back().ID = "none";
-        cam_desc.get()->back().description = "";
+        cam_desc.get()->back().ID=arv_get_device_id(i);
+        cam_desc.get()->back().description+="Physical ID: " +std::string(arv_get_device_physical_id(i));
+        cam_desc.get()->back().description+="\nModel: "+std::string(arv_get_device_model(i));
+        cam_desc.get()->back().description+="\nSerial number: "+std::string(arv_get_device_serial_nbr(i));
+        cam_desc.get()->back().description+="\nVendor: "+std::string(arv_get_device_vendor(i));
+        cam_desc.get()->back().description+="\nAddress: "+std::string(arv_get_device_address(i));
+        cam_desc.get()->back().description+="\nProtocol: "+std::string(arv_get_device_protocol(i));
     }
-    else {
-        std::cerr<<"ERROR: Vimba error getting cameras: "<<errc<<".\n";
-        go.quit();
-    }
+    cam_desc.get()->emplace_back(_dcams{"none",""});
 }
