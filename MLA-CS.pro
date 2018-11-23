@@ -74,7 +74,8 @@ HEADERS += \
     DEV/GCAM/arvwrap.h \
     DEV/GCAM/camobj.h \
     DEV/GCAM/frame_queues.h \
-    DEV/GCAM/gcam.h
+    DEV/GCAM/gcam.h \
+    UTIL/pipe.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -100,7 +101,8 @@ SOURCES += \
     PROCEDURES/UTIL/burn_array.cpp \
     DEV/GCAM/camobj.cpp \
     DEV/GCAM/frame_queues.cpp \
-    DEV/GCAM/gcam.cpp
+    DEV/GCAM/gcam.cpp \
+    UTIL/pipe.cpp
 
 
 unix {

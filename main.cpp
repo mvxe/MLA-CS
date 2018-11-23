@@ -2,8 +2,10 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/ocl.hpp"
 
-int main(int argc, char *argv[]){
+#include "UTIL/pipe.h"
+#include <iostream>
 
+int main(int argc, char *argv[]){
     if (!cv::ocl::haveOpenCL())
 {
     std::cout << "OpenCL is not available..." << std::endl;
