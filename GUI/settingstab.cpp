@@ -14,9 +14,9 @@ void MainWindow::sync_settings(){
     ui->e_rpty_port->setValue(go.pRPTY->port.get());
     ui->e_rpty_timeout->setValue(go.pRPTY->keepalive.get());
 
-    ui->sl_xsens->setValue(xps_x_sen);
-    ui->sl_ysens->setValue(xps_y_sen);
-    ui->sl_zsens->setValue(xps_z_sen);
+//    ui->sl_xsens->setValue(xps_x_sen);
+//    ui->sl_ysens->setValue(xps_y_sen);
+//    ui->sl_zsens->setValue(xps_z_sen);
     ui->sl_expo->setValue(go.pGCAM->iuScope->expo.get()*1000);
     ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pGCAM->iuScope->expo.get()," us")));
 

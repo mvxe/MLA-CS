@@ -7,6 +7,7 @@
 #include "GUI/TAB_DEVICES/tab_devices.h"
 #include "GUI/TAB_SETTINGS/tab_settings.h"
 #include "GUI/TAB_POSITIONERS/tab_positioners.h"
+#include "GUI/tab_temp_plot.h"
 class FQ;
 
 namespace Ui {
@@ -94,6 +95,7 @@ private:
     double a{0},b{0}; //TODO remove this dirty fix
 
     tab_devices* tabDev;
+    tab_temp_plot* tabPlot;
     int donth=0;
 };
 

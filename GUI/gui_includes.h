@@ -17,6 +17,7 @@
 #include <QToolButton>
 #include <QShortcut>
 #include <QVBoxLayout>
+#include <QCheckBox>
 #include "globals.h"
 #include "PROCEDURES/_incl_procedures.h"
 

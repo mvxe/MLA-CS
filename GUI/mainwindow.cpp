@@ -22,13 +22,15 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     ui->camera_stream->pmw=this;
 
     tabDev=new tab_devices(ui->tab_dev);
-
+    tabPlot=new tab_temp_plot(ui->tab_dis);
+    tabPlot->pmw=this;
 }
 
 MainWindow::~MainWindow(){
     delete ui;
     delete onDisplay;
     delete tabDev;
+    delete tabPlot;
 }
 
 void MainWindow::program_exit(){
@@ -134,6 +136,7 @@ void MainWindow::on_btn_save_img_released(){
         dmat=iuScope_img->getUserMat();
     } while (dmat==nullptr);
     QString fileName = QFileDialog::getSaveFileName(this,tr("Image"), "",tr("Images (*.png *.xpm *.jpg)"));
+    if(fileName.isEmpty()) return;
     std::cout<<"Saving image to "<<fileName.toStdString()<<"\n";
     imwrite(fileName.toStdString(), *dmat);
 }

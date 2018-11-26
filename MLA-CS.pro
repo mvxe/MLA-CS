@@ -75,7 +75,8 @@ HEADERS += \
     DEV/GCAM/camobj.h \
     DEV/GCAM/frame_queues.h \
     DEV/GCAM/gcam.h \
-    UTIL/pipe.h
+    UTIL/pipe.h \
+    GUI/tab_temp_plot.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -102,7 +103,8 @@ SOURCES += \
     DEV/GCAM/camobj.cpp \
     DEV/GCAM/frame_queues.cpp \
     DEV/GCAM/gcam.cpp \
-    UTIL/pipe.cpp
+    UTIL/pipe.cpp \
+    GUI/tab_temp_plot.cpp
 
 
 unix {
