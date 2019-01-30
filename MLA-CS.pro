@@ -76,7 +76,8 @@ HEADERS += \
     DEV/GCAM/frame_queues.h \
     DEV/GCAM/gcam.h \
     UTIL/pipe.h \
-    GUI/tab_temp_plot.h
+    GUI/tab_temp_plot.h \
+    DEV/CNC/cnc.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -104,7 +105,8 @@ SOURCES += \
     DEV/GCAM/frame_queues.cpp \
     DEV/GCAM/gcam.cpp \
     UTIL/pipe.cpp \
-    GUI/tab_temp_plot.cpp
+    GUI/tab_temp_plot.cpp \
+    DEV/CNC/cnc.cpp
 
 
 unix {
