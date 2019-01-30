@@ -1,7 +1,7 @@
 #include "burn_array.h"
 #include "includes.h"
 
-pBurnArray::pBurnArray(double espacing, double eexp_fst, double eexp_lst, int gridX, int gridY): spacing(espacing), exp_fst(eexp_fst), exp_lst(eexp_lst), gridX(gridX), gridY(gridY){
+pBurnArray::pBurnArray(double espacing, double eexp_fst, double eexp_lst, int gridX, int gridY, bool vac): spacing(espacing), exp_fst(eexp_fst), exp_lst(eexp_lst), gridX(gridX), gridY(gridY), vac(vac){
     spacing/=1000;
     exp_fst/=1000;
     exp_lst/=1000;
@@ -21,7 +21,7 @@ void pBurnArray::run(){
     for (int j=0;j!=gridY;j++){
         for (int i=0;i!=gridX;i++){
             po->add(SMT, spacing, 0, 0, 0, 0, 0);
-            po->addAction(XPS::writingLaser,true);  //TODO fix bug: if addAction is the first command it may not do anything (sometimes)
+            if(!(vac && (j%2) && (i%2))) po->addAction(XPS::writingLaser,true);  //TODO fix bug: if addAction is the first command it may not do anything (sometimes)
             po->add(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/gridX)), 0, 0, 0, 0, 0, 0);
             po->addAction(XPS::writingLaser,false);
             po->add(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/gridX)), 0, 0, 0, 0, 0, 0);

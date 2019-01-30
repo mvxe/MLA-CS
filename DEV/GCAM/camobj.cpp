@@ -58,7 +58,11 @@ void camobj::start(){
     std::cerr<<"exposure(us)="<<expo.get()<<"\n";
 
     double fmin,fmax;
-    arv_camera_get_frame_rate_bounds (cam, &fmin, &fmax);
+    arv_camera_get_frame_rate_bounds (cam, &fmin, &fmax);   //TODO this function returns weird massive fmax for basler cameras, and then they dont work
+    std::cerr<<"curFPS="<< arv_camera_get_frame_rate(cam)<<"\n";
+    std::cerr<<"maxFPS="<<fmax<<"\n";
+    std::cerr<<"minFPS="<<fmin<<"\n";
+    fmax=30;    //TODO override
     arv_camera_set_frame_rate(cam, fmax);
     ackFPS=fmax;
     FQsPCcam.setCamFPS(ackFPS);

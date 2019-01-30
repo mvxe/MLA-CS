@@ -119,7 +119,16 @@ void tab_temp_plot::plot(){
         if(eqXYZ) a.POUT<<"unset ztics\n";
         a.POUT<<"set xyplane 0\n";
         a.POUT<<"set hidden3d\n";
+//            a.POUT<<"unset xlabel\n";
+//            a.POUT<<"set format x ''\n";
+//            a.POUT<<"unset ylabel\n";
+//            a.POUT<<"set format y ''\n";
+//            a.POUT<<"unset zlabel\n";
+//            a.POUT<<"set format z ''\n";
+//            a.POUT<<"set format cb ''\n";
+//            a.POUT<<"unset cblabel\n";
         a.POUT<<"set view ,,"<<scale3D->value()<<"\n";
+        //a.POUT<<"splot \"-\" using 1:2:3 w lines palette pt 6 notitle\n";
         a.POUT<<"splot \"-\" using 1:2:3 w pm3d pt 6 notitle\n";
         for(int i=(X1<X2)?X1:X2;i<=((X1<X2)?X2:X1);i++){
             for(int j=(Y1<Y2)?Y1:Y2;j<=((Y1<Y2)?Y2:Y1);j++)
@@ -132,6 +141,7 @@ void tab_temp_plot::plot(){
 //        std::string as;while(1){
 //        a.PERR>>as;
 //        std::cerr<<as<<" ";}
+//        std::this_thread::sleep_for (std::chrono::seconds(10)); //TODO if gnuplot closes, the graph cannot be exported as PDF. FIX this
     }else{         //line
         double len;
         len=sqrt(pow(X2-X1,2)+pow(Y2-Y1,2));
@@ -169,6 +179,7 @@ void tab_temp_plot::plot(){
             a.POUT<<i*scale<<" "<<lineData[i]<<"\n";
         a.POUT<<"e\n";
         a.POUT.flush();
+        //std::this_thread::sleep_for (std::chrono::seconds(10)); //TODO if gnuplot closes, the graph cannot be exported as PDF. FIX this
 
     }
 }

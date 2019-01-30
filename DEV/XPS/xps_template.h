@@ -1,5 +1,3 @@
-#ifndef XPS_TEMPLATE_H
-#define XPS_TEMPLATE_H
 #include "xps.h"
 
 template<typename... Args>
@@ -68,5 +66,3 @@ void XPS::_MoveAbsolute(int n, GroupID ID, double val, Args... vals){
     axisCoords[ID].pos[n]=val;
     _MoveAbsolute(n+1, ID, vals...);
 }
-
-#endif // XPS_TEMPLATE_H
