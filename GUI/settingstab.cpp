@@ -5,6 +5,7 @@
 
 void MainWindow::sync_settings(){
     ui->sl_expo->blockSignals(true);
+    ui->sl_util_expo->blockSignals(true);
     ui->e_xps_ip->setText(QString::fromStdString(go.pXPS->IP.get()));
     ui->e_xps_port->setValue(go.pXPS->port.get());
     ui->e_xps_xyz->setText(QString::fromStdString(go.pXPS->groupGetName(XPS::mgroup_XYZ)));
@@ -20,8 +21,13 @@ void MainWindow::sync_settings(){
     ui->sl_expo->setValue(go.pGCAM->iuScope->expo.get()*1000);
     ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pGCAM->iuScope->expo.get()," us")));
 
+    ui->sl_util_expo->setValue(go.pGCAM->utilCam->expo.get()*1000);
+    ui->lab_util_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pGCAM->utilCam->expo.get()," us")));
+
     if (!go.pGCAM->iuScope->selected_ID.get().empty()) ui->cam1_select->setText(QString::fromStdString("camera ID: "+go.pGCAM->iuScope->selected_ID.get()));
+    if (!go.pGCAM->utilCam->selected_ID.get().empty()) ui->cam2_select->setText(QString::fromStdString("camera ID: "+go.pGCAM->utilCam->selected_ID.get()));
     ui->sl_expo->blockSignals(false);
+    ui->sl_util_expo->blockSignals(false);
 }
 
 
@@ -46,6 +52,12 @@ void MainWindow::on_sl_expo_valueChanged(int value) {
         go.pGCAM->iuScope->expo.set(go.pGCAM->iuScope->get_dbl("ExposureTime"));
     }
 }
+void MainWindow::on_sl_util_expo_valueChanged(int value){
+    if(go.pGCAM->utilCam->connected){
+        go.pGCAM->utilCam->set("ExposureTime",value/1000.);
+        go.pGCAM->utilCam->expo.set(go.pGCAM->utilCam->get_dbl("ExposureTime"));
+    }
+}
 int N=0;
 void MainWindow::GUI_update(){
     if (xps_con!=go.pXPS->connected){
@@ -55,6 +67,10 @@ void MainWindow::GUI_update(){
     if (iuScope_con!=go.pGCAM->iuScope->connected){
         iuScope_con=go.pGCAM->iuScope->connected;
         ui->si_iuScope->setPixmap(iuScope_con?px_online:px_offline);
+    }
+    if (utilCam_con!=go.pGCAM->utilCam->connected){
+        utilCam_con=go.pGCAM->utilCam->connected;
+        ui->si_utilCam->setPixmap(utilCam_con?px_online:px_offline);
     }
     if (rpty_con!=go.pRPTY->connected){
         rpty_con=go.pRPTY->connected;
@@ -68,6 +84,8 @@ void MainWindow::GUI_update(){
 
     if(go.pGCAM->iuScope->expo.changed())
         ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pGCAM->iuScope->expo.get()," us")));
+    if(go.pGCAM->utilCam->expo.changed())
+        ui->lab_util_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pGCAM->utilCam->expo.get()," us")));
 
     const cv::Mat* dmat=iuScope_img->getUserMat();
     if (dmat!=nullptr){
@@ -81,6 +99,16 @@ void MainWindow::GUI_update(){
         //std::cerr<<"timestamp: "<<iuScope_img->getUserTimestamp()<<"\n";
         iuScope_img->freeUserMat();
     }
+    dmat=utilCam_img->getUserMat();
+    if (dmat!=nullptr){
+        double aspect=(double)dmat->rows/dmat->cols;
+        cv::Size dsize(ui->utilcam_stream->width(),aspect*ui->utilcam_stream->width());
+        ui->utilcam_stream->setFixedHeight(aspect*ui->utilcam_stream->width());
+        cv::resize(*dmat, *onDisplay, dsize, 0, 0, cv::INTER_AREA);
+        ui->utilcam_stream->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
+        utilCam_img->freeUserMat();
+    }
+
 
     if (disable.get()) {
         if (ui->centralWidget->isEnabled())

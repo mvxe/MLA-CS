@@ -18,8 +18,15 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     ui->cam1_select->setMenu(menu);
     connect(menu, SIGNAL(aboutToShow()), this, SLOT(cam1_select_show()));
 
+    menu2 = new QMenu(this);
+    menu2->setToolTipsVisible(true);
+    ui->cam2_select->setMenu(menu2);
+    connect(menu2, SIGNAL(aboutToShow()), this, SLOT(cam2_select_show()));
+
     iuScope_img=go.pGCAM->iuScope->FQsPCcam.getNewFQ();    //make new image queue
+    utilCam_img=go.pGCAM->utilCam->FQsPCcam.getNewFQ();    //make new image queue
     ui->camera_stream->pmw=this;
+    ui->utilcam_stream->pmw=this;
 
     tabDev=new tab_devices(ui->tab_dev);
     tabPlot=new tab_temp_plot(ui->tab_dis);
@@ -42,11 +49,13 @@ void MainWindow::on_tabWidget_currentChanged(int index){
     ui->centralWidget->setFocus();  //prevents random textboxes from receiving focus after tab switch
     if (ui->tabWidget->tabText(index)=="Camera") iuScope_img->setUserFps(30.,5);
     else iuScope_img->setUserFps(0.);
+    if (ui->tabWidget->tabText(index)=="UtilCam") utilCam_img->setUserFps(30.,5);
+    else utilCam_img->setUserFps(0.);
 }
 
 
 void MainWindow::cam1_select_show(){   //on_cam1_select pressed, should update usb device list
-    updateCamMenu();
+    updateCamMenu(menu);
 }
 void MainWindow::on_cam1_select_triggered(QAction *arg1){   //on_cam1_select action selected
     go.pGCAM->iuScope->selected_ID.set(arg1->text().toStdString());
@@ -54,8 +63,18 @@ void MainWindow::on_cam1_select_triggered(QAction *arg1){   //on_cam1_select act
     go.pGCAM->iuScope->checkID=true;
 }
 
-void MainWindow::updateCamMenu(){
-    menu->clear();
+
+void MainWindow::cam2_select_show(){   //on_cam1_select pressed, should update usb device list
+    updateCamMenu(menu2);
+}
+void MainWindow::on_cam2_select_triggered(QAction *arg1){
+    go.pGCAM->utilCam->selected_ID.set(arg1->text().toStdString());
+    ui->cam2_select->setText("camera ID: "+arg1->text());
+    go.pGCAM->utilCam->checkID=true;
+}
+
+void MainWindow::updateCamMenu(QMenu* menuN){
+    menuN->clear();
     while (!actptrs.empty()){   //free old menus
         delete actptrs.back();
         actptrs.pop_back();
@@ -64,7 +83,7 @@ void MainWindow::updateCamMenu(){
         QAction *actx = new QAction(this);
         actx->setText(QString::fromStdString(go.pGCAM->cam_desc.get()->at(i).ID));
         actx->setToolTip(QString::fromStdString(go.pGCAM->cam_desc.get()->at(i).description));
-        menu->addAction(actx);
+        menuN->addAction(actx);
         actptrs.push_back(actx);
     }
 }

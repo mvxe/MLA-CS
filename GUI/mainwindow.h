@@ -28,7 +28,7 @@ public:
 private Q_SLOTS:
     void sync_settings();
     void GUI_update();
-    void updateCamMenu();
+    void updateCamMenu(QMenu* menuN);
     void program_exit();
 
     void on_e_xps_ip_editingFinished();
@@ -43,6 +43,7 @@ private Q_SLOTS:
     void on_tabWidget_currentChanged(int index);
     void on_cam1_select_triggered(QAction *arg1);
     void cam1_select_show();
+
     void on_sl_xsens_valueChanged(int value);
     void on_sl_ysens_valueChanged(int value);
     void on_sl_zsens_valueChanged(int value);
@@ -74,10 +75,16 @@ private Q_SLOTS:
 
     void on_btn_PBurnArray_released();
 
+    void cam2_select_show();
+    void on_cam2_select_triggered(QAction *arg1);
+
+    void on_sl_util_expo_valueChanged(int value);
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;
     QMenu *menu;
+    QMenu *menu2;
     std::vector<QAction*> actptrs;
     QTimer *timer;
     QShortcut *shortcut;
@@ -88,9 +95,11 @@ private:
     int dialval{0};
     bool xps_con{false};
     bool iuScope_con{false};
+    bool utilCam_con{false};
     bool rpty_con{false};
 
     FQ* iuScope_img;    //the framequeue for display
+    FQ* utilCam_img;
 
     double a{0},b{0}; //TODO remove this dirty fix
 

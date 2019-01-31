@@ -23,11 +23,13 @@ public:
      *       ##########################################    <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <-- <--
      */
 
-    const static int _CAM_NUM=1;
+    const static int _CAM_NUM=2;
     camobj* iuScope;                //add new cameras here, and also in constructor GCAM::gcam (gcam.cpp) and run() (gcam.cpp)
+    camobj* utilCam;
         //another cam here...
     _cinit _c[_CAM_NUM]={
-        {iuScope,"iuScope"}
+        {iuScope,"iuScope"},
+        {utilCam,"utilCam"}
             //also put it here...
     };
 
