@@ -36,7 +36,7 @@ RESOURCES += \
     icons/icon.qrc \
     icons/icon.qrc
 
-unix:!macx: LIBS += -lcurlpp -lcurl
+unix:!macx: LIBS += -lcurlpp -lcurl -lserial
 
 INCLUDEPATH += /usr/include/glib-2.0 \
         /usr/include/aravis-0.6
@@ -77,7 +77,8 @@ HEADERS += \
     DEV/GCAM/gcam.h \
     UTIL/pipe.h \
     GUI/tab_temp_plot.h \
-    DEV/CNC/cnc.h
+    DEV/CNC/cnc.h \
+    DEV/CNC/cnc_template.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \

@@ -29,6 +29,7 @@ private Q_SLOTS:
     void sync_settings();
     void GUI_update();
     void updateCamMenu(QMenu* menuN);
+    void updateCncMenu(QMenu* menuN);
     void program_exit();
 
     void on_e_xps_ip_editingFinished();
@@ -78,14 +79,25 @@ private Q_SLOTS:
     void cam2_select_show();
     void on_cam2_select_triggered(QAction *arg1);
 
+    void cnc_select_show();
+    void on_cnc_select_triggered(QAction *arg1);
+
     void on_sl_util_expo_valueChanged(int value);
+
+
+
+    void on_pushButton_2_released();
+
+    void on_pushButton_released();
+
+    void on_doubleSpinBox_2_editingFinished();
 
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;
     QMenu *menu;
     QMenu *menu2;
-    std::vector<QAction*> actptrs;
+    QMenu *menu3;
     QTimer *timer;
     QShortcut *shortcut;
 
@@ -97,6 +109,7 @@ private:
     bool iuScope_con{false};
     bool utilCam_con{false};
     bool rpty_con{false};
+    bool cnc_con{false};
 
     FQ* iuScope_img;    //the framequeue for display
     FQ* utilCam_img;
@@ -106,6 +119,8 @@ private:
     tab_devices* tabDev;
     tab_temp_plot* tabPlot;
     int donth=0;
+
+    double cncspeed{100};
 };
 
 class mtlabel : public QLabel{

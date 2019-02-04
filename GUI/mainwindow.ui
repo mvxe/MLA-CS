@@ -381,9 +381,12 @@
         <item row="4" column="2">
          <layout class="QHBoxLayout" name="horizontalLayout_3">
           <item>
-           <widget class="QToolButton" name="toolButton_2">
+           <widget class="QToolButton" name="cnc_select">
             <property name="text">
              <string>serial ID: none</string>
+            </property>
+            <property name="popupMode">
+             <enum>QToolButton::InstantPopup</enum>
             </property>
             <property name="toolButtonStyle">
              <enum>Qt::ToolButtonTextBesideIcon</enum>

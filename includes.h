@@ -9,6 +9,7 @@
 #include "DEV/XPS/xps.h"
 #include "DEV/GCAM/gcam.h"
 #include "DEV/RPTY/rpty.h"
+#include "DEV/CNC/cnc.h"
 #include "globals.h"
 #include "UTIL/containers.h"
 #include "UTIL/utility.h"

@@ -26,6 +26,7 @@ void MainWindow::sync_settings(){
 
     if (!go.pGCAM->iuScope->selected_ID.get().empty()) ui->cam1_select->setText(QString::fromStdString("camera ID: "+go.pGCAM->iuScope->selected_ID.get()));
     if (!go.pGCAM->utilCam->selected_ID.get().empty()) ui->cam2_select->setText(QString::fromStdString("camera ID: "+go.pGCAM->utilCam->selected_ID.get()));
+    if (!go.pCNC->selected_ID.get().empty()) ui->cnc_select->setText(QString::fromStdString("serial ID: "+go.pCNC->selected_ID.get()));
     ui->sl_expo->blockSignals(false);
     ui->sl_util_expo->blockSignals(false);
 }
@@ -75,6 +76,10 @@ void MainWindow::GUI_update(){
     if (rpty_con!=go.pRPTY->connected){
         rpty_con=go.pRPTY->connected;
         ui->si_RPTY->setPixmap(rpty_con?px_online:px_offline);
+    }
+    if (cnc_con!=go.pCNC->connected){
+        cnc_con=go.pCNC->connected;
+        ui->si_stepCtrl->setPixmap(cnc_con?px_online:px_offline);
     }
 
     if (go.pXPS->IP.resolved.changed())

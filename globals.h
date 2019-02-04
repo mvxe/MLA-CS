@@ -18,6 +18,7 @@
 class XPS;
 class GCAM;
 class RPTY;
+class CNC;
 class QApplication;
 
 class var_save{
@@ -86,6 +87,7 @@ public:
     XPS* pXPS;      //you can access stages through this
     GCAM* pGCAM;    //you can access cameras and frame queues through this, see GCAM/_config.h for members
     RPTY* pRPTY;    //you can access red pitaya functions through this
+    CNC* pCNC;      //you can access CNC functions through this
 
     void startup(int argc, char *argv[]);                                           //subsequent calls of this are ignored
     template <typename T, typename... Args> othr<T>* newThread(Args... args);       //with this you can create a new thread calling any object derived from protooth/procedure, example:  XPS* pXPS=newThread<XPS>()->obj; or othr<proc> name=newThread<proc>();

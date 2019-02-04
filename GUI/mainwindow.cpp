@@ -23,6 +23,11 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     ui->cam2_select->setMenu(menu2);
     connect(menu2, SIGNAL(aboutToShow()), this, SLOT(cam2_select_show()));
 
+    menu3 = new QMenu(this);
+    menu3->setToolTipsVisible(true);
+    ui->cnc_select->setMenu(menu3);
+    connect(menu3, SIGNAL(aboutToShow()), this, SLOT(cnc_select_show()));
+
     iuScope_img=go.pGCAM->iuScope->FQsPCcam.getNewFQ();    //make new image queue
     utilCam_img=go.pGCAM->utilCam->FQsPCcam.getNewFQ();    //make new image queue
     ui->camera_stream->pmw=this;
@@ -63,8 +68,7 @@ void MainWindow::on_cam1_select_triggered(QAction *arg1){   //on_cam1_select act
     go.pGCAM->iuScope->checkID=true;
 }
 
-
-void MainWindow::cam2_select_show(){   //on_cam1_select pressed, should update usb device list
+void MainWindow::cam2_select_show(){
     updateCamMenu(menu2);
 }
 void MainWindow::on_cam2_select_triggered(QAction *arg1){
@@ -73,18 +77,34 @@ void MainWindow::on_cam2_select_triggered(QAction *arg1){
     go.pGCAM->utilCam->checkID=true;
 }
 
+void MainWindow::cnc_select_show(){
+    updateCncMenu(menu3);
+}
+void MainWindow::on_cnc_select_triggered(QAction *arg1){
+    go.pCNC->selected_ID.set(arg1->text().toStdString());
+    ui->cnc_select->setText("serial ID: "+arg1->text());
+    go.pCNC->checkID=true;
+}
+
 void MainWindow::updateCamMenu(QMenu* menuN){
     menuN->clear();
-    while (!actptrs.empty()){   //free old menus
-        delete actptrs.back();
-        actptrs.pop_back();
-    }
     for (int i=0;i!=go.pGCAM->cam_desc.get()->size();i++){
         QAction *actx = new QAction(this);
         actx->setText(QString::fromStdString(go.pGCAM->cam_desc.get()->at(i).ID));
         actx->setToolTip(QString::fromStdString(go.pGCAM->cam_desc.get()->at(i).description));
         menuN->addAction(actx);
-        actptrs.push_back(actx);
+    }
+}
+
+void MainWindow::updateCncMenu(QMenu* menuN){
+    go.pCNC->refreshID=true;
+    while(go.pCNC->refreshID) std::this_thread::sleep_for (std::chrono::milliseconds(1));
+    menuN->clear();
+    for (int i=0;i!=go.pCNC->serial_desc.get()->size();i++){
+        QAction *actx = new QAction(this);
+        actx->setText(QString::fromStdString(go.pCNC->serial_desc.get()->at(i).ID));
+        actx->setToolTip(QString::fromStdString(go.pCNC->serial_desc.get()->at(i).description));
+        menuN->addAction(actx);
     }
 }
 
@@ -162,4 +182,23 @@ void MainWindow::on_btn_save_img_released(){
 
 void MainWindow::on_btn_PBurnArray_released(){
     go.newThread<pBurnArray>(ui->sb_PBurnArray_spacing->value(), ui->sb_PBurnArray_dotfst->value(), ui->sb_PBurnArray_dotlst->value(), ui->sb_PBurnArray_xgrid->value(), ui->sb_PBurnArray_ygrid->value(), ui->checkBox->isChecked());
+}
+
+
+
+void MainWindow::on_pushButton_2_released(){
+    go.pCNC->execCommand("G28 X\n");
+    ui->doubleSpinBox_2->setValue(0);
+}
+
+void MainWindow::on_pushButton_released(){
+    go.pCNC->execCommand("M400\n");     //wait for current moves to finish
+    go.pCNC->execCommand("M42 P3 S255\n");
+    go.pCNC->execCommand("G4 P10\n");   //wait in ms
+    go.pCNC->execCommand("M400\n");
+    go.pCNC->execCommand("M42 P3 S0\n");
+}
+
+void MainWindow::on_doubleSpinBox_2_editingFinished(){
+    go.pCNC->execCommand("G0 X",cncspeed=ui->doubleSpinBox_2->value()," F",cncspeed=ui->doubleSpinBox->value(),"\n");
 }

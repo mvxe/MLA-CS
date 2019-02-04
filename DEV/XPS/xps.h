@@ -61,7 +61,7 @@ public:
     ~XPS();
 
     template <typename... Args>   void execCommandStr(Args... args);                   //exectue a command without return, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
-    template <typename... Args>   void execCommandStr(exec_ret* ret, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see xps_ret in UTIL/containers
+    template <typename... Args>   void execCommandStr(exec_ret* ret, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see exec_ret in UTIL/containers
 
     template <typename... Args>   void execCommand(Args... args);                      //same as above command, except it automatically adds brackets and comas, for example  <command>(<arg0>,<arg1>,<arg2>...)
     template <typename... Args>   void execCommand(exec_ret* ret, Args... args);

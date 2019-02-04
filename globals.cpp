@@ -29,6 +29,7 @@ void globals::startup(int argc, char *argv[]){
     pXPS =newThread<XPS> ()->obj;
     pGCAM=newThread<GCAM>()->obj;
     pRPTY=newThread<RPTY>()->obj;
+    pCNC=newThread<CNC>()->obj;
 
     qapp = new QApplication(argc, argv);
     MainWindow w(qapp);
