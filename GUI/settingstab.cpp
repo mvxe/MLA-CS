@@ -2,7 +2,6 @@
 #include "ui_mainwindow.h"
 #include "includes.h"
 
-
 void MainWindow::sync_settings(){
     ui->sl_expo->blockSignals(true);
     ui->sl_util_expo->blockSignals(true);
@@ -132,5 +131,15 @@ void MainWindow::GUI_update(){
         else ui->lbl_position->setText(QString::fromStdString(util::toString("Position: NC")));
     }
 
+    if(matlk.try_lock()){
+        if(mats->size()!=expsize) matsbar=true;
+        if(matsbar){
+            ui->progressBar->setMaximum(expsize);
+            ui->progressBar->setFormat("Acquisition: %p%");
+            ui->progressBar->setValue(mats->size());
+        }
+        ui->label_26->setText(QString::fromStdString(util::toString("Frames: ",mats->size(),"/",expsize)));
+        matlk.unlock();
+    }
 
 }

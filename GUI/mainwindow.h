@@ -92,6 +92,12 @@ private Q_SLOTS:
 
     void on_doubleSpinBox_2_editingFinished();
 
+    void on_checkBox_2_toggled(bool checked);
+
+    void on_pushButton_3_released();
+
+    void on_pushButton_4_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;
@@ -120,7 +126,10 @@ private:
     tab_temp_plot* tabPlot;
     int donth=0;
 
-    double cncspeed{100};
+    std::vector<cv::Mat>* mats{nullptr};
+    int expsize{0};
+    std::mutex matlk;
+    bool matsbar{true};
 };
 
 class mtlabel : public QLabel{

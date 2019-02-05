@@ -31,7 +31,7 @@ public:
 
 
     template <typename... Args>   void execCommand(Args... args);                   //exectue a command without return, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
-    template <typename... Args>   void execCommand(exec_ret* ret, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see exec_ret in UTIL/containers
+    template <typename... Args>   void execCommand(exec_ret* ret, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see exec_ret in UTIL/containers   //UNTESTED
 
 private:
     std::string ID{"none"};
@@ -50,7 +50,7 @@ private:
     std::atomic<bool> _connected{false};
     serial::Serial* sercon{nullptr};
     const int baud{57600};
-    const int timeout{1000}; //in ms
+    const int timeout{1}; //in ms
     std::string port;
 };
 

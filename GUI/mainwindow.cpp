@@ -1,8 +1,11 @@
 #include "GUI/mainwindow.h"
 #include "ui_mainwindow.h"
 #include "includes.h"
+#include <opencv2/highgui/highgui.hpp>  // Video write
 
 MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainWindow(parent), ui(new Ui::MainWindow) {
+    mats= new std::vector<cv::Mat>;
+
     onDisplay=new cv::Mat();
     connect(qapp,SIGNAL(aboutToQuit()),this,SLOT(program_exit()));
     shortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q),this,SLOT(program_exit()));
@@ -190,7 +193,6 @@ void MainWindow::on_pushButton_2_released(){
     go.pCNC->execCommand("G28 X\n");
     ui->doubleSpinBox_2->setValue(0);
 }
-
 void MainWindow::on_pushButton_released(){
     go.pCNC->execCommand("M400\n");     //wait for current moves to finish
     go.pCNC->execCommand("M42 P3 S255\n");
@@ -198,7 +200,33 @@ void MainWindow::on_pushButton_released(){
     go.pCNC->execCommand("M400\n");
     go.pCNC->execCommand("M42 P3 S0\n");
 }
-
 void MainWindow::on_doubleSpinBox_2_editingFinished(){
-    go.pCNC->execCommand("G0 X",cncspeed=ui->doubleSpinBox_2->value()," F",cncspeed=ui->doubleSpinBox->value(),"\n");
+    go.pCNC->execCommand("G0 X",ui->doubleSpinBox_2->value()," F",ui->doubleSpinBox->value(),"\n");
+}
+void MainWindow::on_checkBox_2_toggled(bool checked){
+    if(checked) go.pGCAM->utilCam->set_trigger("Line1");
+    else go.pGCAM->utilCam->set_trigger();
+}
+
+void MainWindow::on_pushButton_3_released(){
+    expsize=(int)((ui->doubleSpinBox_4->value()-ui->doubleSpinBox_3->value())/ui->doubleSpinBox_5->value())+1;
+    go.newThread<pProfileBeam>(ui->doubleSpinBox_3->value(),ui->doubleSpinBox_4->value(),ui->doubleSpinBox_5->value(),ui->doubleSpinBox->value(),10,mats, &matlk);
+}
+void MainWindow::on_pushButton_4_released(){    //save video
+    std::lock_guard<std::mutex>lock(matlk);
+    if (mats->empty()) return;
+
+    QString fileName = QFileDialog::getSaveFileName(this,tr("video"), "",tr("Videos (*.avi)"));
+    if(fileName.isEmpty()) return;
+    std::cout<<"Saving video to "<<fileName.toStdString()<<"\n";
+
+    cv::VideoWriter outputVideo;
+    outputVideo.open(fileName.toStdString() , cv::VideoWriter::fourcc('H','2','6','4'), ui->spinBox->value() , mats->front().size(), false);
+    matsbar=false;
+    ui->progressBar->setMaximum(mats->size()-1);
+    ui->progressBar->setFormat("Save progress: %p%");
+    for(int i=0;i!=mats->size(); i++){
+        ui->progressBar->setValue(i);
+        outputVideo << mats->at(i);
+    }
 }

@@ -78,7 +78,8 @@ HEADERS += \
     UTIL/pipe.h \
     GUI/tab_temp_plot.h \
     DEV/CNC/cnc.h \
-    DEV/CNC/cnc_template.h
+    DEV/CNC/cnc_template.h \
+    PROCEDURES/UTIL/profile_beam.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -107,7 +108,8 @@ SOURCES += \
     DEV/GCAM/gcam.cpp \
     UTIL/pipe.cpp \
     GUI/tab_temp_plot.cpp \
-    DEV/CNC/cnc.cpp
+    DEV/CNC/cnc.cpp \
+    PROCEDURES/UTIL/profile_beam.cpp
 
 
 unix {

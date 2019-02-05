@@ -26,6 +26,8 @@ public:
     template <typename T> T get(std::string atr);
     ArvDeviceStatus run(std::string atr);
 
+    ArvDeviceStatus set_trigger(std::string trig="none");
+
     std::mutex mkmx;
     tsvar_save<std::string> selected_ID;                    //thread safe access to select camera ID
     const std::atomic<bool>& connected{_connected};         //thread safe access to camera status

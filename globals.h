@@ -34,7 +34,7 @@ class protooth{              //abstract class for all classes to be in threads
     friend class base_othr;
 public:
     virtual ~protooth(){}                     //if its virtual, destroying its pointer will call the derived class destructor
-    std::atomic<bool> end{false};
+    std::atomic<bool> end{false};             //set this to true to externally signal the thread it should close. In each derived object periodically chech if this is true, and if so, exit.
     std::atomic<bool> done{false};            //this flag indicates whether the thread is done      //TODO calling this from mainwindow causes a segfault
 private:
     virtual void run()=0;

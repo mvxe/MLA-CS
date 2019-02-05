@@ -86,10 +86,10 @@ void CNC::flushQueue(){
         nerr=0;
    xx:  sercon->write(wrstr);
    yy:  rdstr+=sercon->read(65536);
-        if(nerr==100) {std::cerr<<"cnc: cant find ok\n"; mpq.lock(); break;}
+
         if(rdstr.find("resend")!=std::string::npos) goto xx;
         else if(rdstr.find("ok\n")!=std::string::npos);
-        else {nerr++; std::this_thread::sleep_for (std::chrono::milliseconds(1)); goto yy;}
+        else {nerr++; if(nerr==1000) {nerr=0; std::cerr<<"cnc: waiting for ok\n"<<rdstr<<"\n";} std::this_thread::sleep_for (std::chrono::milliseconds(1)); goto yy;}
 
         mpq.lock();
             if(priority_queue.front().ret!=nullptr) priority_queue.front().ret->set_value(wrstr);
