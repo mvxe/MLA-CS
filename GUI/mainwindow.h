@@ -98,6 +98,10 @@ private Q_SLOTS:
 
     void on_pushButton_4_released();
 
+    void on_pushButton_6_released();
+
+    void on_pushButton_5_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;
@@ -129,6 +133,7 @@ private:
     std::vector<cv::Mat>* mats{nullptr};
     int expsize{0};
     std::mutex matlk;
+    int fitdiv=64;
     bool matsbar{true};
 };
 

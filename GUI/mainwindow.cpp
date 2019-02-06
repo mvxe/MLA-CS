@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "includes.h"
 #include <opencv2/highgui/highgui.hpp>  // Video write
+#include "UTIL/pipe.h"                  //gnuplot
 
 MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainWindow(parent), ui(new Ui::MainWindow) {
     mats= new std::vector<cv::Mat>;
@@ -209,8 +210,10 @@ void MainWindow::on_checkBox_2_toggled(bool checked){
 }
 
 void MainWindow::on_pushButton_3_released(){
-    expsize=(int)((ui->doubleSpinBox_4->value()-ui->doubleSpinBox_3->value())/ui->doubleSpinBox_5->value())+1;
+    {std::lock_guard<std::mutex>lock(matlk);
+    expsize=(int)((ui->doubleSpinBox_4->value()-ui->doubleSpinBox_3->value())/ui->doubleSpinBox_5->value())+1;}
     go.newThread<pProfileBeam>(ui->doubleSpinBox_3->value(),ui->doubleSpinBox_4->value(),ui->doubleSpinBox_5->value(),ui->doubleSpinBox->value(),10,mats, &matlk);
+    ui->pushButton_5->setText("Fit Frames (64div)"); fitdiv=64;
 }
 void MainWindow::on_pushButton_4_released(){    //save video
     std::lock_guard<std::mutex>lock(matlk);
@@ -229,4 +232,160 @@ void MainWindow::on_pushButton_4_released(){    //save video
         ui->progressBar->setValue(i);
         outputVideo << mats->at(i);
     }
+}
+void MainWindow::on_pushButton_6_released(){    //load video
+    std::lock_guard<std::mutex>lock(matlk);
+
+    QString fileName = QFileDialog::getOpenFileName(this,tr("video"), "",tr("Videos (*.avi)"));
+    if(fileName.isEmpty()) return;
+    std::cout<<"Loading video from "<<fileName.toStdString()<<"\n";
+
+    if (!mats->empty()) mats->clear();
+    cv::VideoCapture inputVideo(fileName.toStdString());
+    if (!inputVideo.isOpened()) {std::cout<<"Cannot open\n"; return;}
+    cv::Mat src;
+    matsbar=false;
+    int cframe=2;
+    ui->progressBar->setMaximum(cframe);
+    ui->progressBar->setFormat("Load progress: %p%");
+    for(int i=0;;i++){
+        if(i>cframe) {cframe*=2;ui->progressBar->setMaximum(cframe);}
+        ui->progressBar->setValue(i);
+        inputVideo>>src;
+        if (src.empty()) break;
+        cv::cvtColor(src, src, CV_BGR2GRAY);
+        mats->push_back(src);
+    }
+    expsize=mats->size();
+    ui->progressBar->setMaximum(expsize);
+    ui->pushButton_5->setText("Fit Frames (64div)"); fitdiv=64;
+}
+void MainWindow::on_pushButton_5_released(){    //fit frames
+    std::lock_guard<std::mutex>lock(matlk);
+    if (mats->empty()) return;
+
+    ui->progressBar->setMaximum(mats->size()-1);
+    ui->progressBar->setFormat("Fit progress: %p%");
+    ui->progressBar->setValue(0);
+    cv::Mat resized;
+
+    double pixdim=ui->pixsize->value();
+    double posX=mats->at(0).cols/fitdiv/2;  double posX_e;
+    double posY=mats->at(0).rows/fitdiv/2;  double posY_e;
+    double wdtX=posX/10;                    double wdtX_e;
+    double wdtY=posY/10;                    double wdtY_e;
+    double pow=1000;                        double pow_e;
+    double bgn=1;                           double bgn_e;
+    double ang=0.1;                         double ang_e;
+    const char keyword[50]="iwqnxmcaiofa";
+
+    gnuplot a;   //TODO: apparently gnuplot replies into cerr instead of cout, or our pipe implementation is broken. investigate!
+                 //TODO: bug when calling **persist**, the gnuplot process stays open after program close
+    a.POUT<<"set terminal wxt enhanced **persist** size 800,600\n";
+     a.POUT<<"set xlabel \"x / um\"\n";
+     a.POUT<<"set ylabel \"y / um\"\n";
+     a.POUT<<"set zlabel \"I / a.u.\"\n";
+    for(int i=0;i!=mats->size();i++){
+        a.POUT.flush();
+        a.POUT<<"gaussX(x)=2*pow/pi/(wdtX**2)*exp(-2*((x-posX)**2)/(wdtX**2))\n";
+        a.POUT<<"gaussY(x)=2*pow/pi/(wdtY**2)*exp(-2*((x-posY)**2)/(wdtY**2))\n";
+        a.POUT<<"gaussXY(x,y)=bgn+gaussX(x*cos(ang)+y*sin(ang))*gaussY(x*sin(ang)+y*cos(ang))\n";
+        a.POUT<<"wdtX="<<wdtX<<"\n";
+        a.POUT<<"wdtY="<<wdtY<<"\n";
+        a.POUT<<"posX="<<posX<<"\n";
+        a.POUT<<"posY="<<posY<<"\n";
+        a.POUT<<"pow="<<pow<<"\n";
+        a.POUT<<"bgn="<<bgn<<"\n";
+        a.POUT<<"ang="<<ang<<"\n";
+        a.POUT<<"echo = \""<<keyword<<"\"\n";
+        a.POUT<<"fit gaussXY(x,y) \"-\" using 1:2:3 via bgn, pow, wdtX, wdtY, posX, posY, ang\n";
+        cv::resize(mats->at(i), resized, cv::Size(), 1./fitdiv, 1./fitdiv, cv::INTER_CUBIC);
+        for(int x=0;x!=resized.cols;x++){
+            for(int y=0;y!=resized.rows;y++){
+                a.POUT<< x <<" "<<y<<" "<< (int)resized.at<uint8_t>(y,x)<<"\n";
+            }
+        }
+        a.POUT << "e\n";
+        a.POUT<<"print echo\n";
+        a.POUT.flush();
+        char line[256];
+        QString lines;
+        while(1){
+            a.PERR.getline(line,256);
+            //std::cerr<<line;
+            lines=line;
+            if (lines.contains(keyword, Qt::CaseSensitive)) break;
+        }
+        a.POUT<<"print abs(wdtX)\n";    a.POUT.flush();
+        a.PERR>>wdtX;
+        a.POUT<<"print abs(wdtY)\n";    a.POUT.flush();
+        a.PERR>>wdtY;
+        a.POUT<<"print posX\n";         a.POUT.flush();
+        a.PERR>>posX;
+        a.POUT<<"print posY\n";         a.POUT.flush();
+        a.PERR>>posY;
+        a.POUT<<"print pow\n";          a.POUT.flush();
+        a.PERR>>pow;
+        a.POUT<<"print bgn\n";          a.POUT.flush();
+        a.PERR>>bgn;
+        a.POUT<<"print ang\n";          a.POUT.flush();
+        a.PERR>>ang;
+
+        a.POUT<<"print wdtX_err\n";    a.POUT.flush();
+        a.PERR>>wdtX_e;
+        a.POUT<<"print wdtY_err\n";    a.POUT.flush();
+        a.PERR>>wdtY_e;
+        a.POUT<<"print posX_err\n";         a.POUT.flush();
+        a.PERR>>posX_e;
+        a.POUT<<"print posY_err\n";         a.POUT.flush();
+        a.PERR>>posY_e;
+        a.POUT<<"print pow_err\n";          a.POUT.flush();
+        a.PERR>>pow_e;
+        a.POUT<<"print bgn_err\n";          a.POUT.flush();
+        a.PERR>>bgn_e;
+        a.POUT<<"print ang_err\n";          a.POUT.flush();
+        a.PERR>>ang_e;
+
+        std::cout<<"Image #"<<i<<":\n";
+        std::cout<<"    wdtX="<<wdtX*fitdiv*pixdim<<" +- "<<wdtX_e*fitdiv*pixdim<<"\n";
+        std::cout<<"    wdtY="<<wdtY*fitdiv*pixdim<<" +- "<<wdtY_e*fitdiv*pixdim<<"\n";
+        std::cout<<"    posX="<<posX*fitdiv*pixdim<<" +- "<<posX_e*fitdiv*pixdim<<"\n";
+        std::cout<<"    posY="<<posY*fitdiv*pixdim<<" +- "<<posY_e*fitdiv*pixdim<<"\n";
+        std::cout<<"    pow="<<pow<<" +- "<<pow_e<<"\n";
+        std::cout<<"    bgn="<<bgn<<" +- "<<bgn_e<<"\n";
+        std::cout<<"    ang="<<ang<<" +- "<<ang_e<<"\n";
+
+        a.POUT<<"set isosamples 50\n";
+        a.POUT<<"set view equal xy\n";
+        a.POUT<<"set title \"frame "<<i+1<<"/"<<mats->size()<<"\"\n";
+        a.POUT<<"scaled(x,y)=gaussXY(x/"<<fitdiv*pixdim<<",y/"<<fitdiv*pixdim<<")\n";
+        a.POUT<<"splot \"-\" using 1:2:3 w p pt 7 lc 6 title \"raw data(div64)\", scaled(x,y) w l lc 4 title \"fit\"\n";
+        cv::resize(mats->at(i), resized, cv::Size(), 1./64, 1./64, cv::INTER_CUBIC);
+        for(int x=0;x!=resized.cols;x++){
+            for(int y=0;y!=resized.rows;y++){
+                a.POUT<<x*64*pixdim<<" "<<y*64*pixdim<<" "<< (int)resized.at<uint8_t>(y,x)<<"\n";
+            }
+        }
+
+        a.POUT.flush();
+        ui->progressBar->setValue(i);
+    }
+
+
+
+    if(fitdiv==1) return;
+    fitdiv/=2;
+    ui->pushButton_5->setText(QString::fromStdString(util::toString("Fit Frames (",fitdiv,"div)")));
+
+//    int num=0;
+//    std::ofstream myfile;
+//    myfile.open ("example.txt");
+//    cv::resize(mats->at(num), mats->at(num), cv::Size(), 1./64, 1./64, cv::INTER_CUBIC);
+//    for(int x=0;x!=mats->at(num).cols;x++){
+//        for(int y=0;y!=mats->at(num).rows;y++){
+//            myfile << x <<" "<<y<<" "<< (int)mats->at(num).at<uint8_t>(y,x)<<"\n";
+//        }
+//        myfile << "e\n";
+//    }
+//    myfile.close();
 }

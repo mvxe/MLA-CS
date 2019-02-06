@@ -35,10 +35,10 @@ _pipe::~_pipe(){
     delete  _PIN;
     delete fbERR;
     delete _PERR;
-    pid_t killer=fork();
-    if(killer==0){          //We create a new process that sleeps for 10 seconds and then kills it. This is in case the user doesn't tell the process to quit or it glitches.
-        ::sleep(10);
-        ::kill(_PID, SIGKILL);
-        exit(0);
-    }
+//    pid_t killer=fork();      //TODO weird behaviour with beamshapef fit, fix this
+//    if(killer==0){          //We create a new process that sleeps for 10 seconds and then kills it. This is in case the user doesn't tell the process to quit or it glitches.
+//        ::sleep(10);
+//        ::kill(_PID, SIGKILL);
+//        exit(0);
+//    }
 }
