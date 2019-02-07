@@ -102,6 +102,12 @@ private Q_SLOTS:
 
     void on_pushButton_5_released();
 
+    void on_pushButton_7_released();
+
+    void on_pushButton_8_released();
+
+    void on_doubleSpinBox_5_valueChanged(double arg1);
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;
@@ -130,11 +136,28 @@ private:
     tab_temp_plot* tabPlot;
     int donth=0;
 
+
+    /* beam profiler variables, TODO move this elsewhere*/
     std::vector<cv::Mat>* mats{nullptr};
     int expsize{0};
     std::mutex matlk;
     int fitdiv=64;
     bool matsbar{true};
+    double pixdim;      //in um
+    double stepsize;    //in mm
+    struct fitar{
+        double posX[2];         // [0] is var, [1] is error
+        double posY[2];
+        double wdtX[2];
+        double wdtY[2];
+        double pow[2];
+        double bgn[2];
+        double ang[2];
+    };
+    std::vector<fitar> fitres;
+    const char keyword[50]="iwqnxmcaiofa";
+
+    /* up to here*/
 };
 
 class mtlabel : public QLabel{

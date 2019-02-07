@@ -212,6 +212,7 @@ void MainWindow::on_checkBox_2_toggled(bool checked){
 void MainWindow::on_pushButton_3_released(){
     {std::lock_guard<std::mutex>lock(matlk);
     expsize=(int)((ui->doubleSpinBox_4->value()-ui->doubleSpinBox_3->value())/ui->doubleSpinBox_5->value())+1;}
+    if (!fitres.empty()) fitres.clear();
     go.newThread<pProfileBeam>(ui->doubleSpinBox_3->value(),ui->doubleSpinBox_4->value(),ui->doubleSpinBox_5->value(),ui->doubleSpinBox->value(),10,mats, &matlk);
     ui->pushButton_5->setText("Fit Frames (64div)"); fitdiv=64;
 }
@@ -233,6 +234,9 @@ void MainWindow::on_pushButton_4_released(){    //save video
         outputVideo << mats->at(i);
     }
 }
+void MainWindow::on_doubleSpinBox_5_valueChanged(double arg1){
+    ui->fitstep_val->setValue(arg1);
+}
 void MainWindow::on_pushButton_6_released(){    //load video
     std::lock_guard<std::mutex>lock(matlk);
 
@@ -241,6 +245,7 @@ void MainWindow::on_pushButton_6_released(){    //load video
     std::cout<<"Loading video from "<<fileName.toStdString()<<"\n";
 
     if (!mats->empty()) mats->clear();
+    if (!fitres.empty()) fitres.clear();
     cv::VideoCapture inputVideo(fileName.toStdString());
     if (!inputVideo.isOpened()) {std::cout<<"Cannot open\n"; return;}
     cv::Mat src;
@@ -269,34 +274,40 @@ void MainWindow::on_pushButton_5_released(){    //fit frames
     ui->progressBar->setValue(0);
     cv::Mat resized;
 
-    double pixdim=ui->pixsize->value();
-    double posX=mats->at(0).cols/fitdiv/2;  double posX_e;
-    double posY=mats->at(0).rows/fitdiv/2;  double posY_e;
-    double wdtX=posX/10;                    double wdtX_e;
-    double wdtY=posY/10;                    double wdtY_e;
-    double pow=1000;                        double pow_e;
-    double bgn=1;                           double bgn_e;
-    double ang=0.1;                         double ang_e;
-    const char keyword[50]="iwqnxmcaiofa";
+    pixdim=ui->pixsize->value();
+    stepsize=ui->fitstep_val->value();
+    fitar cfit;
+    cfit.posX[0]=mats->at(0).cols/2;
+    cfit.posY[0]=mats->at(0).rows/2;
+    cfit.wdtX[0]=cfit.posX[0]/10;
+    cfit.wdtY[0]=cfit.posY[0]/10;
+    cfit.pow[0]=1000;
+    cfit.bgn[0]=1;
+    cfit.ang[0]=0.1;
 
     gnuplot a;   //TODO: apparently gnuplot replies into cerr instead of cout, or our pipe implementation is broken. investigate!
                  //TODO: bug when calling **persist**, the gnuplot process stays open after program close
-    a.POUT<<"set terminal wxt enhanced **persist** size 800,600\n";
-     a.POUT<<"set xlabel \"x / um\"\n";
-     a.POUT<<"set ylabel \"y / um\"\n";
-     a.POUT<<"set zlabel \"I / a.u.\"\n";
+    a.POUT<<"set terminal wxt enhanced **persist** size 1500,900\n";
+    a.POUT<<"set xlabel \"x / um\"\n";
+    a.POUT<<"set ylabel \"y / um\"\n";
+    a.POUT<<"set zlabel \"I / a.u.\"\n";
+    a.POUT<<"set hidden3d front\n";
     for(int i=0;i!=mats->size();i++){
+        if(fitres.size()>i){
+                cfit=fitres[i];
+        }
+
         a.POUT.flush();
         a.POUT<<"gaussX(x)=2*pow/pi/(wdtX**2)*exp(-2*((x-posX)**2)/(wdtX**2))\n";
         a.POUT<<"gaussY(x)=2*pow/pi/(wdtY**2)*exp(-2*((x-posY)**2)/(wdtY**2))\n";
         a.POUT<<"gaussXY(x,y)=bgn+gaussX(x*cos(ang)+y*sin(ang))*gaussY(x*sin(ang)+y*cos(ang))\n";
-        a.POUT<<"wdtX="<<wdtX<<"\n";
-        a.POUT<<"wdtY="<<wdtY<<"\n";
-        a.POUT<<"posX="<<posX<<"\n";
-        a.POUT<<"posY="<<posY<<"\n";
-        a.POUT<<"pow="<<pow<<"\n";
-        a.POUT<<"bgn="<<bgn<<"\n";
-        a.POUT<<"ang="<<ang<<"\n";
+        a.POUT<<"wdtX="<<cfit.wdtX[0]/fitdiv<<"\n";
+        a.POUT<<"wdtY="<<cfit.wdtY[0]/fitdiv<<"\n";
+        a.POUT<<"posX="<<cfit.posX[0]/fitdiv<<"\n";
+        a.POUT<<"posY="<<cfit.posY[0]/fitdiv<<"\n";
+        a.POUT<<"pow="<<cfit.pow[0]<<"\n";
+        a.POUT<<"bgn="<<cfit.bgn[0]<<"\n";
+        a.POUT<<"ang="<<cfit.ang[0]<<"\n";
         a.POUT<<"echo = \""<<keyword<<"\"\n";
         a.POUT<<"fit gaussXY(x,y) \"-\" using 1:2:3 via bgn, pow, wdtX, wdtY, posX, posY, ang\n";
         cv::resize(mats->at(i), resized, cv::Size(), 1./fitdiv, 1./fitdiv, cv::INTER_CUBIC);
@@ -317,43 +328,43 @@ void MainWindow::on_pushButton_5_released(){    //fit frames
             if (lines.contains(keyword, Qt::CaseSensitive)) break;
         }
         a.POUT<<"print abs(wdtX)\n";    a.POUT.flush();
-        a.PERR>>wdtX;
+        a.PERR>>cfit.wdtX[0]; cfit.wdtX[0]*=fitdiv;
         a.POUT<<"print abs(wdtY)\n";    a.POUT.flush();
-        a.PERR>>wdtY;
+        a.PERR>>cfit.wdtY[0]; cfit.wdtY[0]*=fitdiv;
         a.POUT<<"print posX\n";         a.POUT.flush();
-        a.PERR>>posX;
+        a.PERR>>cfit.posX[0]; cfit.posX[0]*=fitdiv;
         a.POUT<<"print posY\n";         a.POUT.flush();
-        a.PERR>>posY;
+        a.PERR>>cfit.posY[0]; cfit.posY[0]*=fitdiv;
         a.POUT<<"print pow\n";          a.POUT.flush();
-        a.PERR>>pow;
+        a.PERR>>cfit.pow[0];
         a.POUT<<"print bgn\n";          a.POUT.flush();
-        a.PERR>>bgn;
+        a.PERR>>cfit.bgn[0];
         a.POUT<<"print ang\n";          a.POUT.flush();
-        a.PERR>>ang;
+        a.PERR>>cfit.ang[0];
 
-        a.POUT<<"print wdtX_err\n";    a.POUT.flush();
-        a.PERR>>wdtX_e;
-        a.POUT<<"print wdtY_err\n";    a.POUT.flush();
-        a.PERR>>wdtY_e;
-        a.POUT<<"print posX_err\n";         a.POUT.flush();
-        a.PERR>>posX_e;
-        a.POUT<<"print posY_err\n";         a.POUT.flush();
-        a.PERR>>posY_e;
-        a.POUT<<"print pow_err\n";          a.POUT.flush();
-        a.PERR>>pow_e;
-        a.POUT<<"print bgn_err\n";          a.POUT.flush();
-        a.PERR>>bgn_e;
-        a.POUT<<"print ang_err\n";          a.POUT.flush();
-        a.PERR>>ang_e;
+        a.POUT<<"print wdtX_err\n";     a.POUT.flush();
+        a.PERR>>cfit.wdtX[1]; cfit.wdtX[1]*=fitdiv;
+        a.POUT<<"print wdtY_err\n";     a.POUT.flush();
+        a.PERR>>cfit.wdtY[1]; cfit.wdtY[1]*=fitdiv;
+        a.POUT<<"print posX_err\n";     a.POUT.flush();
+        a.PERR>>cfit.posX[1]; cfit.posX[1]*=fitdiv;
+        a.POUT<<"print posY_err\n";     a.POUT.flush();
+        a.PERR>>cfit.posY[1]; cfit.posY[1]*=fitdiv;
+        a.POUT<<"print pow_err\n";      a.POUT.flush();
+        a.PERR>>cfit.pow[1];
+        a.POUT<<"print bgn_err\n";      a.POUT.flush();
+        a.PERR>>cfit.bgn[1];
+        a.POUT<<"print ang_err\n";      a.POUT.flush();
+        a.PERR>>cfit.ang[1];
 
-        std::cout<<"Image #"<<i<<":\n";
-        std::cout<<"    wdtX="<<wdtX*fitdiv*pixdim<<" +- "<<wdtX_e*fitdiv*pixdim<<"\n";
-        std::cout<<"    wdtY="<<wdtY*fitdiv*pixdim<<" +- "<<wdtY_e*fitdiv*pixdim<<"\n";
-        std::cout<<"    posX="<<posX*fitdiv*pixdim<<" +- "<<posX_e*fitdiv*pixdim<<"\n";
-        std::cout<<"    posY="<<posY*fitdiv*pixdim<<" +- "<<posY_e*fitdiv*pixdim<<"\n";
-        std::cout<<"    pow="<<pow<<" +- "<<pow_e<<"\n";
-        std::cout<<"    bgn="<<bgn<<" +- "<<bgn_e<<"\n";
-        std::cout<<"    ang="<<ang<<" +- "<<ang_e<<"\n";
+//        std::cout<<"Image #"<<i<<":\n";
+//        std::cout<<"    wdtX="<<cfit.wdtX[0]*pixdim<<" +- "<<cfit.wdtX[1]*pixdim<<"\n";
+//        std::cout<<"    wdtY="<<cfit.wdtY[0]*pixdim<<" +- "<<cfit.wdtY[1]*pixdim<<"\n";
+//        std::cout<<"    posX="<<cfit.posX[0]*pixdim<<" +- "<<cfit.posX[1]*pixdim<<"\n";
+//        std::cout<<"    posY="<<cfit.posY[0]*pixdim<<" +- "<<cfit.posY[1]*pixdim<<"\n";
+//        std::cout<<"    pow="<<cfit.pow[0]<<" +- "<<cfit.pow[1]<<"\n";
+//        std::cout<<"    bgn="<<cfit.bgn[0]<<" +- "<<cfit.bgn[1]<<"\n";
+//        std::cout<<"    ang="<<cfit.ang[0]<<" +- "<<cfit.ang[1]<<"\n";
 
         a.POUT<<"set isosamples 50\n";
         a.POUT<<"set view equal xy\n";
@@ -365,12 +376,16 @@ void MainWindow::on_pushButton_5_released(){    //fit frames
             for(int y=0;y!=resized.rows;y++){
                 a.POUT<<x*64*pixdim<<" "<<y*64*pixdim<<" "<< (int)resized.at<uint8_t>(y,x)<<"\n";
             }
+            a.POUT<<"\n";
         }
-
+        a.POUT << "e\n";
         a.POUT.flush();
         ui->progressBar->setValue(i);
-    }
 
+        if(fitres.size()>i)
+            fitres[i]=cfit;
+        else fitres.emplace_back(cfit);
+    }
 
 
     if(fitdiv==1) return;
@@ -389,3 +404,104 @@ void MainWindow::on_pushButton_5_released(){    //fit frames
 //    }
 //    myfile.close();
 }
+
+void MainWindow::on_pushButton_8_released(){    //save frame results
+    std::lock_guard<std::mutex>lock(matlk);
+    if (fitres.empty()) return;
+
+    QString fileName = QFileDialog::getSaveFileName(this,tr("text"), "",tr("Textual (*.txt)"));
+    if(fileName.isEmpty()) return;
+    std::cout<<"Saving fit results to "<<fileName.toStdString()<<"\n";
+
+    std::ofstream wfile(fileName.toStdString());
+    if(wfile.is_open()){
+        wfile<<"pos(mm) wdtX(um) wdtY(um) posX(um) posY(um) pow(au) bgn(au) ang(rad) wdtX_err(um) wdtY_err(um) posX_err(um) posY_err(um) pow_err(au) bgn_err(au) ang_err(rad)\n";
+        for(int i=0;i!=fitres.size();i++){
+            wfile<<i*stepsize<<" "<<fitres[i].wdtX[0]*pixdim<<" "<<fitres[i].wdtY[0]*pixdim<<" "<<fitres[i].posX[0]*pixdim<<" "<<fitres[i].posY[0]*pixdim<<" "<<fitres[i].pow[0]<<" "<<fitres[i].bgn[0]<<" "<<fitres[i].ang[0];
+            wfile<<            " "<<fitres[i].wdtX[1]*pixdim<<" "<<fitres[i].wdtY[1]*pixdim<<" "<<fitres[i].posX[1]*pixdim<<" "<<fitres[i].posY[1]*pixdim<<" "<<fitres[i].pow[1]<<" "<<fitres[i].bgn[1]<<" "<<fitres[i].ang[1]<<"\n";
+        }
+        wfile.close();
+    }
+}
+void MainWindow::on_pushButton_7_released(){    //fit beam: for gaussian beam D4σ == 1/e^2, here we calculate 1/e^2. TODO: implement D4σ instead and get M^2 factor as well
+    std::lock_guard<std::mutex>lock(matlk);
+    if (fitres.empty()) return;
+
+    gnuplot a;   //TODO: apparently gnuplot replies into cerr instead of cout, or our pipe implementation is broken. investigate!
+                 //TODO: bug when calling **persist**, the gnuplot process stays open after program close
+    a.POUT<<"set terminal wxt enhanced **persist** size 1500,600\n";
+    a.POUT<<"set xlabel \"z / mm\"\n";
+    a.POUT<<"set ylabel \"w / um\"\n";
+    a.POUT.flush();
+    a.POUT<<"wX(x)=w0X*((1+(l*(x-X0)/pi/(w0X**2))**2)**(0.5))\n";
+    a.POUT<<"wY(x)=w0Y*((1+(l*(x-Y0)/pi/(w0Y**2))**2)**(0.5))\n";
+    a.POUT<<"w0X="<<fitres[0].wdtX[0]<<"\n";
+    a.POUT<<"w0Y="<<fitres[0].wdtY[0]<<"\n";
+    a.POUT<<"X0="<<-100*stepsize<<"\n";
+    a.POUT<<"Y0="<<-100*stepsize<<"\n";
+    a.POUT<<"l="<<ui->wavelength->value()<<"\n";
+    a.POUT<<"echo = \""<<keyword<<"\"\n";
+    a.POUT<<"fit wX(x) \"-\" using 1:2 via w0X, X0\n";
+    for(int i=0;i!=fitres.size();i++){
+        a.POUT<<i*stepsize<<" "<<fitres[i].wdtX[0]*pixdim<<"\n";
+    }
+    a.POUT << "e\n";
+    a.POUT.flush();
+    a.POUT<<"fit wY(x) \"-\" using 1:2 via w0Y, Y0\n";
+    for(int i=0;i!=fitres.size();i++){
+        a.POUT<<i*stepsize<<" "<<fitres[i].wdtY[0]*pixdim<<"\n";
+    }
+    a.POUT << "e\n";
+    a.POUT<<"print echo\n";
+    a.POUT.flush();
+    char line[256];
+    QString lines;
+    while(1){
+        a.PERR.getline(line,256);
+        //std::cerr<<line<<"\n";
+        lines=line;
+        if (lines.contains(keyword, Qt::CaseSensitive)) break;
+    }
+
+    double w0X[2],w0Y[2],X0[2],Y0[2];
+    a.POUT<<"print w0X\n";    a.POUT.flush();
+    a.PERR>>w0X[0];
+    a.POUT<<"print w0Y\n";    a.POUT.flush();
+    a.PERR>>w0Y[0];
+    a.POUT<<"print X0\n";    a.POUT.flush();
+    a.PERR>>X0[0];
+    a.POUT<<"print Y0\n";    a.POUT.flush();
+    a.PERR>>Y0[0];
+    a.POUT<<"print w0X_err\n";    a.POUT.flush();
+    a.PERR>>w0X[1];
+    a.POUT<<"print w0Y_err\n";    a.POUT.flush();
+    a.PERR>>w0Y[1];
+    a.POUT<<"print X0_err\n";    a.POUT.flush();
+    a.PERR>>X0[1];
+    a.POUT<<"print Y0_err\n";    a.POUT.flush();
+    a.PERR>>Y0[1];
+
+    ui->fitresults->setText(QString::fromStdString(util::toString("Fit results:\n\tw0x=",  w0X[0],"±",w0X[1]," um\n\t",
+                                                                                  "X0=",  X0[0],"±",X0[1]," mm\n\t",
+                                                                                  "w0y=",  w0Y[0],"±",w0Y[1]," um\n\t",
+                                                                                  "Y0=",  Y0[0],"±",Y0[1]," mm\n"
+                                                                  )));
+
+
+    a.POUT<<"plot \"-\" using 1:2:3 with errorbars pt 7 lc 6 title \"wX frame fit\", wX(x) w l lc 4 title \"wX total fit\","
+          <<     "\"-\" using 1:2:3 with errorbars pt 7 lc 7 title \"wY frame fit\", wY(x) w l lc 10 title \"wY total fit\"\n";
+    for(int i=0;i!=fitres.size();i++){
+        a.POUT<<i*stepsize<<" "<<fitres[i].wdtX[0]*pixdim<<" "<<fitres[i].wdtX[1]*pixdim<<"\n";
+    }
+    a.POUT << "e\n";
+    for(int i=0;i!=fitres.size();i++){
+        a.POUT<<i*stepsize<<" "<<fitres[i].wdtY[0]*pixdim<<" "<<fitres[i].wdtY[1]*pixdim<<"\n";
+    }
+    a.POUT << "e\n";
+    a.POUT.flush();
+
+}
+
+
+
+
