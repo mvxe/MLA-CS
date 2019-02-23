@@ -13,14 +13,14 @@ void pGetDepthMap::run(){
 
     go.pXPS->setGPIO(XPS::iuScopeLED,false);
 
-    po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZ, "pGetDepthMap.txt");
-    po->add(1,          0,0,0,0,-range/2-addOfs+offset  ,0);
-    po->add(1,          0,0,0,0,addOfs                  ,speed);                    //same as po->addAction("GPIO3.DO.DOSet",1,0,0,0);
+    po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pGetDepthMap.txt");
+    po->add(1,          0,0,0,0,-range/2-addOfs+offset  ,0,0,0);
+    po->add(1,          0,0,0,0,addOfs                  ,speed,0,0);                    //same as po->addAction("GPIO3.DO.DOSet",1,0,0,0);
     po->addAction(XPS::iuScopeLED,true);
-    po->add(range/speed,0,0,0,0,range                   ,speed);
+    po->add(range/speed,0,0,0,0,range                   ,speed,0,0);
     po->addAction(XPS::iuScopeLED,false);                                           //same as po->addAction("GPIO3.DO.DOSet",1,1,0,0);
-    po->add(1,          0,0,0,0,addOfs                  ,0);
-    po->add(1,          0,0,0,0,-range/2-addOfs-offset  ,0);
+    po->add(1,          0,0,0,0,addOfs                  ,0,0,0);
+    po->add(1,          0,0,0,0,-range/2-addOfs-offset  ,0,0,0);
     if(go.pXPS->verifyPVTobj(po).retval!=0) return;                                 //this will block and exec after MoveAbsolute is done
     go.pXPS->execPVTobj(po, &ret);                                                  //we dont block here, gotta start processing frames
 

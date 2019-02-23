@@ -13,34 +13,34 @@ void pWritingTest::run(){
     go.pXPS->setGPIO(XPS::iuScopeLED,true);
     go.pXPS->setGPIO(XPS::writingLaser,false);
 
-    po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZ, "pWritingTest.txt");
+    po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pWritingTest.txt");
 
 
-    po->add(SMT,                -0.6*TotDim,  0    ,   0.5*TotDim     , 0     ,0,0);
-    po->add(SMT,                 0.1*TotDim,  speed,   0              , 0     ,0,0);
+    po->add(SMT,                -0.6*TotDim,  0    ,   0.5*TotDim     , 0     ,0,0,0,0);
+    po->add(SMT,                 0.1*TotDim,  speed,   0              , 0     ,0,0,0,0);
     po->addAction(XPS::writingLaser,true);
-    po->add(1.0*TotDim/speed,    1.0*TotDim,  speed,   0              , 0     ,0,0);
+    po->add(1.0*TotDim/speed,    1.0*TotDim,  speed,   0              , 0     ,0,0,0,0);
     po->addAction(XPS::writingLaser,false);
-    po->add(SMT,                 0.1*TotDim,  0    ,   0              , 0     ,0,0);
-    po->add(SMT,                -0.1*TotDim,  0    ,   0.1*TotDim     , 0     ,0,0);
-    po->add(SMT,                 0         ,  0    ,  -0.1*TotDim     ,-speed ,0,0);
+    po->add(SMT,                 0.1*TotDim,  0    ,   0              , 0     ,0,0,0,0);
+    po->add(SMT,                -0.1*TotDim,  0    ,   0.1*TotDim     , 0     ,0,0,0,0);
+    po->add(SMT,                 0         ,  0    ,  -0.1*TotDim     ,-speed ,0,0,0,0);
     po->addAction(XPS::writingLaser,true);
-    po->add(1.0*TotDim/speed,    0         ,  0    ,  -1.0*TotDim     ,-speed ,0,0);
+    po->add(1.0*TotDim/speed,    0         ,  0    ,  -1.0*TotDim     ,-speed ,0,0,0,0);
     po->addAction(XPS::writingLaser,false);
-    po->add(SMT,                 0         ,  0    ,  -0.1*TotDim     , 0     ,0,0);
-    po->add(SMT,                 0.1*TotDim,  0    ,   0.1*TotDim     , 0     ,0,0);
-    po->add(SMT,                -0.1*TotDim, -speed,   0              , 0     ,0,0);
+    po->add(SMT,                 0         ,  0    ,  -0.1*TotDim     , 0     ,0,0,0,0);
+    po->add(SMT,                 0.1*TotDim,  0    ,   0.1*TotDim     , 0     ,0,0,0,0);
+    po->add(SMT,                -0.1*TotDim, -speed,   0              , 0     ,0,0,0,0);
     po->addAction(XPS::writingLaser,true);
-    po->add(1.0*TotDim/speed,   -1.0*TotDim, -speed,   0              , 0     ,0,0);
+    po->add(1.0*TotDim/speed,   -1.0*TotDim, -speed,   0              , 0     ,0,0,0,0);
     po->addAction(XPS::writingLaser,false);
-    po->add(SMT,                -0.1*TotDim,  0    ,   0              , 0     ,0,0);
-    po->add(SMT,                 0.1*TotDim,  0    ,  -0.1*TotDim     , 0     ,0,0);
-    po->add(SMT,                 0         ,  0    ,   0.1*TotDim     , speed ,0,0);
+    po->add(SMT,                -0.1*TotDim,  0    ,   0              , 0     ,0,0,0,0);
+    po->add(SMT,                 0.1*TotDim,  0    ,  -0.1*TotDim     , 0     ,0,0,0,0);
+    po->add(SMT,                 0         ,  0    ,   0.1*TotDim     , speed ,0,0,0,0);
     po->addAction(XPS::writingLaser,true);
-    po->add(1.0*TotDim/speed,    0         ,  0    ,   1.0*TotDim     , speed ,0,0);
+    po->add(1.0*TotDim/speed,    0         ,  0    ,   1.0*TotDim     , speed ,0,0,0,0);
     po->addAction(XPS::writingLaser,false);
-    po->add(SMT,                 0         ,  0    ,   0.1*TotDim     , 0     ,0,0);
-    po->add(SMT,                 0.5*TotDim,  0    ,  -0.6*TotDim     , 0     ,0,0);
+    po->add(SMT,                 0         ,  0    ,   0.1*TotDim     , 0     ,0,0,0,0);
+    po->add(SMT,                 0.5*TotDim,  0    ,  -0.6*TotDim     , 0     ,0,0,0,0);
 
     //WARNING: THE MAX EVENT NUMBER OF XPS IS ABOUT 32
     po->addAction(XPS::iuScopeLED,true);

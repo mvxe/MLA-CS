@@ -22,7 +22,7 @@ void pCalibrateXY::run(){
     mat->copyTo(matA);
     framequeue->setUserFps(0);
 
-    go.pXPS->MoveRelative(XPS::mgroup_XYZ, testDis,0,0);        //TODO implement return value like in exec command, so that we can wait till it completes
+    go.pXPS->MoveRelative(XPS::mgroup_XYZF, testDis,0,0,0);        //TODO implement return value like in exec command, so that we can wait till it completes
     std::this_thread::sleep_for (std::chrono::seconds(1));          //should be enough
 
     while(framequeue->getFullNumber()) framequeue->freeUserMat();
@@ -32,7 +32,7 @@ void pCalibrateXY::run(){
     mat->copyTo(matB);
     framequeue->setUserFps(0);
 
-    go.pXPS->MoveRelative(XPS::mgroup_XYZ, 0,testDis,0);
+    go.pXPS->MoveRelative(XPS::mgroup_XYZF, 0,testDis,0,0);
     std::this_thread::sleep_for (std::chrono::seconds(1));
 
     while(framequeue->getFullNumber()) framequeue->freeUserMat();
@@ -42,7 +42,7 @@ void pCalibrateXY::run(){
     mat->copyTo(matC);
     framequeue->setUserFps(0);
 
-    go.pXPS->MoveRelative(XPS::mgroup_XYZ, -testDis,-testDis,0);
+    go.pXPS->MoveRelative(XPS::mgroup_XYZF, -testDis,-testDis,0,0);
 
     //now we process images:
 

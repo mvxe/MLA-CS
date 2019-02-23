@@ -16,15 +16,15 @@ void pBurnArray::run(){
 
     //XPS checks events every one servo cycle == 100us
 
-    po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZ, "pBurnArray.txt");
+    po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pBurnArray.txt");
 
     for (int j=0;j!=gridY;j++){
         for (int i=0;i!=gridX;i++){
-            po->add(SMT, spacing, 0, 0, 0, 0, 0);
+            po->add(SMT, spacing, 0, 0, 0, 0, 0,0,0);
             if(!(vac && (j%2) && (i%2))) po->addAction(XPS::writingLaser,true);  //TODO fix bug: if addAction is the first command it may not do anything (sometimes)
-            po->add(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/gridX)), 0, 0, 0, 0, 0, 0);
+            po->add(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/gridX)), 0, 0, 0, 0, 0, 0,0,0);
             po->addAction(XPS::writingLaser,false);
-            po->add(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/gridX)), 0, 0, 0, 0, 0, 0);
+            po->add(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/gridX)), 0, 0, 0, 0, 0, 0,0,0);
 
             if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
             go.pXPS->execPVTobj(po, &ret);
@@ -32,7 +32,7 @@ void pBurnArray::run(){
             po->clear();
         }
 
-        po->add(SMT*gridX, -gridX*spacing, 0, spacing, 0, 0, 0);
+        po->add(SMT*gridX, -gridX*spacing, 0, spacing, 0, 0, 0,0,0);
         if(go.pXPS->verifyPVTobj(po).retval!=0) return;
         go.pXPS->execPVTobj(po, &ret);
         ret.block_till_done();

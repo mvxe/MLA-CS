@@ -11,22 +11,22 @@ bool PFindFocus::startup(){
     if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return true;
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
 
-    //go.pXPS->execCommand("PositionerCorrectorAutoTuning",go.pXPS->groupGetName(XPS::mgroup_XYZ), 1);
+    //go.pXPS->execCommand("PositionerCorrectorAutoTuning",go.pXPS->groupGetName(XPS::mgroup_XYZF), 1);
     go.pXPS->setGPIO(XPS::iuScopeLED,false);
 
-    XPS::raxis pos=go.pXPS->getPos(XPS::mgroup_XYZ);
+    XPS::raxis pos=go.pXPS->getPos(XPS::mgroup_XYZF);
     posx=pos.pos[0]; posy=pos.pos[1];
     if(minpos<pos.min[2]+addOfs) minpos=pos.min[2]+addOfs;
-    go.pXPS->MoveAbsolute(XPS::mgroup_XYZ,posx,posy,minpos-addOfs);
-    po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZ, "PFindFocus.txt");
+    go.pXPS->MoveAbsolute(XPS::mgroup_XYZF,posx,posy,minpos-addOfs);
+    po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "PFindFocus.txt");
 
     if(len>(pos.max[2]-minpos-2*addOfs))
        len=(pos.max[2]-minpos-2*addOfs);
-    po->add(1,          0,0,0,0,addOfs  ,speed);
+    po->add(1,          0,0,0,0,addOfs  ,speed,0,0);
     po->addAction(XPS::iuScopeLED,true);
-    po->add(len/speed  ,0,0,0,0,len     ,speed);
+    po->add(len/speed  ,0,0,0,0,len     ,speed,0,0);
     po->addAction(XPS::iuScopeLED,false);
-    po->add(1,          0,0,0,0,addOfs  ,0);
+    po->add(1,          0,0,0,0,addOfs  ,0,0,0);
     if(go.pXPS->verifyPVTobj(po).retval!=0)       //this will block and exec after MoveAbsolute is done
         return true;
     go.pXPS->execPVTobj(po, &ret);                //we dont block here, gotta start processing frames
@@ -59,7 +59,7 @@ void PFindFocus::cleanup(){
 
     double focus=minpos+len/(totalFr)*peakFr[1];
     std::cerr<<"total frames: "<<totalFr<<" peak frame: "<<peakFr[1]<<" focus:"<<focus<<"\n";
-    go.pXPS->MoveAbsolute(XPS::mgroup_XYZ,posx,posy,focus);
+    go.pXPS->MoveAbsolute(XPS::mgroup_XYZF,posx,posy,focus,0);
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
     if (recursived>0){
         base_othr* a=go.newThread<PFindFocus>(focus-addOfs/10, 2*addOfs/10, speed/10, threshold, recursived-1);

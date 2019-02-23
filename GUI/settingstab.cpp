@@ -7,7 +7,7 @@ void MainWindow::sync_settings(){
     ui->sl_util_expo->blockSignals(true);
     ui->e_xps_ip->setText(QString::fromStdString(go.pXPS->IP.get()));
     ui->e_xps_port->setValue(go.pXPS->port.get());
-    ui->e_xps_xyz->setText(QString::fromStdString(go.pXPS->groupGetName(XPS::mgroup_XYZ)));
+    ui->e_xps_xyz->setText(QString::fromStdString(go.pXPS->groupGetName(XPS::mgroup_XYZF)));
     ui->e_xps_timeout->setValue(go.pXPS->keepalive.get());
 
     ui->e_rpty_ip->setText(QString::fromStdString(go.pRPTY->IP.get()));
@@ -16,7 +16,8 @@ void MainWindow::sync_settings(){
 
 //    ui->sl_xsens->setValue(xps_x_sen);
 //    ui->sl_ysens->setValue(xps_y_sen);
-//    ui->sl_zsens->setValue(xps_z_sen);
+    ui->sl_zsens->setValue(xps_z_sen);
+    ui->sl_fsens->setValue(xps_f_sen);
     ui->sl_expo->setValue(go.pGCAM->iuScope->expo.get()*1000);
     ui->lab_expo->setText(QString::fromStdString(util::toString("Exposure: ",go.pGCAM->iuScope->expo.get()," us")));
 
@@ -34,7 +35,7 @@ void MainWindow::sync_settings(){
 void MainWindow::on_e_xps_ip_editingFinished()      {lineedit_fun(ui->e_xps_ip,&go.pXPS->IP);}
 void MainWindow::on_e_xps_port_editingFinished()    {spinbox_fun(ui->e_xps_port,&go.pXPS->port);}
 void MainWindow::on_e_xps_xyz_editingFinished()     {ui->e_xps_xyz->blockSignals(true); //this prevents two signals to emmit when pressing enter (a QT bug workaround)
-                                                     go.pXPS->groupSetName(XPS::mgroup_XYZ, ui->e_xps_xyz->text().toStdString());
+                                                     go.pXPS->groupSetName(XPS::mgroup_XYZF, ui->e_xps_xyz->text().toStdString());
                                                      ui->e_xps_xyz->clearFocus();
                                                      ui->e_xps_xyz->blockSignals(false);}
 void MainWindow::on_e_xps_timeout_editingFinished() {spinbox_fun(ui->e_xps_timeout,&go.pXPS->keepalive);}
@@ -46,6 +47,7 @@ void MainWindow::on_e_rpty_timeout_editingFinished(){spinbox_fun(ui->e_rpty_time
 void MainWindow::on_sl_xsens_valueChanged(int value){xps_x_sen=value;}
 void MainWindow::on_sl_ysens_valueChanged(int value){xps_y_sen=value;}
 void MainWindow::on_sl_zsens_valueChanged(int value){xps_z_sen=value;}
+void MainWindow::on_sl_fsens_valueChanged(int value){xps_f_sen=value;}
 void MainWindow::on_sl_expo_valueChanged(int value) {
     if(go.pGCAM->iuScope->connected){
         go.pGCAM->iuScope->set("ExposureTime",value/1000.);
@@ -125,8 +127,8 @@ void MainWindow::GUI_update(){
     if(donth==10){
         donth=0;
         if(go.pXPS->connected){ if(go.pXPS->isQueueEmpty()){
-            XPS::raxis ret = go.pXPS->getPos(XPS::mgroup_XYZ);
-            ui->lbl_position->setText(QString::fromStdString(util::toString("Position: X=", ret.pos[0], "mm , Y=", ret.pos[1], "mm , Z=", ret.pos[2], "mm")));
+            XPS::raxis ret = go.pXPS->getPos(XPS::mgroup_XYZF);
+            ui->lbl_position->setText(QString::fromStdString(util::toString("Position: X=", ret.pos[0], "mm , Y=", ret.pos[1], "mm , Z=", ret.pos[2], "mm , F=", ret.pos[3], "mm")));
         }}
         else ui->lbl_position->setText(QString::fromStdString(util::toString("Position: NC")));
     }

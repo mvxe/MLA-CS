@@ -70,7 +70,8 @@ void XPS::initGroups(){
     for (int i=0;i!=_GROUP_NUM;i++) initGroup(groups[i].ID);
 }
 void XPS::homeGroup(GroupID ID){
-    execCommand("GroupHomeSearchAndRelativeMove",groupGetName(ID), axisCoords[ID].pos[0], axisCoords[ID].pos[1], axisCoords[ID].pos[2]);
+    execCommand("GroupHomeSearch",groupGetName(ID));
+    __MoveAbsolute(ID);
 }
 void XPS::homeGroups(){
     for (int i=0;i!=_GROUP_NUM;i++) homeGroup(groups[i].ID);
@@ -257,7 +258,12 @@ void XPS::_MoveAbsolute(int n, GroupID ID, double val){
 void XPS::__MoveAbsolute(GroupID ID){ //the mutex should be locked by caller
     if(limit) XPS::_restrict_pos(axisCoords[ID]);
     else limit=true;
-    execCommand("GroupMoveAbsolute",groupGetName(ID),axisCoords[ID].pos[0],axisCoords[ID].pos[1],axisCoords[ID].pos[2]);           //TODO perhaps implement move return value
+    std::string coords;
+    for(int i=0;i!=axisCoords[ID].num;i++){
+        coords+=std::to_string(axisCoords[ID].pos[i]);
+        if(i+1!=axisCoords[ID].num) coords+=",";
+    }
+    execCommand("GroupMoveAbsolute",groupGetName(ID),coords);           //TODO perhaps implement move return value
 }
 void XPS::setLimit(GroupID ID, int axis, elimit lim){   //the mutex should be locked by caller
     std::lock_guard<std::mutex>lock(axisCoords[ID].mx);

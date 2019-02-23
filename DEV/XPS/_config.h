@@ -44,11 +44,11 @@ public:
      */
 
 public:
-    enum GroupID: int { mgroup_XYZ, mgroup_GR1, mgroup_GR2 };   // <-- <-- <-- put the ID of each new group here, this is used to reference it throughout the code, first enum is always 0, DO NOT REARANGE THEM TO KEEP CONFIG FILES BACKWARD COMPATIBLE!
+    enum GroupID: int { mgroup_XYZF, mgroup_GR1, mgroup_GR2 };   // <-- <-- <-- put the ID of each new group here, this is used to reference it throughout the code, first enum is always 0, DO NOT REARANGE THEM TO KEEP CONFIG FILES BACKWARD COMPATIBLE!
 protected:
     const static int _GROUP_NUM=1;
     group groups[_GROUP_NUM]={   // <-- <-- <--  put the new groups here
-      {mgroup_XYZ, 3, "mgroup_XYZ", "Group containing 3 stages: the X(sample), Y(sample) and Z(objective)."}    //max 8 axis per group (as limited by XPS)
+      {mgroup_XYZF, 4, "mgroup_XYZF", "Group containing 4 stages: the X(sample), Y(sample) and Z(objective), F(focus)."}    //max 8 axis per group (as limited by XPS)
 //   ,{mgroup_GR1, 2, "GR1", "some group with 2 stages"}
 //   ,{mgroup_GR2, 1, "GR2", "some group with 1 stage"}
     };

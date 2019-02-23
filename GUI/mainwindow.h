@@ -108,6 +108,8 @@ private Q_SLOTS:
 
     void on_doubleSpinBox_5_valueChanged(double arg1);
 
+    void on_sl_fsens_valueChanged(int value);
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;
@@ -136,7 +138,6 @@ private:
     tab_temp_plot* tabPlot;
     int donth=0;
 
-
     /* beam profiler variables, TODO move this elsewhere*/
     std::vector<cv::Mat>* mats{nullptr};
     int expsize{0};
@@ -163,6 +164,13 @@ private:
 class mtlabel : public QLabel{
     using QLabel::QLabel;
     void mousePressEvent(QMouseEvent *event);
+    void wheelEvent(QWheelEvent *event);
+public:
+    MainWindow* pmw;
+};
+
+class fclabel : public QLabel{
+    using QLabel::QLabel;
     void wheelEvent(QWheelEvent *event);
 public:
     MainWindow* pmw;

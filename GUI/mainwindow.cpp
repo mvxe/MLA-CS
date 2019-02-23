@@ -36,6 +36,7 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     utilCam_img=go.pGCAM->utilCam->FQsPCcam.getNewFQ();    //make new image queue
     ui->camera_stream->pmw=this;
     ui->utilcam_stream->pmw=this;
+    ui->focusbtn->pmw=this;
 
     tabDev=new tab_devices(ui->tab_dev);
     tabPlot=new tab_temp_plot(ui->tab_dis);
@@ -116,12 +117,17 @@ void mtlabel::mousePressEvent(QMouseEvent *event){
     double disp_x=-(event->pos().x()-size().width()/2.)/size().width()*1280;
     double disp_y=-(event->pos().y()-size().height()/2.)/size().height()*1024;
     if(go.pXPS->connected)
-        go.pXPS->MoveRelative(XPS::mgroup_XYZ,disp_x*pmw->xps_x_sen/100000,disp_y*pmw->xps_y_sen/100000,0);
+        go.pXPS->MoveRelative(XPS::mgroup_XYZF,disp_x*pmw->xps_x_sen/100000,disp_y*pmw->xps_y_sen/100000,0,0);
 }
 
 void mtlabel::wheelEvent(QWheelEvent *event){
     if(go.pXPS->connected)
-        go.pXPS->MoveRelative(XPS::mgroup_XYZ,0,0,(double)event->delta()*pmw->xps_z_sen/1000000);
+        go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,(double)event->delta()*pmw->xps_z_sen/1000000,0);
+}
+
+void fclabel::wheelEvent(QWheelEvent *event){
+    if(go.pXPS->connected)
+        go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,0,(double)event->delta()*pmw->xps_f_sen/1000000);
 }
 
 void MainWindow::on_btm_kill_released(){
@@ -501,7 +507,3 @@ void MainWindow::on_pushButton_7_released(){    //fit beam: for gaussian beam D4
     a.POUT.flush();
 
 }
-
-
-
-
