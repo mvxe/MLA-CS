@@ -507,3 +507,7 @@ void MainWindow::on_pushButton_7_released(){    //fit beam: for gaussian beam D4
     a.POUT.flush();
 
 }
+
+void MainWindow::on_pushButton_9_toggled(bool checked){     //laser toggle
+    go.pXPS->setGPIO(XPS::writingLaser,checked);
+}

@@ -110,6 +110,8 @@ private Q_SLOTS:
 
     void on_sl_fsens_valueChanged(int value);
 
+    void on_pushButton_9_toggled(bool checked);
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;
