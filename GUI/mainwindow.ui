@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>887</width>
-    <height>727</height>
+    <width>1187</width>
+    <height>829</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -508,7 +508,7 @@
          </widget>
         </item>
         <item row="0" column="2">
-         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0">
+         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0">
           <property name="spacing">
            <number>5</number>
           </property>
@@ -799,7 +799,8 @@
              <item row="4" column="0">
               <widget class="QLabel" name="label_17">
                <property name="text">
-                <string>dot(1) exp(ms):</string>
+                <string>dot(1) exp(ms):
+or if(vac) HighBar</string>
                </property>
               </widget>
              </item>
@@ -820,7 +821,8 @@
              <item row="5" column="0">
               <widget class="QLabel" name="label_18">
                <property name="text">
-                <string>dot(M*N) exp.:</string>
+                <string>dot(M*N) exp.:
+or if(vac) LowBar</string>
                </property>
               </widget>
              </item>
@@ -875,6 +877,15 @@
               </widget>
              </item>
             </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pushButton_10">
+            <property name="text">
+             <string>Load file and burn (the x and y 
+ coords are assumed to be in um,
+and intensity in ms)</string>
+            </property>
            </widget>
           </item>
           <item>

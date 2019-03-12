@@ -194,7 +194,11 @@ void MainWindow::on_btn_PBurnArray_released(){
     go.newThread<pBurnArray>(ui->sb_PBurnArray_spacing->value(), ui->sb_PBurnArray_dotfst->value(), ui->sb_PBurnArray_dotlst->value(), ui->sb_PBurnArray_xgrid->value(), ui->sb_PBurnArray_ygrid->value(), ui->checkBox->isChecked());
 }
 
-
+void MainWindow::on_pushButton_10_released(){   //burn array from file
+    QString fileName = QFileDialog::getOpenFileName(this,tr("Texy"), "",tr("Text (*.txt)"));
+    if(fileName.isEmpty()) return;
+    go.newThread<pBurnArray>(fileName.toStdString());
+}
 
 void MainWindow::on_pushButton_2_released(){
     go.pCNC->execCommand("G28 X\n");

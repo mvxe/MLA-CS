@@ -132,7 +132,7 @@ void tab_temp_plot::plot(){
         a.POUT<<"splot \"-\" using 1:2:3 w pm3d pt 6 notitle\n";
         for(int i=(X1<X2)?X1:X2;i<=((X1<X2)?X2:X1);i++){
             for(int j=(Y1<Y2)?Y1:Y2;j<=((Y1<Y2)?Y2:Y1);j++)
-                a.POUT<<i*pmw->xps_x_sen/100<<" "<<j*pmw->xps_x_sen/100<<" "<<(inv?-1:1)*imgMat->at<float>(j,i)*_lambda/2/(eqXYZ?1000:1)<<"\n";
+                a.POUT<<i*pmw->xps_x_sen/100<<" "<<j*pmw->xps_x_sen/100<<" "<<(inv?-1:1)*imgMat->at<float>(j,i)/2/M_PI*_lambda/2/(eqXYZ?1000:1)<<"\n";
             a.POUT<<"\n";
         }
 
@@ -160,7 +160,7 @@ void tab_temp_plot::plot(){
         if(inv) for(int i=0;i<=len;i++) lineData[i]*=-1;
         double minval=1e10;
         for(int i=0;i<=len;i++){
-            lineData[i]*=_lambda/2;
+            lineData[i]*=_lambda/2/2/M_PI;
             if(lineData[i]<minval) minval=lineData[i];
         }
         for(int i=0;i<=len;i++) lineData[i]-=minval;

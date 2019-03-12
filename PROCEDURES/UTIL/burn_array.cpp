@@ -1,11 +1,12 @@
 #include "burn_array.h"
 #include "includes.h"
 
-pBurnArray::pBurnArray(double espacing, double eexp_fst, double eexp_lst, int gridX, int gridY, bool vac): spacing(espacing), exp_fst(eexp_fst), exp_lst(eexp_lst), gridX(gridX), gridY(gridY), vac(vac){
+pBurnArray::pBurnArray(double espacing, double eexp_fst, double eexp_lst, int gridX, int gridY, bool vac): spacing(espacing), exp_fst(eexp_fst), exp_lst(eexp_lst), gridX(gridX), gridY(gridY), vac(vac),filename(""){
     spacing/=1000;
     exp_fst/=1000;
     exp_lst/=1000;
 }
+pBurnArray::pBurnArray(std::string filename):spacing(0), exp_fst(0), exp_lst(0), gridX(0), gridY(0), vac(0),filename(filename){}
 pBurnArray::~pBurnArray(){
 }
 void pBurnArray::run(){
@@ -18,25 +19,64 @@ void pBurnArray::run(){
 
     po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pBurnArray.txt");
 
-    for (int j=0;j!=gridY;j++){
-        for (int i=0;i!=gridX;i++){
-            po->add(SMT, spacing, 0, 0, 0, 0, 0,0,0);
-            if(!(vac && (j%2) && (i%2))) po->addAction(XPS::writingLaser,true);  //TODO fix bug: if addAction is the first command it may not do anything (sometimes)
-            po->add(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/gridX)), 0, 0, 0, 0, 0, 0,0,0);
-            po->addAction(XPS::writingLaser,false);
-            po->add(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/gridX)), 0, 0, 0, 0, 0, 0,0,0);
-
-            if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
+    if(filename.empty())
+        for (int j=0;j!=gridY;j++){
+            for (int i=0;i!=gridX;i++){
+                if(end) break;
+                po->add(SMT, spacing, 0, 0, 0, 0, 0,0,0);
+                if(!(vac && (j%2) && (i%2))) po->addAction(XPS::writingLaser,true);  //TODO fix bug: if addAction is the first command it may not do anything (sometimes)
+                if(!vac) po->add(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/gridX)), 0, 0, 0, 0, 0, 0,0,0);
+                else if((!(j%2)) && (!(i%2))) po->add(exp_fst, 0, 0, 0, 0, 0, 0,0,0);
+                else  po->add(exp_lst, 0, 0, 0, 0, 0, 0,0,0);
+                po->addAction(XPS::writingLaser,false);
+                if(!vac) po->add(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/gridX)), 0, 0, 0, 0, 0, 0,0,0);
+                else if((!(j%2)) && (!(i%2))) po->add(exp_fst, 0, 0, 0, 0, 0, 0,0,0);
+                else  po->add(exp_lst, 0, 0, 0, 0, 0, 0,0,0);
+                if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
+                go.pXPS->execPVTobj(po, &ret);
+                ret.block_till_done();
+                po->clear();
+            }
+            if(end) break;
+            po->add(SMT*gridX, -gridX*spacing, 0, spacing, 0, 0, 0,0,0);
+            if(go.pXPS->verifyPVTobj(po).retval!=0) return;
             go.pXPS->execPVTobj(po, &ret);
             ret.block_till_done();
             po->clear();
         }
+    else{
+        std::string line;
+        std::ifstream datafile(filename);
+        double X,Y,T;
+        double oX=0, oY=0;
+        double dis;
 
-        po->add(SMT*gridX, -gridX*spacing, 0, spacing, 0, 0, 0,0,0);
-        if(go.pXPS->verifyPVTobj(po).retval!=0) return;
-        go.pXPS->execPVTobj(po, &ret);
-        ret.block_till_done();
-        po->clear();
+        std::string::size_type sza,szb;
+        if (datafile.is_open()){
+            while(getline(datafile,line)){
+                if(end) break;
+                if(line.size()<2 || line.find("#")!=std::string::npos);
+                else{
+                    X=std::stod(line,&sza)/1000;
+                    Y=std::stod(line.substr(sza),&szb)/1000;
+                    T=std::stod(line.substr(sza+szb))/1000;
+                    dis=sqrt(pow(X-oX,2)+pow(Y-oY,2));
+                    po->add(dis*SMT*100, X-oX, 0, Y-oY, 0, 0, 0,0,0);
+                    if(T>=0.0001){
+                        po->addAction(XPS::writingLaser,true);
+                        po->add(T, 0, 0, 0, 0, 0, 0,0,0);
+                        po->addAction(XPS::writingLaser,false);
+                    }
+                    if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
+                    go.pXPS->execPVTobj(po, &ret);
+                    std::cout<<X<<" "<<Y<<" "<<T<<"\n";
+                    ret.block_till_done();
+                    po->clear();
+                    oX=X; oY=Y;
+                }
+            }
+            datafile.close();
+        }
     }
 
     go.pXPS->setGPIO(XPS::iuScopeLED,true);
