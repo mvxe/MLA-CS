@@ -508,7 +508,7 @@
          </widget>
         </item>
         <item row="0" column="2">
-         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0">
+         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0">
           <property name="spacing">
            <number>5</number>
           </property>
@@ -885,6 +885,13 @@ or if(vac) LowBar</string>
              <string>Load file and burn (the x and y 
  coords are assumed to be in um,
 and intensity in ms)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="cb_wlines">
+            <property name="text">
+             <string>Write lines instead of points</string>
             </property>
            </widget>
           </item>

@@ -151,7 +151,6 @@ exec_dat XPS::verifyPVTobj(pPVTobj obj){
     exec_ret ret;
     std::lock_guard<std::mutex>lock(axisCoords[obj->ID].mx);
     XPS::raxis taxis{axisCoords};
-    const int oline=(1+2*axisCoords[obj->ID].num);
     if(obj->cmdWasLast){
         obj->pvtqueue.push(0.1);
         for (int i=0;i!=2*go.pXPS->groups[obj->ID].AxisNum;i++) obj->pvtqueue.push(0);
