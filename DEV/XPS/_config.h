@@ -15,6 +15,7 @@ public:
         axis():num(_num){}
         double pos[8], min[8], max[8];          //the extra axes are simply not used, the small extra memory usage is not worth fixing by more complicated solutions
         const int& num;                         //so that we dont have to look into groups
+        double homePos[8];                      //home pos, used internally
     private:
         std::mutex mx;
         int _num;

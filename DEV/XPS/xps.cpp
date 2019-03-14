@@ -51,6 +51,8 @@ void XPS::run(){    //this is the XPS thread loop
             if (connected){
                 go.pXPS->setGPIO(XPS::iuScopeLED,false);     //TODO put into same function and call here and above
                 go.pXPS->setGPIO(XPS::writingLaser,false);
+                homeGroups(true);
+                flushQueue();
                 killGroups();
                 flushQueue();
                 disconnect();
@@ -69,12 +71,18 @@ void XPS::initGroup(GroupID ID){                 //add a queue containing groups
 void XPS::initGroups(){
     for (int i=0;i!=_GROUP_NUM;i++) initGroup(groups[i].ID);
 }
-void XPS::homeGroup(GroupID ID){
-    execCommand("GroupHomeSearch",groupGetName(ID));
-    __MoveAbsolute(ID);
+void XPS::homeGroup(GroupID ID, bool inited){
+    if(inited) __MoveAbsolute(ID, true);
+    else{
+        execCommand("GroupHomeSearch",groupGetName(ID));
+        syncPos(ID, true);
+        std::this_thread::sleep_for (std::chrono::milliseconds(100));
+        flushQueue();
+        __MoveAbsolute(ID);
+    }
 }
-void XPS::homeGroups(){
-    for (int i=0;i!=_GROUP_NUM;i++) homeGroup(groups[i].ID);
+void XPS::homeGroups(bool inited){
+    for (int i=0;i!=_GROUP_NUM;i++) homeGroup(groups[i].ID, inited);
 }
 void XPS::killGroup(GroupID ID){
     execCommand("GroupKill",groupGetName(ID));
@@ -254,12 +262,13 @@ void XPS::_MoveAbsolute(int n, GroupID ID, double val){
     __MoveAbsolute(ID);
 }
 
-void XPS::__MoveAbsolute(GroupID ID){ //the mutex should be locked by caller
+void XPS::__MoveAbsolute(GroupID ID, bool homeGet){ //the mutex should be locked by caller
     if(limit) XPS::_restrict_pos(axisCoords[ID]);
     else limit=true;
     std::string coords;
     for(int i=0;i!=axisCoords[ID].num;i++){
-        coords+=std::to_string(axisCoords[ID].pos[i]);
+        if(homeGet) coords+=std::to_string(axisCoords[ID].homePos[i]);
+        else coords+=std::to_string(axisCoords[ID].pos[i]);
         if(i+1!=axisCoords[ID].num) coords+=",";
     }
     execCommand("GroupMoveAbsolute",groupGetName(ID),coords);           //TODO perhaps implement move return value
@@ -278,11 +287,11 @@ void XPS::_restrict_pos(axis& pos){ //the mutex should be locked by caller
         else if(pos.pos[i]>pos.max[i]) pos.pos[i]=pos.max[i];
     }
 }
-void XPS::syncPos(GroupID ID){
-    std::thread handle (&XPS::_syncPosHandle,this,ID);
+void XPS::syncPos(GroupID ID, bool homeSet){
+    std::thread handle (&XPS::_syncPosHandle,this,ID,homeSet);
     handle.detach();
 }
-void XPS::_syncPosHandle(GroupID ID){
+void XPS::_syncPosHandle(GroupID ID, bool homeSet){
     std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
     exec_ret ret;
     std::stringstream buf;
@@ -295,7 +304,8 @@ void XPS::_syncPosHandle(GroupID ID){
 
         for (int i=0;i!=axisCoords[ID].num;i++){
             cs.ignore();
-            cs>>axisCoords[ID].pos[i];
+            if(homeSet) cs>>axisCoords[ID].homePos[i];
+            else cs>>axisCoords[ID].pos[i];
         }
     }
 }

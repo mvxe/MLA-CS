@@ -68,8 +68,8 @@ public:
 
     void initGroup(GroupID ID);
     void initGroups();
-    void homeGroup(GroupID ID);
-    void homeGroups();
+    void homeGroup(GroupID ID, bool inited=false);
+    void homeGroups(bool inited=false);
     void killGroup(GroupID ID);
     void killGroups();
 
@@ -88,7 +88,7 @@ public:
     void MoveRelative(GroupID ID, double val);
     template<typename... Args>  void MoveAbsolute(GroupID ID, double val, Args... vals);
     void MoveAbsolute(GroupID ID, double val);
-    void syncPos(GroupID ID);                                           //pulls the current position from the xps and updates axisCoords
+    void syncPos(GroupID ID, bool homeSet=false);                       //pulls the current position from the xps and updates axisCoords, homeSet just puts it into homePos instead of pos
 
 
     raxis getPos(GroupID ID);
@@ -110,9 +110,9 @@ private:
     void _MoveAbsolute(int n, GroupID ID, double val);
     std::string _copyPVToverFTP(pPVTobj obj);
     void flushQueue();
-    void __MoveAbsolute(GroupID ID);
+    void __MoveAbsolute(GroupID ID, bool homeGet=false);    //homeGet makes it use homePos instead of pos
     void _restrict_pos(axis& pos);                          //checks if pox? is within min? and max?, if not, sets it to min?/max?
-    void _syncPosHandle(GroupID ID);
+    void _syncPosHandle(GroupID ID, bool homeSet);
 
     void run();
 
