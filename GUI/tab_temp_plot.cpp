@@ -31,7 +31,7 @@ tab_temp_plot::tab_temp_plot(QWidget* parent){
         lambda=new QDoubleSpinBox;
         lambda->setMaximum(2000);
         lambda->setMinimum(100);
-        lambda->setValue(470.);
+        lambda->setValue(565.);
         btnLayout->addWidget(lambda);
 
         QLabel* font=new QLabel;
