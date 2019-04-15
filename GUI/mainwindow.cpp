@@ -122,7 +122,7 @@ void mtlabel::mousePressEvent(QMouseEvent *event){
 
 void mtlabel::wheelEvent(QWheelEvent *event){
     if(go.pXPS->connected)
-        go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,(double)event->delta()*pmw->xps_z_sen/1000000,0);
+        go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,(double)event->delta()*pmw->xps_z_sen/1000000,-(double)event->delta()*pmw->xps_z_sen/1000000);
 }
 
 void fclabel::wheelEvent(QWheelEvent *event){
