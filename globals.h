@@ -10,6 +10,7 @@
 #include <thread>
 #include <string>
 #include <atomic>
+#include <vector>
 #include <list>
 #include <iostream>
 #include <UTIL/containers.h>
