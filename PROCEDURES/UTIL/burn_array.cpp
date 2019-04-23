@@ -6,7 +6,7 @@ pBurnArray::pBurnArray(double espacing, double eexp_fst, double eexp_lst, int gr
     exp_fst/=1000;
     exp_lst/=1000;
 }
-pBurnArray::pBurnArray(std::string filename, bool useLines):spacing(0), exp_fst(0), exp_lst(0), gridX(0), gridY(0), vac(0),filename(filename),useLines(useLines){}
+pBurnArray::pBurnArray(std::string filename, bool useLines, double expo_mult):spacing(0), exp_fst(0), exp_lst(0), gridX(0), gridY(0), vac(0),filename(filename),useLines(useLines),expo_mult(expo_mult){}
 pBurnArray::~pBurnArray(){
 }
 void pBurnArray::run(){
@@ -61,7 +61,7 @@ void pBurnArray::run(){
                     else{
                         X=std::stod(line,&sza)/1000;
                         Y=std::stod(line.substr(sza),&szb)/1000;
-                        T=std::stod(line.substr(sza+szb))/1000;
+                        T=expo_mult*std::stod(line.substr(sza+szb))/1000;
                         dis=sqrt(pow(X-oX,2)+pow(Y-oY,2));
                         po->add(dis*SMT*100, X-oX, 0, Y-oY, 0, 0, 0,0,0);
                         if(T>=0.0001){
@@ -87,7 +87,7 @@ void pBurnArray::run(){
                     else{
                         X=std::stod(line,&sza)/1000;
                         Y=std::stod(line.substr(sza),&szb)/1000;
-                        T=std::stod(line.substr(sza+szb))/1000;
+                        T=expo_mult*std::stod(line.substr(sza+szb))/1000;
                         dis=sqrt(pow(X-oX,2)+pow(Y-oY,2));
                         if((dis>fDis/10)){
                             if(execL==true){

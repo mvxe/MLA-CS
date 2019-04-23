@@ -203,7 +203,7 @@ void MainWindow::on_btn_PBurnArray_released(){
 void MainWindow::on_pushButton_10_released(){   //burn array from file
     QString fileName = QFileDialog::getOpenFileName(this,tr("Texy"), "",tr("Text (*.txt)"));
     if(fileName.isEmpty()) return;
-    go.newThread<pBurnArray>(fileName.toStdString(), ui->cb_wlines->isChecked());
+    go.newThread<pBurnArray>(fileName.toStdString(), ui->cb_wlines->isChecked(), ui->mult->value());
 }
 
 void MainWindow::on_pushButton_2_released(){
