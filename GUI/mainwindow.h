@@ -114,6 +114,8 @@ private Q_SLOTS:
 
     void on_pushButton_10_released();
 
+    void on_move_btn_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;

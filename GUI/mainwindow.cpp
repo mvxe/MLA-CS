@@ -129,6 +129,12 @@ void fclabel::wheelEvent(QWheelEvent *event){
     if(go.pXPS->connected)
         go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,0,(double)event->delta()*pmw->xps_f_sen/1000000);
 }
+void MainWindow::on_move_btn_released(){
+    double disp_x=-ui->move_distance->value()/1000.*cos(ui->move_angle->value()*M_PI/180);
+    double disp_y=ui->move_distance->value()/1000.*sin(ui->move_angle->value()*M_PI/180);
+    if(go.pXPS->connected)
+        go.pXPS->MoveRelative(XPS::mgroup_XYZF,disp_x,disp_y,0,0);
+}
 
 void MainWindow::on_btm_kill_released(){
     //disable.set(true,5);
