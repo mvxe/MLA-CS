@@ -60,6 +60,14 @@ tab_temp_plot::tab_temp_plot(QWidget* parent){
         replot->setIcon(QPixmap(":/gtk-refresh.svg"));
         connect(replot, SIGNAL(released()), this, SLOT(on_replot_clicked()));
         btnLayout->addWidget(replot);
+        replot->setEnabled(false);
+
+        save=new QPushButton;
+        save->setText("Save raw");
+        save->setIcon(QPixmap(":/down.svg"));
+        connect(save, SIGNAL(released()), this, SLOT(on_save_clicked()));
+        btnLayout->addWidget(save);
+        save->setEnabled(false);
 
     btnLayout->addStretch(0);
     layout->addWidget(btnWidget);
@@ -86,11 +94,20 @@ void tab_temp_plot::on_load_file_clicked(){
         imgLabel->setPixmap(QPixmap::fromImage(QImage(imgMat8bit->data, imgMat8bit->cols, imgMat8bit->rows, imgMat8bit->step, QImage::Format_Indexed8)));
         sizeLabel->setText(util::toString("Horizontal: ",imgMat->cols*pmw->xps_x_sen/100," um\nVertical: ",imgMat->rows*pmw->xps_y_sen/100," um").c_str());
         imgMat->convertTo(*imgMat, CV_32F, 2*M_PI/(1<<16), -M_PI);
+
+        replot->setEnabled(false);
+        save->setEnabled(false);
     }
 }
 
 void tab_temp_plot::on_replot_clicked(){
     if(hasSmth) plot();
+}
+
+void tab_temp_plot::on_save_clicked(){
+    QString fileName = QFileDialog::getSaveFileName(this,tr("Text"), "",tr("Text (*.txt *.dat *.csv)"));
+    if(fileName.isEmpty()) return;
+    fsave(fileName.toStdString());
 }
 
 void tab_temp_plot::redraw(){
@@ -100,7 +117,7 @@ void tab_temp_plot::redraw(){
     imgLabel->setPixmap(QPixmap::fromImage(QImage(imgMatWLines->data, imgMatWLines->cols, imgMatWLines->rows, imgMatWLines->step, QImage::Format_RGB888)));
 }
 void tab_temp_plot::plot(){
-    bool inv=inverted->isChecked();
+    bool inv=!inverted->isChecked();
     double _lambda=lambda->value();
     bool eqXYZ=equalXYZ->isChecked();
     if(isRight){   //rectangle
@@ -184,6 +201,46 @@ void tab_temp_plot::plot(){
     }
 }
 
+void tab_temp_plot::fsave(std::string filename){
+    std::ofstream ofile;
+    ofile.open (filename);
+    bool inv=!inverted->isChecked();
+    double _lambda=lambda->value();
+    if(isRight){   //rectangle
+        for(int i=(X1<X2)?X1:X2;i<=((X1<X2)?X2:X1);i++){
+            for(int j=(Y1<Y2)?Y1:Y2;j<=((Y1<Y2)?Y2:Y1);j++)
+                ofile<<i*pmw->xps_x_sen/100<<" "<<j*pmw->xps_x_sen/100<<" "<<(inv?-1:1)*imgMat->at<float>(j,i)/2/M_PI*_lambda/2<<"\n";
+            ofile<<"\n";
+        }
+    }else{  //TODO: the first part is literarily copy paste from above
+        double len;
+        len=sqrt(pow(X2-X1,2)+pow(Y2-Y1,2));
+        if((int)len<=0) return;
+        double *lineData=new double[(int)len+1]();
+        for(int i=0;i<=len;i++){
+            double _X=X2+(X1-X2)*(len-i+0.01)/len;  //the 0.01 fixes a weird floor/ceil bug
+            double _Y=Y2+(Y1-Y2)*(len-i+0.01)/len;
+            lineData[i]=(1-(_X-floor(_X)))*(1-(_Y-floor(_Y)))*imgMat->at<float>(floor(_Y),floor(_X))+
+                        (1-(ceil(_X) -_X))*(1-(ceil(_Y) -_Y))*imgMat->at<float>( ceil(_Y), ceil(_X))+
+                        (1-(_X-floor(_X)))*(1-(ceil(_Y) -_Y))*imgMat->at<float>( ceil(_Y),floor(_X))+
+                        (1-(ceil(_X) -_X))*(1-(_Y-floor(_Y)))*imgMat->at<float>(floor(_Y), ceil(_X));
+        }
+        if(inv) for(int i=0;i<=len;i++) lineData[i]*=-1;
+        double minval=1e10;
+        for(int i=0;i<=len;i++){
+            lineData[i]*=_lambda/2/2/M_PI;
+            if(lineData[i]<minval) minval=lineData[i];
+        }
+        for(int i=0;i<=len;i++) lineData[i]-=minval;
+        double scale=( pow(X2-X1,2)/pow(len,2)*pmw->xps_x_sen+ pow(Y2-Y1,2)/pow(len,2)*pmw->xps_y_sen)/100;        //in um
+
+        for(int i=0;i<=len;i++)
+            ofile<<i*scale<<" "<<lineData[i]<<"\n";
+    }
+
+    ofile.close();
+}
+
 
 void plotSelLabel::mouseMoveEvent(QMouseEvent *event){
     if(ttp->active){
@@ -208,4 +265,6 @@ void plotSelLabel::mouseReleaseEvent(QMouseEvent *event){
     ttp->hasSmth=true;
     ttp->plot();
     ttp->active=false;
+    ttp->replot->setEnabled(true);
+    ttp->save->setEnabled(true);
 }

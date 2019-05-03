@@ -12,5 +12,6 @@
         <file>redo.svg</file>
         <file>gtk-media-pause.svg</file>
         <file>player_stop.svg</file>
+        <file>down.svg</file>
     </qresource>
 </RCC>

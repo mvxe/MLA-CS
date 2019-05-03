@@ -21,6 +21,7 @@ public:
     QCheckBox* equalXYZ;
     QDoubleSpinBox* scale3D;
     QPushButton* replot;
+    QPushButton* save;
 
     cv::Mat* imgMat;
     cv::Mat* imgMat8bit;
@@ -29,9 +30,11 @@ public:
 private Q_SLOTS:
     void on_load_file_clicked();
     void on_replot_clicked();
+    void on_save_clicked();
 public:
     void redraw();
     void plot();
+    void fsave(std::string filename);
     MainWindow* pmw;
 
     bool hasSmth=false;
