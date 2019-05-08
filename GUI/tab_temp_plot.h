@@ -22,6 +22,7 @@ public:
     QDoubleSpinBox* scale3D;
     QPushButton* replot;
     QPushButton* save;
+    QPushButton* scor;
 
     cv::Mat* imgMat;
     cv::Mat* imgMat8bit;
@@ -31,16 +32,22 @@ private Q_SLOTS:
     void on_load_file_clicked();
     void on_replot_clicked();
     void on_save_clicked();
+    void on_scor_clicked();
 public:
     void redraw();
     void plot();
     void fsave(std::string filename);
+    void streamData(std::ostream *stream, bool is_line);
+    double corr(int i, int j);
     MainWindow* pmw;
 
     bool hasSmth=false;
     bool active=false;
     bool isRight=false;
     int X1,Y1,X2,Y2;
+
+    void calcPlaneCor();
+    double planecor[3]{0,0,0};
 };
 
 

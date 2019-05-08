@@ -69,6 +69,13 @@ tab_temp_plot::tab_temp_plot(QWidget* parent){
         btnLayout->addWidget(save);
         save->setEnabled(false);
 
+        scor=new QPushButton;
+        scor->setText("Correct Slope");
+        scor->setIcon(QPixmap(":/emblem-nowrite.svg"));
+        connect(scor, SIGNAL(released()), this, SLOT(on_scor_clicked()));
+        btnLayout->addWidget(scor);
+        scor->setEnabled(false);
+
     btnLayout->addStretch(0);
     layout->addWidget(btnWidget);
 
@@ -97,7 +104,55 @@ void tab_temp_plot::on_load_file_clicked(){
 
         replot->setEnabled(false);
         save->setEnabled(false);
+
+        scor->setIcon(QPixmap(":/emblem-nowrite.svg"));
+        scor->setEnabled(true);
+        planecor[0]=0;
+        planecor[1]=0;
+        planecor[2]=0;
     }
+}
+
+void tab_temp_plot::calcPlaneCor(){
+    gnuplot a;
+    a.POUT<<"f(x,y)=a*x+b*y+c\n";
+    a.POUT<<"a=0.01\n";
+    a.POUT<<"b=0.01\n";
+    a.POUT<<"c=0.01\n";
+
+    a.POUT<<"fit f(x,y) \"-\" using 1:2:3 via a,b,c\n";
+    for(int i=0;i<imgMat->cols;i++){
+        for(int j=0;j<imgMat->rows;j++)
+            a.POUT<<i<<" "<<j<<" "<<imgMat->at<float>(j,i)<<"\n";
+        a.POUT<<"\n";
+    }
+    a.POUT<<"e\n";
+    a.POUT<<"print \"afdgdsfgdf\"\n";
+    a.POUT.flush();
+    char rep[256];
+    for (int i=0;i!=100;i++){
+           a.PERR.getline(rep,256);
+           printf("%s",rep);
+           if(std::string(rep).find("afdgdsfgdf")!=std::string::npos) break;
+    }
+    a.POUT<<"print a\n";a.POUT.flush();
+    a.PERR.getline(rep,256); planecor[0] = atof(rep);
+    std::cerr <<"\n" << planecor[0] <<"\n";
+    a.POUT<<"print b\n";a.POUT.flush();
+    a.PERR.getline(rep,256); planecor[1] = atof(rep);
+    std::cerr <<"\n" << planecor[1] <<"\n";
+    a.POUT<<"print c\n";a.POUT.flush();
+    a.PERR.getline(rep,256); planecor[2] = atof(rep);
+    std::cerr <<"\n" << planecor[2] <<"\n";
+}
+
+void tab_temp_plot::on_scor_clicked(){
+    calcPlaneCor();
+    scor->setIcon(QPixmap(":/emblem-ok.svg"));
+}
+
+double tab_temp_plot::corr(int i, int j){
+    return planecor[0]*i+planecor[1]*j+planecor[2];
 }
 
 void tab_temp_plot::on_replot_clicked(){
@@ -116,6 +171,45 @@ void tab_temp_plot::redraw(){
     else cv::rectangle(*imgMatWLines, cv::Point(X1,Y1), cv::Point(X2,Y2), {255,0,0});
     imgLabel->setPixmap(QPixmap::fromImage(QImage(imgMatWLines->data, imgMatWLines->cols, imgMatWLines->rows, imgMatWLines->step, QImage::Format_RGB888)));
 }
+
+void tab_temp_plot::streamData(std::ostream *stream, bool is_line){
+    bool inv=!inverted->isChecked();
+    double _lambda=lambda->value();
+    if(!is_line){
+        for(int i=(X1<X2)?X1:X2;i<=((X1<X2)?X2:X1);i++){
+            for(int j=(Y1<Y2)?Y1:Y2;j<=((Y1<Y2)?Y2:Y1);j++)
+                *stream<<i*pmw->xps_x_sen/100<<" "<<j*pmw->xps_x_sen/100<<" "<<(inv?-1:1)*(imgMat->at<float>(j,i)-corr(i,j))/2/M_PI*_lambda/2<<"\n";
+            *stream<<"\n";
+        }
+    }else{
+        double len;
+        len=sqrt(pow(X2-X1,2)+pow(Y2-Y1,2));
+        std::cerr<<"len= "<<len<<"\n";
+        if((int)len<=0) return;
+        double *lineData=new double[(int)len+1]();
+        for(int i=0;i<=len;i++){
+            double _X=X2+(X1-X2)*(len-i+0.01)/len;  //the 0.01 fixes a weird floor/ceil bug
+            double _Y=Y2+(Y1-Y2)*(len-i+0.01)/len;
+            lineData[i]=(1-(_X-floor(_X)))*(1-(_Y-floor(_Y)))*(imgMat->at<float>(floor(_Y),floor(_X))-corr(floor(_X),floor(_Y)))+
+                        (1-(ceil(_X) -_X))*(1-(ceil(_Y) -_Y))*(imgMat->at<float>( ceil(_Y), ceil(_X))-corr( ceil(_X), ceil(_Y)))+
+                        (1-(_X-floor(_X)))*(1-(ceil(_Y) -_Y))*(imgMat->at<float>( ceil(_Y),floor(_X))-corr(floor(_X), ceil(_Y)))+
+                        (1-(ceil(_X) -_X))*(1-(_Y-floor(_Y)))*(imgMat->at<float>(floor(_Y), ceil(_X))-corr( ceil(_X),floor(_Y)));
+        }
+        //std::cout<<"scaling X,Y= " << std::setprecision(6) <<pmw->xps_x_sen<<", "<<pmw->xps_y_sen<<"\n";
+        if(inv) for(int i=0;i<=len;i++) lineData[i]*=-1;
+        double minval=1e10;
+        for(int i=0;i<=len;i++){
+            lineData[i]*=_lambda/2/2/M_PI;
+            if(lineData[i]<minval) minval=lineData[i];
+        }
+        for(int i=0;i<=len;i++) lineData[i]-=minval;
+        double scale=( pow(X2-X1,2)/pow(len,2)*pmw->xps_x_sen+ pow(Y2-Y1,2)/pow(len,2)*pmw->xps_y_sen)/100;        //in um
+
+        for(int i=0;i<=len;i++)
+            *stream<<i*scale<<" "<<lineData[i]<<"\n";
+    }
+}
+
 void tab_temp_plot::plot(){
     bool inv=!inverted->isChecked();
     double _lambda=lambda->value();
@@ -136,23 +230,9 @@ void tab_temp_plot::plot(){
         if(eqXYZ) a.POUT<<"unset ztics\n";
         a.POUT<<"set xyplane 0\n";
         a.POUT<<"set hidden3d\n";
-//            a.POUT<<"unset xlabel\n";
-//            a.POUT<<"set format x ''\n";
-//            a.POUT<<"unset ylabel\n";
-//            a.POUT<<"set format y ''\n";
-//            a.POUT<<"unset zlabel\n";
-//            a.POUT<<"set format z ''\n";
-//            a.POUT<<"set format cb ''\n";
-//            a.POUT<<"unset cblabel\n";
         a.POUT<<"set view ,,"<<scale3D->value()<<"\n";
-        //a.POUT<<"splot \"-\" using 1:2:3 w lines palette pt 6 notitle\n";
         a.POUT<<"splot \"-\" using 1:2:3 w pm3d pt 6 notitle\n";
-        for(int i=(X1<X2)?X1:X2;i<=((X1<X2)?X2:X1);i++){
-            for(int j=(Y1<Y2)?Y1:Y2;j<=((Y1<Y2)?Y2:Y1);j++)
-                a.POUT<<i*pmw->xps_x_sen/100<<" "<<j*pmw->xps_x_sen/100<<" "<<(inv?-1:1)*imgMat->at<float>(j,i)/2/M_PI*_lambda/2/(eqXYZ?1000:1)<<"\n";
-            a.POUT<<"\n";
-        }
-
+        streamData(&a.POUT, false);
         a.POUT<<"e\n";
         a.POUT.flush();
 //        std::string as;while(1){
@@ -160,29 +240,6 @@ void tab_temp_plot::plot(){
 //        std::cerr<<as<<" ";}
 //        std::this_thread::sleep_for (std::chrono::seconds(10)); //TODO if gnuplot closes, the graph cannot be exported as PDF. FIX this
     }else{         //line
-        double len;
-        len=sqrt(pow(X2-X1,2)+pow(Y2-Y1,2));
-        std::cerr<<"len= "<<len<<"\n";
-        if((int)len<=0) return;
-        double *lineData=new double[(int)len+1]();
-        for(int i=0;i<=len;i++){
-            double _X=X2+(X1-X2)*(len-i+0.01)/len;  //the 0.01 fixes a weird floor/ceil bug
-            double _Y=Y2+(Y1-Y2)*(len-i+0.01)/len;
-            lineData[i]=(1-(_X-floor(_X)))*(1-(_Y-floor(_Y)))*imgMat->at<float>(floor(_Y),floor(_X))+
-                        (1-(ceil(_X) -_X))*(1-(ceil(_Y) -_Y))*imgMat->at<float>( ceil(_Y), ceil(_X))+
-                        (1-(_X-floor(_X)))*(1-(ceil(_Y) -_Y))*imgMat->at<float>( ceil(_Y),floor(_X))+
-                        (1-(ceil(_X) -_X))*(1-(_Y-floor(_Y)))*imgMat->at<float>(floor(_Y), ceil(_X));
-        }
-        //std::cout<<"scaling X,Y= " << std::setprecision(6) <<pmw->xps_x_sen<<", "<<pmw->xps_y_sen<<"\n";
-        if(inv) for(int i=0;i<=len;i++) lineData[i]*=-1;
-        double minval=1e10;
-        for(int i=0;i<=len;i++){
-            lineData[i]*=_lambda/2/2/M_PI;
-            if(lineData[i]<minval) minval=lineData[i];
-        }
-        for(int i=0;i<=len;i++) lineData[i]-=minval;
-        double scale=( pow(X2-X1,2)/pow(len,2)*pmw->xps_x_sen+ pow(Y2-Y1,2)/pow(len,2)*pmw->xps_y_sen)/100;        //in um
-
         gnuplot a;
         a.POUT<<"set terminal wxt enhanced **persist**\n";
         a.POUT<<"set tics font \"Helvetica,"<<fontSB->value()<<"\"\n";
@@ -190,10 +247,9 @@ void tab_temp_plot::plot(){
         a.POUT<<"set ylabel font \"Helvetica,"<<fontSB->value()<<"\"\n";
         a.POUT<<"set xlabel \"Position / um\"\n";
         a.POUT<<"set ylabel \"Height / nm\"\n";
-        a.POUT<<"set xrange [0:"<<len*scale<<"]\n";
+        //a.POUT<<"set xrange [0:"<<len*scale<<"]\n";
         a.POUT<<"plot \"-\" using 1:2 w lp lt 6 notitle\n";
-        for(int i=0;i<=len;i++)
-            a.POUT<<i*scale<<" "<<lineData[i]<<"\n";
+        streamData(&a.POUT, true);
         a.POUT<<"e\n";
         a.POUT.flush();
         //std::this_thread::sleep_for (std::chrono::seconds(10)); //TODO if gnuplot closes, the graph cannot be exported as PDF. FIX this
@@ -207,37 +263,10 @@ void tab_temp_plot::fsave(std::string filename){
     bool inv=!inverted->isChecked();
     double _lambda=lambda->value();
     if(isRight){   //rectangle
-        for(int i=(X1<X2)?X1:X2;i<=((X1<X2)?X2:X1);i++){
-            for(int j=(Y1<Y2)?Y1:Y2;j<=((Y1<Y2)?Y2:Y1);j++)
-                ofile<<i*pmw->xps_x_sen/100<<" "<<j*pmw->xps_x_sen/100<<" "<<(inv?-1:1)*imgMat->at<float>(j,i)/2/M_PI*_lambda/2<<"\n";
-            ofile<<"\n";
-        }
+        streamData(&ofile, false);
     }else{  //TODO: the first part is literarily copy paste from above
-        double len;
-        len=sqrt(pow(X2-X1,2)+pow(Y2-Y1,2));
-        if((int)len<=0) return;
-        double *lineData=new double[(int)len+1]();
-        for(int i=0;i<=len;i++){
-            double _X=X2+(X1-X2)*(len-i+0.01)/len;  //the 0.01 fixes a weird floor/ceil bug
-            double _Y=Y2+(Y1-Y2)*(len-i+0.01)/len;
-            lineData[i]=(1-(_X-floor(_X)))*(1-(_Y-floor(_Y)))*imgMat->at<float>(floor(_Y),floor(_X))+
-                        (1-(ceil(_X) -_X))*(1-(ceil(_Y) -_Y))*imgMat->at<float>( ceil(_Y), ceil(_X))+
-                        (1-(_X-floor(_X)))*(1-(ceil(_Y) -_Y))*imgMat->at<float>( ceil(_Y),floor(_X))+
-                        (1-(ceil(_X) -_X))*(1-(_Y-floor(_Y)))*imgMat->at<float>(floor(_Y), ceil(_X));
-        }
-        if(inv) for(int i=0;i<=len;i++) lineData[i]*=-1;
-        double minval=1e10;
-        for(int i=0;i<=len;i++){
-            lineData[i]*=_lambda/2/2/M_PI;
-            if(lineData[i]<minval) minval=lineData[i];
-        }
-        for(int i=0;i<=len;i++) lineData[i]-=minval;
-        double scale=( pow(X2-X1,2)/pow(len,2)*pmw->xps_x_sen+ pow(Y2-Y1,2)/pow(len,2)*pmw->xps_y_sen)/100;        //in um
-
-        for(int i=0;i<=len;i++)
-            ofile<<i*scale<<" "<<lineData[i]<<"\n";
+        streamData(&ofile, true);
     }
-
     ofile.close();
 }
 
