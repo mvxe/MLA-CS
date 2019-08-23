@@ -9,14 +9,14 @@ int main(int argc, char *argv[]){
     if (!cv::ocl::haveOpenCL())
 {
     std::cout << "OpenCL is not available..." << std::endl;
-    return 0;
+    //return 0;
 }
 
 cv::ocl::Context context;
 if (!context.create(cv::ocl::Device::TYPE_GPU))
 {
-    std::cout << "Failed creating the context..." << std::endl;
-    return 0;
+    std::cout << "Failed creating the OpenCL context..." << std::endl;
+    //return 0;
 }
 
 std::cout << context.ndevices() << " GPU devices are detected." << std::endl; //This bit provides an overview of the OpenCL devices you have in your computer
