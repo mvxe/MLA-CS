@@ -521,3 +521,60 @@ void MainWindow::on_pushButton_7_released(){    //fit beam: for gaussian beam D4
 void MainWindow::on_pushButton_9_toggled(bool checked){     //laser toggle
     go.pXPS->setGPIO(XPS::writingLaser,checked);
 }
+
+void MainWindow::on_pushButton_11_clicked(){    //RPTY TEST : TODO REMOVE
+    for(int i=0;i!=4;i++){
+        printf("A2F_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSMax,i));
+        printf("A2F_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSCur,i));
+        printf("A2F_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_lostN,i));
+        printf("F2A_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSMax,i));
+        printf("F2A_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSCur,i));
+        printf("F2A_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_lostN,i));
+    }
+
+    std::vector<uint32_t> commands;
+    commands.push_back(CQF::W4TRIG_INTR());
+    commands.push_back(CQF::GPIO_MASK(0,0,0xFF));
+    commands.push_back(CQF::GPIO_DIR (0,0,0x00));
+    commands.push_back(CQF::GPIO_VAL (0,0,0x00));
+    commands.push_back(CQF::WAIT(12500000));
+    for(int i=0;i!=8;i++){
+        commands.push_back(CQF::GPIO_MASK(0,0,1<<i));
+        commands.push_back(CQF::GPIO_VAL (0,0,1<<i));
+        commands.push_back(CQF::WAIT(12500000));
+    }
+    for(int i=0;i!=8;i++){
+        commands.push_back(CQF::GPIO_MASK(0,0,1<<i));
+        commands.push_back(CQF::GPIO_VAL (0,0,0));
+        commands.push_back(CQF::WAIT(12500000));
+    }
+    commands.push_back(CQF::GPIO_MASK(0,0,0xFF));
+    commands.push_back(CQF::GPIO_VAL (0,0,0xFF));
+    commands.push_back(CQF::WAIT(12500000));
+    commands.push_back(CQF::GPIO_VAL (0,0,0x00));
+    commands.push_back(CQF::SG_SAMPLE(CQF::O0O1,4000,-8000));
+    go.pRPTY->A2F_write(0,commands.data(),commands.size());
+
+    commands.clear();
+    commands.push_back(CQF::W4TRIG_INTR());
+    commands.push_back(CQF::ACK(1, 0, CQF::fADC_A__fADC_B, true));
+    commands.push_back(CQF::WAIT(100));
+    commands.push_back(CQF::ACK(1, 0, CQF::fADC_A__fADC_B, false));
+    go.pRPTY->A2F_write(1,commands.data(),commands.size());
+
+    for(int i=0;i!=4;i++){
+        printf("A2F_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSMax,i));
+        printf("A2F_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSCur,i));
+        printf("A2F_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_lostN,i));
+        printf("F2A_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSMax,i));
+        printf("F2A_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSCur,i));
+        printf("F2A_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_lostN,i));
+    }
+
+    go.pRPTY->trig(0x3);
+
+    std::vector<uint32_t> read;
+    read.reserve(100);
+    go.pRPTY->F2A_read(0,read.data(),100);
+    for(int i=0;i!=100;i++) printf("data: N=%d,  MSB=%d, LSB=%d\n",i,AQF::getChMSB(read[i]),AQF::getChLSB(read[i]));
+}

@@ -6,7 +6,7 @@ GCAM::GCAM(){
     for(int i=0;i!=_CAM_NUM;i++)
         _c[i].ptr=new camobj(_c[i].cname);
     cam_desc.set(new std::vector<_dcams>());
-    arv_g_type_init();
+    //arv_g_type_init();
 }
 GCAM::~GCAM(){
     for(int i=0;i!=_CAM_NUM;i++) delete _c[i].ptr;

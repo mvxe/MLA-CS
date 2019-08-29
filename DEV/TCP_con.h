@@ -22,10 +22,12 @@ public:
     bool resolve(std::string host, int port, std::string *resolved = nullptr);     //returns 0 on success, *resolved is optional and returns the resolved ip string
     void connect(int timeout_ms);
     void disconnect();
-    int write(std::string write_string);                        //returns number of characters written
-    int read(std::string &read_string);                         //returns number of characters read
-    int rw(std::string write_string,std::string &read_string);  //returns number of characters read
-    const std::atomic<bool>& connected{_connected};             //thread safe var to see if connected
+    ssize_t write(std::string write_string);                         //returns number of characters written (or -1 if error)
+    template <typename T> ssize_t write(T *data, size_t size);       //returns number of bytes written (or -1 if error), size is in bytes
+    ssize_t read(std::string &read_string);                          //returns number of characters read
+    template <typename T> ssize_t read(T *data, size_t size);        //returns number of bytes read, size is in bytes
+    ssize_t rw(std::string write_string,std::string &read_string);   //returns number of characters read
+    const std::atomic<bool>& connected{_connected};                  //thread safe var to see if connected
 
 protected:
     std::atomic<bool> _connected{false};
@@ -38,5 +40,14 @@ private:
     char block[BLOCK_SIZE+1];
     struct timeval timeout;
 };
+
+template <typename T>
+ssize_t TCP_con::write(T *data, size_t size){
+    return ::write(sock,data,size);
+}
+template <typename T>
+ssize_t TCP_con::read(T *data, size_t size){
+    return ::read(sock,data,size);
+}
 
 #endif // TCP_CON_H

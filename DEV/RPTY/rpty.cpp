@@ -37,3 +37,34 @@ void RPTY::run(){
         }
     }
 }
+
+int RPTY::F2A_read(unsigned char queue, uint32_t *data, uint32_t size4){
+    uint32_t command[3]={0,queue,size4};
+    TCP_con::write(command,12);
+    uint32_t index_read=0;
+    ssize_t ret=0;
+    while(index_read<size4){
+        ret=4*TCP_con::read(data,4*(size4-index_read));
+        if(ret<0) return -1;
+        index_read+=ret;
+    }
+    return index_read;  //allways should =size4 else infinite loop, TODO fix maybe?
+}
+int RPTY::A2F_write(unsigned char queue, uint32_t *data, uint32_t size4){
+    uint32_t command[3]={1,queue,size4};
+    TCP_con::write(command,12);
+    return TCP_con::write(data,4*size4);
+}
+int RPTY::getNum(getNumType statID, unsigned char queue){
+    uint32_t command[2]={2,queue};
+    command[0]+=(int)statID;
+    TCP_con::write(command,8);
+    uint32_t nret; int ret;
+    do nret=TCP_con::read(&ret,4);
+    while (nret<4);
+    return ret;
+}
+int RPTY::trig(unsigned char queues){
+    uint32_t command[2]={8,queues};
+    return TCP_con::write(command,8);
+}

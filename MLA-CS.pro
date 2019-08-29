@@ -79,7 +79,8 @@ HEADERS += \
     GUI/tab_temp_plot.h \
     DEV/CNC/cnc.h \
     DEV/CNC/cnc_template.h \
-    PROCEDURES/UTIL/profile_beam.h
+    PROCEDURES/UTIL/profile_beam.h \
+    DEV/RPTY/fpga_const.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \

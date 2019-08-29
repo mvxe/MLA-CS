@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1187</width>
-    <height>829</height>
+    <height>935</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -1994,6 +1994,19 @@ and intensity in ms)</string>
        <attribute name="title">
         <string>Positioners</string>
        </attribute>
+       <widget class="QPushButton" name="pushButton_11">
+        <property name="geometry">
+         <rect>
+          <x>70</x>
+          <y>40</y>
+          <width>80</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>TestRpty</string>
+        </property>
+       </widget>
       </widget>
      </widget>
     </item>
