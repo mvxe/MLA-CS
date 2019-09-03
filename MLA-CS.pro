@@ -41,6 +41,8 @@ unix:!macx: LIBS += -lcurlpp -lcurl -lserial
 INCLUDEPATH += /usr/include/glib-2.0 \
         /usr/include/aravis-0.6
 
+QT += charts
+
 HEADERS += \
     DEV/XPS/xps.h \
     includes.h \
@@ -80,7 +82,8 @@ HEADERS += \
     DEV/CNC/cnc.h \
     DEV/CNC/cnc_template.h \
     PROCEDURES/UTIL/profile_beam.h \
-    DEV/RPTY/fpga_const.h
+    DEV/RPTY/fpga_const.h \
+    GUI/tab_monitor.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -110,7 +113,8 @@ SOURCES += \
     UTIL/pipe.cpp \
     GUI/tab_temp_plot.cpp \
     DEV/CNC/cnc.cpp \
-    PROCEDURES/UTIL/profile_beam.cpp
+    PROCEDURES/UTIL/profile_beam.cpp \
+    GUI/tab_monitor.cpp
 
 
 unix {

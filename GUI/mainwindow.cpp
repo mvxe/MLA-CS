@@ -40,6 +40,8 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
 
     tabDev=new tab_devices(ui->tab_dev);
     tabPlot=new tab_temp_plot(ui->tab_dis);
+    tabMon=new tab_monitor(ui->tab_rpty_monitor);
+
     tabPlot->pmw=this;
 }
 
@@ -61,6 +63,8 @@ void MainWindow::on_tabWidget_currentChanged(int index){
     else iuScope_img->setUserFps(0.);
     if (ui->tabWidget->tabText(index)=="UtilCam") utilCam_img->setUserFps(30.,5);
     else utilCam_img->setUserFps(0.);
+
+    tabMon->tab_is_open=(ui->tabWidget->tabText(index)=="Monitor");
 }
 
 

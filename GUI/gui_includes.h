@@ -18,6 +18,7 @@
 #include <QShortcut>
 #include <QVBoxLayout>
 #include <QCheckBox>
+#include <QtCharts>
 #include "globals.h"
 #include "PROCEDURES/_incl_procedures.h"
 

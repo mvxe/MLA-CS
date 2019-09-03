@@ -2008,6 +2008,11 @@ and intensity in ms)</string>
         </property>
        </widget>
       </widget>
+      <widget class="QWidget" name="tab_rpty_monitor">
+       <attribute name="title">
+        <string>Monitor</string>
+       </attribute>
+      </widget>
      </widget>
     </item>
    </layout>

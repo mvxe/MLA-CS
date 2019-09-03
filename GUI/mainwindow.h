@@ -8,6 +8,7 @@
 #include "GUI/TAB_SETTINGS/tab_settings.h"
 #include "GUI/TAB_POSITIONERS/tab_positioners.h"
 #include "GUI/tab_temp_plot.h"
+#include "GUI/tab_monitor.h"
 class FQ;
 
 namespace Ui {
@@ -144,6 +145,7 @@ private:
 
     tab_devices* tabDev;
     tab_temp_plot* tabPlot;
+    tab_monitor* tabMon;
     int donth=0;
 
     /* beam profiler variables, TODO move this elsewhere*/

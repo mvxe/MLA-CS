@@ -1,4 +1,6 @@
 #include <stdint.h>
+#ifndef FPGACONST_H
+#define FPGACONST_H
 
 class CQF{       //class containing functions that convert to command queue format for ARM2FPGA queues
 public:
@@ -129,3 +131,5 @@ inline int32_t AQF::getChLSB(uint32_t acq){
     if (ret&0x2000) {ret^=0x2000; ret^=0xFFFFE000;}
     return ret;
 }
+
+#endif //FPGACONST_H
