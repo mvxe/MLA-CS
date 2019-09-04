@@ -56,7 +56,7 @@ tab_monitor::tab_monitor(QWidget *parent){
         FTaxisY->setBase(10.0);
         FTaxisY->setTitleText("Values");
         FTaxisY->setLabelFormat("%g");
-        FTaxisY->setRange(1,1e6);
+        FTaxisY->setRange(1,1e8);
         FTgraph->addAxis(FTaxisX, Qt::AlignBottom);
         FTgraph->addAxis(FTaxisY, Qt::AlignLeft);
         FTgraph->addSeries(FTchAseries);
@@ -228,19 +228,20 @@ void tab_monitor::work_fun(){
         if(go.pRPTY->connected){
             //printf("RPTY is connected\n");
 
-//                printf("A2F_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSMax,0));
-//                printf("A2F_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSCur,0));
-//                printf("A2F_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_lostN,0));
-//                printf("F2A_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_RSMax,0));
-//                printf("F2A_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_RSCur,0));
-//                printf("F2A_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_lostN,0));
+            printf("A2F_RSMax for queue %d is %d\n",RPTY_A2F_queue,go.pRPTY->getNum(RPTY::A2F_RSMax,RPTY_A2F_queue));
+            printf("A2F_RSCur for queue %d is %d\n",RPTY_A2F_queue,go.pRPTY->getNum(RPTY::A2F_RSCur,RPTY_A2F_queue));
+            printf("A2F_lostN for queue %d is %d\n",RPTY_A2F_queue,go.pRPTY->getNum(RPTY::A2F_lostN,RPTY_A2F_queue));
+            printf("F2A_RSMax for queue %d is %d\n",RPTY_F2A_queue,go.pRPTY->getNum(RPTY::F2A_RSMax,RPTY_F2A_queue));
+            printf("F2A_RSCur for queue %d is %d\n",RPTY_F2A_queue,go.pRPTY->getNum(RPTY::F2A_RSCur,RPTY_F2A_queue));
+            printf("F2A_lostN for queue %d is %d\n",RPTY_F2A_queue,go.pRPTY->getNum(RPTY::F2A_lostN,RPTY_F2A_queue));
 
+            uint32_t acksize=go.pRPTY->getNum(RPTY::F2A_RSMax,RPTY_F2A_queue)+1;
+            uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,RPTY_F2A_queue);
 
-            if(!firstRead){
-                uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,0);
+            if(toread>=acksize){
                 std::vector<uint32_t> read;
                 read.reserve(toread);
-                go.pRPTY->F2A_read(0,read.data(),toread);
+                go.pRPTY->F2A_read(RPTY_F2A_queue,read.data(),toread);
                 WFgraph->removeSeries(WFchAseries);
                 WFgraph->removeSeries(WFchBseries);
                 QList<QPointF> points;
@@ -314,17 +315,15 @@ void tab_monitor::work_fun(){
             }
             else firstRead=false;
 
-
-            uint32_t acksize=go.pRPTY->getNum(RPTY::F2A_RSMax,0)+1;
-            if(go.pRPTY->getNum(RPTY::A2F_RSCur,0)==0){
+            if(go.pRPTY->getNum(RPTY::A2F_RSCur,RPTY_A2F_queue)==0){
                 std::vector<uint32_t> commands;
                 commands.push_back(CQF::W4TRIG_INTR());
-                commands.push_back(CQF::ACK(1<<0, selectedavg, selectedchannels, true));
+                commands.push_back(CQF::ACK(1<<RPTY_F2A_queue, selectedavg, selectedchannels, true));
                 commands.push_back(CQF::WAIT(acksize*(1<<selectedavg)));
-                commands.push_back(CQF::ACK(1<<0, selectedavg, selectedchannels, false));
-                go.pRPTY->A2F_write(0,commands.data(),commands.size());
+                commands.push_back(CQF::ACK(1<<RPTY_F2A_queue, selectedavg, selectedchannels, false));
+                go.pRPTY->A2F_write(RPTY_A2F_queue,commands.data(),commands.size());
             }
-            go.pRPTY->trig(1<<0);
+            if(!trig_on_laser_pulse) go.pRPTY->trig(1<<RPTY_A2F_queue);
         }
     }
 }

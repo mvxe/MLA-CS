@@ -72,6 +72,8 @@ public:
         double acqfreq=1;           //in Hz
         CQF::ACK_CHANNELS selectedchannels;
         bool trig_on_laser_pulse=false;
+        constexpr static unsigned RPTY_A2F_queue=3;
+        constexpr static unsigned RPTY_F2A_queue=0;
 
         bool save_waveform=false;
         bool save_fft=false;
