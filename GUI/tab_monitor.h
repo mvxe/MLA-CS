@@ -25,8 +25,8 @@ public:
         QChart* WFgraph;
         QChart* FTgraph;
         QChart* SGgraph;
-        QValueAxis *axisX;
-        QValueAxis *axisY;
+        QLineSeries *WFchAseries;
+        QLineSeries *WFchBseries;
 
     QVBoxLayout* buttonLayout;
         QToolButton* channelSelect;
@@ -52,7 +52,7 @@ public:
           {"ADC-B && PID-1","",nullptr,CQF::fADC_B__PIDO_1},
           {"PID-0 && PID-1","",nullptr,CQF::PIDO_0__PIDO_1}
         };
-        constexpr static unsigned work_call_time=20;    //work_fun is called periodically via timer every this many milliseconds
+        constexpr static unsigned work_call_time=100;    //work_fun is called periodically via timer every this many milliseconds
         constexpr static unsigned maxavg=31;
         QAction* _avg_actionList[maxavg+1];
         constexpr static double baseSamplFreq=8e-9;
@@ -72,6 +72,7 @@ public:
         bool calc_spec=false;
         bool tab_is_open=false;
 
+        bool firstRead=true;
 
 private Q_SLOTS:
     void on_channel_select(QAction *action);

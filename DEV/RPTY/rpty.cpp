@@ -44,7 +44,7 @@ int RPTY::F2A_read(unsigned char queue, uint32_t *data, uint32_t size4){
     uint32_t index_read=0;
     ssize_t ret=0;
     while(index_read<size4){
-        ret=TCP_con::read(data,4*(size4-index_read))/4;
+        ret=TCP_con::read(data+index_read,4*(size4-index_read))/4;
         if(ret<0) return -1;
         index_read+=ret;
     }

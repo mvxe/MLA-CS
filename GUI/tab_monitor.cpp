@@ -16,14 +16,16 @@ tab_monitor::tab_monitor(QWidget *parent){
         graphLayout->addWidget(WFgraphView);
         WFgraphView->setRenderHint(QPainter::Antialiasing);
         WFgraph->setTitle("Waveform");
-
-
-//        axisX = new QValueAxis();
-//        WFgraph->addAxis(axisX, Qt::AlignLeft);
-//        //axisX->setRange(0,20000);
-//        axisY = new QValueAxis();
-//        WFgraph->addAxis(axisY, Qt::AlignLeft);
-//        //axisY->setRange(-8192,8191);
+        WFchAseries=new QLineSeries();
+        WFchAseries->setName("CHA");
+        WFchBseries=new QLineSeries();
+        WFchBseries->setName("CHB");
+        //WFgraph->setAnimationOptions(QChart::AllAnimations);
+        WFgraph->addSeries(WFchAseries);
+        WFgraph->addSeries(WFchBseries);
+        WFgraph->createDefaultAxes();
+        WFgraph->axisY()->setRange(-300,-100);
+        WFgraph->axisX()->setRange(0,1000);
 
 
         FTgraph=new QChart;
@@ -192,40 +194,48 @@ void tab_monitor::work_fun(){
         if(go.pRPTY->connected){
             //printf("RPTY is connected\n");
 
-//                printf("A2F_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSMax,0));
-//                printf("A2F_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSCur,0));
-//                printf("A2F_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_lostN,0));
-//                printf("F2A_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_RSMax,0));
-//                printf("F2A_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_RSCur,0));
-//                printf("F2A_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_lostN,0));
+                printf("A2F_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSMax,0));
+                printf("A2F_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSCur,0));
+                printf("A2F_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_lostN,0));
+                printf("F2A_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_RSMax,0));
+                printf("F2A_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_RSCur,0));
+                printf("F2A_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_lostN,0));
 
-            //uint32_t acksize=go.pRPTY->getNum(RPTY::F2A_RSMax,0);
-                uint32_t acksize=500;
+            uint32_t acksize=go.pRPTY->getNum(RPTY::F2A_RSMax,0)/2;
+                //uint32_t acksize=500;
             //printf("acksize=%u\n",acksize);
 
-            std::vector<uint32_t> commands;
-            commands.push_back(CQF::W4TRIG_INTR());
-            commands.push_back(CQF::ACK(1<<0, selectedavg, selectedchannels, true));
-            commands.push_back(CQF::WAIT(acksize*(1<<selectedavg)));
-            commands.push_back(CQF::ACK(1<<0, selectedavg, selectedchannels, false));
-            go.pRPTY->A2F_write(0,commands.data(),commands.size());
-            go.pRPTY->trig(1<<0);
-            commands.clear();
-
-            std::vector<uint32_t> read;
-            read.reserve(acksize);
-            go.pRPTY->F2A_read(0,read.data(),acksize);
-            WFgraph->removeAllSeries();
-            for(int j=0;j!=2;j++){
-                QLineSeries *series = new QLineSeries();
-                for(int i=0; i!=acksize; i++) series->append(i, j==0?AQF::getChMSB(read[i]):AQF::getChLSB(read[i]));
-                series->setName(j==0?"CHA":"CHB");
-//                series->attachAxis(axisX);
-//                series->attachAxis(axisY);
-                WFgraph->addSeries(series);
-                WFgraph->createDefaultAxes();
+            if(go.pRPTY->getNum(RPTY::A2F_RSCur,0)==0){
+                std::vector<uint32_t> commands;
+                commands.push_back(CQF::W4TRIG_INTR());
+                commands.push_back(CQF::ACK(1<<0, selectedavg, selectedchannels, true));
+                commands.push_back(CQF::WAIT(acksize*(1<<selectedavg)));
+                commands.push_back(CQF::ACK(1<<0, selectedavg, selectedchannels, false));
+                go.pRPTY->A2F_write(0,commands.data(),commands.size());
             }
-            read.clear();
+            go.pRPTY->trig(1<<0);
+
+            if(!firstRead){
+                uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,0);
+                std::vector<uint32_t> read;
+                read.reserve(toread);
+                go.pRPTY->F2A_read(0,read.data(),toread);
+//                WFgraph->removeSeries(WFchAseries);
+//                WFgraph->removeSeries(WFchBseries);
+
+                QList<QPointF> points;
+                points.reserve(1000);
+                for(int i=0; i!=1000; i++) points.push_back(QPointF(i,AQF::getChMSB(read[i])));
+                WFchAseries->clear();
+                WFchAseries->append(points);
+                points.clear();
+                for(int i=0; i!=1000; i++) points.push_back(QPointF(i,AQF::getChLSB(read[i])));
+                WFchBseries->clear();
+                WFchBseries->append(points);
+//                WFgraph->addSeries(WFchAseries);
+//                WFgraph->addSeries(WFchBseries);
+            }
+            else firstRead=false;
         }
     }
 }
