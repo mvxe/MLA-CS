@@ -2,6 +2,12 @@
 #include "mainwindow.h"
 #include "DEV/RPTY/rpty.h"
 
+#include <viennacl/scalar.hpp>
+#include <viennacl/vector.hpp>
+#include <viennacl/matrix.hpp>
+#include <viennacl/fft.hpp>
+#include <complex>
+
 tab_monitor::tab_monitor(QWidget *parent){
     layout=new QHBoxLayout;
     parent->setLayout(layout);
@@ -20,15 +26,45 @@ tab_monitor::tab_monitor(QWidget *parent){
         WFchAseries->setName("CHA");
         WFchBseries=new QLineSeries();
         WFchBseries->setName("CHB");
+
+        WFaxisX = new QValueAxis();
+        WFaxisX->setTitleText("Time (ms)"); WFaxisX->setMinorTickCount(10); WFaxisX->setTickCount(10);
+        WFaxisY = new QValueAxis();
+        WFaxisY->setTitleText("Values");
+        WFgraph->addAxis(WFaxisX, Qt::AlignBottom);
+        WFgraph->addAxis(WFaxisY, Qt::AlignLeft);
         WFgraph->addSeries(WFchAseries);
         WFgraph->addSeries(WFchBseries);
-        WFgraph->createDefaultAxes();
+        WFchAseries->attachAxis(WFaxisX);
+        WFchBseries->attachAxis(WFaxisX);
+        WFchAseries->attachAxis(WFaxisY);
+        WFchBseries->attachAxis(WFaxisY);
 
         FTgraph=new QChart;
         FTgraphView=new QChartView(FTgraph);
         graphLayout->addWidget(FTgraphView);
         FTgraphView->setRenderHint(QPainter::Antialiasing);
         FTgraph->setTitle("FFT");
+        FTchAseries=new QLineSeries();
+        FTchAseries->setName("CHA");
+        FTchBseries=new QLineSeries();
+        FTchBseries->setName("CHB");
+
+        FTaxisX = new QValueAxis();
+        FTaxisX->setTitleText("Frequency (kHz)");   FTaxisX->setMinorTickCount(10); FTaxisX->setTickCount(10);
+        FTaxisY = new QLogValueAxis();
+        FTaxisY->setBase(10.0);
+        FTaxisY->setTitleText("Values");
+        FTaxisY->setLabelFormat("%g");
+        FTaxisY->setRange(1,1e6);
+        FTgraph->addAxis(FTaxisX, Qt::AlignBottom);
+        FTgraph->addAxis(FTaxisY, Qt::AlignLeft);
+        FTgraph->addSeries(FTchAseries);
+        FTgraph->addSeries(FTchBseries);
+        FTchAseries->attachAxis(FTaxisX);
+        FTchBseries->attachAxis(FTaxisX);
+        FTchAseries->attachAxis(FTaxisY);
+        FTchBseries->attachAxis(FTaxisY);
 
         SGgraph=new QChart;
         SGgraphView=new QChartView(SGgraph);
@@ -184,32 +220,21 @@ void tab_monitor::init_timer(){     //once the tab is visited, the timer interru
 
 void tab_monitor::work_fun(){
     //printf("lol monitor\n");
-    if(tab_is_open || save_waveform || save_fft || calc_spec){
+    int min=9999,max=-9999;
+    double scale=baseSamplFreq*(1<<selectedavg)*1e3; //in ms
+    if(tab_is_open){// || save_waveform || save_fft || calc_spec){
 
         //printf("its open or some cb is on\n");
         if(go.pRPTY->connected){
             //printf("RPTY is connected\n");
 
-                printf("A2F_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSMax,0));
-                printf("A2F_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSCur,0));
-                printf("A2F_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_lostN,0));
-                printf("F2A_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_RSMax,0));
-                printf("F2A_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_RSCur,0));
-                printf("F2A_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_lostN,0));
+//                printf("A2F_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSMax,0));
+//                printf("A2F_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSCur,0));
+//                printf("A2F_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_lostN,0));
+//                printf("F2A_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_RSMax,0));
+//                printf("F2A_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_RSCur,0));
+//                printf("F2A_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::F2A_lostN,0));
 
-            uint32_t acksize=go.pRPTY->getNum(RPTY::F2A_RSMax,0)/2;
-                //uint32_t acksize=500;
-            //printf("acksize=%u\n",acksize);
-
-            if(go.pRPTY->getNum(RPTY::A2F_RSCur,0)==0){
-                std::vector<uint32_t> commands;
-                commands.push_back(CQF::W4TRIG_INTR());
-                commands.push_back(CQF::ACK(1<<0, selectedavg, selectedchannels, true));
-                commands.push_back(CQF::WAIT(acksize*(1<<selectedavg)));
-                commands.push_back(CQF::ACK(1<<0, selectedavg, selectedchannels, false));
-                go.pRPTY->A2F_write(0,commands.data(),commands.size());
-            }
-            go.pRPTY->trig(1<<0);
 
             if(!firstRead){
                 uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,0);
@@ -220,18 +245,86 @@ void tab_monitor::work_fun(){
                 WFgraph->removeSeries(WFchBseries);
                 QList<QPointF> points;
                 points.reserve(toread);
-                for(int i=0; i!=toread; i++) points.push_back(QPointF(i,AQF::getChMSB(read[i])));
+                for(int i=0; i!=toread; i++){
+                    points.push_back(QPointF(i*scale,AQF::getChMSB(read[i])));
+                    if(AQF::getChMSB(read[i])>max) max=AQF::getChMSB(read[i]);
+                    else if(AQF::getChMSB(read[i])<min) min=AQF::getChMSB(read[i]);
+                }
                 WFchAseries->clear();
                 WFchAseries->append(points);
                 points.clear();
-                for(int i=0; i!=toread; i++) points.push_back(QPointF(i,AQF::getChLSB(read[i])));
+                for(int i=0; i!=toread; i++){
+                    points.push_back(QPointF(i*scale,AQF::getChLSB(read[i])));
+                    if(AQF::getChLSB(read[i])>max) max=AQF::getChLSB(read[i]);
+                    else if(AQF::getChLSB(read[i])<min) min=AQF::getChLSB(read[i]);
+                }
                 WFchBseries->clear();
                 WFchBseries->append(points);
                 WFgraph->addSeries(WFchAseries);
                 WFgraph->addSeries(WFchBseries);
-                WFgraph->createDefaultAxes();
+                WFaxisX->setRange(0,toread*scale);
+                WFaxisY->setRange(min,max);
+                WFchAseries->attachAxis(WFaxisX);
+                WFchBseries->attachAxis(WFaxisX);
+                WFchAseries->attachAxis(WFaxisY);
+                WFchBseries->attachAxis(WFaxisY);
+
+                printf("toread=%u\n",toread);
+                for(int j=0, otoread=toread;j!=100;j++){
+                    toread=1<<j;
+                    if(toread>otoread) break;
+                }
+                toread=toread>>1;
+                printf("FFTead=%u\n",toread);
+
+                viennacl::vector<float> A(toread);
+                for(int i=0; i!=toread; i++) A[i]=AQF::getChMSB(read[i]);
+                viennacl::vector<float> B(2*toread);
+                viennacl::vector<float> C(2*toread);
+                viennacl::linalg::real_to_complex(A, B, A.size());
+                viennacl::fft(B, C);
+                FTgraph->removeSeries(FTchAseries);
+                FTgraph->removeSeries(FTchBseries);
+                points.clear();
+                for(int i=0; i!=toread/2; i++) {
+                    std::complex<float> cn(C(2*i),C(2*i+1));
+                    points.push_back(QPointF(i/scale/toread,std::abs(cn)));
+                }
+                FTchAseries->clear();
+                FTchAseries->append(points);
+                points.clear();
+                for(int i=0; i!=toread; i++) A[i]=AQF::getChLSB(read[i]);
+                viennacl::linalg::real_to_complex(A, B, A.size());
+                viennacl::fft(B, C);
+                for(int i=0; i!=toread/2; i++) {
+                    std::complex<float> cn(C(2*i),C(2*i+1));
+                    points.push_back(QPointF(i/scale/toread,std::abs(cn)));
+                }
+                FTchBseries->clear();
+                FTchBseries->append(points);
+                FTgraph->addSeries(FTchAseries);
+                FTgraph->addSeries(FTchBseries);
+                FTaxisX->setRange(0,1/scale/2);
+                FTchAseries->attachAxis(FTaxisX);
+                FTchBseries->attachAxis(FTaxisX);
+                FTchAseries->attachAxis(FTaxisY);
+                FTchBseries->attachAxis(FTaxisY);
+                //FTgraph->createDefaultAxes();
+
             }
             else firstRead=false;
+
+
+            uint32_t acksize=go.pRPTY->getNum(RPTY::F2A_RSMax,0)+1;
+            if(go.pRPTY->getNum(RPTY::A2F_RSCur,0)==0){
+                std::vector<uint32_t> commands;
+                commands.push_back(CQF::W4TRIG_INTR());
+                commands.push_back(CQF::ACK(1<<0, selectedavg, selectedchannels, true));
+                commands.push_back(CQF::WAIT(acksize*(1<<selectedavg)));
+                commands.push_back(CQF::ACK(1<<0, selectedavg, selectedchannels, false));
+                go.pRPTY->A2F_write(0,commands.data(),commands.size());
+            }
+            go.pRPTY->trig(1<<0);
         }
     }
 }

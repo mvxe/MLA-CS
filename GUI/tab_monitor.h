@@ -27,6 +27,12 @@ public:
         QChart* SGgraph;
         QLineSeries *WFchAseries;
         QLineSeries *WFchBseries;
+        QLineSeries *FTchAseries;
+        QLineSeries *FTchBseries;
+        QValueAxis *WFaxisX;
+        QValueAxis *WFaxisY;
+        QValueAxis *FTaxisX;
+        QLogValueAxis *FTaxisY;
 
     QVBoxLayout* buttonLayout;
         QToolButton* channelSelect;
@@ -52,7 +58,7 @@ public:
           {"ADC-B && PID-1","",nullptr,CQF::fADC_B__PIDO_1},
           {"PID-0 && PID-1","",nullptr,CQF::PIDO_0__PIDO_1}
         };
-        constexpr static unsigned work_call_time=100;    //work_fun is called periodically via timer every this many milliseconds
+        constexpr static unsigned work_call_time=1000;    //work_fun is called periodically via timer every this many milliseconds
         constexpr static unsigned maxavg=31;
         QAction* _avg_actionList[maxavg+1];
         constexpr static double baseSamplFreq=8e-9;
