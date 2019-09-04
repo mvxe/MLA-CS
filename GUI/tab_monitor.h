@@ -80,8 +80,6 @@ public:
         bool calc_spec=false;
         bool tab_is_open=false;
 
-        bool firstRead=true;
-
 private Q_SLOTS:
     void on_channel_select(QAction *action);
     void on_averaging_select(QAction *action);

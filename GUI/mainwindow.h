@@ -111,7 +111,7 @@ private Q_SLOTS:
 
     void on_sl_fsens_valueChanged(int value);
 
-    void on_pushButton_9_toggled(bool checked);
+    void on_pushButton_9_released();
 
     void on_pushButton_10_released();
 

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1187</width>
-    <height>935</height>
+    <width>1188</width>
+    <height>1005</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -738,41 +738,6 @@
              <enum>QFrame::Raised</enum>
             </property>
             <layout class="QGridLayout" name="gridLayout_8">
-             <item row="5" column="1">
-              <widget class="QDoubleSpinBox" name="sb_PBurnArray_dotlst">
-               <property name="decimals">
-                <number>1</number>
-               </property>
-               <property name="minimum">
-                <double>0.200000000000000</double>
-               </property>
-               <property name="maximum">
-                <double>1000000.000000000000000</double>
-               </property>
-               <property name="value">
-                <double>10.000000000000000</double>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
-              <widget class="QDoubleSpinBox" name="sb_PBurnArray_dotfst">
-               <property name="decimals">
-                <number>1</number>
-               </property>
-               <property name="minimum">
-                <double>0.200000000000000</double>
-               </property>
-               <property name="maximum">
-                <double>1000000.000000000000000</double>
-               </property>
-               <property name="singleStep">
-                <double>1.000000000000000</double>
-               </property>
-               <property name="value">
-                <double>10.000000000000000</double>
-               </property>
-              </widget>
-             </item>
              <item row="1" column="1">
               <widget class="QDoubleSpinBox" name="sb_PBurnArray_spacing">
                <property name="decimals">
@@ -818,7 +783,7 @@ or if(vac) HighBar</string>
                </property>
               </widget>
              </item>
-             <item row="5" column="0">
+             <item row="6" column="0">
               <widget class="QLabel" name="label_18">
                <property name="text">
                 <string>dot(M*N) exp.:
@@ -859,20 +824,98 @@ or if(vac) LowBar</string>
                </property>
               </widget>
              </item>
-             <item row="6" column="0">
+             <item row="6" column="1">
+              <widget class="QDoubleSpinBox" name="sb_PBurnArray_dotlst">
+               <property name="decimals">
+                <number>6</number>
+               </property>
+               <property name="minimum">
+                <double>0.000008000000000</double>
+               </property>
+               <property name="maximum">
+                <double>1000000.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>10.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QDoubleSpinBox" name="sb_PBurnArray_dotfst">
+               <property name="decimals">
+                <number>6</number>
+               </property>
+               <property name="minimum">
+                <double>0.000008000000000</double>
+               </property>
+               <property name="maximum">
+                <double>1000000.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>1.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>10.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="0">
               <widget class="QCheckBox" name="checkBox">
                <property name="text">
                 <string>Vacancy</string>
                </property>
               </widget>
              </item>
-             <item row="7" column="0">
+             <item row="9" column="0">
               <widget class="QPushButton" name="pushButton_9">
                <property name="text">
-                <string>Laser toggle</string>
+                <string>Laser pulse</string>
                </property>
                <property name="checkable">
-                <bool>true</bool>
+                <bool>false</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0">
+              <widget class="QLabel" name="label_36">
+               <property name="text">
+                <string>dot(1) int(arb):
+ or if(vac HighBar</string>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="1">
+              <widget class="QLabel" name="label_35">
+               <property name="text">
+                <string>[uses dot(1) set.]</string>
+               </property>
+              </widget>
+             </item>
+             <item row="7" column="0">
+              <widget class="QLabel" name="label_37">
+               <property name="text">
+                <string>dot(M*M) int.:
+ or if(vac HighBar</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QSpinBox" name="sb_PBurnArray_dotIfst">
+               <property name="maximum">
+                <number>8191</number>
+               </property>
+               <property name="value">
+                <number>1000</number>
+               </property>
+              </widget>
+             </item>
+             <item row="7" column="1">
+              <widget class="QSpinBox" name="sb_PBurnArray_dotIlst">
+               <property name="maximum">
+                <number>8191</number>
+               </property>
+               <property name="value">
+                <number>1000</number>
                </property>
               </widget>
              </item>

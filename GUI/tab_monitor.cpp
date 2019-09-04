@@ -310,10 +310,7 @@ void tab_monitor::work_fun(){
                 FTchBseries->attachAxis(FTaxisX);
                 FTchAseries->attachAxis(FTaxisY);
                 FTchBseries->attachAxis(FTaxisY);
-                //FTgraph->createDefaultAxes();
-
             }
-            else firstRead=false;
 
             if(go.pRPTY->getNum(RPTY::A2F_RSCur,RPTY_A2F_queue)==0){
                 std::vector<uint32_t> commands;

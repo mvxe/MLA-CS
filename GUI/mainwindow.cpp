@@ -522,8 +522,17 @@ void MainWindow::on_pushButton_7_released(){    //fit beam: for gaussian beam D4
 
 }
 
-void MainWindow::on_pushButton_9_toggled(bool checked){     //laser toggle
-    go.pXPS->setGPIO(XPS::writingLaser,checked);
+void MainWindow::on_pushButton_9_released(){     //laser toggle
+    if(go.pRPTY->connected){
+        std::vector<uint32_t> commands;
+        commands.push_back(CQF::W4TRIG_INTR());
+        commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));
+        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, ui->sb_PBurnArray_dotIfst->value(), 0));
+        commands.push_back(CQF::WAIT(ui->sb_PBurnArray_dotfst->value()/8e-6));
+        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
+        go.pRPTY->A2F_write(0,commands.data(),commands.size());
+        go.pRPTY->trig(1<<0);
+    }
 }
 
 void MainWindow::on_pushButton_11_clicked(){    //RPTY TEST : TODO REMOVE
