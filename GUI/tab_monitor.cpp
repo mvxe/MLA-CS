@@ -20,13 +20,9 @@ tab_monitor::tab_monitor(QWidget *parent){
         WFchAseries->setName("CHA");
         WFchBseries=new QLineSeries();
         WFchBseries->setName("CHB");
-        //WFgraph->setAnimationOptions(QChart::AllAnimations);
         WFgraph->addSeries(WFchAseries);
         WFgraph->addSeries(WFchBseries);
         WFgraph->createDefaultAxes();
-        WFgraph->axisY()->setRange(-300,-100);
-        WFgraph->axisX()->setRange(0,1000);
-
 
         FTgraph=new QChart;
         FTgraphView=new QChartView(FTgraph);
@@ -220,20 +216,20 @@ void tab_monitor::work_fun(){
                 std::vector<uint32_t> read;
                 read.reserve(toread);
                 go.pRPTY->F2A_read(0,read.data(),toread);
-//                WFgraph->removeSeries(WFchAseries);
-//                WFgraph->removeSeries(WFchBseries);
-
+                WFgraph->removeSeries(WFchAseries);
+                WFgraph->removeSeries(WFchBseries);
                 QList<QPointF> points;
-                points.reserve(1000);
-                for(int i=0; i!=1000; i++) points.push_back(QPointF(i,AQF::getChMSB(read[i])));
+                points.reserve(toread);
+                for(int i=0; i!=toread; i++) points.push_back(QPointF(i,AQF::getChMSB(read[i])));
                 WFchAseries->clear();
                 WFchAseries->append(points);
                 points.clear();
-                for(int i=0; i!=1000; i++) points.push_back(QPointF(i,AQF::getChLSB(read[i])));
+                for(int i=0; i!=toread; i++) points.push_back(QPointF(i,AQF::getChLSB(read[i])));
                 WFchBseries->clear();
                 WFchBseries->append(points);
-//                WFgraph->addSeries(WFchAseries);
-//                WFgraph->addSeries(WFchBseries);
+                WFgraph->addSeries(WFchAseries);
+                WFgraph->addSeries(WFchBseries);
+                WFgraph->createDefaultAxes();
             }
             else firstRead=false;
         }
