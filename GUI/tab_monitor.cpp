@@ -26,11 +26,13 @@ tab_monitor::tab_monitor(QWidget *parent){
         WFchAseries->setName("CHA");
         WFchBseries=new QLineSeries();
         WFchBseries->setName("CHB");
+        WFgraphView->setRubberBand(QChartView::RectangleRubberBand);
 
         WFaxisX = new QValueAxis();
         WFaxisX->setTitleText("Time (ms)"); WFaxisX->setMinorTickCount(10); WFaxisX->setTickCount(10);
         WFaxisY = new QValueAxis();
         WFaxisY->setTitleText("Values");
+        WFaxisY->setRange(-8192,8191);
         WFgraph->addAxis(WFaxisX, Qt::AlignBottom);
         WFgraph->addAxis(WFaxisY, Qt::AlignLeft);
         WFgraph->addSeries(WFchAseries);
@@ -49,6 +51,7 @@ tab_monitor::tab_monitor(QWidget *parent){
         FTchAseries->setName("CHA");
         FTchBseries=new QLineSeries();
         FTchBseries->setName("CHB");
+        FTgraphView->setRubberBand(QChartView::HorizontalRubberBand);
 
         FTaxisX = new QValueAxis();
         FTaxisX->setTitleText("Frequency (kHz)");   FTaxisX->setMinorTickCount(10); FTaxisX->setTickCount(10);
@@ -106,28 +109,31 @@ tab_monitor::tab_monitor(QWidget *parent){
         }
         connect(averagingSelect, SIGNAL(triggered(QAction *)), this, SLOT(on_averaging_select(QAction *)));
 
-        QHBoxLayout* SBlayout=new QHBoxLayout;
-        QWidget* SBwidget=new QWidget;
-        SBwidget->setLayout(SBlayout);
-        buttonLayout->addWidget(SBwidget);
-            QLabel* SBtxt0=new QLabel;
-            SBtxt0->setText("Acquisition frequency: ");
-            SBlayout->addWidget(SBtxt0);
-            frequencySpinbox=new QDoubleSpinBox;
-            frequencySpinbox->setValue(acqfreq);
-            frequencySpinbox->setDecimals(6);
-            frequencySpinbox->setRange(1e-6,1e6);
-            SBlayout->addWidget(frequencySpinbox);
-            connect(frequencySpinbox, SIGNAL(editingFinished()), this, SLOT(on_freqValueChanged()));
-            QLabel* SBtxt1=new QLabel;
-            SBtxt1->setText("Hz");
-            SBlayout->addWidget(SBtxt1);
 
+        QHBoxLayout* trigLayout=new QHBoxLayout;
+        QWidget* trigWidget=new QWidget;
+        trigWidget->setLayout(trigLayout);
+        buttonLayout->addWidget(trigWidget);
 
-        CBtrig=new QCheckBox;
-        buttonLayout->addWidget(CBtrig);
-        CBtrig->setText("Trigger on laser pulse");
-        connect(CBtrig, SIGNAL(stateChanged(int)), this, SLOT(on_CBtrig_stateChanged(int)));
+            CBtrig=new QCheckBox;
+            trigLayout->addWidget(CBtrig);
+            CBtrig->setText("Trigger on laser pulse");
+            connect(CBtrig, SIGNAL(stateChanged(int)), this, SLOT(on_CBtrig_stateChanged(int)));
+
+            CBlpauto=new QCheckBox;
+            trigLayout->addWidget(CBlpauto);
+            CBlpauto->setText("auto 1Hz");
+            connect(CBlpauto, SIGNAL(stateChanged(int)), this, SLOT(on_CBlpauto_stateChanged(int)));
+
+        rstView = new QPushButton;
+        rstView->setText("Reset graph view range.");
+        buttonLayout->addWidget(rstView);
+        connect(rstView, SIGNAL(released()), this, SLOT(on_rstView_released()));
+
+        CBfastack=new QCheckBox;
+        buttonLayout->addWidget(CBfastack);
+        CBfastack->setText("Fast ack. (60Hz)");
+        connect(CBfastack, SIGNAL(stateChanged(int)), this, SLOT(on_CBfastack_stateChanged(int)));
 
         QLabel* infotxt=new QLabel;
         infotxt->setText("NOTE: The following options will keep acquisition\nrunning in background!");
@@ -178,6 +184,9 @@ void tab_monitor::on_averaging_select(QAction *action){
 void tab_monitor::on_CBtrig_stateChanged(int state){
     trig_on_laser_pulse=(state==Qt::Checked);
 }
+void tab_monitor::on_CBlpauto_stateChanged(int state){
+    laser_pulse_auto=(state==Qt::Checked);
+}
 void tab_monitor::on_CBsaveWF_stateChanged(int state){
     if(state==Qt::Checked){
         //TODO save filename
@@ -196,9 +205,21 @@ void tab_monitor::on_CBspectrogram_stateChanged(int state){
     }
     calc_spec=(state==Qt::Checked);
 }
+void tab_monitor::on_CBfastack_stateChanged(int state){
+    if(state==Qt::Checked){
+        timer->setInterval(work_call_time_fast);
+        using_fast=true;
+    }
+    else{
+        timer->setInterval(work_call_time);
+        using_fast=false;
+    }
+}
 
-void tab_monitor::on_freqValueChanged(){
-    acqfreq=frequencySpinbox->value();
+void tab_monitor::on_rstView_released(){
+    WFLastRange=0;
+    FTLastRange=0;
+    WFaxisY->setRange(-8192,8191);
 }
 
 
@@ -220,96 +241,98 @@ void tab_monitor::init_timer(){     //once the tab is visited, the timer interru
 
 void tab_monitor::work_fun(){
     //printf("lol monitor\n");
-    int min=9999,max=-9999;
     double scale=baseSamplFreq*(1<<selectedavg)*1e3; //in ms
-    if(tab_is_open){// || save_waveform || save_fft || calc_spec){
+    if(tab_is_open || save_waveform || save_fft || calc_spec){//){
 
         //printf("its open or some cb is on\n");
         if(go.pRPTY->connected){
             //printf("RPTY is connected\n");
 
-            printf("A2F_RSMax for queue %d is %d\n",RPTY_A2F_queue,go.pRPTY->getNum(RPTY::A2F_RSMax,RPTY_A2F_queue));
-            printf("A2F_RSCur for queue %d is %d\n",RPTY_A2F_queue,go.pRPTY->getNum(RPTY::A2F_RSCur,RPTY_A2F_queue));
-            printf("A2F_lostN for queue %d is %d\n",RPTY_A2F_queue,go.pRPTY->getNum(RPTY::A2F_lostN,RPTY_A2F_queue));
-            printf("F2A_RSMax for queue %d is %d\n",RPTY_F2A_queue,go.pRPTY->getNum(RPTY::F2A_RSMax,RPTY_F2A_queue));
-            printf("F2A_RSCur for queue %d is %d\n",RPTY_F2A_queue,go.pRPTY->getNum(RPTY::F2A_RSCur,RPTY_F2A_queue));
-            printf("F2A_lostN for queue %d is %d\n",RPTY_F2A_queue,go.pRPTY->getNum(RPTY::F2A_lostN,RPTY_F2A_queue));
+//            printf("A2F_RSMax for queue %d is %d\n",RPTY_A2F_queue,go.pRPTY->getNum(RPTY::A2F_RSMax,RPTY_A2F_queue));
+//            printf("A2F_RSCur for queue %d is %d\n",RPTY_A2F_queue,go.pRPTY->getNum(RPTY::A2F_RSCur,RPTY_A2F_queue));
+//            printf("A2F_lostN for queue %d is %d\n",RPTY_A2F_queue,go.pRPTY->getNum(RPTY::A2F_lostN,RPTY_A2F_queue));
+//            printf("F2A_RSMax for queue %d is %d\n",RPTY_F2A_queue,go.pRPTY->getNum(RPTY::F2A_RSMax,RPTY_F2A_queue));
+//            printf("F2A_RSCur for queue %d is %d\n",RPTY_F2A_queue,go.pRPTY->getNum(RPTY::F2A_RSCur,RPTY_F2A_queue));
+//            printf("F2A_lostN for queue %d is %d\n",RPTY_F2A_queue,go.pRPTY->getNum(RPTY::F2A_lostN,RPTY_F2A_queue));
 
-            uint32_t acksize=go.pRPTY->getNum(RPTY::F2A_RSMax,RPTY_F2A_queue)+1;
+            uint32_t acksize;
+            if(using_fast) acksize=512;
+            else acksize=go.pRPTY->getNum(RPTY::F2A_RSMax,RPTY_F2A_queue)+1;
             uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,RPTY_F2A_queue);
 
             if(toread>=acksize){
                 std::vector<uint32_t> read;
                 read.reserve(toread);
                 go.pRPTY->F2A_read(RPTY_F2A_queue,read.data(),toread);
-                WFgraph->removeSeries(WFchAseries);
-                WFgraph->removeSeries(WFchBseries);
-                QList<QPointF> points;
-                points.reserve(toread);
-                for(int i=0; i!=toread; i++){
-                    points.push_back(QPointF(i*scale,AQF::getChMSB(read[i])));
-                    if(AQF::getChMSB(read[i])>max) max=AQF::getChMSB(read[i]);
-                    else if(AQF::getChMSB(read[i])<min) min=AQF::getChMSB(read[i]);
-                }
-                WFchAseries->clear();
-                WFchAseries->append(points);
-                points.clear();
-                for(int i=0; i!=toread; i++){
-                    points.push_back(QPointF(i*scale,AQF::getChLSB(read[i])));
-                    if(AQF::getChLSB(read[i])>max) max=AQF::getChLSB(read[i]);
-                    else if(AQF::getChLSB(read[i])<min) min=AQF::getChLSB(read[i]);
-                }
-                WFchBseries->clear();
-                WFchBseries->append(points);
-                WFgraph->addSeries(WFchAseries);
-                WFgraph->addSeries(WFchBseries);
-                WFaxisX->setRange(0,toread*scale);
-                WFaxisY->setRange(min,max);
-                WFchAseries->attachAxis(WFaxisX);
-                WFchBseries->attachAxis(WFaxisX);
-                WFchAseries->attachAxis(WFaxisY);
-                WFchBseries->attachAxis(WFaxisY);
 
-                printf("toread=%u\n",toread);
-                for(int j=0, otoread=toread;j!=100;j++){
-                    toread=1<<j;
-                    if(toread>otoread) break;
-                }
-                toread=toread>>1;
-                printf("FFTead=%u\n",toread);
+                if(tab_is_open){
+                    WFgraph->removeSeries(WFchAseries);
+                    WFgraph->removeSeries(WFchBseries);
+                    QList<QPointF> points;
+                    points.reserve(toread);
+                    for(int i=0; i!=toread; i++) points.push_back(QPointF(i*scale,AQF::getChMSB(read[i])));
+                    WFchAseries->clear();
+                    WFchAseries->append(points);
+                    points.clear();
+                    for(int i=0; i!=toread; i++) points.push_back(QPointF(i*scale,AQF::getChLSB(read[i])));
+                    WFchBseries->clear();
+                    WFchBseries->append(points);
+                    WFgraph->addSeries(WFchAseries);
+                    WFgraph->addSeries(WFchBseries);
+                    if(WFLastRange!=toread*scale){
+                        WFLastRange=toread*scale;
+                        WFaxisX->setRange(0,WFLastRange);
+                    }
+                    WFchAseries->attachAxis(WFaxisX);
+                    WFchBseries->attachAxis(WFaxisX);
+                    WFchAseries->attachAxis(WFaxisY);
+                    WFchBseries->attachAxis(WFaxisY);
 
-                viennacl::vector<float> A(toread);
-                for(int i=0; i!=toread; i++) A[i]=AQF::getChMSB(read[i]);
-                viennacl::vector<float> B(2*toread);
-                viennacl::vector<float> C(2*toread);
-                viennacl::linalg::real_to_complex(A, B, A.size());
-                viennacl::fft(B, C);
-                FTgraph->removeSeries(FTchAseries);
-                FTgraph->removeSeries(FTchBseries);
-                points.clear();
-                for(int i=0; i!=toread/2; i++) {
-                    std::complex<float> cn(C(2*i),C(2*i+1));
-                    points.push_back(QPointF(i/scale/toread,std::abs(cn)));
+//                    printf("toread=%u\n",toread);
+                    for(int j=0, otoread=toread;j!=100;j++){
+                        toread=1<<j;
+                        if(toread>otoread) break;
+                    }
+                    toread=toread>>1;
+//                    printf("FFTead=%u\n",toread);
+
+                    viennacl::vector<float> A(toread);
+                    for(int i=0; i!=toread; i++) A[i]=AQF::getChMSB(read[i]);
+                    viennacl::vector<float> B(2*toread);
+                    viennacl::vector<float> C(2*toread);
+                    viennacl::linalg::real_to_complex(A, B, A.size());
+                    viennacl::fft(B, C);
+                    FTgraph->removeSeries(FTchAseries);
+                    FTgraph->removeSeries(FTchBseries);
+                    points.clear();
+                    for(int i=0; i!=toread/2; i++) {
+                        std::complex<float> cn(C(2*i),C(2*i+1));
+                        points.push_back(QPointF(i/scale/toread,std::abs(cn)));
+                    }
+                    FTchAseries->clear();
+                    FTchAseries->append(points);
+                    points.clear();
+                    for(int i=0; i!=toread; i++) A[i]=AQF::getChLSB(read[i]);
+                    viennacl::linalg::real_to_complex(A, B, A.size());
+                    viennacl::fft(B, C);
+                    for(int i=0; i!=toread/2; i++) {
+                        std::complex<float> cn(C(2*i),C(2*i+1));
+                        points.push_back(QPointF(i/scale/toread,std::abs(cn)));
+                    }
+                    FTchBseries->clear();
+                    FTchBseries->append(points);
+                    FTgraph->addSeries(FTchAseries);
+                    FTgraph->addSeries(FTchBseries);
+                    if(FTLastRange!=1/scale/2){
+                        FTLastRange=1/scale/2;
+                        FTaxisX->setRange(0,FTLastRange);
+                    }
+                    FTchAseries->attachAxis(FTaxisX);
+                    FTchBseries->attachAxis(FTaxisX);
+                    FTchAseries->attachAxis(FTaxisY);
+                    FTchBseries->attachAxis(FTaxisY);
                 }
-                FTchAseries->clear();
-                FTchAseries->append(points);
-                points.clear();
-                for(int i=0; i!=toread; i++) A[i]=AQF::getChLSB(read[i]);
-                viennacl::linalg::real_to_complex(A, B, A.size());
-                viennacl::fft(B, C);
-                for(int i=0; i!=toread/2; i++) {
-                    std::complex<float> cn(C(2*i),C(2*i+1));
-                    points.push_back(QPointF(i/scale/toread,std::abs(cn)));
-                }
-                FTchBseries->clear();
-                FTchBseries->append(points);
-                FTgraph->addSeries(FTchAseries);
-                FTgraph->addSeries(FTchBseries);
-                FTaxisX->setRange(0,1/scale/2);
-                FTchAseries->attachAxis(FTaxisX);
-                FTchBseries->attachAxis(FTaxisX);
-                FTchAseries->attachAxis(FTaxisY);
-                FTchBseries->attachAxis(FTaxisY);
+
             }
 
             if(go.pRPTY->getNum(RPTY::A2F_RSCur,RPTY_A2F_queue)==0){
@@ -321,6 +344,9 @@ void tab_monitor::work_fun(){
                 go.pRPTY->A2F_write(RPTY_A2F_queue,commands.data(),commands.size());
             }
             if(!trig_on_laser_pulse) go.pRPTY->trig(1<<RPTY_A2F_queue);
+            if(laser_pulse_auto && trig_on_laser_pulse)
+                pmw->on_pushButton_9_released();
+
         }
     }
 }

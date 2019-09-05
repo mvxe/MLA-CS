@@ -43,6 +43,7 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     tabMon=new tab_monitor(ui->tab_rpty_monitor);
 
     tabPlot->pmw=this;
+    tabMon->pmw=this;
 }
 
 MainWindow::~MainWindow(){

@@ -111,13 +111,17 @@ private Q_SLOTS:
 
     void on_sl_fsens_valueChanged(int value);
 
-    void on_pushButton_9_released();
+
 
     void on_pushButton_10_released();
 
     void on_move_btn_released();
 
     void on_pushButton_11_clicked();
+
+public Q_SLOTS:
+
+    void on_pushButton_9_released();
 
 private:
     QApplication* qapp;
