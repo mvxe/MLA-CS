@@ -536,6 +536,16 @@ void MainWindow::on_pushButton_9_released(){     //laser toggle
     }
 }
 
+void MainWindow::on_pushButton_12_toggled(bool checked){
+    if(go.pRPTY->connected){
+        std::vector<uint32_t> commands;
+        if(checked) commands.push_back(CQF::SG_SAMPLE(CQF::O0td, ui->sb_PBurnArray_dotIfst->value(), 0));
+        else commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
+        go.pRPTY->A2F_write(0,commands.data(),commands.size());
+        go.pRPTY->trig(1<<0);
+    }
+}
+
 void MainWindow::on_pushButton_11_clicked(){    //RPTY TEST : TODO REMOVE
     for(int i=0;i!=4;i++){
         printf("A2F_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSMax,i));
