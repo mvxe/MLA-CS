@@ -26,7 +26,6 @@ private:
 
     PVTobj* po;
     exec_ret ret;
-    bool w84ret=false;
 };
 
 

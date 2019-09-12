@@ -68,42 +68,20 @@ void pBurnArray::run(){
         double X,Y,T,I;
         double oX=0, oY=0;
         double dis;
-        int doPointNum=go.pRPTY->getNum(RPTY::A2F_RSMax,0)/10;     //larger numbers and then XPS slips for some fucking reason
+        int domax=go.pRPTY->getNum(RPTY::A2F_RSMax,0);
+        int32_t atElement=0;
 
         std::string::size_type sza,szb;
         if (datafile.is_open()){
 
             if(!useLines){
-//                while(getline(datafile,line)){
-//                    if(end) break;
-//                    if(line.size()<2 || line.find("#")!=std::string::npos);
-//                    else{
-//                        X=std::stod(line,&sza)/1000;
-//                        Y=std::stod(line.substr(sza),&szb)/1000;
-//                        T=expo_mult*std::stod(line.substr(sza+szb))/1000;
-//                        dis=sqrt(pow(X-oX,2)+pow(Y-oY,2));
-//                        po->add(dis*SMT*100, X-oX, 0, Y-oY, 0, 0, 0,0,0);
-//                        if(T>=0.0001){
-//                            po->addAction(XPS::writingLaser,true);
-//                            po->add(T, 0, 0, 0, 0, 0, 0,0,0);
-//                            po->addAction(XPS::writingLaser,false);
-//                        }
-//                        if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
-//                        go.pXPS->execPVTobj(po, &ret);
-//                        std::cout<<X<<" "<<Y<<" "<<T<<"\n";
-//                        ret.block_till_done();
-//                        po->clear();
-//                        oX=X; oY=Y;
-//                    }
-//                }
-                for(int dpm=0;getline(datafile,line);dpm++){
-                    if(dpm==0){
-                        go.pXPS->setGPIO(XPS::writingLaser,false);
-                        commands.push_back(CQF::GPIO_MASK(0x40,0,0));
-                        commands.push_back(CQF::GPIO_DIR (0x40,0,0));
-                        commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
-                        po->addAction(XPS::writingLaser,true);
-                    }
+                commands.push_back(CQF::GPIO_MASK(0x40,0,0));
+                commands.push_back(CQF::GPIO_DIR (0x40,0,0));
+                commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
+                po->add(0.001, 0, 0, 0, 0, 0, 0,0,0);
+                po->addAction(XPS::writingLaser,true);
+                commands.push_back(CQF::WAIT(0.001/8e-9));
+                while(getline(datafile,line)){
                     if(end) break;
                     if(line.size()<2 || line.find("#")!=std::string::npos);
                     else{
@@ -121,23 +99,25 @@ void pBurnArray::run(){
                         po->add(0.01, 0, 0, 0, 0, 0, 0,0,0);
                         oX=X; oY=Y;
                     }
-                    if(dpm==doPointNum){
-                        dpm=-1;
-                        if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
-                        if(w84ret==true) ret.block_till_done(); w84ret=false;
-                        go.pRPTY->A2F_write(0,commands.data(),commands.size());
-                        go.pXPS->execPVTobj(po, &ret); w84ret=true;
-                        po->clear();
-                        commands.clear();
-                    }
                 }
+
                 if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
-                if(w84ret==true) ret.block_till_done(); w84ret=false;
-                go.pRPTY->A2F_write(0,commands.data(),commands.size());
-                go.pXPS->execPVTobj(po, &ret); w84ret=true;
-                ret.block_till_done(); w84ret=false;
+                go.pRPTY->A2F_write(0,commands.data(),domax);
+                atElement+=domax;
+                go.pXPS->execPVTobj(po, &ret);
+                while(atElement<commands.size()){
+                    int num=go.pRPTY->getNum(RPTY::A2F_RSCur,0);
+                    if(num<domax/2){
+                        go.pRPTY->A2F_write(0,commands.data()+atElement,(domax/2<commands.size()-atElement)?(domax/2):(commands.size()-atElement));
+                        atElement+=domax/2;
+                    }
+                    if(num<domax/8) printf("warning: writing to RPTYa might be too slow: num=%d \n",num);
+                    else std::this_thread::sleep_for (std::chrono::microseconds(100));
+                }
+                ret.block_till_done();
                 po->clear();
                 commands.clear();
+
             }else{
                 bool execL=false;
                 double fDis=0;
