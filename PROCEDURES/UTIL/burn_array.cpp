@@ -8,11 +8,12 @@ pBurnArray::pBurnArray(double espacing, double eexp_fst, int eint_fst, double ee
     exp_fst/=1000;
     exp_lst/=1000;
 }
-pBurnArray::pBurnArray(std::string filename, bool useLines, double expo_mult):spacing(0), exp_fst(0), exp_lst(0), gridX(0), gridY(0), vac(0),filename(filename),useLines(useLines),expo_mult(expo_mult){}
+pBurnArray::pBurnArray(std::string filename, bool useLines, double expo_mult, double expo_time):spacing(0), exp_fst(0), exp_lst(0), gridX(0), gridY(0), vac(0),filename(filename),useLines(useLines),expo_mult(expo_mult),expTime(expo_time/1000.){}
 pBurnArray::~pBurnArray(){
 }
 void pBurnArray::run(){
     const double SMT=0.1;
+    double SMTT;
     if(!go.pRPTY->connected) return;
 
     go.pXPS->setGPIO(XPS::iuScopeLED,true);
@@ -78,9 +79,9 @@ void pBurnArray::run(){
                 commands.push_back(CQF::GPIO_MASK(0x40,0,0));
                 commands.push_back(CQF::GPIO_DIR (0x40,0,0));
                 commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
-                po->add(0.001, 0, 0, 0, 0, 0, 0,0,0);
+                //po->add(0.001, 0, 0, 0, 0, 0, 0,0,0);
                 po->addAction(XPS::writingLaser,true);
-                commands.push_back(CQF::WAIT(0.001/8e-9));
+                //commands.push_back(CQF::WAIT(0.001/8e-9));
                 while(getline(datafile,line)){
                     if(end) break;
                     if(line.size()<2 || line.find("#")!=std::string::npos);
@@ -94,9 +95,9 @@ void pBurnArray::run(){
                         commands.push_back(CQF::WAIT(dis*SMT*100/8e-9));
                         commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //for debugging purposes
                         commands.push_back(CQF::SG_SAMPLE(CQF::O0td, I, 0));
-                        commands.push_back(CQF::WAIT(0.01/8e-9 - 3));
+                        commands.push_back(CQF::WAIT(expTime/8e-9 - 3));
                         commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
-                        po->add(0.01, 0, 0, 0, 0, 0, 0,0,0);
+                        po->add(expTime, 0, 0, 0, 0, 0, 0,0,0);
                         oX=X; oY=Y;
                     }
                 }
@@ -119,48 +120,49 @@ void pBurnArray::run(){
                 commands.clear();
 
             }else{
-                bool execL=false;
-                double fDis=0;
-                const double minT=0.01;
+                commands.push_back(CQF::GPIO_MASK(0x40,0,0));
+                commands.push_back(CQF::GPIO_DIR (0x40,0,0));
+                commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
+                //po->add(0.001, 0, 0, 0, 0, 0, 0,0,0);
+                po->addAction(XPS::writingLaser,true);
+                //commands.push_back(CQF::WAIT(0.001/8e-9));
                 while(getline(datafile,line)){
                     if(end) break;
                     if(line.size()<2 || line.find("#")!=std::string::npos);
                     else{
                         X=std::stod(line,&sza)/1000;
                         Y=std::stod(line.substr(sza),&szb)/1000;
-                        T=expo_mult*std::stod(line.substr(sza+szb))/1000;
+                        I=std::stoi(line.substr(sza+szb));
                         dis=sqrt(pow(X-oX,2)+pow(Y-oY,2));
-                        if((dis>fDis/10)){
-                            if(execL==true){
-                                execL=false;
-                                po->addAction(XPS::writingLaser,false);
-                                if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
-                                go.pXPS->execPVTobj(po, &ret);
-                                std::cout<<X<<" "<<Y<<" "<<T<<"\n";
-                                ret.block_till_done();
-                                po->clear();
-                            }
-                            fDis=dis;
-                            po->add(dis*SMT*100, X-oX, 0, Y-oY, 0, 0, 0,0,0);
-                        }
-                        else{
-                            if(T<minT) T=minT;
-                            if(execL==false){
-                                po->addAction(XPS::writingLaser,true);
-                                execL=true;
-                            }
-                            po->add(T, X-oX, (X-oX)/T, 0, 0, 0, 0,0,0);
-                        }
 
+                        if((expTime/8e-9 - 3)>dis*SMT*100/8e-9) SMTT=(expTime/8e-9 - 3)/(dis*100/8e-9);
+                        else SMTT=SMT;
+                        po->add(dis*SMTT*100, X-oX, 0, Y-oY, 0, 0, 0,0,0);
+                        commands.push_back(CQF::WAIT(dis*SMTT*100/8e-9 - (expTime/8e-9 - 3)));
+                        commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //for debugging purposes
+                        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, I, 0));
+                        commands.push_back(CQF::WAIT(expTime/8e-9 - 3));
+                        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
                         oX=X; oY=Y;
                     }
                 }
-                po->addAction(XPS::writingLaser,false);
+
                 if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
+                go.pRPTY->A2F_write(0,commands.data(),domax);
+                atElement+=domax;
                 go.pXPS->execPVTobj(po, &ret);
-                std::cout<<X<<" "<<Y<<" "<<T<<"\n";
+                while(atElement<commands.size()){
+                    int num=go.pRPTY->getNum(RPTY::A2F_RSCur,0);
+                    if(num<domax/2){
+                        go.pRPTY->A2F_write(0,commands.data()+atElement,(domax/2<commands.size()-atElement)?(domax/2):(commands.size()-atElement));
+                        atElement+=domax/2;
+                    }
+                    if(num<domax/8) printf("warning: writing to RPTYa might be too slow: num=%d \n",num);
+                    else std::this_thread::sleep_for (std::chrono::microseconds(100));
+                }
                 ret.block_till_done();
                 po->clear();
+                commands.clear();
             }
 
             datafile.close();

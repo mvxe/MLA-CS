@@ -10,7 +10,7 @@ class pBurnArray: public sproc
 {
 public:
     pBurnArray(double spacing, double eexp_fst, int eint_fst, double eexp_lst, int eint_lst, int gridX, int gridY, bool vac);
-    pBurnArray(std::string filename, bool useLines, double expo_mult);
+    pBurnArray(std::string filename, bool useLines, double expo_mult, double expo_time);
     ~pBurnArray();
 private:
     void run();
@@ -23,6 +23,8 @@ private:
     std::string filename;
     bool useLines;
     double expo_mult;
+
+    double expTime=0.01; //in sec
 
     PVTobj* po;
     exec_ret ret;
