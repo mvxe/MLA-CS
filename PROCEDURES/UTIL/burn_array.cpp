@@ -42,7 +42,7 @@ void pBurnArray::run(){
                 if(!(vac && (j%2) && (i%2))){
                     commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //for debugging purposes
                     commands.push_back(CQF::SG_SAMPLE(CQF::O0td, (((double)int_fst+(int_lst-int_fst)*(i+j*(gridX-1))/gridY/(gridX-1))), 0));
-                    printf("%lf\n",(((double)int_fst+(int_lst-int_fst)*(i+j*(gridX-1))/gridY/(gridX-1))));
+                    //printf("%lf\n",(((double)int_fst+(int_lst-int_fst)*(i+j*(gridX-1))/gridY/(gridX-1))));
                     commands.push_back(CQF::WAIT(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/(gridX-1)))/8e-9 - 3));
                     commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
                     po->add(((exp_fst+(exp_lst-exp_fst)*(i+j*(gridX-1))/gridY/(gridX-1))), 0, 0, 0, 0, 0, 0,0,0);
@@ -68,7 +68,7 @@ void pBurnArray::run(){
         double X,Y,T,I;
         double oX=0, oY=0;
         double dis;
-        int doPointNum=10;//go.pRPTY->getNum(RPTY::A2F_RSMax,0)/10;     //larger numbers and then XPS slips for some fucking reason
+        int doPointNum=go.pRPTY->getNum(RPTY::A2F_RSMax,0)/10;     //larger numbers and then XPS slips for some fucking reason
 
         std::string::size_type sza,szb;
         if (datafile.is_open()){
@@ -102,9 +102,7 @@ void pBurnArray::run(){
                         commands.push_back(CQF::GPIO_MASK(0x40,0,0));
                         commands.push_back(CQF::GPIO_DIR (0x40,0,0));
                         commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
-                        po->add(0.001, 0, 0, 0, 0, 0, 0,0,0);
                         po->addAction(XPS::writingLaser,true);
-                        commands.push_back(CQF::WAIT(0.001/8e-9));
                     }
                     if(end) break;
                     if(line.size()<2 || line.find("#")!=std::string::npos);
@@ -124,21 +122,22 @@ void pBurnArray::run(){
                         oX=X; oY=Y;
                     }
                     if(dpm==doPointNum){
-                        dpm=0;
-                        go.pRPTY->A2F_write(0,commands.data(),commands.size());
-                        commands.clear();
+                        dpm=-1;
                         if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
-                        go.pXPS->execPVTobj(po, &ret);
-                        ret.block_till_done();
+                        if(w84ret==true) ret.block_till_done(); w84ret=false;
+                        go.pRPTY->A2F_write(0,commands.data(),commands.size());
+                        go.pXPS->execPVTobj(po, &ret); w84ret=true;
                         po->clear();
+                        commands.clear();
                     }
                 }
-                go.pRPTY->A2F_write(0,commands.data(),commands.size());
-                commands.clear();
                 if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
-                go.pXPS->execPVTobj(po, &ret);
-                ret.block_till_done();
+                if(w84ret==true) ret.block_till_done(); w84ret=false;
+                go.pRPTY->A2F_write(0,commands.data(),commands.size());
+                go.pXPS->execPVTobj(po, &ret); w84ret=true;
+                ret.block_till_done(); w84ret=false;
                 po->clear();
+                commands.clear();
             }else{
                 bool execL=false;
                 double fDis=0;
