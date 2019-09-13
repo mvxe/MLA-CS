@@ -12,7 +12,7 @@ pBurnArray::pBurnArray(std::string filename, bool useLines, double expo_mult, do
 pBurnArray::~pBurnArray(){
 }
 void pBurnArray::run(){
-    const double SMT=0.1;
+    const double SMT=0.06;//0.04;
     double SMTT;
     if(!go.pRPTY->connected) return;
 
