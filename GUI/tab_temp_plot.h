@@ -23,6 +23,7 @@ public:
     QPushButton* replot;
     QPushButton* save;
     QPushButton* scor;
+    QCheckBox* do2DFFT;
 
     cv::Mat* imgMat;
     cv::Mat* imgMat8bit;
@@ -33,8 +34,9 @@ private Q_SLOTS:
     void on_replot_clicked();
     void on_save_clicked();
     void on_scor_clicked();
-public:
+public Q_SLOTS:
     void redraw();
+public:
     void plot();
     void fsave(std::string filename);
     void streamData(std::ostream *stream, bool is_line);
