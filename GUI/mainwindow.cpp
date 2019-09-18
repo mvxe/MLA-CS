@@ -4,6 +4,9 @@
 #include <opencv2/highgui/highgui.hpp>  // Video write
 #include "UTIL/pipe.h"                  //gnuplot
 
+#include "DEV/ALP/alp.h"        //TODO remove
+#include "DEV/TCP_con.h"        //TODO remove
+
 MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainWindow(parent), ui(new Ui::MainWindow) {
     mats= new std::vector<cv::Mat>;
 
@@ -601,4 +604,31 @@ void MainWindow::on_pushButton_11_clicked(){    //RPTY TEST : TODO REMOVE
     read.reserve(100);
     go.pRPTY->F2A_read(0,read.data(),100);
     for(int i=0;i!=100;i++) printf("data: N=%d,  MSB=%d, LSB=%d\n",i,AQF::getChMSB(read[i]),AQF::getChLSB(read[i]));
+}
+
+void MainWindow::on_pushButton_13_released(){
+    ALP DMDtest;
+    if(!DMDtest.resolve("10.42.0.121",666)) printf("resolved.\n");
+    DMDtest.connect(100);
+//    std::string text="Hello world\n";
+//    std::string recv;
+    if(DMDtest.connected){
+//        printf("sending string:%s",text.c_str());
+//        DMDtest.write(text);
+//        DMDtest.read(recv);
+//        printf("received string:%s",recv.c_str());
+        ALP::ALP_ID DeviceIdPtr;
+        int ret;
+        DMDtest.AlpDevAlloc(ALP::ALP_DEFAULT,ALP::ALP_DEFAULT, &DeviceIdPtr);
+        DMDtest.AlpDevInquire(DeviceIdPtr, ALP::ALP_DEVICE_NUMBER, &ret);
+        printf("Device number: %d\n",ret);
+        DMDtest.AlpDevInquire(DeviceIdPtr, ALP::ALP_VERSION, &ret);
+        printf("Device version: %d\n",ret);
+        DMDtest.AlpDevInquire(DeviceIdPtr, ALP::ALP_DEV_DMDTYPE, &ret);
+        printf("DMD type: %d\n",ret);
+        DMDtest.AlpDevFree(DeviceIdPtr);
+        DMDtest.disconnect();
+        printf("success\n");
+    }
+    else printf("failed to connect\n");
 }

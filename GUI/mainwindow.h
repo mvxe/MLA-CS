@@ -121,6 +121,8 @@ private Q_SLOTS:
 
     void on_pushButton_12_toggled(bool checked);
 
+    void on_pushButton_13_released();
+
 public Q_SLOTS:
 
     void on_pushButton_9_released();

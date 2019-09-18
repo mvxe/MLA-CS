@@ -26,6 +26,7 @@ public:
     template <typename T> ssize_t write(T *data, size_t size);       //returns number of bytes written (or -1 if error), size is in bytes
     ssize_t read(std::string &read_string);                          //returns number of characters read
     template <typename T> ssize_t read(T *data, size_t size);        //returns number of bytes read, size is in bytes
+    template <typename T> ssize_t bread(T *data, size_t size);       //block until error or all bytes read; returns number of bytes read, size is in bytes
     ssize_t rw(std::string write_string,std::string &read_string);   //returns number of characters read
     const std::atomic<bool>& connected{_connected};                  //thread safe var to see if connected
 
@@ -48,6 +49,17 @@ ssize_t TCP_con::write(T *data, size_t size){
 template <typename T>
 ssize_t TCP_con::read(T *data, size_t size){
     return ::read(sock,data,size);
+}
+template <typename T>
+ssize_t TCP_con::bread(T *data, size_t size){
+    size_t iter=0;
+    ssize_t ret;
+    while(iter<size){
+        ret=::read(sock,reinterpret_cast<int8_t*>(data)+iter,size-iter);
+        if(ret<0) return ret;
+        iter+=ret;
+    }
+    return iter;
 }
 
 #endif // TCP_CON_H

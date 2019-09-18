@@ -83,7 +83,8 @@ HEADERS += \
     DEV/CNC/cnc_template.h \
     PROCEDURES/UTIL/profile_beam.h \
     DEV/RPTY/fpga_const.h \
-    GUI/tab_monitor.h
+    GUI/tab_monitor.h \
+    DEV/ALP/alp.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -114,7 +115,8 @@ SOURCES += \
     GUI/tab_temp_plot.cpp \
     DEV/CNC/cnc.cpp \
     PROCEDURES/UTIL/profile_beam.cpp \
-    GUI/tab_monitor.cpp
+    GUI/tab_monitor.cpp \
+    DEV/ALP/alp.cpp
 
 
 unix {
