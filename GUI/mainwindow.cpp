@@ -610,13 +610,8 @@ void MainWindow::on_pushButton_13_released(){
     ALP DMDtest;
     if(!DMDtest.resolve("10.42.0.121",666)) printf("resolved.\n");
     DMDtest.connect(100);
-//    std::string text="Hello world\n";
-//    std::string recv;
+
     if(DMDtest.connected){
-//        printf("sending string:%s",text.c_str());
-//        DMDtest.write(text);
-//        DMDtest.read(recv);
-//        printf("received string:%s",recv.c_str());
         ALP::ALP_ID DeviceIdPtr;
         int ret;
         DMDtest.AlpDevAlloc(ALP::ALP_DEFAULT,ALP::ALP_DEFAULT, &DeviceIdPtr);
@@ -626,6 +621,27 @@ void MainWindow::on_pushButton_13_released(){
         printf("Device version: %d\n",ret);
         DMDtest.AlpDevInquire(DeviceIdPtr, ALP::ALP_DEV_DMDTYPE, &ret);
         printf("DMD type: %d\n",ret);
+        DMDtest.AlpDevInquire(DeviceIdPtr, ALP::ALP_AVAIL_MEMORY, &ret);
+        printf("Available memory (Num of images): %d\n",ret);
+
+        ALP::ALP_ID SeqID;
+        if (ALP::ALP_OK != DMDtest.AlpSeqAlloc( DeviceIdPtr, 1, 2, &SeqID )) return;
+        unsigned char *pImageData=nullptr;
+        long nSizeX=1920, nSizeY=1200;
+        const long nPictureTime = 200000;	// 200 ms, i.e. 5 Hz frame rate
+        pImageData = new unsigned char[2*nSizeX*nSizeY];
+        if (nullptr == pImageData) return;
+        for(long i=0;i!=nSizeX*nSizeY;i++) pImageData[i]=0x80;                  // white
+        for(long i=0;i!=nSizeX*nSizeY;i++) pImageData[i+nSizeX*nSizeY]=0x00;    // black
+        long nReturn = DMDtest.AlpSeqPut( DeviceIdPtr, SeqID, 0, 2, pImageData, 2*nSizeX*nSizeY);
+        delete[] pImageData;
+        if (ALP::ALP_OK != nReturn) {printf("error, nreturn=%d\n",nReturn); return;}
+        if (ALP::ALP_OK != DMDtest.AlpSeqTiming( DeviceIdPtr, SeqID, ALP::ALP_DEFAULT, nPictureTime,ALP::ALP_DEFAULT, ALP::ALP_DEFAULT, ALP::ALP_DEFAULT ) ) {printf("error 2\n"); return;}
+        if (ALP::ALP_OK != DMDtest.AlpProjStartCont( DeviceIdPtr, SeqID )) return;
+
+        std::this_thread::sleep_for (std::chrono::seconds(3));
+
+        DMDtest.AlpDevHalt(DeviceIdPtr);
         DMDtest.AlpDevFree(DeviceIdPtr);
         DMDtest.disconnect();
         printf("success\n");

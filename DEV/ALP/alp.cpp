@@ -86,7 +86,7 @@ int32_t ALP::AlpSeqInquire(ALP_ID DeviceId, ALP_ID SequenceId,  int32_t InquireT
     return toRecv[0];
 }
 int32_t ALP::AlpSeqPut(ALP_ID DeviceId, ALP_ID SequenceId, int32_t PicOffset, int32_t PicLoad, void *UserArrayPtr, size_t UserArraySize){
-    int32_t toSend[5]={11,(int32_t)DeviceId,(int32_t)SequenceId,PicOffset,PicLoad};
+    int32_t toSend[6]={11,(int32_t)DeviceId,(int32_t)SequenceId,PicOffset,PicLoad,(int32_t)UserArraySize};
     int32_t toRecv[1];
     if (TCP_con::write(toSend,sizeof(toSend))!=sizeof(toSend)) return RET_ERROR;
     if (TCP_con::write(UserArrayPtr,UserArraySize)!=UserArraySize) return RET_ERROR;
