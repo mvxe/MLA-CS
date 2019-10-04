@@ -170,12 +170,19 @@ void tab_temp_plot::on_save_clicked(){
     fsave(fileName.toStdString());
 }
 
+struct cvect{
+    float val;
+    int pos;
+    bool deleted=false;
+};
+bool compfun (cvect i,cvect j) { return (i.val>j.val); }
+
 void tab_temp_plot::redraw(){
     if(do2DFFT->isChecked()){
         cv::Mat padded;
-        int m = cv::getOptimalDFTSize( imgMat8bit->rows );
-        int n = cv::getOptimalDFTSize( imgMat8bit->cols ); // on the border add zero values
-        cv::copyMakeBorder(*imgMat8bit, padded, 0, m - imgMat8bit->rows, 0, n - imgMat8bit->cols, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+        int m = cv::getOptimalDFTSize( imgMat->rows );
+        int n = cv::getOptimalDFTSize( imgMat->cols ); // on the border add zero values
+        cv::copyMakeBorder(*imgMat, padded, 0, m - imgMat->rows, 0, n - imgMat->cols, cv::BORDER_CONSTANT, cv::Scalar::all(0));
         cv::Mat planes[] = {cv::Mat_<float>(padded), cv::Mat::zeros(padded.size(), CV_32F)};
         cv::Mat complexI;
         cv::merge(planes, 2, complexI);
@@ -205,10 +212,46 @@ void tab_temp_plot::redraw(){
         q2.copyTo(q1);
         tmp.copyTo(q2);
 
+
+        cv::Mat hVec;
+        reduce(magI, hVec, 0, CV_REDUCE_AVG);
+        std::vector<cvect> hStdVec;
+        hStdVec.reserve(hVec.cols);
+        for(int i=0;i!=hVec.cols;i++){
+            hStdVec.emplace_back();
+            hStdVec.back().val=(float)hVec.at<float>(0, i);
+            hStdVec.back().pos=i;
+        }
+
         normalize(magI, magI, 0, 255, CV_MINMAX); // Transform the matrix with float values into a
                                                 // viewable image form (float between values 0 and 1).
         magI.convertTo(magI, CV_8U);
+
+//        cv::threshold(magI, magI, 100, 255, cv::THRESH_BINARY);
+        //cv::Canny(magI, magI,  100, 200);
         cv::cvtColor(magI, *imgMatWLines, cv::COLOR_GRAY2BGR);
+
+
+
+
+
+//        std::vector<cvect> peaks;
+//        cvect *max = &(*std::max_element(hStdVec.begin(),hStdVec.end(),compfun));
+//        if(max->deleted==false){
+//            max->deleted=true;
+//            peaks.push_back(*max);
+//        }
+
+        for(int i=0;i!=hStdVec.size();i++){
+            printf("%f %d\n",hStdVec[i].val, hStdVec[i].pos);
+        }printf("\n");
+
+        std::sort (hStdVec.begin(), hStdVec.end(), compfun);
+        for(int i=0;i!=40;i++){
+            printf("%f %d\n",hStdVec[i].val, hStdVec[i].pos);
+        }printf("\n");
+
+
     }
     else cv::cvtColor(*imgMat8bit, *imgMatWLines, cv::COLOR_GRAY2BGR);
 

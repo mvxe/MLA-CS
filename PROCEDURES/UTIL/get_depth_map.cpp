@@ -83,7 +83,7 @@ void pGetDepthMap::multiple(){
 
 
     int maxLoc=0;
-
+//    std::ofstream test_write_file ("test_write_file.txt");  //TODO remove
 
     A=std::chrono::system_clock::now();
     for(int k=0;k!=mat->rows;k++){
@@ -101,6 +101,47 @@ void pGetDepthMap::multiple(){
         Ufft2D.copyTo(fft2D);
 //        cv::dft(mat2D, fft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
 //        C=std::chrono::system_clock::now();
+
+
+// // Export one pixel test results
+//        if(k==0){
+//            std::cout<<"\n\n\n\n";
+//            for(int j=0;j!=NMat_opt;j++){
+//                float ang;
+//                ang=std::arg(fft2D.at<std::complex<float>>(0, j));
+//                if(ang<=-M_PI/2) ang=M_PI+ang;
+//                else if(ang>M_PI/2) ang=-M_PI+ang;
+//                std::cout<<j<<" ";
+//                std::cout<<mat2D.at<float>(0, j)<<" ";
+//                std::cout<<std::abs(fft2D.at<std::complex<float>>(0, j))<<" ";
+//                std::cout<<ang<<" ";
+//                std::cout<<fft2D.at<std::complex<float>>(0, j).real()<<" ";
+//                std::cout<<fft2D.at<std::complex<float>>(0, j).imag()<<"\n";
+//            }
+//            std::cout<<"\n\n\n\n";
+//        }
+
+// // Export all pixel test max result
+//        for(int j=0;j!=mat->rows;j++){
+//            int maxLoc1=0;
+//            float max=0;
+//            for(int i=NMat_opt/50;i!=NMat_opt/4;i++){
+//                if(std::abs(fft2D.at<std::complex<float>>(j, i)) > max){
+//                    max=std::abs(fft2D.at<std::complex<float>>(j, i));
+//                    maxLoc1=i;
+//                }
+//            }
+//            float ang;
+//            test_write_file<<j<<" "<<k<<" ";
+//            ang=std::arg(fft2D.at<std::complex<float>>(j, maxLoc1));
+//            test_write_file<<std::abs(fft2D.at<std::complex<float>>(j, maxLoc1))<<" ";
+//            test_write_file<<ang<<" ";
+//            if(ang<=-M_PI/2) ang=M_PI+ang;
+//            else if(ang>M_PI/2) ang=-M_PI+ang;
+//            test_write_file<<ang<<" ";
+//            test_write_file<<maxLoc1<<"\n";
+//        }
+
 
 
 
@@ -128,6 +169,8 @@ void pGetDepthMap::multiple(){
 //        std::cout<<"copy dft "<<std::chrono::duration_cast<std::chrono::microseconds>(D - C).count()<<" microseconds\n";
 
     }
+
+//    test_write_file.close();  //TODO remove
 
     cv::Mat wrapped;
     mat2DDepth.convertTo(wrapped, CV_16U, (1<<16)/M_PI/2, (1<<16)/2);
