@@ -85,6 +85,9 @@ void pGetDepthMap::multiple(){
     int maxLoc=0;
 //    std::ofstream test_write_file ("test_write_file.txt");  //TODO remove
 
+//    int normalloc=-1;
+//    int donex=-1;
+
     A=std::chrono::system_clock::now();
     for(int k=0;k!=mat->rows;k++){
 //        A=std::chrono::system_clock::now();
@@ -103,23 +106,7 @@ void pGetDepthMap::multiple(){
 //        C=std::chrono::system_clock::now();
 
 
-// // Export one pixel test results
-//        if(k==0){
-//            std::cout<<"\n\n\n\n";
-//            for(int j=0;j!=NMat_opt;j++){
-//                float ang;
-//                ang=std::arg(fft2D.at<std::complex<float>>(0, j));
-//                if(ang<=-M_PI/2) ang=M_PI+ang;
-//                else if(ang>M_PI/2) ang=-M_PI+ang;
-//                std::cout<<j<<" ";
-//                std::cout<<mat2D.at<float>(0, j)<<" ";
-//                std::cout<<std::abs(fft2D.at<std::complex<float>>(0, j))<<" ";
-//                std::cout<<ang<<" ";
-//                std::cout<<fft2D.at<std::complex<float>>(0, j).real()<<" ";
-//                std::cout<<fft2D.at<std::complex<float>>(0, j).imag()<<"\n";
-//            }
-//            std::cout<<"\n\n\n\n";
-//        }
+
 
 // // Export all pixel test max result
 //        for(int j=0;j!=mat->rows;j++){
@@ -131,18 +118,45 @@ void pGetDepthMap::multiple(){
 //                    maxLoc1=i;
 //                }
 //            }
+//            if(normalloc==-1) normalloc=maxLoc1;
 //            float ang;
-//            test_write_file<<j<<" "<<k<<" ";
+//            //test_write_file<<j<<" "<<k<<" ";
 //            ang=std::arg(fft2D.at<std::complex<float>>(j, maxLoc1));
-//            test_write_file<<std::abs(fft2D.at<std::complex<float>>(j, maxLoc1))<<" ";
-//            test_write_file<<ang<<" ";
+//            //test_write_file<<std::abs(fft2D.at<std::complex<float>>(j, maxLoc1))<<" ";
+//            //test_write_file<<ang<<" ";
 //            if(ang<=-M_PI/2) ang=M_PI+ang;
 //            else if(ang>M_PI/2) ang=-M_PI+ang;
-//            test_write_file<<ang<<" ";
-//            test_write_file<<maxLoc1<<"\n";
+//            //test_write_file<<ang<<" ";
+//            //test_write_file<<maxLoc1<<"\n";
+//            if(k>100 && donex==-1 && normalloc!=maxLoc1)  donex=normalloc;
 //        }
 
-
+// // Export one pixel test results
+//        if(donex>=0){
+//            //if(k==0){
+//                std::cout<<"\n\n\n\n";
+//                for(int j=0;j!=NMat_opt;j++){
+//                    float ang;
+//                    //ang=std::arg(fft2D.at<std::complex<float>>(0, j));
+//                    ang=std::arg(fft2D.at<std::complex<float>>(donex, j));
+//                    if(ang<=-M_PI/2) ang=M_PI+ang;
+//                    else if(ang>M_PI/2) ang=-M_PI+ang;
+//                    test_write_file<<j<<" ";
+//                    //test_write_file<<mat2D.at<float>(0, j)<<" ";
+//                    test_write_file<<mat2D.at<float>(donex, j)<<" ";
+//                    //test_write_file<<std::abs(fft2D.at<std::complex<float>>(0, j))<<" ";
+//                    test_write_file<<std::abs(fft2D.at<std::complex<float>>(donex, j))<<" ";
+//                    test_write_file<<ang<<" ";
+//                    //test_write_file<<fft2D.at<std::complex<float>>(0, j).real()<<" ";
+//                    test_write_file<<fft2D.at<std::complex<float>>(donex, j).real()<<" ";
+//                    //test_write_file<<fft2D.at<std::complex<float>>(0, j).imag()<<"\n";
+//                    test_write_file<<fft2D.at<std::complex<float>>(donex, j).imag()<<"\n";
+//                }
+//                std::cout<<"got "<<donex<<", "<<k<<"\n";
+//                std::cout<<"\n\n\n\n";
+//            //}
+//            donex=-2;
+//        }
 
 
         if(end) return;
