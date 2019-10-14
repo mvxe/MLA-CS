@@ -208,3 +208,9 @@ ArvDeviceStatus camobj::set_trigger(std::string trig){
     else arv_camera_set_trigger(cam, trig.c_str()); //Typical values for source are "Line1" or "Line2". See the camera documentation for the allowed values. Activation is set to rising edge. It can be changed by accessing the underlying device object.
     return arv_device_get_status(dev);
 }
+
+ArvDeviceStatus camobj::get_frame_rate_bounds (double *min, double *max){
+    std::lock_guard<std::mutex>lock(mtx);
+    arv_camera_get_frame_rate_bounds(cam, min, max);
+    return arv_device_get_status(dev);
+}

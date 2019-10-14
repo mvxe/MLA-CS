@@ -1,5 +1,5 @@
-#ifndef _CONFIG_TAB_DEVICES_H
-#define _CONFIG_TAB_DEVICES_H
+#ifndef CONFIG_TAB_DEVICES_H
+#define CONFIG_TAB_DEVICES_H
 #include "GUI/gui_includes.h"
 
 class _dev_layout;
@@ -70,4 +70,4 @@ private Q_SLOTS:
 
 
 
-#endif // _CONFIG_TAB_DEVICES_H
+#endif // CONFIG_TAB_DEVICES_H

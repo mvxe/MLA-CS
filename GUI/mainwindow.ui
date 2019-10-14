@@ -421,7 +421,7 @@
         <string>Devices</string>
        </attribute>
       </widget>
-      <widget class="QWidget" name="tab_camera">
+      <widget class="QWidget" name="tab_camera_old">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -429,7 +429,7 @@
         </sizepolicy>
        </property>
        <attribute name="title">
-        <string>Camera</string>
+        <string>CameraOld</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_5">
         <property name="sizeConstraint">
@@ -1141,6 +1141,11 @@ and intensity in ms)</string>
          </widget>
         </item>
        </layout>
+      </widget>
+      <widget class="QWidget" name="tab_camera">
+       <attribute name="title">
+        <string>Camera</string>
+       </attribute>
       </widget>
       <widget class="QWidget" name="tab_utilcam">
        <attribute name="title">

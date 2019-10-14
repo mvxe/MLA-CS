@@ -44,6 +44,7 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     tabDev=new tab_devices(ui->tab_dev);
     tabPlot=new tab_temp_plot(ui->tab_dis);
     tabMon=new tab_monitor(ui->tab_rpty_monitor);
+    tabCam=new tab_camera(ui->tab_camera);
 
     tabPlot->pmw=this;
     tabMon->pmw=this;
@@ -54,6 +55,8 @@ MainWindow::~MainWindow(){
     delete onDisplay;
     delete tabDev;
     delete tabPlot;
+    delete tabMon;
+    delete tabCam;
 }
 
 void MainWindow::program_exit(){
@@ -62,11 +65,20 @@ void MainWindow::program_exit(){
 }
 
 void MainWindow::on_tabWidget_currentChanged(int index){
+    QString tabName=ui->tabWidget->tabText(index);
+    QString lastTabName=ui->tabWidget->tabText(lastIndex);
+    lastIndex=index;
+
     ui->centralWidget->setFocus();  //prevents random textboxes from receiving focus after tab switch
-    if (ui->tabWidget->tabText(index)=="Camera") iuScope_img->setUserFps(30.,5);
-    else iuScope_img->setUserFps(0.);
-    if (ui->tabWidget->tabText(index)=="UtilCam") utilCam_img->setUserFps(30.,5);
-    else utilCam_img->setUserFps(0.);
+
+    if (tabName=="CameraOld") iuScope_img->setUserFps(30.,5);
+    else if(lastTabName=="CameraOld") iuScope_img->setUserFps(0.);
+
+    if (tabName=="UtilCam") utilCam_img->setUserFps(30.,5);
+    else if(lastTabName=="UtilCam") utilCam_img->setUserFps(0.);
+
+    if (tabName=="Camera") tabCam->tab_entered();
+    else if(lastTabName=="Camera") tabCam->tab_exited();
 
     tabMon->tab_is_open=(ui->tabWidget->tabText(index)=="Monitor");
 }
@@ -137,6 +149,7 @@ void fclabel::wheelEvent(QWheelEvent *event){
     if(go.pXPS->connected)
         go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,0,(double)event->delta()*pmw->xps_f_sen/1000000);
 }
+
 void MainWindow::on_move_btn_released(){
     double disp_x=-ui->move_distance->value()/1000.*cos(ui->move_angle->value()*M_PI/180);
     double disp_y=ui->move_distance->value()/1000.*sin(ui->move_angle->value()*M_PI/180);

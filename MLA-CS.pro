@@ -84,7 +84,8 @@ HEADERS += \
     PROCEDURES/UTIL/profile_beam.h \
     DEV/RPTY/fpga_const.h \
     GUI/tab_monitor.h \
-    DEV/ALP/alp.h
+    DEV/ALP/alp.h \
+    GUI/gui_aux_objects.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -116,7 +117,8 @@ SOURCES += \
     DEV/CNC/cnc.cpp \
     PROCEDURES/UTIL/profile_beam.cpp \
     GUI/tab_monitor.cpp \
-    DEV/ALP/alp.cpp
+    DEV/ALP/alp.cpp \
+    GUI/gui_aux_objects.cpp
 
 
 unix {

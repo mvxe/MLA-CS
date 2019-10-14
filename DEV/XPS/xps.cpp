@@ -67,6 +67,11 @@ void XPS::run(){    //this is the XPS thread loop
 
 void XPS::initGroup(GroupID ID){                 //add a queue containing groups, add command initGroups that inits them all, do this for commands below too
     execCommand("GroupInitialize",groupGetName(ID));
+//        std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
+//        exec_ret ret;
+//        execCommand(&ret, "PositionerMaximumVelocityAndAccelerationGet","M.Z","double *","double *");     //tried getting max speed and accel, TODO maybe change how everything works (ie also store positioner names) and store those too
+//        flushQueue();
+//        std::cout<<"vals: "<<ret.v.retstr<<"\n";
 }
 void XPS::initGroups(){
     for (int i=0;i!=_GROUP_NUM;i++) initGroup(groups[i].ID);

@@ -27,6 +27,7 @@ public:
     ArvDeviceStatus run(std::string atr);
 
     ArvDeviceStatus set_trigger(std::string trig="none");
+    ArvDeviceStatus get_frame_rate_bounds (double *min, double *max);
 
     std::mutex mkmx;
     tsvar_save<std::string> selected_ID;                    //thread safe access to select camera ID

@@ -13,13 +13,13 @@ class FQ;
 
 namespace Ui {
 class MainWindow;
-class tab_camera;
+class tab_camera_old;
 class tab_settings;
 class tab_connection;
 class tab_devices;
 }
 
-class MainWindow : public QMainWindow , public GUI_slots_baseclass, public tab_camera, public tab_settings, public tab_positioners
+class MainWindow : public QMainWindow , public GUI_slots_baseclass, public tab_camera_old, public tab_settings, public tab_positioners
 {
     Q_OBJECT
 public:
@@ -154,6 +154,7 @@ private:
     tab_devices* tabDev;
     tab_temp_plot* tabPlot;
     tab_monitor* tabMon;
+    tab_camera* tabCam;
     int donth=0;
 
     /* beam profiler variables, TODO move this elsewhere*/
@@ -175,6 +176,8 @@ private:
     };
     std::vector<fitar> fitres;
     const char keyword[50]="iwqnxmcaiofa";
+
+    int lastIndex=0;
 
     /* up to here*/
 };

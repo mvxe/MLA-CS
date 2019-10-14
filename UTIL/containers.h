@@ -27,7 +27,7 @@ typedef std::deque<_fo> _savelst;
 
 template <typename T> class cc_save{
 public:
-    cc_save(T& var, T initial, _savelst* vec, std::string name);
+    cc_save(T& var, T initial, _savelst* vec, std::string name);        //if you don't want to use it but you reuse code, set vec to nullptr, this disables saving
     ~cc_save();
     T& val;
 protected:
