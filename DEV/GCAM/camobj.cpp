@@ -194,7 +194,7 @@ std::string camobj::get_str(std::string atr){
     std::lock_guard<std::mutex>lock(mtx);
     return arv_device_get_string_feature_value(dev, atr.c_str());
 }
-inline ArvDeviceStatus camobj::run(std::string atr){
+ArvDeviceStatus camobj::run(std::string atr){
     std::lock_guard<std::mutex>lock(mtx);
     arv_device_execute_command(dev, atr.c_str());
     return arv_device_get_status(dev);

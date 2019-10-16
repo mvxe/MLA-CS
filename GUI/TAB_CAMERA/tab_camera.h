@@ -25,6 +25,7 @@ class tab_camera: public QWidget{
 
 public:
     tab_camera(QWidget* parent);
+    ~tab_camera();
 
     void tab_entered();
     void tab_exited();
@@ -37,6 +38,9 @@ private:
     QTabWidget* TWCtrl;
 
     QWidget* pageMotion;
+    QVBoxLayout* motionSettings;
+        QPushButton* scanOne;
+
     QWidget* pageWriting;
 
     QWidget* pageSettings;
@@ -52,13 +56,29 @@ private:
 
 
     FQ* framequeue;
+    FQ* framequeueDisp;
     const cv::Mat* mat;
+    const cv::Mat* onDisplay;
 
-    constexpr static unsigned work_call_time=100;    //work_fun is called periodically via timer every this many milliseconds
+    constexpr static unsigned work_call_time=33;    //work_fun is called periodically via timer every this many milliseconds
     bool running=false;
+
+
+    bool isOffset=false;    // false=we are centered, true=we are offset and ready to start
+    double setOffset=0;
+    PVTobj* PVTtoPos[2];    // [0] is downward, [1] is upward
+    PVTobj* PVTmeasure[2];  // [0] is downward, [1] is upward
+    exec_ret PVTret;
+    bool PVTsRdy=false;
+    int dir=0;              // to be used as PVT[dir] and flipped after each move (valid values: 0 and 1)
+    void updatePVTs(std::string &report);   // update PVTs whenever measurement paramaters are changed, returns true if PVT fails or accels/speeds are to high
+    void doOneRound();      // this automatically does the offset in case we are not offset
+    void getCentered();     // this recenters
+
 private Q_SLOTS:
     void work_fun();
     double vsConv(val_selector* vs);
+    void onScanOneReleased() {doOneRound();}
 
 public Q_SLOTS:
 

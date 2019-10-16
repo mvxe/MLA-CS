@@ -65,6 +65,7 @@ void val_selector::on_menu_change(){
     unit->setText(unit->menu()->activeAction()->text());
     for (int i=0;i!=unit->menu()->actions().size();i++) if(unit->menu()->actions()[i]==unit->menu()->activeAction()) {
         unitIndex=i;
+        *_changed=true;
         return;
     }
     unitIndex=0;

@@ -12,9 +12,9 @@ void PVTobj::_add(int n, double val, Args... vals){
 }
 template<typename... Args>
 void PVTobj::addAction(Args... vals){
-    cmdQueue.push(util::toCmdString("EventExtendedConfigurationTriggerSet",util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZF),".PVT.ElementNumberStart"),pvtqueue.size()/(1+2*go.pXPS->groups[ID].AxisNum)+1,0,0,0));
-    cmdQueue.push(util::toCmdString("EventExtendedConfigurationActionSet",vals...));
-    cmdQueue.push("EventExtendedStart (int *)");
+    cmdQueue.push_back(util::toCmdString("EventExtendedConfigurationTriggerSet",util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZF),".PVT.ElementNumberStart"),pvtqueue.size()/(1+2*go.pXPS->groups[ID].AxisNum)+1,0,0,0));
+    cmdQueue.push_back(util::toCmdString("EventExtendedConfigurationActionSet",vals...));
+    cmdQueue.push_back("EventExtendedStart (int *)");
     cmdWasLast=true;
 }
 

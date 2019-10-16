@@ -23,9 +23,9 @@ class PVTobj{
 public:
     PVTobj();
     void clear();
-    template<typename... Args>  void add(double val, Args... vals);
-    template<typename... Args>  void addAction(Args... vals);
-    void addAction(xps_config::GPIOID ID, bool value);
+    template<typename... Args>  void add(double val, Args... vals);     //time is relative, distances are relative, velocity is absolute
+    template<typename... Args>  void addAction(Args... vals);           //triggers right after the PREVIOUS COMMAND ENDS (if any)(start of next command, if any)! (can be first and last too)
+    void addAction(xps_config::GPIOID ID, bool value);                  //TODO fix bug: if addAction is the first command it may not do anything (sometimes)
 private:
     template<typename... Args>  void _add(int n, double val, Args... vals);
     void _add(int n, double val);           //no PVT file row has only one var(time), so we set this private
@@ -33,7 +33,7 @@ private:
     std::string filename;
     std::stringstream data;
     std::queue<double> pvtqueue;
-    std::queue<std::string> cmdQueue;
+    std::deque<std::string> cmdQueue;
     bool cmdWasLast{false};
     bool verified{false};
 };

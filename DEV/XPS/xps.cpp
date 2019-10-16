@@ -6,7 +6,7 @@ void PVTobj::clear(){
     data.str(std::string());
     data.clear();
     while (!pvtqueue.empty()) pvtqueue.pop();
-    while (!cmdQueue.empty()) cmdQueue.pop();
+    while (!cmdQueue.empty()) cmdQueue.pop_front();
 }
 
 void PVTobj::_add(int n, double val){
@@ -165,7 +165,7 @@ exec_dat XPS::verifyPVTobj(pPVTobj obj){
     std::lock_guard<std::mutex>lock(axisCoords[obj->ID].mx);
     XPS::raxis taxis{axisCoords};
     if(obj->cmdWasLast){
-        obj->pvtqueue.push(0.1);
+        obj->pvtqueue.push(0.000001);
         for (int i=0;i!=2*go.pXPS->groups[obj->ID].AxisNum;i++) obj->pvtqueue.push(0);
     }
     while(!obj->pvtqueue.empty()){
@@ -197,10 +197,8 @@ exec_dat XPS::verifyPVTobj(pPVTobj obj){
 }
 void XPS::execPVTobj(pPVTobj obj, exec_ret* ret){
     if (!obj->verified) return;  //retval should be -9999 indicating an error
-    while(!obj->cmdQueue.empty()){
-        execCommandStr(obj->cmdQueue.front());
-        obj->cmdQueue.pop();
-    }
+    for(int i=0;i!=obj->cmdQueue.size();i++)
+        execCommandStr(obj->cmdQueue[i]);
     if (ret!=nullptr) execCommand(ret, "MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
     else execCommand("MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
     syncPos(obj->ID);
@@ -208,10 +206,8 @@ void XPS::execPVTobj(pPVTobj obj, exec_ret* ret){
 exec_dat XPS::execPVTobjB(pPVTobj obj){
     exec_ret ret;
     if (!obj->verified) return ret.v;  //retval should be -9999 indicating an error
-    while(!obj->cmdQueue.empty()){
-        execCommandStr(obj->cmdQueue.front());
-        obj->cmdQueue.pop();
-    }
+    for(int i=0;i!=obj->cmdQueue.size();i++)
+        execCommandStr(obj->cmdQueue[i]);
     execCommand(&ret, "MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
     ret.block_till_done();
     syncPos(obj->ID);
