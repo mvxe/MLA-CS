@@ -54,8 +54,6 @@ private:
         std::atomic<bool> changed{true};
         QLabel* calcL;
 
-
-    FQ* framequeue;
     FQ* framequeueDisp;
     const cv::Mat* mat;
     const cv::Mat* onDisplay;
@@ -63,6 +61,8 @@ private:
     constexpr static unsigned work_call_time=33;    //work_fun is called periodically via timer every this many milliseconds
     bool running=false;
 
+    const int darkFrameNum=4;
+    int totalFrameNum;
 
     bool isOffset=false;    // false=we are centered, true=we are offset and ready to start
     double setOffset=0;
@@ -74,6 +74,10 @@ private:
     void updatePVTs(std::string &report);   // update PVTs whenever measurement paramaters are changed, returns true if PVT fails or accels/speeds are to high
     void doOneRound();      // this automatically does the offset in case we are not offset
     void getCentered();     // this recenters
+
+    void _doOneRound();
+    std::atomic<bool> roundDone{true};      //this signals whether any kind of measurements accessing the stages are done
+    std::atomic<bool> procDone{true};       //this signals whether framebuffer processing is done
 
 private Q_SLOTS:
     void work_fun();

@@ -37,7 +37,7 @@ tab_camera::tab_camera(QWidget* parent){
     TWCtrl->addTab(pageSettings,"Settings");
         layoutSettings=new QVBoxLayout;
         pageSettings->setLayout(layoutSettings);
-        led_wl = new val_selector(470., "tab_camera_led_wl", "LED Wavelength:", 1., 2000., 0, {"nm"}, &changed);
+        led_wl = new val_selector(470., "tab_camera_led_wl", "LED Wavelength:", 0.001, 2000., 0, {"nm","um"}, &changed);
         layoutSettings->addWidget(led_wl);
         coh_len = new val_selector(20., "tab_camera_coh_len", "Coherence Length L:", 1., 2000., 2, {"nm","um",QChar(0x03BB)}, &changed);
         layoutSettings->addWidget(coh_len);
@@ -63,6 +63,7 @@ tab_camera::tab_camera(QWidget* parent){
 }
 tab_camera::~tab_camera(){
     getCentered();
+    while(!procDone || !roundDone);
 }
 
 void tab_camera::work_fun(){
@@ -93,7 +94,7 @@ void tab_camera::updatePVTs(std::string &report){
     double readTime=vsConv(range)*vsConv(ppwl)/vsConv(led_wl)/maxFPS;   //s
     double readRangeDis=vsConv(range)/1000000;
     double readVelocity=readRangeDis*readTime;                          //mm/s
-    report+=util::toString("Read Time =",readTime," s\nRead Range Distance=",readRangeDis," mm\nRead Velocity=",readVelocity," m/s\n");
+    report+=util::toString("Read Time =",readTime," s\nRead Range Distance:",readRangeDis," mm\nRead Velocity:",readVelocity," m/s\n");
     if(readVelocity>vsConv(max_vel)) {
         report+="Read Velocity is higher than set max Velocity!\n";
         return;
@@ -107,33 +108,46 @@ void tab_camera::updatePVTs(std::string &report){
     double movTime=2*sqrt(2*newOffset/vsConv(max_acc));
     double movMaxVelocity=vsConv(max_acc)*movTime;
 
-    report+=util::toString("Read Acceleration Time =",readAccelTime," s\nRead Acceleration Distance=",readAccelDis," mm\nNew Offset=",newOffset," mm\nMovement Time=",movTime," s\nMovement Max Velocity=",movMaxVelocity," m/s\n");
+    report+=util::toString("Read Acceleration Time :",readAccelTime," s\nRead Acceleration Distance:",readAccelDis," mm\nNew Offset:",newOffset," mm\nMovement Time:",movTime," s\nMovement Max Velocity:",movMaxVelocity," m/s\n");
     if(movMaxVelocity > vsConv(max_vel)){
         report+="Max move Velocity is higher than set max Velocity (did not implement workaround it cus it was unlikely)!\n";
         return;
     }
 
+    double darkFrameTime=darkFrameNum/maxFPS;
+    report+=util::toString("Putting ",darkFrameNum," dark frames after end, lasting: ",darkFrameTime," s\n");
+    totalFrameNum=readTime*maxFPS;
+    report+=util::toString("\nTotal expected number of useful frames for FFT: ",totalFrameNum,"\n");
+    int optimalDFTsize = cv::getOptimalDFTSize((int)(readTime*maxFPS));
+    report+=util::toString("Optimal number of frames (get as close to this as possible): ",optimalDFTsize,"\n");
+
+    double NLambda=vsConv(range)/vsConv(led_wl);
+    report+=util::toString("Total of ",NLambda," wavelengths (for best precision, should be an integer)\n");
+
     for(int i=0;i!=2;i++){
         int s=i?-1:1;
         PVTtoPos[i]->addAction(XPS::iuScopeLED,true);
         PVTtoPos[i]->add(movTime, 0,0, 0,0, s*newOffset,0, 0,0);
-        //if(movTime<2*)
-        PVTmeasure[i]->addAction(XPS::iuScopeLED,false);
-        PVTmeasure[i]->add(readAccelTime,  0,0, 0,0, s*readAccelDis,s*readVelocity, 0,0);
+
         PVTmeasure[i]->addAction(XPS::iuScopeLED,true);
+        PVTmeasure[i]->add(readAccelTime,  0,0, 0,0, s*readAccelDis,s*readVelocity, 0,0);
         PVTmeasure[i]->add(readTime, 0,0, 0,0, s*readRangeDis,s*readVelocity, 0,0);
         PVTmeasure[i]->addAction(XPS::iuScopeLED,false);
         PVTmeasure[i]->add(readAccelTime,  0,0, 0,0, s*readAccelDis,0, 0,0);
+        PVTmeasure[i]->add(darkFrameTime,  0,0, 0,0, 0,0, 0,0);
         PVTmeasure[i]->addAction(XPS::iuScopeLED,true);
     }
 
+    exec_dat ret;
     for(int i=0;i!=2;i++){
-        if(go.pXPS->verifyPVTobj(PVTtoPos[i]).retval!=0) {
-            report+=util::toString("Verify PVTtoPos failed, retval was",go.pXPS->verifyPVTobj(PVTtoPos[i]).retstr,"\n");
+        ret=go.pXPS->verifyPVTobj(PVTtoPos[i]);
+        if(ret.retval!=0) {
+            report+=util::toString("Verify PVTtoPos failed, retval was",ret.retstr,"\n");
             return;
         }
-        if(go.pXPS->verifyPVTobj(PVTmeasure[i]).retval!=0) {
-            report+=util::toString("Verify PVTmeasure failed, retval was",go.pXPS->verifyPVTobj(PVTmeasure[i]).retstr,"\n");
+        ret=go.pXPS->verifyPVTobj(PVTmeasure[i]);
+        if(ret.retval!=0) {
+            report+=util::toString("Verify PVTmeasure failed, retval was",ret.retstr,"\n");
             return;
         }
     }
@@ -142,19 +156,13 @@ void tab_camera::updatePVTs(std::string &report){
 }
 
 void tab_camera::doOneRound(){
-    if(!PVTsRdy) return;
-    if(!isOffset){
-        isOffset=true;
-        go.pXPS->execPVTobj(PVTtoPos[dir], &PVTret);
-        PVTret.block_till_done();
-        dir=dir?0:1;
-    }
-    go.pXPS->execPVTobj(PVTmeasure[dir], &PVTret);
-    PVTret.block_till_done();
-    dir=dir?0:1;
+    std::thread proc(&tab_camera::_doOneRound, this);
+    proc.detach();
+    //_doOneRound();
 }
 
 void tab_camera::getCentered(){
+    while(!roundDone);
     if(!isOffset || !PVTsRdy) return;
     isOffset=false;
     go.pXPS->execPVTobj(PVTtoPos[dir], &PVTret);
@@ -167,32 +175,16 @@ void tab_camera::tab_entered(){
     if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     running=true;
 
-    framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-    //framequeue->setUserFps(99999);
-    framequeue->setUserFps(0);
 
     framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeueDisp->setUserFps(30,5);
 
-    while(1){   //clear out leftover frames
-        mat=framequeue->getUserMat();
-        if(mat==nullptr) break;
-        std::cerr << "had extra mats in framequeue!!!!\n";        //TODO remove
-        framequeue->freeUserMat();
-    }
-    while(1){   //clear out leftover frames
-        mat=framequeueDisp->getUserMat();
-        if(mat==nullptr) break;
-        std::cerr << "had extra mats in framequeueDisp!!!!\n";        //TODO remove
-        framequeueDisp->freeUserMat();
-    }
     timer->start(work_call_time);
 }
 void tab_camera::tab_exited(){
     if(running==false) return;
     running=false;
     getCentered();
-    go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
     timer->stop();
 }
@@ -200,7 +192,83 @@ double tab_camera::vsConv(val_selector* vs){
     switch(vs->index){
     case 0: return vs->val;
     case 1: return vs->val*1000;
-    case 2: return vs->val*led_wl->val;
-    case 3: return vs->val*coh_len->val*led_wl->val;
+    case 2: return vs->val*vsConv(led_wl);
+    case 3: return vs->val*vsConv(coh_len);
     }
+}
+
+
+
+
+void tab_camera::_doOneRound(){
+    while(!roundDone); roundDone=false;    //wait for other measurements to complete
+    if(!PVTsRdy) return;
+    if(!isOffset){
+        isOffset=true;
+        go.pXPS->execPVTobj(PVTtoPos[dir], &PVTret);
+        PVTret.block_till_done();
+        dir=dir?0:1;
+    }
+    int nFrames=totalFrameNum;
+    FQ* framequeue;
+    framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
+    framequeue->setUserFps(99999);
+    go.pXPS->execPVTobj(PVTmeasure[dir], &PVTret);
+    PVTret.block_till_done();
+    framequeue->setUserFps(0);
+    dir=dir?0:1;
+
+    roundDone=true;                         //signal that the measurement is done
+    while(!procDone); procDone=false;       //wait till other processing is done
+
+
+    std::cerr<<"got "<<framequeue->getFullNumber()<<" frames.\n";
+    double mean=0;
+    for(int i=0;i!=10;i++)
+        mean+= cv::mean(*framequeue->getUserMat(i))[0];
+    mean/=10;
+    std::cerr<<"Most frames mean is "<<mean<<".\n";
+    for(int i=0;i!=framequeue->getFullNumber();i++){
+        double iMean= cv::mean(*framequeue->getUserMat(framequeue->getFullNumber()-1-i))[0];
+        std::cerr<<"Frame "<<(framequeue->getFullNumber()-1-i)<<" mean is "<<iMean<<".\n";
+        if(iMean<4*mean/5 && framequeue->getFullNumber()>nFrames){
+            framequeue->freeUserMat(i);
+            std::cerr<<"Frame "<<(framequeue->getFullNumber()-1-i)<<" freed.\n";
+        } else break;
+    }
+    while(framequeue->getFullNumber()>nFrames){
+        framequeue->freeUserMat(0);
+        std::cerr<<"Frame 0 freed.\n";
+    }
+    std::cerr<<"got "<<framequeue->getFullNumber()<<" frames.\n";
+
+    int nRows=framequeue->getUserMat(0)->rows;
+    int nCols=framequeue->getUserMat(0)->cols;
+    cv::UMat Umat2D;
+    cv::UMat Ufft2D;
+    cv::Mat mat2D(nFrames, nCols, CV_32F, cv::Scalar::all(0));
+    cv::Mat fft2D;
+    cv::Mat mat2DDepth(nRows, nCols, CV_32F, cv::Scalar::all(0));
+    for(int k=0;k!=nRows;k++){
+        for(int i=0;i!=nFrames;i++)
+            framequeue->getUserMat(i)->row(k).copyTo(mat2D.row(i));
+        cv::transpose(mat2D,mat2D);
+
+        if(k==500){
+            std::ofstream wfile ("onepixtest.txt");
+            for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<mat2D.at<float>(500,i)<<"\n";
+            wfile.close();
+        }
+
+        Umat2D=mat2D.getUMat(cv::ACCESS_READ);
+        cv::dft(Umat2D, Ufft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
+            //fft2D=Ufft2D.getMat(cv::ACCESS_READ);     //this wont work as its asynchronous
+        Ufft2D.copyTo(fft2D);
+
+        std::cerr<<"done with dft"<<k<<"\n";
+        mat2D=mat2D.reshape(0,mat2D.cols);              //the header is now wrong for next iteration, but we dont use transpose here, because we overwrite the data later anyway, and reshape just changes the header
+    }
+
+    go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
+    procDone=true;                          //signal that the processing is done
 }

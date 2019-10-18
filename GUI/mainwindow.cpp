@@ -53,14 +53,21 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
 MainWindow::~MainWindow(){
     delete ui;
     delete onDisplay;
-    delete tabDev;
-    delete tabPlot;
-    delete tabMon;
-    delete tabCam;
+    if(!cleanedTabs){
+        delete tabDev;
+        delete tabPlot;
+        delete tabMon;
+        delete tabCam;
+    }
 }
 
 void MainWindow::program_exit(){
     timer->stop();
+    delete tabDev;
+    delete tabPlot;
+    delete tabMon;
+    delete tabCam;
+    cleanedTabs=true;
     go.cleanup();
 }
 

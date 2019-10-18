@@ -179,6 +179,8 @@ private:
 
     int lastIndex=0;
 
+    bool cleanedTabs=false;
+
     /* up to here*/
 };
 
