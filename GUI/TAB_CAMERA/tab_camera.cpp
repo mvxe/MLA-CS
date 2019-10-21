@@ -43,7 +43,7 @@ tab_camera::tab_camera(QWidget* parent){
         layoutSettings->addWidget(coh_len);
         range = new val_selector(10., "tab_camera_range", "Scan Range:", 1., 2000., 3 , {"nm","um",QChar(0x03BB),"L"}, &changed);
         layoutSettings->addWidget(range);
-        ppwl = new val_selector(20., "tab_camera_ppwl", "Points Per Wavelength: ", 4., 2000.,  &changed);
+        ppwl = new val_selector(20., "tab_camera_ppwl", "Points Per Wavelength: ", 6, 2000.,  &changed);
         layoutSettings->addWidget(ppwl);
         max_vel = new val_selector(300., "tab_camera_max_vel", "UScope stage max velocity: ", 1e-9, 300., 0, {"mm/s"}, &changed);
         layoutSettings->addWidget(max_vel);
@@ -93,7 +93,7 @@ void tab_camera::updatePVTs(std::string &report){
     go.pGCAM->iuScope->get_frame_rate_bounds (&minFPS, &maxFPS);
     double readTime=vsConv(range)*vsConv(ppwl)/vsConv(led_wl)/maxFPS;   //s
     double readRangeDis=vsConv(range)/1000000;
-    double readVelocity=readRangeDis*readTime;                          //mm/s
+    double readVelocity=readRangeDis/readTime;                          //mm/s
     report+=util::toString("Read Time =",readTime," s\nRead Range Distance:",readRangeDis," mm\nRead Velocity:",readVelocity," m/s\n");
     if(readVelocity>vsConv(max_vel)) {
         report+="Read Velocity is higher than set max Velocity!\n";
@@ -125,7 +125,7 @@ void tab_camera::updatePVTs(std::string &report){
     report+=util::toString("Total of ",NLambda," wavelengths (for best precision, should be an integer)\n");
 
     for(int i=0;i!=2;i++){
-        int s=i?-1:1;
+        int s=i?(-1):1;
         PVTtoPos[i]->addAction(XPS::iuScopeLED,true);
         PVTtoPos[i]->add(movTime, 0,0, 0,0, s*newOffset,0, 0,0);
 
@@ -209,6 +209,7 @@ void tab_camera::_doOneRound(){
         PVTret.block_till_done();
         dir=dir?0:1;
     }
+    //std::this_thread::sleep_for (std::chrono::milliseconds(1000));
     int nFrames=totalFrameNum;
     FQ* framequeue;
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
@@ -232,8 +233,9 @@ void tab_camera::_doOneRound(){
         double iMean= cv::mean(*framequeue->getUserMat(framequeue->getFullNumber()-1-i))[0];
         std::cerr<<"Frame "<<(framequeue->getFullNumber()-1-i)<<" mean is "<<iMean<<".\n";
         if(iMean<4*mean/5 && framequeue->getFullNumber()>nFrames){
-            framequeue->freeUserMat(i);
             std::cerr<<"Frame "<<(framequeue->getFullNumber()-1-i)<<" freed.\n";
+            framequeue->freeUserMat(framequeue->getFullNumber()-1-i);
+            i--;
         } else break;
     }
     while(framequeue->getFullNumber()>nFrames){

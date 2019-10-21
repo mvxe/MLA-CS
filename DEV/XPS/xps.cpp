@@ -164,8 +164,10 @@ exec_dat XPS::verifyPVTobj(pPVTobj obj){
     exec_ret ret;
     std::lock_guard<std::mutex>lock(axisCoords[obj->ID].mx);
     XPS::raxis taxis{axisCoords};
-    if(obj->cmdWasLast){
-        obj->pvtqueue.push(0.000001);
+    obj->data.setf(std::ios::fixed);
+    obj->data<<std::setprecision(12);
+    if(obj->cmdWasLast){// TODO fix
+        obj->pvtqueue.push(0.0001);
         for (int i=0;i!=2*go.pXPS->groups[obj->ID].AxisNum;i++) obj->pvtqueue.push(0);
     }
     while(!obj->pvtqueue.empty()){
