@@ -76,27 +76,36 @@ void tab_camera::work_fun(){
 
     onDisplay=framequeueDisp->getUserMat();
     if(onDisplay!=nullptr){
-        LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
+        {std::lock_guard<std::mutex>lock(measuredMLock);
+            if(!measuredM.empty()) {
+                if(olay!=nullptr) delete olay;
+                olay=measuredM.front();
+                measuredM.pop_front();
+            }
+        }
+
+        if(olay!=nullptr){
+            cv::Mat disp=onDisplay->clone();
+            cv::cvtColor(disp, disp, CV_GRAY2BGR);
+            disp.setTo(cv::Scalar(255,0,0), *olay);
+            LDisplay->setPixmap(QPixmap::fromImage(QImage(disp.data, disp.cols, disp.rows, disp.step, QImage::Format_RGB888)));
+        }else{
+            LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
+        }
         framequeueDisp->freeUserMat();
     }
 
 }
 
 void tab_camera::updatePVTs(std::string &report){
-    PVTsRdy=false;
-    for(int i=0;i!=2;i++){
-        PVTtoPos[i]->clear();
-        PVTmeasure[i]->clear();
-    }
-
     double minFPS,maxFPS;
     go.pGCAM->iuScope->get_frame_rate_bounds (&minFPS, &maxFPS);
-    double readTime=vsConv(range)*vsConv(ppwl)/vsConv(led_wl)/maxFPS;   //s
+    double readTime=vsConv(range)*vsConv(ppwl)/vsConv(led_wl)/maxFPS*2;   //s
     double readRangeDis=vsConv(range)/1000000;
     double readVelocity=readRangeDis/readTime;                          //mm/s
     report+=util::toString("Read Time =",readTime," s\nRead Range Distance:",readRangeDis," mm\nRead Velocity:",readVelocity," m/s\n");
     if(readVelocity>vsConv(max_vel)) {
-        report+="Read Velocity is higher than set max Velocity!\n";
+        report+="Error: Read Velocity is higher than set max Velocity!\n";
         return;
     }
     double readAccelTime=readVelocity/vsConv(max_acc);
@@ -104,13 +113,18 @@ void tab_camera::updatePVTs(std::string &report){
     double newOffset=readRangeDis/2+readAccelDis;
     if(newOffset!=setOffset) getCentered();
     setOffset=newOffset;
+    PVTsRdy=false;
+    for(int i=0;i!=2;i++){
+        PVTtoPos[i]->clear();
+        PVTmeasure[i]->clear();
+    }
 
     double movTime=2*sqrt(2*newOffset/vsConv(max_acc));
     double movMaxVelocity=vsConv(max_acc)*movTime;
 
     report+=util::toString("Read Acceleration Time :",readAccelTime," s\nRead Acceleration Distance:",readAccelDis," mm\nNew Offset:",newOffset," mm\nMovement Time:",movTime," s\nMovement Max Velocity:",movMaxVelocity," m/s\n");
     if(movMaxVelocity > vsConv(max_vel)){
-        report+="Max move Velocity is higher than set max Velocity (did not implement workaround it cus it was unlikely)!\n";
+        report+="Error: Max move Velocity is higher than set max Velocity (did not implement workaround it cus it was unlikely)!\n";
         return;
     }
 
@@ -121,8 +135,15 @@ void tab_camera::updatePVTs(std::string &report){
     int optimalDFTsize = cv::getOptimalDFTSize((int)(readTime*maxFPS));
     report+=util::toString("Optimal number of frames (get as close to this as possible): ",optimalDFTsize,"\n");
 
-    double NLambda=vsConv(range)/vsConv(led_wl);
+    double NLambda=vsConv(range)/vsConv(led_wl)*2;
+    i2NLambda=2*NLambda;    //we want it to round down
     report+=util::toString("Total of ",NLambda," wavelengths (for best precision, should be an integer)\n");
+    peakLoc=std::nearbyint(totalFrameNum/vsConv(ppwl));
+    report+=util::toString("Expecting the peak to be at i=",totalFrameNum/vsConv(ppwl)," in the FFT.\n");
+    if(peakLoc+peakLocRange>=totalFrameNum || peakLoc-peakLocRange<=0){
+        report+=util::toString("Error: PeakLoc+-",peakLocRange," should be between 0 and totalFrameNum!\n");
+        return;
+    }
 
     for(int i=0;i!=2;i++){
         int s=i?(-1):1;
@@ -142,12 +163,12 @@ void tab_camera::updatePVTs(std::string &report){
     for(int i=0;i!=2;i++){
         ret=go.pXPS->verifyPVTobj(PVTtoPos[i]);
         if(ret.retval!=0) {
-            report+=util::toString("Verify PVTtoPos failed, retval was",ret.retstr,"\n");
+            report+=util::toString("Error: Verify PVTtoPos failed, retval was",ret.retstr,"\n");
             return;
         }
         ret=go.pXPS->verifyPVTobj(PVTmeasure[i]);
         if(ret.retval!=0) {
-            report+=util::toString("Verify PVTmeasure failed, retval was",ret.retstr,"\n");
+            report+=util::toString("Error: Verify PVTmeasure failed, retval was",ret.retstr,"\n");
             return;
         }
     }
@@ -246,31 +267,82 @@ void tab_camera::_doOneRound(){
 
     int nRows=framequeue->getUserMat(0)->rows;
     int nCols=framequeue->getUserMat(0)->cols;
-    cv::UMat Umat2D;
-    cv::UMat Ufft2D;
-    cv::Mat mat2D(nFrames, nCols, CV_32F, cv::Scalar::all(0));
-    cv::Mat fft2D;
-    cv::Mat mat2DDepth(nRows, nCols, CV_32F, cv::Scalar::all(0));
-    for(int k=0;k!=nRows;k++){
+
+    cv::Mat mat2D(nFrames, nCols, CV_32F);
+    cv::Mat* measured=new cv::Mat(cv::Size(nCols, nRows), CV_8U);
+
+    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
+    cv::UMat resultFinalPhase(cv::Size(nRows,nCols), CV_32F);    //rows and cols flipped for convinience, transpose it after main loop!
+    for(int k=0;k!=nRows;k++){      //Processing row by row
+        //first copy the matrices such that time becomes a column
         for(int i=0;i!=nFrames;i++)
             framequeue->getUserMat(i)->row(k).copyTo(mat2D.row(i));
-        cv::transpose(mat2D,mat2D);
 
+        //some writing to file as a test: TODO remove
         if(k==500){
             std::ofstream wfile ("onepixtest.txt");
-            for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<mat2D.at<float>(500,i)<<"\n";
+            for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<mat2D.at<float>(i,500)<<"\n";
             wfile.close();
         }
 
-        Umat2D=mat2D.getUMat(cv::ACCESS_READ);
+        //sending the matrix to the GPU, transposing and preforming an DFT
+        cv::UMat Umat2D=mat2D.getUMat(cv::ACCESS_READ);
+        cv::transpose(Umat2D,Umat2D);
+        cv::UMat Ufft2D;
         cv::dft(Umat2D, Ufft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
-            //fft2D=Ufft2D.getMat(cv::ACCESS_READ);     //this wont work as its asynchronous
-        Ufft2D.copyTo(fft2D);
+        //Ufft2D.copyTo(fft2D); //no need to copy the whole matrix
+
+        //some writing to file as a test: TODO remove
+        if(k==500){
+            cv::Mat fft2D;
+            Ufft2D.copyTo(fft2D);
+            std::ofstream wfile ("onepixtestFFT.txt");
+            for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<std::abs(fft2D.at<std::complex<float>>(500, i))<<" "<<std::arg(fft2D.at<std::complex<float>>(500, i))<<"\n";
+            wfile.close();
+        }
+
+        //getting phase and magnitude, phase at the LED wavelength/2 goes to final matrix, magnitude(2*peakLocRange+1 rows) goes for further eval
+        cv::UMat magn;
+        std::vector<cv::UMat> planes(2);
+        cv::split(Ufft2D.colRange(peakLoc-peakLocRange,peakLoc+peakLocRange+1), planes);
+        cv::magnitude(planes[0], planes[1], magn);
+        cv::phase(planes[0].col(peakLocRange), planes[1].col(peakLocRange), resultFinalPhase.col(k));       //only the actual peak
+
+        //checking if the magnitudes of peakLocRange number of points around the LED wavelength/2 are higher than it, if so, measurement is unreliable
+        cv::UMat cmpRes;
+        cv::UMat cmpFinRes;
+        bool first=true;
+        for(int j=1;j<=peakLocRange;j++){
+            if(first) {compare(magn.col(peakLocRange), magn.col(peakLocRange+j), cmpFinRes, cv::CMP_LT); first=false;}
+            else{
+                compare(magn.col(peakLocRange), magn.col(peakLocRange+j), cmpRes, cv::CMP_LT);
+                add(cmpFinRes, cmpRes, cmpFinRes);
+            }
+            compare(magn.col(peakLocRange), magn.col(peakLocRange-j), cmpRes, cv::CMP_LT);
+            add(cmpFinRes, cmpRes, cmpFinRes);
+        }
+        cmpFinRes=cmpFinRes.reshape(0,1);
+        cmpFinRes.copyTo(measured->row(k));
+
+        //getting the rough phase shift for unwrapping
+        //std::cerr<<"umat2d "<<Umat2D.rows<<" "<<Umat2D.cols<<"\n";
+//        cv::UMat means;
+//        reduce(Umat2D, means, 1, CV_REDUCE_AVG);
+//        cv::multiply(means,-1,means);
+//        cv::UMat means2(2, 5, CV_32F, means);
+//        cv::add(Umat2D,means,Umat2D);
 
         std::cerr<<"done with dft"<<k<<"\n";
-        mat2D=mat2D.reshape(0,mat2D.cols);              //the header is now wrong for next iteration, but we dont use transpose here, because we overwrite the data later anyway, and reshape just changes the header
     }
+    cv::transpose(resultFinalPhase,resultFinalPhase);   //now its the same rows,cols as the camera images
+
+    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
+    std::cerr<<"operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
 
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
+
+    {std::lock_guard<std::mutex>lock(measuredMLock);
+    measuredM.push_back(measured);std::cerr<<"measuredM size: "<<measuredM.size()<<"\n";}
+
     procDone=true;                          //signal that the processing is done
 }

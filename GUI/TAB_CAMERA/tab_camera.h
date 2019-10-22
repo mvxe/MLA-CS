@@ -58,11 +58,18 @@ private:
     const cv::Mat* mat;
     const cv::Mat* onDisplay;
 
+    std::deque<cv::Mat*> measuredM;
+    std::mutex measuredMLock;
+    cv::Mat* olay{nullptr};
+
     constexpr static unsigned work_call_time=33;    //work_fun is called periodically via timer every this many milliseconds
     bool running=false;
 
     const int darkFrameNum=4;
     int totalFrameNum;
+    int peakLoc;        //the expected peak position in the FFT spectrum
+    constexpr static int peakLocRange=2; //we check this many peaks from each side of peakLoc
+    int i2NLambda;       //the number of expected wavelengths x2 (ie number of expected maxima and minima)
 
     bool isOffset=false;    // false=we are centered, true=we are offset and ready to start
     double setOffset=0;
