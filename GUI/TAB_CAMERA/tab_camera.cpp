@@ -1,6 +1,7 @@
 #include "tab_camera.h"
 #include "GUI/mainwindow.h"
 #include "includes.h"
+#include <opencv2/phase_unwrapping.hpp>
 
 
 tab_camera::tab_camera(QWidget* parent){
@@ -14,10 +15,19 @@ tab_camera::tab_camera(QWidget* parent){
     LDisplay->setScaledContents(false);
     LDisplay->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
 
-    TWCtrl = new QTabWidget;
+    tBarW=new QWidget;
+    layoutTBarW= new QVBoxLayout;
+    tBarW->setLayout(layoutTBarW);
+
     layout->addWidget(LDisplay);
-    layout->addWidget(TWCtrl);
-    TWCtrl->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Minimum);
+    layout->addWidget(tBarW);
+
+    selDisp=new smp_selector("Display mode:", 0, {"Camera","FFT","FFT+overlay","FFT-UnWr" });
+    layoutTBarW->addWidget(selDisp);
+
+    TWCtrl = new QTabWidget;
+    TWCtrl->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Expanding);
+    layoutTBarW->addWidget(TWCtrl);
 
     pageMotion = new QWidget;
     pageWriting = new QWidget;
@@ -74,27 +84,44 @@ void tab_camera::work_fun(){
         calcL->setText(report.c_str());
     }
 
+    if(selDisp->index==0) framequeueDisp->setUserFps(30,5);
+    else framequeueDisp->setUserFps(0);
     onDisplay=framequeueDisp->getUserMat();
-    if(onDisplay!=nullptr){
-        {std::lock_guard<std::mutex>lock(measuredMLock);
-            if(!measuredM.empty()) {
-                if(olay!=nullptr) delete olay;
-                olay=measuredM.front();
-                measuredM.pop_front();
+
+    cv::Mat *mat;
+    switch(selDisp->index){
+    case 3: if(measuredPU.changed || oldIndex!=selDisp->index){
+                mat=measuredPU.getMat();                        //FFT Unwrapped
+                if(mat!=nullptr){
+                    LDisplay->setPixmap(QPixmap::fromImage(QImage(mat->data, mat->cols, mat->rows, mat->step, QImage::Format_Indexed8)));
+                }
             }
-        }
-
-        if(olay!=nullptr){
-            cv::Mat disp=onDisplay->clone();
-            cv::cvtColor(disp, disp, CV_GRAY2BGR);
-            disp.setTo(cv::Scalar(255,0,0), *olay);
-            LDisplay->setPixmap(QPixmap::fromImage(QImage(disp.data, disp.cols, disp.rows, disp.step, QImage::Format_RGB888)));
-        }else{
-            LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
-        }
-        framequeueDisp->freeUserMat();
+        break;
+    case 2: if(measuredP.changed || oldIndex!=selDisp->index){
+                mat=measuredP.getMat();                         //FFT+overlay
+                if(mat!=nullptr){
+                    cv::Mat disp=mat->clone();
+                    cv::cvtColor(disp, disp, CV_GRAY2BGR);
+                    disp.setTo(cv::Scalar(255,0,0), *measuredM.getMat());
+                    LDisplay->setPixmap(QPixmap::fromImage(QImage(disp.data, disp.cols, disp.rows, disp.step, QImage::Format_RGB888)));
+                }
+            }
+        break;
+    case 1: if(measuredP.changed || oldIndex!=selDisp->index){
+                mat=measuredP.getMat();                         //FFT
+                if(mat!=nullptr){
+                    LDisplay->setPixmap(QPixmap::fromImage(QImage(mat->data, mat->cols, mat->rows, mat->step, QImage::Format_Indexed8)));
+                }
+            }
+        break;
+    case 0: if(onDisplay!=nullptr){                         //Camera
+                LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
+            }
+        break;
     }
+    oldIndex=selDisp->index;
 
+    if(onDisplay!=nullptr) framequeueDisp->freeUserMat();
 }
 
 void tab_camera::updatePVTs(std::string &report){
@@ -272,7 +299,7 @@ void tab_camera::_doOneRound(){
     cv::Mat* measured=new cv::Mat(cv::Size(nCols, nRows), CV_8U);
 
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
-    cv::UMat resultFinalPhase(cv::Size(nRows,nCols), CV_32F);    //rows and cols flipped for convinience, transpose it after main loop!
+    cv::UMat resultFinalPhase(cv::Size(nRows,nCols), CV_32F);    //rows and cols flipped for convenience, transpose it after main loop!
     for(int k=0;k!=nRows;k++){      //Processing row by row
         //first copy the matrices such that time becomes a column
         for(int i=0;i!=nFrames;i++)
@@ -326,23 +353,51 @@ void tab_camera::_doOneRound(){
 
         //getting the rough phase shift for unwrapping
         //std::cerr<<"umat2d "<<Umat2D.rows<<" "<<Umat2D.cols<<"\n";
-//        cv::UMat means;
-//        reduce(Umat2D, means, 1, CV_REDUCE_AVG);
-//        cv::multiply(means,-1,means);
-//        cv::UMat means2(2, 5, CV_32F, means);
-//        cv::add(Umat2D,means,Umat2D);
+//        cv::UMat aux=resultFinalPhase.col(k);
+//        cv::UMat auxExp;
+//        cv::divide(totalFrameNum,aux,aux);          //we put background into aux
+//        cv::repeat(aux,1,totalFrameNum,auxExp);
+//        cv::absdiff(Umat2D, auxExp, Umat2D);
+//        cv::reduce(Umat2D, aux, 1, CV_REDUCE_MAX);
+//        cv::divide(2,Umat2D,Umat2D);
+//        cv::repeat(aux,1,totalFrameNum,auxExp);
 
         std::cerr<<"done with dft"<<k<<"\n";
     }
     cv::transpose(resultFinalPhase,resultFinalPhase);   //now its the same rows,cols as the camera images
+    cv::Mat* resultFinalPhaseL=new cv::Mat;
+    resultFinalPhase.copyTo(*resultFinalPhaseL);
 
-    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
-    std::cerr<<"operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
+
 
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
-    {std::lock_guard<std::mutex>lock(measuredMLock);
-    measuredM.push_back(measured);std::cerr<<"measuredM size: "<<measuredM.size()<<"\n";}
+    cv::Mat* resultFinalPhaseUW=new cv::Mat;
+    cv::phase_unwrapping::HistogramPhaseUnwrapping::Params params;
+    params.width=nCols;
+    params.height=nRows;
+    cv::Ptr<cv::phase_unwrapping::HistogramPhaseUnwrapping> phaseUnwrapping = cv::phase_unwrapping::HistogramPhaseUnwrapping::create(params);
+
+    bitwise_not(*measured, *measured);
+    phaseUnwrapping->unwrapPhaseMap(*resultFinalPhaseL, *resultFinalPhaseUW,*measured);
+    bitwise_not(*measured, *measured);
+    double min,max;
+    cv::minMaxLoc(*resultFinalPhaseUW, &min, &max);
+    resultFinalPhaseUW->convertTo(*resultFinalPhaseUW, CV_32F, ((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));
+    std::cerr<<"min,max= "<<min<<" "<<max<<"\n";
+    cv::minMaxLoc(*resultFinalPhaseUW, &min, &max);
+    std::cerr<<"min,max= "<<min<<" "<<max<<"\n";
+
+    resultFinalPhaseUW->convertTo(*resultFinalPhaseUW, CV_8U, 1);
+    cv::minMaxLoc(*resultFinalPhaseUW, &min, &max);
+    std::cerr<<"min,max= "<<min<<" "<<max<<"\n";
+
+    resultFinalPhaseL->convertTo(*resultFinalPhaseL, CV_8U, ((1<<8)-1)/M_PI/2);
+    measuredM.putMat(measured);
+    measuredP.putMat(resultFinalPhaseL);
+    measuredPU.putMat(resultFinalPhaseUW);
 
     procDone=true;                          //signal that the processing is done
+    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
+    std::cerr<<"operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
 }

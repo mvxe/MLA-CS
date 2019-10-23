@@ -11,6 +11,8 @@ class QString;
 class QDoubleSpinBox;
 class QToolButton;
 
+//  VAL SELECTOR
+
 class val_selector : public QWidget{       //template for devices
     Q_OBJECT
 public:
@@ -39,6 +41,32 @@ private Q_SLOTS:
     void on_menu_change();
     void on_value_change(double nvalue);
 };
+
+//  SIMPLE SELECTOR
+
+class smp_selector : public QWidget{       //template for devices
+    Q_OBJECT
+public:
+    smp_selector(QString label, int initialIndex, std::vector<QString> labels);
+    smp_selector(QString label, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed);
+    smp_selector(std::string varSaveName, QString label, int initialIndex, std::vector<QString> labels);
+    smp_selector(std::string varSaveName, QString label, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed);
+    const int& index{_index};
+
+private:
+    std::atomic<bool>* _changed;
+    int _index;
+    cc_save<int> indexSave;
+
+    QHBoxLayout* layout;
+    QLabel* _label;
+    QToolButton* _sBtn;
+
+    void init(QString label, std::vector<QString> labels);
+private Q_SLOTS:
+    void on_menu_change();
+};
+
 
 
 #endif // GUI_AUX_OBJECTS_H

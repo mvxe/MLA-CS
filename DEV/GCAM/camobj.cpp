@@ -11,6 +11,7 @@ void camobj::new_frame_ready (ArvStream *stream, camobj* camm)
         camm->Xsize=arv_buffer_get_image_width(buffer);
         camm->Ysize=arv_buffer_get_image_height(buffer);
         cv::Mat* freeMat = camm->FQsPCcam.getAFreeMatPtr();
+        if(imgfor::ocv_type_get(arv_buffer_get_image_pixel_format(buffer)).ocv_type==-1) std::cerr<<"ERROR: Image type not recognized! Cannot convert to OpenCV format.\n";     //TODO: this cannot really handle cameras with BPP!=8,16,24...
         if(freeMat==nullptr){
             freeMat=new cv::Mat(camm->Ysize, camm->Xsize, imgfor::ocv_type_get(arv_buffer_get_image_pixel_format(buffer)).ocv_type);
         }
@@ -24,10 +25,10 @@ void camobj::new_frame_ready (ArvStream *stream, camobj* camm)
         }
         size_t dsize;
         freeMat->data=(uchar*)(arv_buffer_get_data(buffer, &dsize));
-        if(dsize!=freeMat->total()*freeMat->elemSize()) std::cerr<<"ERROR: expected frame size does not match returned size ("<<dsize<<" vs "<<freeMat->size<<"), see camobj::new_frame_ready\n";
+        if(dsize!=freeMat->total()*freeMat->elemSize()) std::cerr<<"ERROR: expected frame size does not match returned size ("<<dsize<<" vs "<<freeMat->size()<<"), see camobj::new_frame_ready\n";
 
         camm->FullBuffers.push_back(buffer);
-
+        //std::cerr<<"ERROR: BPP: "<<ARV_PIXEL_FORMAT_BIT_PER_PIXEL(arv_buffer_get_image_pixel_format(buffer))<<" format:"<<arv_buffer_get_image_pixel_format(buffer)<<"\n";
         if (imgfor::ocv_type_get(arv_buffer_get_image_pixel_format(buffer)).ccc!=(cv::ColorConversionCodes)-1) {std::cerr<<"converted color\n"; cvtColor(*freeMat, *freeMat, imgfor::ocv_type_get(arv_buffer_get_image_pixel_format(buffer)).ccc);}   //color conversion if img is not monochrome or bgr
         camm->FQsPCcam.enqueueMat(freeMat, arv_buffer_get_timestamp(buffer));
         camm->pushFrameIntoStream();

@@ -61,7 +61,6 @@ HEADERS += \
     PROCEDURES/procedure.h \
     PROCEDURES/UTIL/find_focus.h \
     PROCEDURES/_incl_procedures.h \
-    UTIL/IMGPROC/BASIC/imgproc_basic_stats.h \
     PROCEDURES/UTIL/get_depth_map.h \
     PROCEDURES/UTIL/calibrate_xy.h \
     PROCEDURES/UTIL/writing_test.h \
@@ -85,7 +84,8 @@ HEADERS += \
     DEV/RPTY/fpga_const.h \
     GUI/tab_monitor.h \
     DEV/ALP/alp.h \
-    GUI/gui_aux_objects.h
+    GUI/gui_aux_objects.h \
+    UTIL/img_util.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -99,7 +99,6 @@ SOURCES += \
     DEV/TCP_con.cpp \
     PROCEDURES/procedure.cpp \
     PROCEDURES/UTIL/find_focus.cpp \
-    UTIL/IMGPROC/BASIC/imgproc_basic_stats.cpp \
     PROCEDURES/UTIL/get_depth_map.cpp \
     PROCEDURES/UTIL/calibrate_xy.cpp \
     PROCEDURES/UTIL/writing_test.cpp \
@@ -118,7 +117,8 @@ SOURCES += \
     PROCEDURES/UTIL/profile_beam.cpp \
     GUI/tab_monitor.cpp \
     DEV/ALP/alp.cpp \
-    GUI/gui_aux_objects.cpp
+    GUI/gui_aux_objects.cpp \
+    UTIL/img_util.cpp
 
 
 unix {

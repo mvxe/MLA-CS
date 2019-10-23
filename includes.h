@@ -13,6 +13,7 @@
 #include "globals.h"
 #include "UTIL/containers.h"
 #include "UTIL/utility.h"
+#include "UTIL/img_util.h"
 #include <iostream>
 
 #endif // INCLUDES_H

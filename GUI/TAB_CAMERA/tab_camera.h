@@ -1,6 +1,7 @@
 #ifndef CONFIG_TAB_CAMERA_H
 #define CONFIG_TAB_CAMERA_H
 #include "GUI/gui_includes.h"
+#include "UTIL/img_util.h"
 
     // These are from the old camera tab; TODO remove when replaced!
 class tab_camera_old{
@@ -35,6 +36,9 @@ private:
 
     QHBoxLayout* layout;
     mtlabel* LDisplay;
+    QWidget* tBarW;
+    QVBoxLayout* layoutTBarW;
+    smp_selector* selDisp; int oldIndex=0;
     QTabWidget* TWCtrl;
 
     QWidget* pageMotion;
@@ -58,9 +62,9 @@ private:
     const cv::Mat* mat;
     const cv::Mat* onDisplay;
 
-    std::deque<cv::Mat*> measuredM;
-    std::mutex measuredMLock;
-    cv::Mat* olay{nullptr};
+    cvMat_safe measuredM;   //contains the mask
+    cvMat_safe measuredP;   //contains the phase map
+    cvMat_safe measuredPU;  //contains the unwrapped phase map
 
     constexpr static unsigned work_call_time=33;    //work_fun is called periodically via timer every this many milliseconds
     bool running=false;
