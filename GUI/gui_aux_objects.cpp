@@ -142,3 +142,65 @@ void smp_selector::on_menu_change(){
     _index=0;
     if(_changed!=nullptr) *_changed=true;
 }
+
+// TAB WIDGET DISPLAY SELECTOR
+
+
+twd_selector::twd_selector(bool showSel): showSel(showSel){
+    layout=new QVBoxLayout;
+    this->setLayout(layout);
+    if(showSel){
+        select=new QToolButton();
+        select->setAutoRaise(true);
+        select->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        select->setPopupMode(QToolButton::InstantPopup);
+        select->setMenu(new QMenu);
+        connect(select->menu(), SIGNAL(aboutToHide()), this, SLOT(on_menu_change()));
+        layout->addWidget(select);
+    }
+}
+void twd_selector::addWidget(QWidget* widget, QString label, QTimer* timer){
+    widgets.push_back(widget);
+    if(showSel){
+        timers.push_back(timer);
+        widget->hide();
+        QAction* action=new QAction;
+        action->setText(label);
+        select->menu()->addAction(action);
+        if(active_index==-1){
+            select->menu()->setActiveAction(action);
+            select->setText(select->menu()->activeAction()->text());
+            widget->show();
+            if(timer!=nullptr && timSt) timer->start();
+            active_index=0;
+        }
+    }
+    layout->addWidget(widget);
+    layout->addStretch(0);
+}
+void twd_selector::on_menu_change(){
+    if(select->menu()->activeAction()==nullptr) return;
+    select->setText(select->menu()->activeAction()->text());
+    for (int i=0;i!=select->menu()->actions().size();i++) if(select->menu()->actions()[i]==select->menu()->activeAction()) {
+        if(active_index!=-1){
+            widgets[active_index]->hide();
+            if(timers[active_index]!=nullptr) timers[active_index]->stop();
+        }
+        active_index=i;
+        widgets[active_index]->show();
+        if(timers[active_index]!=nullptr && timSt) timers[active_index]->start();
+        return;
+    }
+}
+void twd_selector::timerStop(){
+    timSt=false;
+    if(active_index!=-1 && timers[active_index]!=nullptr){
+        timers[active_index]->stop();
+    }
+}
+void twd_selector::timerStart(){
+    timSt=true;
+    if(active_index!=-1 && timers[active_index]!=nullptr){
+        timers[active_index]->start();
+    }
+}

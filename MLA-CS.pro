@@ -85,7 +85,8 @@ HEADERS += \
     GUI/tab_monitor.h \
     DEV/ALP/alp.h \
     GUI/gui_aux_objects.h \
-    UTIL/img_util.h
+    UTIL/img_util.h \
+    PROCEDURES/UTIL/USC/scan.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -118,7 +119,8 @@ SOURCES += \
     GUI/tab_monitor.cpp \
     DEV/ALP/alp.cpp \
     GUI/gui_aux_objects.cpp \
-    UTIL/img_util.cpp
+    UTIL/img_util.cpp \
+    PROCEDURES/UTIL/USC/scan.cpp
 
 
 unix {

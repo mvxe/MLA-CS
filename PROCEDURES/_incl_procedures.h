@@ -7,5 +7,6 @@
 #include "PROCEDURES/UTIL/writing_test.h"
 #include "PROCEDURES/UTIL/burn_array.h"
 #include "PROCEDURES/UTIL/profile_beam.h"
+#include "PROCEDURES/UTIL/USC/scan.h"
 
 #endif // _INCL_PROCEDURES_H

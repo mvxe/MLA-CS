@@ -6,10 +6,12 @@
 #include "UTIL/containers.h"
 
 class QHBoxLayout;
+class QVBoxLayout;
 class QLabel;
 class QString;
 class QDoubleSpinBox;
 class QToolButton;
+class QTimer;
 
 //  VAL SELECTOR
 
@@ -63,6 +65,29 @@ private:
     QToolButton* _sBtn;
 
     void init(QString label, std::vector<QString> labels);
+private Q_SLOTS:
+    void on_menu_change();
+};
+
+
+// TAB WIDGET DISPLAY SELECTOR
+
+class twd_selector : public QWidget{       //template for devices
+    Q_OBJECT
+public:
+    twd_selector(bool showSel=true);
+    void addWidget(QWidget* widget, QString label="/", QTimer* timer=nullptr);
+    void timerStop();
+    void timerStart();
+    bool showSel;
+    bool timSt=false;
+private:
+    QVBoxLayout* layout;
+    QToolButton* select;
+    std::vector<QWidget*> widgets;
+    std::vector<QTimer*> timers;        //timers are only running when this settings tab is open : allow it to handle stuff
+    int active_index=-1;
+
 private Q_SLOTS:
     void on_menu_change();
 };
