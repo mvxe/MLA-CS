@@ -30,7 +30,7 @@ public:
     QTimer* timer;
 
     void doOneRound();      // this automatically does the offset in case we are not offset
-    void getCentered();     // this recenters
+    void getCentered(bool lock=true);       // this recenters
     std::atomic<bool> roundDone{true};      //this signals whether any kind of measurements accessing the stages are done
     std::atomic<bool> procDone{true};       //this signals whether framebuffer processing is done
 

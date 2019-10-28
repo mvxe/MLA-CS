@@ -77,11 +77,17 @@ void pgScanGUI::init_gui_settings(){
 
 void pgScanGUI::work_fun() {
     if(changed==true){
-        std::cerr<<"changed\n";
-        changed=false;
-        std::string report;
-        updatePVTs(report);
-        calcL->setText(report.c_str());
+        if(_lock_mes.try_lock()){
+           if(_lock_comp.try_lock()){
+               std::cerr<<"changed\n";
+               changed=false;
+               std::string report;
+               updatePVTs(report);
+               calcL->setText(report.c_str());
+               _lock_comp.unlock();
+           }
+           _lock_mes.unlock();
+        }
     }
 }
 
@@ -99,7 +105,7 @@ void pgScanGUI::updatePVTs(std::string &report){
     double readAccelTime=readVelocity/vsConv(max_acc);
     double readAccelDis=vsConv(max_acc)/2*readAccelTime*readAccelTime;
     double newOffset=readRangeDis/2+readAccelDis;
-    if(newOffset!=setOffset) getCentered();
+    if(newOffset!=setOffset) getCentered(false);
     setOffset=newOffset;
     PVTsRdy=false;
     for(int i=0;i!=2;i++){
@@ -169,8 +175,8 @@ void pgScanGUI::doOneRound(){
     proc.detach();
 }
 
-void pgScanGUI::getCentered(){
-    std::lock_guard<std::mutex>lock(_lock_mes);
+void pgScanGUI::getCentered(bool lock){
+    if(lock) std::lock_guard<std::mutex>lock(_lock_mes);
     if(!isOffset || !PVTsRdy) return;
     isOffset=false;
     go.pXPS->execPVTobj(PVTtoPos[dir], &PVTret);
