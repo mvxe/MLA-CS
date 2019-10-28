@@ -89,16 +89,16 @@ void CNC::flushQueue(){
 
         if(rdstr.find("resend")!=std::string::npos) goto xx;
         else if(rdstr.find("ok\n")!=std::string::npos);
-        else {nerr++; if(nerr==1000) {nerr=0; std::cerr<<"cnc: waiting for ok\n"<<rdstr<<"\n";} std::this_thread::sleep_for (std::chrono::milliseconds(1)); goto yy;}
+        else {nerr++; if(nerr==1000) {nerr=1; std::cerr<<"cnc: waiting for ok\n"<<rdstr<<"\n";} std::this_thread::sleep_for (std::chrono::milliseconds(1)); goto yy;}
 
         mpq.lock();
             if(priority_queue.front().ret!=nullptr) priority_queue.front().ret->set_value(wrstr);
             priority_queue.pop();
         mpq.unlock();
-        if(true){
-            std::cerr<<"SENT: "<<wrstr<<"\n";
-            std::cerr<<"RECV: "<<rdstr<<"\n";
-        }
+//        if(true){
+//            std::cerr<<"SENT: "<<wrstr<<"\n";
+//            std::cerr<<"RECV: "<<rdstr<<"\n";
+//        }
         mpq.lock();
     }
     mpq.unlock();

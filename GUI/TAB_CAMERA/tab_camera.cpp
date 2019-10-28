@@ -6,7 +6,7 @@ tab_camera::tab_camera(QWidget* parent){
     layout=new QHBoxLayout;
     parent->setLayout(layout);
 
-    LDisplay = new mtlabel;
+    LDisplay = new QLabel;
     LDisplay->setMouseTracking(false);
     LDisplay->setFrameShape(QFrame::Box);
     LDisplay->setFrameShadow(QFrame::Plain);
@@ -28,13 +28,16 @@ tab_camera::tab_camera(QWidget* parent){
     layoutTBarW->addWidget(TWCtrl);
 
     pgSGUI=new pgScanGUI;
+    pgTGUI=new pgTiltGUI;
 
     pageMotion = new twd_selector(false);
         pageMotion->addWidget(pgSGUI->gui_activation);
+        pageMotion->addWidget(pgTGUI->gui_activation);
 
     pageWriting = new QWidget;
     pageSettings = new twd_selector;
         pageSettings->addWidget(pgSGUI->gui_settings,"Scan",pgSGUI->timer);
+        pageSettings->addWidget(pgTGUI->gui_settings,"Tilt");
 
     TWCtrl->addTab(pageMotion,"Motion");
         //scanOne->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Minimum);
@@ -111,6 +114,7 @@ void tab_camera::tab_entered(){
     pageSettings->timerStart();
 }
 void tab_camera::tab_exited(){
+    pgTGUI->reDraw0();
     pgSGUI->getCentered();
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
     timer->stop();

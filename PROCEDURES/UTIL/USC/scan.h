@@ -60,7 +60,7 @@ public:
     val_selector* dis_thresh;   //if the checked peaks within peakLocRange of the freq peak are higher than peakThresh x the main peak the pixel is added to the mask (of bad pixels)
     std::atomic<bool> changed{true};
     QLabel* calcL;
-    unsigned work_call_time=100;
+    constexpr static unsigned work_call_time=100;
 
 
     const int darkFrameNum=4;

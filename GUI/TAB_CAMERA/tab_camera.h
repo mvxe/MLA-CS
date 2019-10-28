@@ -18,8 +18,6 @@ class tab_camera_old{
             cc_save<double> xps_f_sen_save{xps_f_sen, 100000,&go.gui_config.save,"xps_f_sen"};
 };
 
-class mtlabel; //defined in mainwindow.h
-
 class tab_camera: public QWidget{
     Q_OBJECT
 
@@ -34,7 +32,7 @@ private:
     QTimer *timer;
 
     QHBoxLayout* layout;
-    mtlabel* LDisplay;
+    QLabel* LDisplay;
     QWidget* tBarW;
     QVBoxLayout* layoutTBarW;
     smp_selector* selDisp;
@@ -48,6 +46,7 @@ private:
 
     twd_selector* pageSettings;
     pgScanGUI*  pgSGUI;
+    pgTiltGUI* pgTGUI;
 
     smp_selector* cm_sel;       //for selecting the colormap for display
 

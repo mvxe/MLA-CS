@@ -79,7 +79,6 @@ void pgScanGUI::work_fun() {
     if(changed==true){
         if(_lock_mes.try_lock()){
            if(_lock_comp.try_lock()){
-               std::cerr<<"changed\n";
                changed=false;
                std::string report;
                updatePVTs(report);
@@ -329,12 +328,13 @@ void pgScanGUI::_doOneRound(){
     params.height=nRows;
     cv::Ptr<cv::phase_unwrapping::HistogramPhaseUnwrapping> phaseUnwrapping = cv::phase_unwrapping::HistogramPhaseUnwrapping::create(params);
 
-    //matOp::spread<uchar>(measured);
+    matOp::spread<uchar>(measured); matOp::spread<uchar>(measured);matOp::spread<uchar>(measured); matOp::spread<uchar>(measured);
     bitwise_not(*measured, *measured);
     phaseUnwrapping->unwrapPhaseMap(*resultFinalPhaseL, *resultFinalPhaseUW,*measured);
+
+    double min,max; cv::Point ignore;
+    cv::minMaxLoc(*resultFinalPhaseUW, &min, &max, &ignore, &ignore, *measured);
     bitwise_not(*measured, *measured);
-    double min,max;
-    cv::minMaxLoc(*resultFinalPhaseUW, &min, &max);
     resultFinalPhaseUW->convertTo(*resultFinalPhaseUW, CV_32F, ((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));
     std::cerr<<"min,max= "<<min<<" "<<max<<"\n";
     cv::minMaxLoc(*resultFinalPhaseUW, &min, &max);

@@ -49,7 +49,7 @@ private:
         std::mutex mkmx;
     std::atomic<bool> _connected{false};
     serial::Serial* sercon{nullptr};
-    const int baud{57600};
+    const int baud{250000};
     const int timeout{1}; //in ms
     std::string port;
 };

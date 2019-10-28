@@ -86,7 +86,8 @@ HEADERS += \
     DEV/ALP/alp.h \
     GUI/gui_aux_objects.h \
     UTIL/img_util.h \
-    PROCEDURES/UTIL/USC/scan.h
+    PROCEDURES/UTIL/USC/scan.h \
+    PROCEDURES/UTIL/USC/tilt.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -120,7 +121,8 @@ SOURCES += \
     DEV/ALP/alp.cpp \
     GUI/gui_aux_objects.cpp \
     UTIL/img_util.cpp \
-    PROCEDURES/UTIL/USC/scan.cpp
+    PROCEDURES/UTIL/USC/scan.cpp \
+    PROCEDURES/UTIL/USC/tilt.cpp
 
 
 unix {

@@ -93,5 +93,7 @@ private Q_SLOTS:
 };
 
 
+// GUI JOYSTICK
+
 
 #endif // GUI_AUX_OBJECTS_H

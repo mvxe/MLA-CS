@@ -148,6 +148,8 @@ void smp_selector::on_menu_change(){
 
 twd_selector::twd_selector(bool showSel): showSel(showSel){
     layout=new QVBoxLayout;
+    layout->addStretch(0);
+    layout->setMargin(0);
     this->setLayout(layout);
     if(showSel){
         select=new QToolButton();
@@ -156,7 +158,7 @@ twd_selector::twd_selector(bool showSel): showSel(showSel){
         select->setPopupMode(QToolButton::InstantPopup);
         select->setMenu(new QMenu);
         connect(select->menu(), SIGNAL(aboutToHide()), this, SLOT(on_menu_change()));
-        layout->addWidget(select);
+        layout->insertWidget(layout->count()-1, select);
     }
 }
 void twd_selector::addWidget(QWidget* widget, QString label, QTimer* timer){
@@ -175,8 +177,7 @@ void twd_selector::addWidget(QWidget* widget, QString label, QTimer* timer){
             active_index=0;
         }
     }
-    layout->addWidget(widget);
-    layout->addStretch(0);
+    layout->insertWidget(layout->count()-1, widget);
 }
 void twd_selector::on_menu_change(){
     if(select->menu()->activeAction()==nullptr) return;
