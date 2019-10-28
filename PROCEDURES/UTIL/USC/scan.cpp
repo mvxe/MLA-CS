@@ -47,7 +47,6 @@ void pgScanGUI::init_gui_activation(){
     bCenter->setText("ReCenter");
     connect(bCenter, SIGNAL(released()), this, SLOT(onBCenter()));
     alayout->addWidget(bCenter);
-    alayout->addStretch(0);
 }
 void pgScanGUI::onBScanOne(){if(roundDone)doOneRound();}
 void pgScanGUI::onBScanContinuous(bool status){keepMeasuring=status;if(roundDone)doOneRound();}
@@ -57,19 +56,19 @@ void pgScanGUI::init_gui_settings(){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
-    led_wl=new val_selector(470., "tab_camera_led_wl", "LED Wavelength:", 0.001, 2000., 0, {"nm","um"}, &changed);
+    led_wl=new val_selector(470., "tab_camera_led_wl", "LED Wavelength:", 0.001, 2000., 2, 0, {"nm","um"}, &changed);
     slayout->addWidget(led_wl);
-    coh_len=new val_selector(20., "tab_camera_coh_len", "Coherence Length L:", 1., 2000., 2, {"nm","um",QChar(0x03BB)}, &changed);
+    coh_len=new val_selector(20., "tab_camera_coh_len", "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)}, &changed);
     slayout->addWidget(coh_len);
-    range=new val_selector(10., "tab_camera_range", "Scan Range:", 1., 2000., 3 , {"nm","um",QChar(0x03BB),"L"}, &changed);
+    range=new val_selector(10., "tab_camera_range", "Scan Range:", 1., 2000., 2, 3 , {"nm","um",QChar(0x03BB),"L"}, &changed);
     slayout->addWidget(range);
-    ppwl=new val_selector(20., "tab_camera_ppwl", "Points Per Wavelength: ", 6, 2000.,  &changed);
+    ppwl=new val_selector(20., "tab_camera_ppwl", "Points Per Wavelength: ", 6, 2000., 2,  &changed);
     slayout->addWidget(ppwl);
-    max_vel=new val_selector(300., "tab_camera_max_vel", "UScope stage max velocity: ", 1e-9, 300., 0, {"mm/s"}, &changed);
+    max_vel=new val_selector(300., "tab_camera_max_vel", "UScope stage max velocity: ", 1e-9, 300., 2, 0, {"mm/s"}, &changed);
     slayout->addWidget(max_vel);
-    max_acc=new val_selector(2500., "tab_camera_max_acc", "UScope stage max acceleration: ", 1e-9, 2500., 0, {"mm/s^2"}, &changed);
+    max_acc=new val_selector(2500., "tab_camera_max_acc", "UScope stage max acceleration: ", 1e-9, 2500., 2, 0, {"mm/s^2"}, &changed);
     slayout->addWidget(max_acc);
-    dis_thresh=new val_selector(0.9, "tab_camera_dis_thresh", "Peak Discard Threshold: ", 0.1, 1);
+    dis_thresh=new val_selector(0.9, "tab_camera_dis_thresh", "Peak Discard Threshold: ", 0.1, 1, 2);
     slayout->addWidget(dis_thresh);
     calcL=new QLabel;
     slayout->addWidget(calcL);
@@ -328,7 +327,7 @@ void pgScanGUI::_doOneRound(){
     params.height=nRows;
     cv::Ptr<cv::phase_unwrapping::HistogramPhaseUnwrapping> phaseUnwrapping = cv::phase_unwrapping::HistogramPhaseUnwrapping::create(params);
 
-    matOp::spread<uchar>(measured); matOp::spread<uchar>(measured);matOp::spread<uchar>(measured); matOp::spread<uchar>(measured);
+    //matOp::spread<uchar>(measured);
     bitwise_not(*measured, *measured);
     phaseUnwrapping->unwrapPhaseMap(*resultFinalPhaseL, *resultFinalPhaseUW,*measured);
 
@@ -336,6 +335,7 @@ void pgScanGUI::_doOneRound(){
     cv::minMaxLoc(*resultFinalPhaseUW, &min, &max, &ignore, &ignore, *measured);
     bitwise_not(*measured, *measured);
     resultFinalPhaseUW->convertTo(*resultFinalPhaseUW, CV_32F, ((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));
+    resultFinalPhaseUW->setTo(0,*measured);
     std::cerr<<"min,max= "<<min<<" "<<max<<"\n";
     cv::minMaxLoc(*resultFinalPhaseUW, &min, &max);
     std::cerr<<"min,max= "<<min<<" "<<max<<"\n";

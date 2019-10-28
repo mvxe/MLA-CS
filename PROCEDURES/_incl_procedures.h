@@ -9,5 +9,6 @@
 #include "PROCEDURES/UTIL/profile_beam.h"
 #include "PROCEDURES/UTIL/USC/scan.h"
 #include "PROCEDURES/UTIL/USC/tilt.h"
+#include "PROCEDURES/UTIL/USC/move.h"
 
 #endif // _INCL_PROCEDURES_H

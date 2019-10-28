@@ -87,7 +87,8 @@ HEADERS += \
     GUI/gui_aux_objects.h \
     UTIL/img_util.h \
     PROCEDURES/UTIL/USC/scan.h \
-    PROCEDURES/UTIL/USC/tilt.h
+    PROCEDURES/UTIL/USC/tilt.h \
+    PROCEDURES/UTIL/USC/move.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -122,7 +123,8 @@ SOURCES += \
     GUI/gui_aux_objects.cpp \
     UTIL/img_util.cpp \
     PROCEDURES/UTIL/USC/scan.cpp \
-    PROCEDURES/UTIL/USC/tilt.cpp
+    PROCEDURES/UTIL/USC/tilt.cpp \
+    PROCEDURES/UTIL/USC/move.cpp
 
 
 unix {

@@ -4,33 +4,33 @@
 
 //  VAL SELECTOR
 
-val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max):
+val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision):
         valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, 0, nullptr, " "), _changed(nullptr){
-    init0(label, min, max);
+    init0(label, min, max, precision);
     layout->addStretch(0);
 }
 
-val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, int initialIndex, std::vector<QString> labels):
+val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels):
         valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, initialIndex, &go.gui_config.save,util::toString(varSaveName,"_index")), _changed(nullptr){
-    init0(label, min, max);
+    init0(label, min, max, precision);
     init1(labels);
     layout->addStretch(0);
 }
 
-val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, std::atomic<bool>* changed):
+val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, std::atomic<bool>* changed):
         valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, 0, nullptr, " "), _changed(changed){
-    init0(label, min, max);
+    init0(label, min, max, precision);
     layout->addStretch(0);
 }
 
-val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed):
+val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed):
         valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, initialIndex, &go.gui_config.save,util::toString(varSaveName,"_index")), _changed(changed){
-    init0(label, min, max);
+    init0(label, min, max, precision);
     init1(labels);
     layout->addStretch(0);
 }
 
-void val_selector::init0(QString label, double min, double max){
+void val_selector::init0(QString label, double min, double max, double precision){
     _label = new QLabel(label);
     layout = new QHBoxLayout();
     spinbox = new QDoubleSpinBox();
@@ -42,6 +42,7 @@ void val_selector::init0(QString label, double min, double max){
 
     spinbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     spinbox->setRange(min,max);
+    spinbox->setDecimals(precision);
     spinbox->setValue(value);
     connect(spinbox, SIGNAL(valueChanged(double)), this, SLOT(on_value_change(double)));
 }
@@ -81,6 +82,10 @@ void val_selector::on_menu_change(){
 void val_selector::on_value_change(double nvalue){
     value=nvalue;
     if(_changed!=nullptr) *_changed=true;
+}
+
+void val_selector::setValue(double nvalue){
+    spinbox->setValue(nvalue);
 }
 
 
@@ -204,4 +209,40 @@ void twd_selector::timerStart(){
     if(active_index!=-1 && timers[active_index]!=nullptr){
         timers[active_index]->start();
     }
+}
+
+
+// GUI adaptiveScrollBar
+
+adScrlBar::adScrlBar(int Hsize, int Vsize): Hsize(Hsize){
+    this->setMouseTracking(false);
+    this->setFrameShape(QFrame::Box);
+    this->setFrameShadow(QFrame::Plain);
+    this->setScaledContents(false);
+    this->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Minimum);
+    cv::Mat mat(Vsize,Hsize,CV_8U);
+    for(int i=0;i!=Hsize;i++) for(int j=0;j!=Vsize;j++)
+        mat.at<uchar>(j,i)=255./Hsize*i;
+    this->setPixmap(QPixmap::fromImage(QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_Indexed8)));
+}
+void adScrlBar::wheelEvent(QWheelEvent *event){
+    double value=event->delta()*(Hsize-event->pos().x());;
+    Q_EMIT change(value);
+}
+void adScrlBar::mouseReleaseEvent(QMouseEvent *event){
+    double value=((event->button()==Qt::LeftButton)?-1:1)*100*(Hsize-event->pos().x());
+    Q_EMIT change(value);
+}
+
+// GUI expanded adaptiveScrollBar
+
+eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize){
+    QHBoxLayout* layout=new QHBoxLayout;
+    abar=new adScrlBar(Hsize, Vsize);
+    QLabel* Label=new QLabel(label);
+    layout->addWidget(Label);
+    layout->addWidget(abar);
+    layout->addStretch(0);
+    layout->setMargin(0);
+    this->setLayout(layout);
 }

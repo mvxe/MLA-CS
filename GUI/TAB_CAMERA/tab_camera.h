@@ -45,7 +45,8 @@ private:
     QWidget* pageWriting;
 
     twd_selector* pageSettings;
-    pgScanGUI*  pgSGUI;
+    pgScanGUI* pgSGUI;
+    pgMoveGUI* pgMGUI;
     pgTiltGUI* pgTGUI;
 
     smp_selector* cm_sel;       //for selecting the colormap for display

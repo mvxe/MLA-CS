@@ -3,11 +3,11 @@
 #include <string>
 #include <vector>
 #include <QWidget>
+#include <QLabel>
 #include "UTIL/containers.h"
 
 class QHBoxLayout;
 class QVBoxLayout;
-class QLabel;
 class QString;
 class QDoubleSpinBox;
 class QToolButton;
@@ -18,12 +18,13 @@ class QTimer;
 class val_selector : public QWidget{       //template for devices
     Q_OBJECT
 public:
-    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max);
-    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, int initialIndex, std::vector<QString> labels);
-    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, std::atomic<bool>* changed);
-    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed);
+    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision);
+    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels);
+    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, std::atomic<bool>* changed);
+    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed);
     const double& val{value};
     const int& index{unitIndex};
+    void setValue(double nvalue);
 
 private:
     double value;
@@ -37,7 +38,7 @@ private:
     QDoubleSpinBox* spinbox;
     QToolButton* unit;
 
-    void init0(QString label, double min, double max);
+    void init0(QString label, double min, double max, double precision);
     void init1(std::vector<QString> labels);
 private Q_SLOTS:
     void on_menu_change();
@@ -92,8 +93,28 @@ private Q_SLOTS:
     void on_menu_change();
 };
 
+// GUI adaptiveScrollBar
 
-// GUI JOYSTICK
+class adScrlBar : public QLabel{
+    Q_OBJECT
+public:
+    adScrlBar(int Hsize=100, int Vsize=10);
+private:
+    void wheelEvent(QWheelEvent *event);
+    void mouseReleaseEvent(QMouseEvent *event);
+    int Hsize;
 
+Q_SIGNALS:
+    void change(double magnitude);
+};
+
+// GUI expanded adaptiveScrollBar
+
+class eadScrlBar : public QWidget{
+    Q_OBJECT
+public:
+    eadScrlBar(QString label, int Hsize=100, int Vsize=10);
+    adScrlBar* abar;
+};
 
 #endif // GUI_AUX_OBJECTS_H

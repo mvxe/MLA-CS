@@ -3,45 +3,44 @@
 #include "includes.h"
 
 pgTiltGUI::pgTiltGUI(){
-    timer = new QTimer(this);
-    timer->setInterval(work_call_time);
-    connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
     init_gui_activation();
     init_gui_settings();
 }
 
 void pgTiltGUI::init_gui_activation(){
     gui_activation=new QWidget;
-    alayout=new QHBoxLayout;
+    alayout=new QVBoxLayout;
     gui_activation->setLayout(alayout);
-    QLabel* label= new QLabel("Tilt adjustment:");
-    alayout->addWidget(label);
-    joyBtn=new joyBttn;
-    joyBtn->setMouseTracking(false);
-    joyBtn->setFrameShape(QFrame::Box);
-    joyBtn->setFrameShadow(QFrame::Plain);
-    joyBtn->setScaledContents(false);
-    joyBtn->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Minimum);
-    joyBtn->parent=this;
-    box=new cv::Mat(boxSize,boxSize,CV_8UC3);
-    reDraw(boxSize/2,boxSize/2);
-    alayout->addWidget(joyBtn);
-    alayout->addStretch(0);
+    xTilt=new eadScrlBar("Adjust X Tilt: ", 200,20);
+    connect(xTilt->abar, SIGNAL(change(double)), this, SLOT(_work_fun_T(double)));
+    alayout->addWidget(xTilt);
+    yTilt=new eadScrlBar("Adjust Y Tilt: ", 200,20);
+    connect(yTilt->abar, SIGNAL(change(double)), this, SLOT(_work_fun_F(double)));
+    alayout->addWidget(yTilt);
 }
 
 void pgTiltGUI::init_gui_settings(){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
-    tilt_mult=new val_selector(0, "pgTiltGUI_tilt_mult", "Tilt multiplier ", -100, 100, 0, {"au/pix/sec"});
+    tilt_mult=new val_selector(0, "pgTiltGUI_tilt_mult", "Tilt multiplier: ", -100, 100, 6);
     slayout->addWidget(tilt_mult);
-    focus_autoadjX=new val_selector(0, "pgTiltGUI_focus_autoadjX", "Focus adjustment for X ", -100, 100, 0, {"um/au"});
-    slayout->addWidget(focus_autoadjX);
-    focus_autoadjY=new val_selector(0, "pgTiltGUI_focus_autoadjY", "Focus adjustment for Y ", -100, 100, 0, {"um/au"});
-    slayout->addWidget(focus_autoadjY);
+    focus_autoadj=new val_selector(0, "pgTiltGUI_focus_autoadj", "Focus adjustment for X: ", -100, 100, 12);
+    slayout->addWidget(focus_autoadj);
+
+    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
+    calib_focus_autoadj=new QPushButton;
+    calib_focus_autoadj->setText("Calibrate (Click -> tilt -> focus -> Click)");
+    calib_focus_autoadj->setCheckable(true);
+    connect(calib_focus_autoadj, SIGNAL(toggled(bool)), this, SLOT(onCalibrate(bool)));
+    tlay->addWidget(calib_focus_autoadj); tlay->addStretch(0); tlay->setMargin(0);
+    slayout->addWidget(twid);
+
+    tilt_motor_speed=new val_selector(100, "pgTiltGUI_tilt_motor_speed", "Tilt motor speed: ", 0, 5000, 0);
+    slayout->addWidget(tilt_motor_speed);
 }
 
-void pgTiltGUI::work_fun(){
+void pgTiltGUI::work_fun(double magnitude, bool isX){
     if(!go.pCNC->connected || !go.pXPS->connected) return;
     if(!inited){
         go.pCNC->execCommand("M999\n");
@@ -50,41 +49,22 @@ void pgTiltGUI::work_fun(){
         go.pCNC->execCommand("G91\n");      //set to relative positioning
         inited=true;
     }
-    double dX,dY,dZ;
-    double speed;
-    dX=Xmov*tilt_mult->val/1000;
-    dY=Ymov*tilt_mult->val/1000;
-    go.pCNC->execCommand("G1 X",dX," Y",dY," F100\n");
-    dZ=(Xmov*focus_autoadjX->val+Ymov*focus_autoadjY->val)/100000;
+    double dXY,dZ,vel;
+    dXY=magnitude*tilt_mult->val;
+    vel=tilt_motor_speed->val;
+    if(isX) go.pCNC->execCommand("G1 X",dXY," F",vel,"\n");
+    else    go.pCNC->execCommand("G1 Y",dXY," F",vel,"\n");
+    dZ=dXY*focus_autoadj->val;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,dZ,-dZ);
+    Tilt_cum+=dXY;
 }
 
-void joyBttn::mouseMoveEvent(QMouseEvent *event){
-    parent->reDraw(event->pos().x(),event->pos().y());
-}
-void joyBttn::mousePressEvent(QMouseEvent *event){ mouseMoveEvent(event);}
-
-void pgTiltGUI::reDraw0(){reDraw(boxSize/2,boxSize/2);}
-void pgTiltGUI::reDraw(int x, int y){
-    box->setTo(cv::Scalar(0,0,0));
-    for(int i=0;i!=2;i++){
-        cv::line(*box, cv::Point(0,boxSize/2+(2*i-1)*limSize), cv::Point(boxSize,boxSize/2+(2*i-1)*limSize), cv::Scalar(255,255,255));
-        cv::line(*box, cv::Point(boxSize/2+(2*i-1)*limSize,0), cv::Point(boxSize/2+(2*i-1)*limSize,boxSize), cv::Scalar(255,255,255));
+void pgTiltGUI::onCalibrate(bool isStart){
+    if(isStart){
+        Tilt_cum=0;
+        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[3];
+    }else{
+        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[3]-Z_cum;
+        focus_autoadj->setValue(-Z_cum/Tilt_cum);
     }
-    cv::circle(*box, cv::Point(x,y), 1, cv::Scalar(255,0,0));
-    joyBtn->setPixmap(QPixmap::fromImage(QImage(box->data, box->cols, box->rows, box->step, QImage::Format_RGB888)));
-
-    if(x<0)x=0;
-    else if(x>=boxSize) x=boxSize-1;
-    if(y<0)y=0;
-    else if(y>=boxSize) y=boxSize-1;
-    Xmov=x-boxSize/2;
-    Ymov=y-boxSize/2;
-    if(abs(Xmov)>limSize) Xmov+=(Xmov>0?-1:1)*limSize;
-    else Xmov=0;
-    if(abs(Ymov)>limSize) Ymov+=(Ymov>0?-1:1)*limSize;
-    else Ymov=0;
-    if(Xmov!=0 || Ymov!=0) timer->start();
-    else timer->stop();
 }
-

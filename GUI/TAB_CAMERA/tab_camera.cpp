@@ -28,15 +28,18 @@ tab_camera::tab_camera(QWidget* parent){
     layoutTBarW->addWidget(TWCtrl);
 
     pgSGUI=new pgScanGUI;
+    pgMGUI=new pgMoveGUI;
     pgTGUI=new pgTiltGUI;
 
     pageMotion = new twd_selector(false);
         pageMotion->addWidget(pgSGUI->gui_activation);
+        pageMotion->addWidget(pgMGUI->gui_activation);
         pageMotion->addWidget(pgTGUI->gui_activation);
 
     pageWriting = new QWidget;
     pageSettings = new twd_selector;
         pageSettings->addWidget(pgSGUI->gui_settings,"Scan",pgSGUI->timer);
+        pageSettings->addWidget(pgMGUI->gui_settings,"Move");
         pageSettings->addWidget(pgTGUI->gui_settings,"Tilt");
 
     TWCtrl->addTab(pageMotion,"Motion");
@@ -114,7 +117,6 @@ void tab_camera::tab_entered(){
     pageSettings->timerStart();
 }
 void tab_camera::tab_exited(){
-    pgTGUI->reDraw0();
     pgSGUI->getCentered();
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
     timer->stop();
