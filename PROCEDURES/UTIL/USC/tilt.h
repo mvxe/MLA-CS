@@ -34,17 +34,21 @@ public:
     //settings
     QVBoxLayout* slayout;
     val_selector* tilt_mult;        //pixels time this gives the movement per unit interval
-    val_selector* focus_autoadj;    //how much is the Z adjusted per unit interval change of X or Y
-    QPushButton* calib_focus_autoadj;   //autocalibrates the focus adjustment
+    val_selector* focus_autoadjX;   //how much is the Z adjusted per unit interval change of X
+    val_selector* focus_autoadjY;
+    QPushButton* calib_focus_autoadjX;  //autocalibrates the focus adjustment
+    QPushButton* calib_focus_autoadjY;
     val_selector* tilt_motor_speed; //the speed of the tilt motor
 
     bool inited=false;
-    double Tilt_cum, Z_cum;
+    double Tilt_cum_X, Tilt_cum_Y, Z_cum;
 private Q_SLOTS:
     void work_fun(double magnitude, bool isX);
     void _work_fun_T(double magnitude){work_fun(magnitude, true);}
     void _work_fun_F(double magnitude){work_fun(magnitude, false);}
-    void onCalibrate(bool isStart);
+    void onCalibrate(bool isStart, bool isX);
+    void _onCalibrate_X(bool isStart){onCalibrate(isStart, true);}
+    void _onCalibrate_Y(bool isStart){onCalibrate(isStart, false);}
 };
 
 

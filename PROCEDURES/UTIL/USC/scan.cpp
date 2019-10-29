@@ -335,7 +335,7 @@ void pgScanGUI::_doOneRound(){
     cv::minMaxLoc(*resultFinalPhaseUW, &min, &max, &ignore, &ignore, *measured);
     bitwise_not(*measured, *measured);
     resultFinalPhaseUW->convertTo(*resultFinalPhaseUW, CV_32F, ((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));
-    resultFinalPhaseUW->setTo(0,*measured);
+    //resultFinalPhaseUW->setTo(0,*measured);   //no need for this
     std::cerr<<"min,max= "<<min<<" "<<max<<"\n";
     cv::minMaxLoc(*resultFinalPhaseUW, &min, &max);
     std::cerr<<"min,max= "<<min<<" "<<max<<"\n";

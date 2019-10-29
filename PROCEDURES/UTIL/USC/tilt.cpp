@@ -25,15 +25,24 @@ void pgTiltGUI::init_gui_settings(){
     gui_settings->setLayout(slayout);
     tilt_mult=new val_selector(0, "pgTiltGUI_tilt_mult", "Tilt multiplier: ", -100, 100, 6);
     slayout->addWidget(tilt_mult);
-    focus_autoadj=new val_selector(0, "pgTiltGUI_focus_autoadj", "Focus adjustment for X: ", -100, 100, 12);
-    slayout->addWidget(focus_autoadj);
+    focus_autoadjX=new val_selector(0, "pgTiltGUI_focus_autoadjX", "Focus adjustment for X: ", -100, 100, 12);
+    slayout->addWidget(focus_autoadjX);
+    focus_autoadjY=new val_selector(0, "pgTiltGUI_focus_autoadjY", "Focus adjustment for Y: ", -100, 100, 12);
+    slayout->addWidget(focus_autoadjY);
 
     QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
-    calib_focus_autoadj=new QPushButton;
-    calib_focus_autoadj->setText("Calibrate (Click -> tilt -> focus -> Click)");
-    calib_focus_autoadj->setCheckable(true);
-    connect(calib_focus_autoadj, SIGNAL(toggled(bool)), this, SLOT(onCalibrate(bool)));
-    tlay->addWidget(calib_focus_autoadj); tlay->addStretch(0); tlay->setMargin(0);
+    calib_focus_autoadjX=new QPushButton;
+    calib_focus_autoadjX->setText("Calibrate X");
+    calib_focus_autoadjX->setCheckable(true);
+    connect(calib_focus_autoadjX, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_X(bool)));
+    tlay->addWidget(calib_focus_autoadjX);
+    calib_focus_autoadjY=new QPushButton;
+    calib_focus_autoadjY->setText("Calibrate Y");
+    calib_focus_autoadjY->setCheckable(true);
+    connect(calib_focus_autoadjY, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_Y(bool)));
+    tlay->addWidget(calib_focus_autoadjY);
+    QLabel* txt=new QLabel("(Click -> tilt -> focus -> Click)");
+    tlay->addWidget(txt); tlay->addStretch(0); tlay->setMargin(0);
     slayout->addWidget(twid);
 
     tilt_motor_speed=new val_selector(100, "pgTiltGUI_tilt_motor_speed", "Tilt motor speed: ", 0, 5000, 0);
@@ -43,9 +52,8 @@ void pgTiltGUI::init_gui_settings(){
 void pgTiltGUI::work_fun(double magnitude, bool isX){
     if(!go.pCNC->connected || !go.pXPS->connected) return;
     if(!inited){
-        go.pCNC->execCommand("M999\n");
-        std::this_thread::sleep_for (std::chrono::milliseconds(10));
-        go.pCNC->execCommand("M18 S10\n"); //set stepper disable inactivity to 10 seconds
+        go.pCNC->execCommand("M80\n");      //turn on PSU (this actually just inits the stepper drivers for now)
+        go.pCNC->execCommand("M18 S10\n");  //set stepper disable inactivity to 10 seconds
         go.pCNC->execCommand("G91\n");      //set to relative positioning
         inited=true;
     }
@@ -54,17 +62,21 @@ void pgTiltGUI::work_fun(double magnitude, bool isX){
     vel=tilt_motor_speed->val;
     if(isX) go.pCNC->execCommand("G1 X",dXY," F",vel,"\n");
     else    go.pCNC->execCommand("G1 Y",dXY," F",vel,"\n");
-    dZ=dXY*focus_autoadj->val;
+    if(isX) dZ=dXY*focus_autoadjX->val;
+    else    dZ=dXY*focus_autoadjY->val;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,dZ,-dZ);
-    Tilt_cum+=dXY;
+    if(isX) Tilt_cum_X+=dXY;
+    else    Tilt_cum_Y+=dXY;
 }
 
-void pgTiltGUI::onCalibrate(bool isStart){
+void pgTiltGUI::onCalibrate(bool isStart, bool isX){
     if(isStart){
-        Tilt_cum=0;
+        if(isX) Tilt_cum_X=0;
+        else    Tilt_cum_Y=0;
         Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[3];
     }else{
         Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[3]-Z_cum;
-        focus_autoadj->setValue(-Z_cum/Tilt_cum);
+        if(isX) focus_autoadjX->setValue(-Z_cum/Tilt_cum_X);
+        else    focus_autoadjY->setValue(-Z_cum/Tilt_cum_Y);
     }
 }
