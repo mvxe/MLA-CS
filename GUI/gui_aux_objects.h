@@ -4,15 +4,16 @@
 #include <vector>
 #include <QWidget>
 #include <QLabel>
+#include <QToolButton>
 #include "UTIL/containers.h"
 
 class QHBoxLayout;
 class QVBoxLayout;
 class QString;
 class QDoubleSpinBox;
-class QToolButton;
 class QTimer;
 class QPushButton;
+class QScrollToolButton;
 
 //  VAL SELECTOR
 
@@ -36,7 +37,7 @@ private:
     QHBoxLayout* layout;
     QLabel* _label;
     QDoubleSpinBox* spinbox;
-    QToolButton* unit;
+    QScrollToolButton* unit;
 
     void init0(QString label, double min, double max, double precision);
     void init1(std::vector<QString> labels);
@@ -65,7 +66,7 @@ private:
 
     QHBoxLayout* layout;
     QLabel* _label;
-    QToolButton* _sBtn;
+    QScrollToolButton* _sBtn;
 
     void init(QString label, std::vector<QString> labels);
 private Q_SLOTS:
@@ -88,7 +89,7 @@ public:
     bool timSt=false;
 private:
     QVBoxLayout* layout;
-    QToolButton* select;
+    QScrollToolButton* select;
     std::vector<QWidget*> widgets;
     std::vector<QTimer*> timers;        //timers are only running when this settings tab is open : allow it to handle stuff
     int active_index=-1;
@@ -125,6 +126,19 @@ public:
     QPushButton* cLock;
 private Q_SLOTS:
     void on_lock(bool state){abar->setEnabled(!state);}
+};
+
+
+
+
+
+
+// Adding scroll to QToolButton
+
+class QScrollToolButton : public QToolButton{
+    Q_OBJECT
+private:
+    void wheelEvent(QWheelEvent *event);
 };
 
 #endif // GUI_AUX_OBJECTS_H

@@ -48,7 +48,7 @@ void val_selector::init0(QString label, double min, double max, double precision
 }
 
 void val_selector::init1(std::vector<QString> labels){
-    unit = new QToolButton();
+    unit = new QScrollToolButton();
     layout->addWidget(unit);
     unit->setAutoRaise(true);
     unit->setToolButtonStyle(Qt::ToolButtonTextOnly);
@@ -106,7 +106,7 @@ smp_selector::smp_selector(std::string varSaveName, QString label, int initialIn
 void smp_selector::init(QString label, std::vector<QString> labels){
     _label = new QLabel(label);
     layout = new QHBoxLayout();
-    _sBtn = new QToolButton();
+    _sBtn = new QScrollToolButton();
 
     this->setLayout(layout);
     layout->addWidget(_label);
@@ -152,7 +152,7 @@ twd_selector::twd_selector(bool showSel): showSel(showSel){
     layout->setMargin(0);
     this->setLayout(layout);
     if(showSel){
-        select=new QToolButton();
+        select=new QScrollToolButton();
         select->setAutoRaise(true);
         select->setToolButtonStyle(Qt::ToolButtonTextOnly);
         select->setPopupMode(QToolButton::InstantPopup);
@@ -245,3 +245,26 @@ eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize){
     layout->setMargin(0);
     this->setLayout(layout);
 }
+
+
+
+
+
+
+
+
+// Adding scroll to QToolButton
+
+void QScrollToolButton::wheelEvent(QWheelEvent *event){
+    int index=-1;
+    for(int i=0;i!=this->menu()->actions().size();i++){
+        if(this->menu()->actions()[i]==this->menu()->activeAction())
+        {index=i; break;}
+    }
+    index-=event->delta()/120;
+    if(index>=0 && index<this->menu()->actions().size()){
+        this->menu()->setActiveAction(this->menu()->actions()[index]);
+        Q_EMIT this->menu()->aboutToHide();
+    }
+}
+
