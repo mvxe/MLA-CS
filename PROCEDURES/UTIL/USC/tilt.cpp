@@ -11,10 +11,10 @@ void pgTiltGUI::init_gui_activation(){
     gui_activation=new QWidget;
     alayout=new QVBoxLayout;
     gui_activation->setLayout(alayout);
-    xTilt=new eadScrlBar("Adjust X Tilt: ", 200,20);
+    xTilt=new eadScrlBar("Adjust X Tilt: ", 200,20,true);
     connect(xTilt->abar, SIGNAL(change(double)), this, SLOT(_work_fun_T(double)));
     alayout->addWidget(xTilt);
-    yTilt=new eadScrlBar("Adjust Y Tilt: ", 200,20);
+    yTilt=new eadScrlBar("Adjust Y Tilt: ", 200,20,true);
     connect(yTilt->abar, SIGNAL(change(double)), this, SLOT(_work_fun_F(double)));
     alayout->addWidget(yTilt);
 }

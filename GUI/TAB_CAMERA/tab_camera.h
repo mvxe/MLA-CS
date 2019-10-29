@@ -45,7 +45,7 @@ private:
     QWidget* pageWriting;
 
     twd_selector* pageSettings;
-    pgScanGUI* pgSGUI;
+    pgScanGUI* pgSGUI;  constexpr static unsigned index_pgSGUI{0};
     pgMoveGUI* pgMGUI;
     pgTiltGUI* pgTGUI;
 
@@ -61,6 +61,7 @@ private:
 
 private Q_SLOTS:
     void work_fun();
+    void on_tab_change(int index);
 
 };
 

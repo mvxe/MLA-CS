@@ -58,9 +58,8 @@ public:
     val_selector* max_vel;      //maximum microscope axis velocity
     val_selector* max_acc;      //maximum microscope axis acceleration
     val_selector* dis_thresh;   //if the checked peaks within peakLocRange of the freq peak are higher than peakThresh x the main peak the pixel is added to the mask (of bad pixels)
-    std::atomic<bool> changed{true};
     QLabel* calcL;
-    constexpr static unsigned work_call_time=100;
+    constexpr static unsigned timer_delay=500;  //if the program is busy measuring we cannot update the variables, so wait for this ammount and try again
 
 
     const int darkFrameNum=4;
@@ -81,9 +80,9 @@ public:
     void _doOneRound();
     double vsConv(val_selector* vs);
     std::atomic<bool> keepMeasuring{false};
+public Q_SLOTS:
+    void recalculate();
 private Q_SLOTS:
-    void work_fun();
-
     void onBScanOne();
     void onBScanContinuous(bool status);
     void onBCenter();

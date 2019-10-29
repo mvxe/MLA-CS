@@ -26,8 +26,9 @@ pgScanGUI::pgScanGUI(){
     init_gui_activation();
     init_gui_settings();
     timer = new QTimer(this);
-    timer->setInterval(work_call_time);
-    connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
+    timer->setInterval(timer_delay);
+    timer->setSingleShot(true);
+    connect(timer, SIGNAL(timeout()), this, SLOT(recalculate()));
 }
 
 void pgScanGUI::init_gui_activation(){
@@ -56,17 +57,23 @@ void pgScanGUI::init_gui_settings(){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
-    led_wl=new val_selector(470., "tab_camera_led_wl", "LED Wavelength:", 0.001, 2000., 2, 0, {"nm","um"}, &changed);
+    led_wl=new val_selector(470., "tab_camera_led_wl", "LED Wavelength:", 0.001, 2000., 2, 0, {"nm","um"});
+    connect(led_wl, SIGNAL(changed()), this, SLOT(recalculate()));
     slayout->addWidget(led_wl);
-    coh_len=new val_selector(20., "tab_camera_coh_len", "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)}, &changed);
+    coh_len=new val_selector(20., "tab_camera_coh_len", "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)});
+    connect(coh_len, SIGNAL(changed()), this, SLOT(recalculate()));
     slayout->addWidget(coh_len);
-    range=new val_selector(10., "tab_camera_range", "Scan Range:", 1., 2000., 2, 3 , {"nm","um",QChar(0x03BB),"L"}, &changed);
+    range=new val_selector(10., "tab_camera_range", "Scan Range:", 1., 2000., 2, 3 , {"nm","um",QChar(0x03BB),"L"});
+    connect(range, SIGNAL(changed()), this, SLOT(recalculate()));
     slayout->addWidget(range);
-    ppwl=new val_selector(20., "tab_camera_ppwl", "Points Per Wavelength: ", 6, 2000., 2,  &changed);
+    ppwl=new val_selector(20., "tab_camera_ppwl", "Points Per Wavelength: ", 6, 2000., 2);
+    connect(ppwl, SIGNAL(changed()), this, SLOT(recalculate()));
     slayout->addWidget(ppwl);
-    max_vel=new val_selector(300., "tab_camera_max_vel", "UScope stage max velocity: ", 1e-9, 300., 2, 0, {"mm/s"}, &changed);
+    max_vel=new val_selector(300., "tab_camera_max_vel", "UScope stage max velocity: ", 1e-9, 300., 2, 0, {"mm/s"});
+    connect(max_vel, SIGNAL(changed()), this, SLOT(recalculate()));
     slayout->addWidget(max_vel);
-    max_acc=new val_selector(2500., "tab_camera_max_acc", "UScope stage max acceleration: ", 1e-9, 2500., 2, 0, {"mm/s^2"}, &changed);
+    max_acc=new val_selector(2500., "tab_camera_max_acc", "UScope stage max acceleration: ", 1e-9, 2500., 2, 0, {"mm/s^2"});
+    connect(max_acc, SIGNAL(changed()), this, SLOT(recalculate()));
     slayout->addWidget(max_acc);
     dis_thresh=new val_selector(0.9, "tab_camera_dis_thresh", "Peak Discard Threshold: ", 0.1, 1, 2);
     slayout->addWidget(dis_thresh);
@@ -74,19 +81,18 @@ void pgScanGUI::init_gui_settings(){
     slayout->addWidget(calcL);
 }
 
-void pgScanGUI::work_fun() {
-    if(changed==true){
-        if(_lock_mes.try_lock()){
-           if(_lock_comp.try_lock()){
-               changed=false;
-               std::string report;
-               updatePVTs(report);
-               calcL->setText(report.c_str());
-               _lock_comp.unlock();
-           }
-           _lock_mes.unlock();
+void pgScanGUI::recalculate() {
+    if(_lock_mes.try_lock()){
+        if(_lock_comp.try_lock()){
+            std::string report;
+            updatePVTs(report);
+            calcL->setText(report.c_str());
+            _lock_comp.unlock();
         }
+        else timer->start();
+        _lock_mes.unlock();
     }
+    else timer->start();
 }
 
 void pgScanGUI::updatePVTs(std::string &report){
@@ -169,13 +175,16 @@ void pgScanGUI::updatePVTs(std::string &report){
 }
 
 void pgScanGUI::doOneRound(){
+    if(!PVTsRdy) recalculate();
     std::thread proc(&pgScanGUI::_doOneRound, this);
     proc.detach();
 }
 
 void pgScanGUI::getCentered(bool lock){
+    if(!isOffset) return;
+    if(!PVTsRdy) recalculate();
+    if(!PVTsRdy) return;
     if(lock) std::lock_guard<std::mutex>lock(_lock_mes);
-    if(!isOffset || !PVTsRdy) return;
     isOffset=false;
     go.pXPS->execPVTobj(PVTtoPos[dir], &PVTret);
     PVTret.block_till_done();

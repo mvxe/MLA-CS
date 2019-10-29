@@ -12,23 +12,23 @@ class QString;
 class QDoubleSpinBox;
 class QToolButton;
 class QTimer;
+class QPushButton;
 
 //  VAL SELECTOR
 
 class val_selector : public QWidget{       //template for devices
     Q_OBJECT
 public:
+    val_selector(double initialValue, QString label, double min, double max, double precision);
+    val_selector(double initialValue, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels);
     val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision);
     val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels);
-    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, std::atomic<bool>* changed);
-    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed);
     const double& val{value};
     const int& index{unitIndex};
     void setValue(double nvalue);
 
 private:
     double value;
-    std::atomic<bool>* _changed;
     cc_save<double> valueSave;
     int unitIndex;
     cc_save<int> unitIndexSave;
@@ -43,6 +43,11 @@ private:
 private Q_SLOTS:
     void on_menu_change();
     void on_value_change(double nvalue);
+Q_SIGNALS:
+    void changed();
+    void changed(double value);
+    void changed(double value, int index);
+    void changed(int index);
 };
 
 //  SIMPLE SELECTOR
@@ -51,13 +56,10 @@ class smp_selector : public QWidget{       //template for devices
     Q_OBJECT
 public:
     smp_selector(QString label, int initialIndex, std::vector<QString> labels);
-    smp_selector(QString label, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed);
     smp_selector(std::string varSaveName, QString label, int initialIndex, std::vector<QString> labels);
-    smp_selector(std::string varSaveName, QString label, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed);
     const int& index{_index};
 
 private:
-    std::atomic<bool>* _changed;
     int _index;
     cc_save<int> indexSave;
 
@@ -68,8 +70,10 @@ private:
     void init(QString label, std::vector<QString> labels);
 private Q_SLOTS:
     void on_menu_change();
+Q_SIGNALS:
+    void changed();
+    void changed(double value);
 };
-
 
 // TAB WIDGET DISPLAY SELECTOR
 
@@ -88,7 +92,8 @@ private:
     std::vector<QWidget*> widgets;
     std::vector<QTimer*> timers;        //timers are only running when this settings tab is open : allow it to handle stuff
     int active_index=-1;
-
+public: Q_SIGNALS:
+    void changed(int index);
 private Q_SLOTS:
     void on_menu_change();
 };
@@ -113,8 +118,13 @@ Q_SIGNALS:
 class eadScrlBar : public QWidget{
     Q_OBJECT
 public:
-    eadScrlBar(QString label, int Hsize=100, int Vsize=10);
+    eadScrlBar(QString label, int Hsize, int Vsize);
+    eadScrlBar(QString label, int Hsize, int Vsize, bool locked);
     adScrlBar* abar;
+    QHBoxLayout* layout;
+    QPushButton* cLock;
+private Q_SLOTS:
+    void on_lock(bool state){abar->setEnabled(!state);}
 };
 
 #endif // GUI_AUX_OBJECTS_H

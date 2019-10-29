@@ -4,27 +4,27 @@
 
 //  VAL SELECTOR
 
-val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision):
-        valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, 0, nullptr, " "), _changed(nullptr){
+val_selector::val_selector(double initialValue, QString label, double min, double max, double precision):
+        valueSave(value, initialValue, nullptr, " "), unitIndexSave(unitIndex, 0, nullptr, " "){
     init0(label, min, max, precision);
     layout->addStretch(0);
 }
 
-val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels):
-        valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, initialIndex, &go.gui_config.save,util::toString(varSaveName,"_index")), _changed(nullptr){
+val_selector::val_selector(double initialValue, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels):
+        valueSave(value, initialValue, nullptr, " "), unitIndexSave(unitIndex, initialIndex, nullptr, " "){
     init0(label, min, max, precision);
     init1(labels);
     layout->addStretch(0);
 }
 
-val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, std::atomic<bool>* changed):
-        valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, 0, nullptr, " "), _changed(changed){
+val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision):
+        valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, 0, nullptr, " "){
     init0(label, min, max, precision);
     layout->addStretch(0);
 }
 
-val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed):
-        valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, initialIndex, &go.gui_config.save,util::toString(varSaveName,"_index")), _changed(changed){
+val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels):
+        valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, initialIndex, &go.gui_config.save,util::toString(varSaveName,"_index")){
     init0(label, min, max, precision);
     init1(labels);
     layout->addStretch(0);
@@ -70,18 +70,21 @@ void val_selector::init1(std::vector<QString> labels){
 void val_selector::on_menu_change(){
     if(unit->menu()->activeAction()==nullptr) return;
     unit->setText(unit->menu()->activeAction()->text());
+    unitIndex=0;
     for (int i=0;i!=unit->menu()->actions().size();i++) if(unit->menu()->actions()[i]==unit->menu()->activeAction()) {
         unitIndex=i;
-        if(_changed!=nullptr) *_changed=true;
-        return;
+        break;
     }
-    unitIndex=0;
-    if(_changed!=nullptr) *_changed=true;
+    Q_EMIT changed();
+    Q_EMIT changed(unitIndex);
+    Q_EMIT changed(value, unitIndex);
 }
 
 void val_selector::on_value_change(double nvalue){
     value=nvalue;
-    if(_changed!=nullptr) *_changed=true;
+    Q_EMIT changed();
+    Q_EMIT changed(value);
+    Q_EMIT changed(value, unitIndex);
 }
 
 void val_selector::setValue(double nvalue){
@@ -92,19 +95,11 @@ void val_selector::setValue(double nvalue){
 //  SIMPLE SELECTOR
 
 smp_selector::smp_selector(QString label, int initialIndex, std::vector<QString> labels):
-    indexSave(_index, 0, nullptr, " "), _changed(nullptr){
-    init(label, labels);
-}
-smp_selector::smp_selector(QString label, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed):
-    indexSave(_index, 0, nullptr, " "), _changed(changed){
+    indexSave(_index, initialIndex, nullptr, " "){
     init(label, labels);
 }
 smp_selector::smp_selector(std::string varSaveName, QString label, int initialIndex, std::vector<QString> labels):
-    indexSave(_index, initialIndex, &go.gui_config.save,varSaveName), _changed(nullptr){
-    init(label, labels);
-}
-smp_selector::smp_selector(std::string varSaveName, QString label, int initialIndex, std::vector<QString> labels, std::atomic<bool>* changed):
-    indexSave(_index, initialIndex, &go.gui_config.save,varSaveName), _changed(changed){
+    indexSave(_index, initialIndex, &go.gui_config.save,varSaveName){
     init(label, labels);
 }
 
@@ -139,13 +134,13 @@ void smp_selector::init(QString label, std::vector<QString> labels){
 void smp_selector::on_menu_change(){
     if(_sBtn->menu()->activeAction()==nullptr) return;
     _sBtn->setText(_sBtn->menu()->activeAction()->text());
+    _index=0;
     for (int i=0;i!=_sBtn->menu()->actions().size();i++) if(_sBtn->menu()->actions()[i]==_sBtn->menu()->activeAction()) {
         _index=i;
-        if(_changed!=nullptr) *_changed=true;
-        return;
+        break;
     }
-    _index=0;
-    if(_changed!=nullptr) *_changed=true;
+    Q_EMIT changed();
+    Q_EMIT changed(_index);
 }
 
 // TAB WIDGET DISPLAY SELECTOR
@@ -174,13 +169,7 @@ void twd_selector::addWidget(QWidget* widget, QString label, QTimer* timer){
         QAction* action=new QAction;
         action->setText(label);
         select->menu()->addAction(action);
-        if(active_index==-1){
-            select->menu()->setActiveAction(action);
-            select->setText(select->menu()->activeAction()->text());
-            widget->show();
-            if(timer!=nullptr && timSt) timer->start();
-            active_index=0;
-        }
+        select->setText("Select settings");
     }
     layout->insertWidget(layout->count()-1, widget);
 }
@@ -195,6 +184,7 @@ void twd_selector::on_menu_change(){
         active_index=i;
         widgets[active_index]->show();
         if(timers[active_index]!=nullptr && timSt) timers[active_index]->start();
+        Q_EMIT changed(active_index);
         return;
     }
 }
@@ -222,7 +212,7 @@ adScrlBar::adScrlBar(int Hsize, int Vsize): Hsize(Hsize){
     this->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Minimum);
     cv::Mat mat(Vsize,Hsize,CV_8U);
     for(int i=0;i!=Hsize;i++) for(int j=0;j!=Vsize;j++)
-        mat.at<uchar>(j,i)=255./Hsize*i;
+        mat.at<uchar>(j,i)=255./Hsize*(Hsize-i);
     this->setPixmap(QPixmap::fromImage(QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_Indexed8)));
 }
 void adScrlBar::wheelEvent(QWheelEvent *event){
@@ -236,13 +226,22 @@ void adScrlBar::mouseReleaseEvent(QMouseEvent *event){
 
 // GUI expanded adaptiveScrollBar
 
+eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize, bool locked) : eadScrlBar(label, Hsize, Vsize){
+    cLock=new QPushButton;
+    cLock->setCheckable(true);
+    cLock->setChecked(locked);
+    cLock->setIcon(QPixmap(":/locked.svg"));
+    layout->insertWidget(layout->count()-1, cLock);
+    connect(cLock, SIGNAL(toggled(bool)), this, SLOT(on_lock(bool)));
+    abar->setEnabled(!locked);
+}
 eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize){
-    QHBoxLayout* layout=new QHBoxLayout;
+    layout=new QHBoxLayout;
     abar=new adScrlBar(Hsize, Vsize);
     QLabel* Label=new QLabel(label);
     layout->addWidget(Label);
-    layout->addWidget(abar);
     layout->addStretch(0);
+    layout->addWidget(abar);
     layout->setMargin(0);
     this->setLayout(layout);
 }

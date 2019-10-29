@@ -38,7 +38,8 @@ tab_camera::tab_camera(QWidget* parent){
 
     pageWriting = new QWidget;
     pageSettings = new twd_selector;
-        pageSettings->addWidget(pgSGUI->gui_settings,"Scan",pgSGUI->timer);
+    connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));
+        pageSettings->addWidget(pgSGUI->gui_settings,"Scan");
         pageSettings->addWidget(pgMGUI->gui_settings,"Move");
         pageSettings->addWidget(pgTGUI->gui_settings,"Tilt");
 
@@ -48,7 +49,6 @@ tab_camera::tab_camera(QWidget* parent){
     TWCtrl->addTab(pageWriting,"Writing");
 
     TWCtrl->addTab(pageSettings,"Settings");
-
 
     cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
     layoutTBarW->addWidget(cm_sel);
@@ -102,7 +102,12 @@ void tab_camera::work_fun(){
     if(onDisplay!=nullptr) framequeueDisp->freeUserMat();
 }
 
-
+void tab_camera::on_tab_change(int index){
+    switch (index){
+        case index_pgSGUI:  Q_EMIT pgSGUI->recalculate();
+                            break;
+    }
+}
 
 
 

@@ -18,10 +18,10 @@ void pgMoveGUI::init_gui_activation(){
     yMove=new eadScrlBar("Move Y: ", 200,20);
     connect(yMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveY(double)));
     alayout->addWidget(yMove);
-    zMove=new eadScrlBar("Move Z: ", 200,20);
+    zMove=new eadScrlBar("Move Z: ", 200,20,false);
     connect(zMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveZ(double)));
     alayout->addWidget(zMove);
-    fMove=new eadScrlBar("Move F: ", 200,20);
+    fMove=new eadScrlBar("Move F: ", 200,20,true);
     connect(fMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveF(double)));
     alayout->addWidget(fMove);
 }
