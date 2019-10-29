@@ -27,14 +27,16 @@ tab_camera::tab_camera(QWidget* parent){
     TWCtrl->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Expanding);
     layoutTBarW->addWidget(TWCtrl);
 
-    pgSGUI=new pgScanGUI;
+    pgSGUI=new pgScanGUI(_lock_mes, _lock_comp);
     pgMGUI=new pgMoveGUI;
     pgTGUI=new pgTiltGUI;
+    pgFGUI=new pgFocusGUI(_lock_mes, _lock_comp, pgSGUI);
 
     pageMotion = new twd_selector(false);
         pageMotion->addWidget(pgSGUI->gui_activation);
         pageMotion->addWidget(pgMGUI->gui_activation);
         pageMotion->addWidget(pgTGUI->gui_activation);
+        pageMotion->addWidget(pgFGUI->gui_activation);
 
     pageWriting = new QWidget;
     pageSettings = new twd_selector;
@@ -42,6 +44,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageSettings->addWidget(pgSGUI->gui_settings,"Scan");
         pageSettings->addWidget(pgMGUI->gui_settings,"Move");
         pageSettings->addWidget(pgTGUI->gui_settings,"Tilt");
+        pageSettings->addWidget(pgFGUI->gui_settings,"Focus");
 
     TWCtrl->addTab(pageMotion,"Motion");
         //scanOne->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Minimum);
@@ -105,6 +108,8 @@ void tab_camera::work_fun(){
 void tab_camera::on_tab_change(int index){
     switch (index){
         case index_pgSGUI:  Q_EMIT pgSGUI->recalculate();
+                            break;
+        case index_pgFGUI:  Q_EMIT pgFGUI->recalculate();
                             break;
     }
 }

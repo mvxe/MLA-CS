@@ -28,6 +28,8 @@ public:
     void tab_entered();
     void tab_exited();
 
+    std::mutex _lock_mes;
+    std::mutex _lock_comp;
 private:
     QTimer *timer;
 
@@ -48,6 +50,7 @@ private:
     pgScanGUI* pgSGUI;  constexpr static unsigned index_pgSGUI{0};
     pgMoveGUI* pgMGUI;
     pgTiltGUI* pgTGUI;
+    pgFocusGUI* pgFGUI; constexpr static unsigned index_pgFGUI{3};
 
     smp_selector* cm_sel;       //for selecting the colormap for display
 

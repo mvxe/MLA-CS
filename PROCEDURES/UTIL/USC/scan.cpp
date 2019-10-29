@@ -18,7 +18,7 @@ void pScan::run(){
 
 //GUI
 
-pgScanGUI::pgScanGUI(){
+pgScanGUI::pgScanGUI(std::mutex &_lock_mes, std::mutex &_lock_comp): _lock_mes(_lock_mes), _lock_comp(_lock_comp) {
     for(int i=0;i!=2;i++){
         PVTtoPos[i] = go.pXPS->createNewPVTobj(XPS::mgroup_XYZF,  util::toString("camera_PVTtoPos",i,".txt").c_str());
         PVTmeasure[i] = go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, util::toString("camera_PVTmeasure",i,".txt").c_str());
@@ -63,7 +63,7 @@ void pgScanGUI::init_gui_settings(){
     coh_len=new val_selector(20., "tab_camera_coh_len", "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)});
     connect(coh_len, SIGNAL(changed()), this, SLOT(recalculate()));
     slayout->addWidget(coh_len);
-    range=new val_selector(10., "tab_camera_range", "Scan Range:", 1., 2000., 2, 3 , {"nm","um",QChar(0x03BB),"L"});
+    range=new val_selector(10., "tab_camera_range", "Scan Range:", 1., 2000., 3, 3 , {"nm","um",QChar(0x03BB),"L"});
     connect(range, SIGNAL(changed()), this, SLOT(recalculate()));
     slayout->addWidget(range);
     ppwl=new val_selector(20., "tab_camera_ppwl", "Points Per Wavelength: ", 6, 2000., 2);
@@ -121,10 +121,7 @@ void pgScanGUI::updatePVTs(std::string &report){
     double movMaxVelocity=vsConv(max_acc)*movTime;
 
     report+=util::toString("Read Acceleration Time :",readAccelTime," s\nRead Acceleration Distance:",readAccelDis," mm\nNew Offset:",newOffset," mm\nMovement Time:",movTime," s\nMovement Max Velocity:",movMaxVelocity," m/s\n");
-    if(movMaxVelocity > vsConv(max_vel)){
-        report+="Error: Max move Velocity is higher than set max Velocity (did not implement workaround it cus it was unlikely)!\n";
-        return;
-    }
+    if(movMaxVelocity > vsConv(max_vel)){report+="Error: Max move Velocity is higher than set max Velocity (did not implement workaround it cus it was unlikely)!\n"; return;}
 
     double darkFrameTime=darkFrameNum/maxFPS;
     report+=util::toString("Putting ",darkFrameNum," dark frames after end, lasting: ",darkFrameTime," s\n");
@@ -138,11 +135,7 @@ void pgScanGUI::updatePVTs(std::string &report){
     report+=util::toString("Total of ",NLambda," wavelengths (for best precision, should be an integer)\n");
     peakLoc=std::nearbyint(totalFrameNum/vsConv(ppwl));
     report+=util::toString("Expecting the peak to be at i=",totalFrameNum/vsConv(ppwl)," in the FFT.\n");
-    if(peakLoc+peakLocRange>=totalFrameNum || peakLoc-peakLocRange<=0){
-        report+=util::toString("Error: PeakLoc+-",peakLocRange," should be between 0 and totalFrameNum!\n");
-        return;
-    }
-
+    if(peakLoc+peakLocRange>=totalFrameNum || peakLoc-peakLocRange<=0){report+=util::toString("Error: PeakLoc+-",peakLocRange," should be between 0 and totalFrameNum!\n"); return;}
     for(int i=0;i!=2;i++){
         int s=i?(-1):1;
         PVTtoPos[i]->addAction(XPS::iuScopeLED,true);
@@ -160,15 +153,9 @@ void pgScanGUI::updatePVTs(std::string &report){
     exec_dat ret;
     for(int i=0;i!=2;i++){
         ret=go.pXPS->verifyPVTobj(PVTtoPos[i]);
-        if(ret.retval!=0) {
-            report+=util::toString("Error: Verify PVTtoPos failed, retval was",ret.retstr,"\n");
-            return;
-        }
+        if(ret.retval!=0) {report+=util::toString("Error: Verify PVTtoPos failed, retval was",ret.retstr,"\n"); return;}
         ret=go.pXPS->verifyPVTobj(PVTmeasure[i]);
-        if(ret.retval!=0) {
-            report+=util::toString("Error: Verify PVTmeasure failed, retval was",ret.retstr,"\n");
-            return;
-        }
+        if(ret.retval!=0) {report+=util::toString("Error: Verify PVTmeasure failed, retval was",ret.retstr,"\n"); return;}
     }
 
     PVTsRdy=true;
