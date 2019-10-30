@@ -12,10 +12,10 @@ void pgTiltGUI::init_gui_activation(){
     alayout=new QVBoxLayout;
     gui_activation->setLayout(alayout);
     xTilt=new eadScrlBar("Adjust X Tilt: ", 200,20,true);
-    connect(xTilt->abar, SIGNAL(change(double)), this, SLOT(_work_fun_T(double)));
+    connect(xTilt->abar, SIGNAL(change(double)), this, SLOT(_doTilt_T(double)));
     alayout->addWidget(xTilt);
     yTilt=new eadScrlBar("Adjust Y Tilt: ", 200,20,true);
-    connect(yTilt->abar, SIGNAL(change(double)), this, SLOT(_work_fun_F(double)));
+    connect(yTilt->abar, SIGNAL(change(double)), this, SLOT(_doTilt_F(double)));
     alayout->addWidget(yTilt);
 }
 
@@ -49,7 +49,7 @@ void pgTiltGUI::init_gui_settings(){
     slayout->addWidget(tilt_motor_speed);
 }
 
-void pgTiltGUI::work_fun(double magnitude, bool isX){
+void pgTiltGUI::doTilt(double magnitude, bool isX, bool scale){
     if(!go.pCNC->connected || !go.pXPS->connected) return;
     if(!inited){
         go.pCNC->execCommand("M80\n");      //turn on PSU (this actually just inits the stepper drivers for now)
@@ -58,7 +58,8 @@ void pgTiltGUI::work_fun(double magnitude, bool isX){
         inited=true;
     }
     double dXY,dZ,vel;
-    dXY=magnitude*tilt_mult->val;
+    if(scale) dXY=magnitude*tilt_mult->val;
+    else dXY=magnitude;
     vel=tilt_motor_speed->val;
     if(isX) go.pCNC->execCommand("G1 X",dXY," F",vel,"\n");
     else    go.pCNC->execCommand("G1 Y",dXY," F",vel,"\n");

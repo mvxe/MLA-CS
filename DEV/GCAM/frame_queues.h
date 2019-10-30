@@ -21,7 +21,7 @@ public:
 
     FQ* getNewFQ();                 //returns a pointer to a new frame queue
     void setCamFPS(double nfps);    //set the camera framerate, essential of proper image sorting into queues (this is thread safe)
-    void deleteFQ(FQ* fq);          //TODO implement destroy FQ and free data
+    void deleteFQ(FQ* fq);
 
     cv::Mat* getAFreeMatPtr();      //these two functions are used by the vimba api observer to put new frames into the queue           //TODO these two functions should not be exposed to the user, just FrameObserver::FrameReceived
     void enqueueMat(cv::Mat* mat, unsigned int timestamp);
@@ -36,9 +36,8 @@ private:
     void reclaim();
     std::queue<cv::Mat*> mat_ptr_free;      //contains pointers to actual data that is free
     std::list<_used> mat_ptr_full;          //contains pointers to actual data that is waiting to be processed
-    std::deque<FQ> user_queues;             //contains of the user queues
-    std::mutex userqmx;
-    std::mutex apicbmx;
+    std::list<FQ> user_queues;             //contains of the user queues
+    std::mutex qmx;
 
     double fps{30};
 };
@@ -56,7 +55,6 @@ public:
     void freeUserMat(unsigned N=0);                         //tells the class its safe to free N-th (oldest if no argument) matrix (if this isnt called, the above call will return the pointer to the same old matrix)
     unsigned getFullNumber();                               //get the number of full matrices (return the number of frames waiting to be processed by this user)
     unsigned getFreeNumber();                               //get the number of free matrices
-
     struct _img{
         cv::Mat** ptr;
         long unsigned timestamp;     //timestamp (this is the internal camera timestamp)
@@ -68,7 +66,7 @@ private:
     unsigned maxfr;
     unsigned div;
     int i{1};                      //for framerate reduction
-    std::mutex umx;
+    std::mutex* umx;
 };
 
 #endif // FRAME_QUEUES_H

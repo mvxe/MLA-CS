@@ -30,7 +30,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgSGUI=new pgScanGUI(_lock_mes, _lock_comp);
     pgMGUI=new pgMoveGUI;
     pgTGUI=new pgTiltGUI;
-    pgFGUI=new pgFocusGUI(_lock_mes, _lock_comp, pgSGUI);
+    pgFGUI=new pgFocusGUI(_lock_mes, _lock_comp, pgSGUI, pgTGUI);
 
     pageMotion = new twd_selector(false);
         pageMotion->addWidget(pgSGUI->gui_activation);
@@ -59,10 +59,6 @@ tab_camera::tab_camera(QWidget* parent){
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
 
-}
-tab_camera::~tab_camera(){
-    pgSGUI->getCentered();
-    while(!pgSGUI->procDone || !pgSGUI->roundDone);
 }
 
 void tab_camera::work_fun(){
@@ -127,7 +123,6 @@ void tab_camera::tab_entered(){
     pageSettings->timerStart();
 }
 void tab_camera::tab_exited(){
-    pgSGUI->getCentered();
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
     timer->stop();
     pageSettings->timerStop();

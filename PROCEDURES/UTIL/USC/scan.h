@@ -24,22 +24,19 @@ class pgScanGUI: public QWidget{
     Q_OBJECT
     //GUI
 public:
-    pgScanGUI(std::mutex &_lock_mes, std::mutex &_lock_comp);
+    pgScanGUI(std::mutex& _lock_mes, std::mutex& _lock_comp);
     QWidget* gui_activation;
     QWidget* gui_settings;
     QTimer* timer;
 
-    void doOneRound();      // this automatically does the offset in case we are not offset
-    void getCentered(bool lock=true);       // this recenters
-    std::atomic<bool> roundDone{true};      //this signals whether any kind of measurements accessing the stages are done
-    std::atomic<bool> procDone{true};       //this signals whether framebuffer processing is done
+    void doOneRound();
 
     cvMat_safe measuredM;   //contains the mask
     cvMat_safe measuredP;   //contains the phase map
     cvMat_safe measuredPU;  //contains the unwrapped phase map
 
-    std::mutex &_lock_mes;
-    std::mutex &_lock_comp;
+    std::mutex& _lock_mes;
+    std::mutex& _lock_comp;
     double vsConv(val_selector* vs);
 private:
     void init_gui_activation();
@@ -71,23 +68,25 @@ private:
     constexpr static int peakLocRange=2;    //we check this many peaks from each side of peakLoc
     int i2NLambda;       //the number of expected wavelengths x2 (ie number of expected maxima and minima)
 
-    std::atomic<bool> isOffset{false};  // false=we are centered, true=we are offset and ready to start
-    double setOffset=0;
-    PVTobj* PVTtoPos[2];    // [0] is downward, [1] is upward
-    PVTobj* PVTmeasure[2];  // [0] is downward, [1] is upward
+    PVTobj* PVTmeasure;
     exec_ret PVTret;
     std::atomic<bool> PVTsRdy{false};
-    int dir=0;              // to be used as PVT[dir] and flipped after each move (valid values: 0 and 1)
     void updatePVTs(std::string &report);   // update PVTs whenever measurement paramaters are changed, returns true if PVT fails or accels/speeds are to high
 
     void _doOneRound();
     std::atomic<bool> keepMeasuring{false};
+    cv::UMat* resultFinalPhase{nullptr};
+    cv::UMat Umat2D;
+    cv::UMat Ufft2D;
+    cv::UMat magn;
+    std::vector<cv::UMat> planes{2};
+    cv::UMat cmpRes;
+    cv::UMat cmpFinRes;
 public Q_SLOTS:
     void recalculate();
 private Q_SLOTS:
     void onBScanOne();
     void onBScanContinuous(bool status);
-    void onBCenter();
 };
 
 #endif // SCAN_H
