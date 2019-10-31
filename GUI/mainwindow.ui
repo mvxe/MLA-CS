@@ -1113,6 +1113,9 @@ and intensity in ms)</string>
             <property name="text">
              <string>Write lines instead of points</string>
             </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>

@@ -262,8 +262,7 @@ void pgScanGUI::_doOneRound(){
     cv::transpose(*resultFinalPhase,*resultFinalPhase);   //now its the same rows,cols as the camera images
     cv::Mat* resultFinalPhaseL=new cv::Mat;
     resultFinalPhase->copyTo(*resultFinalPhaseL);
-    //resultFinalPhase->reshape(0,nCols);
-cv::transpose(*resultFinalPhase,*resultFinalPhase);
+    cv::transpose(*resultFinalPhase,*resultFinalPhase);     //if we reuse it in next iteration
 
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 

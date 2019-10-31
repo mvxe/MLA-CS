@@ -22,20 +22,12 @@ void pBurnArray::run(){
     //XPS checks events every one servo cycle == 100us
 
     po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pBurnArray.txt");
-    std::vector<uint32_t> commands;
-
+    std::vector<uint32_t> commands;\
     if(filename.empty()){
-
-        printf("A2F_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSMax,0));
-        printf("A2F_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSCur,0));
-        printf("A2F_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_lostN,0));
-
         commands.push_back(CQF::GPIO_MASK(0x40,0,0));
         commands.push_back(CQF::GPIO_DIR (0x40,0,0));
         commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
-        po->add(0.001, 0, 0, 0, 0, 0, 0,0,0);
-        po->addAction(XPS::writingLaser,true);  //TODO fix bug: if addAction is the first command it may not do anything (sometimes)
-        commands.push_back(CQF::WAIT(0.001/8e-9));
+        po->addAction(XPS::writingLaser,true);
         for (int j=0;j!=gridY;j++){
             for (int i=0;i!=gridX;i++){
                 po->add(SMT, spacing, 0, 0, 0, 0, 0,0,0);
@@ -79,9 +71,7 @@ void pBurnArray::run(){
                 commands.push_back(CQF::GPIO_MASK(0x40,0,0));
                 commands.push_back(CQF::GPIO_DIR (0x40,0,0));
                 commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
-                //po->add(0.001, 0, 0, 0, 0, 0, 0,0,0);
                 po->addAction(XPS::writingLaser,true);
-                //commands.push_back(CQF::WAIT(0.001/8e-9));
                 while(getline(datafile,line)){
                     if(end) break;
                     if(line.size()<2 || line.find("#")!=std::string::npos);
@@ -103,8 +93,10 @@ void pBurnArray::run(){
                 }
 
                 if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
+                if(commands.size()<domax) domax=commands.size();
                 go.pRPTY->A2F_write(0,commands.data(),domax);
                 atElement+=domax;
+
                 go.pXPS->execPVTobj(po, &ret);
                 while(atElement<commands.size()){
                     int num=go.pRPTY->getNum(RPTY::A2F_RSCur,0);
@@ -123,9 +115,7 @@ void pBurnArray::run(){
                 commands.push_back(CQF::GPIO_MASK(0x40,0,0));
                 commands.push_back(CQF::GPIO_DIR (0x40,0,0));
                 commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
-                //po->add(0.001, 0, 0, 0, 0, 0, 0,0,0);
                 po->addAction(XPS::writingLaser,true);
-                //commands.push_back(CQF::WAIT(0.001/8e-9));
                 while(getline(datafile,line)){
                     if(end) break;
                     if(line.size()<2 || line.find("#")!=std::string::npos);
@@ -148,6 +138,7 @@ void pBurnArray::run(){
                 }
 
                 if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";return;}
+                if(commands.size()<domax) domax=commands.size();
                 go.pRPTY->A2F_write(0,commands.data(),domax);
                 atElement+=domax;
                 go.pXPS->execPVTobj(po, &ret);
@@ -171,7 +162,9 @@ void pBurnArray::run(){
 
     go.pXPS->setGPIO(XPS::iuScopeLED,true);
     go.pXPS->setGPIO(XPS::writingLaser,false);
-
+//    printf("A2F_RSMax for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSMax,0));
+//    printf("A2F_RSCur for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_RSCur,0));
+//    printf("A2F_lostN for queue %d is %d\n",0,go.pRPTY->getNum(RPTY::A2F_lostN,0));
     done=true;
     end=true;
 }
