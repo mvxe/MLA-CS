@@ -161,6 +161,27 @@ double pgScanGUI::vsConv(val_selector* vs){
 }
 int NA=0;
 void pgScanGUI::_doOneRound(){
+//    _lock_mes.lock();
+//    std::this_thread::sleep_for (std::chrono::milliseconds(10));
+//    _lock_mes.unlock();
+//    std::lock_guard<std::mutex>lock2(_lock_comp);    //wait till other processing is done
+//    if(keepMeasuring){                              //sometimes processing takes longer, and if we call other before unlocking processing the memory gets flooded with full framebuffers
+//        std::this_thread::sleep_for (std::chrono::milliseconds(1));
+//        if(_lock_mes.try_lock()){_lock_mes.unlock();doOneRound();}
+//    }
+//    std::cerr<<"staring nr "<<NA<<"\n"; NA++;
+//    for(int k=0;k!=1280;k++){
+//        cv::UMat mat2Ds(600, 1024, CV_32F, cv::Scalar(432.324));
+//        mat2Ds.release();
+//    }
+//    std::this_thread::sleep_for (std::chrono::milliseconds(10));
+//    std::cerr<<"done nr "<<NA<<"\n"; NA++;
+//    return;
+
+
+
+
+
     if(!PVTsRdy) return;
     _lock_mes.lock();                       //wait for other measurements to complete
 
