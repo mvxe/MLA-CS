@@ -31,14 +31,18 @@ tab_camera::tab_camera(QWidget* parent){
     pgMGUI=new pgMoveGUI;
     pgTGUI=new pgTiltGUI;
     pgFGUI=new pgFocusGUI(_lock_mes, _lock_comp, pgSGUI, pgTGUI);
+    pgPRGUI=new pgPosRepGUI;
 
     pageMotion = new twd_selector(false);
         pageMotion->addWidget(pgSGUI->gui_activation);
-        pageMotion->addWidget(pgMGUI->gui_activation);
+        pageMotion->addWidget(pgMGUI->gui_activation);  connect(pgPRGUI, SIGNAL(changed(double,double,double,double)), pgMGUI, SLOT(onFZdifChange(double,double,double,double)));
         pageMotion->addWidget(pgTGUI->gui_activation);
         pageMotion->addWidget(pgFGUI->gui_activation);
+        pageMotion->addWidget(pgPRGUI);
 
-    pageWriting = new QWidget;
+    pageWriting = new twd_selector(false);
+        //pageWriting->addWidget(pgPRGUI->gui,pgPRGUI->timer);
+
     pageSettings = new twd_selector;
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));
         pageSettings->addWidget(pgSGUI->gui_settings,"Scan");
@@ -62,8 +66,6 @@ tab_camera::tab_camera(QWidget* parent){
 }
 
 void tab_camera::work_fun(){
-
-
     if(selDisp->index==0) framequeueDisp->setUserFps(30,5);
     else framequeueDisp->setUserFps(0);
     onDisplay=framequeueDisp->getUserMat();
@@ -102,12 +104,8 @@ void tab_camera::work_fun(){
 }
 
 void tab_camera::on_tab_change(int index){
-    switch (index){
-        case index_pgSGUI:  Q_EMIT pgSGUI->recalculate();
-                            break;
-        case index_pgFGUI:  Q_EMIT pgFGUI->recalculate();
-                            break;
-    }
+    if(index==index_pgSGUI) Q_EMIT pgSGUI->recalculate();
+    else if(index==index_pgFGUI) Q_EMIT pgFGUI->recalculate();
 }
 
 
@@ -120,10 +118,8 @@ void tab_camera::tab_entered(){
     framequeueDisp->setUserFps(30,5);
 
     timer->start(work_call_time);
-    pageSettings->timerStart();
 }
 void tab_camera::tab_exited(){
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
     timer->stop();
-    pageSettings->timerStop();
 }

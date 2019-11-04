@@ -82,18 +82,16 @@ class twd_selector : public QWidget{       //template for devices
     Q_OBJECT
 public:
     twd_selector(bool showSel=true);
-    void addWidget(QWidget* widget, QString label="/", QTimer* timer=nullptr);
+    void addWidget(QWidget* widget, QString label="");
     void timerStop();
     void timerStart();
     bool showSel;
-    bool timSt=false;
 private:
     QVBoxLayout* layout;
     QScrollToolButton* select;
     std::vector<QWidget*> widgets;
-    std::vector<QTimer*> timers;        //timers are only running when this settings tab is open : allow it to handle stuff
     int active_index=-1;
-public: Q_SIGNALS:
+Q_SIGNALS:
     void changed(int index);
 private Q_SLOTS:
     void on_menu_change();
@@ -125,7 +123,9 @@ public:
     QHBoxLayout* layout;
     QPushButton* cLock;
 private Q_SLOTS:
-    void on_lock(bool state){abar->setEnabled(!state);}
+    void on_lock(bool state){abar->setEnabled(!state); Q_EMIT lock(state);}
+Q_SIGNALS:
+    void lock(bool locked);
 };
 
 

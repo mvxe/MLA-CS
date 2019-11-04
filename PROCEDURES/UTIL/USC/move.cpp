@@ -24,7 +24,14 @@ void pgMoveGUI::init_gui_activation(){
     fMove=new eadScrlBar("Move F: ", 200,20,true);
     connect(fMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveF(double)));
     alayout->addWidget(fMove);
+    FZdif=new val_selector(0, "F-Z= ", -200, 200, 6, 0, {"mm"});
+    FZdif->setEnabled(false);
+    connect(FZdif, SIGNAL(changed(double)), this, SLOT(_onMoveZF(double)));
+    connect(fMove, SIGNAL(lock(bool)), this, SLOT(onLockF(bool)));
+    alayout->addWidget(FZdif);
 }
+
+void pgMoveGUI::onLockF(bool locked){FZdif->setEnabled(!locked);}
 
 void pgMoveGUI::init_gui_settings(){
     gui_settings=new QWidget;
@@ -43,4 +50,18 @@ void pgMoveGUI::init_gui_settings(){
 
 void pgMoveGUI::onMove(double Xmov, double Ymov, double Zmov, double Fmov){
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,Xmov*xMoveScale->val/1000,Ymov*xMoveScale->val/1000,Zmov*zMoveScale->val/1000,Fmov*fMoveScale->val/1000-Zmov*zMoveScale->val/1000);
+}
+
+void pgMoveGUI::onFZdifChange(double X, double Y, double Z, double F){
+    if(FZdifCur==F+Z) return;
+    ignoreNext=true;
+    FZdif->setValue(F+Z);
+    FZdifCur=F+Z;
+}
+
+void pgMoveGUI::_onMoveZF(double difference){
+    if(ignoreNext){ignoreNext=false;return;}
+    if(FZdifCur==-9999) return;
+    go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,0,difference-FZdifCur);
+    FZdifCur=difference;
 }

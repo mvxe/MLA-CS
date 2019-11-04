@@ -89,7 +89,8 @@ HEADERS += \
     PROCEDURES/UTIL/USC/scan.h \
     PROCEDURES/UTIL/USC/tilt.h \
     PROCEDURES/UTIL/USC/move.h \
-    PROCEDURES/UTIL/USC/focus.h
+    PROCEDURES/UTIL/USC/focus.h \
+    PROCEDURES/UTIL/USC/position_report.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -126,7 +127,8 @@ SOURCES += \
     PROCEDURES/UTIL/USC/scan.cpp \
     PROCEDURES/UTIL/USC/tilt.cpp \
     PROCEDURES/UTIL/USC/move.cpp \
-    PROCEDURES/UTIL/USC/focus.cpp
+    PROCEDURES/UTIL/USC/focus.cpp \
+    PROCEDURES/UTIL/USC/position_report.cpp
 
 
 unix {

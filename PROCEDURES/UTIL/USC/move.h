@@ -7,7 +7,6 @@ class QVBoxLayout;
 class QHBoxLayout;
 class val_selector;
 class eadScrlBar;
-namespace cv{class Mat;}
 
 class pgMoveGUI: public QWidget{
     Q_OBJECT
@@ -28,6 +27,7 @@ public:
     eadScrlBar* yMove;
     eadScrlBar* zMove;
     eadScrlBar* fMove;
+    val_selector* FZdif;
 
     //settings
     QVBoxLayout* slayout;
@@ -36,12 +36,18 @@ public:
     val_selector* zMoveScale;
     val_selector* fMoveScale;
 
+    double FZdifCur=-9999;
+    bool ignoreNext=false;
+
 private Q_SLOTS:
     void _onMoveX(double magnitude){onMove(magnitude,0,0,0);}
     void _onMoveY(double magnitude){onMove(0,magnitude,0,0);}
     void _onMoveZ(double magnitude){onMove(0,0,magnitude,0);}
     void _onMoveF(double magnitude){onMove(0,0,0,magnitude);}
+    void _onMoveZF(double difference);
+    void onLockF(bool locked);
     void onMove(double Xmov, double Ymov, double Zmov, double Fmov);
+    void onFZdifChange(double X, double Y, double Z, double F);
 };
 
 #endif // MOVE_H

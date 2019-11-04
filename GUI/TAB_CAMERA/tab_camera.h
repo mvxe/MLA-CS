@@ -42,14 +42,14 @@ private:
     QTabWidget* TWCtrl;
 
     twd_selector* pageMotion;
-
-    QWidget* pageWriting;
-
+    twd_selector* pageWriting;
     twd_selector* pageSettings;
+
     pgScanGUI* pgSGUI;  constexpr static unsigned index_pgSGUI{0};
     pgMoveGUI* pgMGUI;
     pgTiltGUI* pgTGUI;
     pgFocusGUI* pgFGUI; constexpr static unsigned index_pgFGUI{3};
+    pgPosRepGUI* pgPRGUI;
 
     smp_selector* cm_sel;       //for selecting the colormap for display
 

@@ -11,5 +11,6 @@
 #include "PROCEDURES/UTIL/USC/tilt.h"
 #include "PROCEDURES/UTIL/USC/move.h"
 #include "PROCEDURES/UTIL/USC/focus.h"
+#include "PROCEDURES/UTIL/USC/position_report.h"
 
 #endif // _INCL_PROCEDURES_H
