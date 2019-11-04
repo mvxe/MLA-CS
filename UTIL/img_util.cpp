@@ -9,8 +9,10 @@ cvMat_safe::~cvMat_safe(){
     if(oldMat!=nullptr) delete oldMat;
 }
 
-cv::Mat* cvMat_safe::getMat(){
+cv::Mat* cvMat_safe::getMat(double* min, double* max){
     std::lock_guard<std::mutex>lock(lockx);
+    if(min!=nullptr) *min=_min;
+    if(max!=nullptr) *max=_max;
     if(oldMat!=nullptr && oldMat!=mat)
         delete oldMat;
     oldMat=mat;
@@ -18,8 +20,9 @@ cv::Mat* cvMat_safe::getMat(){
     return mat;
 }
 
-void cvMat_safe::putMat(cv::Mat* pmat){
+void cvMat_safe::putMat(cv::Mat* pmat, double min, double max){
     std::lock_guard<std::mutex>lock(lockx);
+    _min=min; _max=max;
     if(oldMat!=mat && mat!=nullptr) delete mat;
     mat=pmat;
     _changed=true;

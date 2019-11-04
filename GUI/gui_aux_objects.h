@@ -59,6 +59,7 @@ public:
     smp_selector(QString label, int initialIndex, std::vector<QString> labels);
     smp_selector(std::string varSaveName, QString label, int initialIndex, std::vector<QString> labels);
     const int& index{_index};
+    void addWidget(QWidget* widget);
 
 private:
     int _index;
@@ -102,12 +103,13 @@ private Q_SLOTS:
 class adScrlBar : public QLabel{
     Q_OBJECT
 public:
-    adScrlBar(int Hsize=100, int Vsize=10);
+    adScrlBar(int Hsize=100, int Vsize=10, double power=1);
 private:
     void wheelEvent(QWheelEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
+    void emit(double value);
     int Hsize;
-
+    const double power;
 Q_SIGNALS:
     void change(double magnitude);
 };
@@ -117,8 +119,8 @@ Q_SIGNALS:
 class eadScrlBar : public QWidget{
     Q_OBJECT
 public:
-    eadScrlBar(QString label, int Hsize, int Vsize);
-    eadScrlBar(QString label, int Hsize, int Vsize, bool locked);
+    eadScrlBar(QString label, int Hsize, int Vsize, double power=1);
+    eadScrlBar(QString label, int Hsize, int Vsize, bool locked, double power=1);
     adScrlBar* abar;
     QHBoxLayout* layout;
     QPushButton* cLock;

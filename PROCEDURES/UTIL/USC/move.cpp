@@ -12,16 +12,16 @@ void pgMoveGUI::init_gui_activation(){
     alayout=new QVBoxLayout;
     gui_activation->setLayout(alayout);
 
-    xMove=new eadScrlBar("Move X: ", 200,20);
+    xMove=new eadScrlBar("Move X: ", 200,20,1.5);
     connect(xMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveX(double)));
     alayout->addWidget(xMove);
-    yMove=new eadScrlBar("Move Y: ", 200,20);
+    yMove=new eadScrlBar("Move Y: ", 200,20,1.5);
     connect(yMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveY(double)));
     alayout->addWidget(yMove);
-    zMove=new eadScrlBar("Move Z: ", 200,20,false);
+    zMove=new eadScrlBar("Move Z: ", 200,20,false,1.5);
     connect(zMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveZ(double)));
     alayout->addWidget(zMove);
-    fMove=new eadScrlBar("Move F: ", 200,20,true);
+    fMove=new eadScrlBar("Move F: ", 200,20,true,1.5);
     connect(fMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveF(double)));
     alayout->addWidget(fMove);
     FZdif=new val_selector(0, "F-Z= ", -200, 200, 6, 0, {"mm"});

@@ -73,6 +73,8 @@ void pgScanGUI::init_gui_settings(){
     slayout->addWidget(dis_thresh);
     calcL=new QLabel;
     slayout->addWidget(calcL);
+    debugDisplayModeSelect=new smp_selector("Display mode select (for debugging purposes): ", 0, {"Unwrapped", "Wrapped"});
+    slayout->addWidget(debugDisplayModeSelect);
 }
 
 void pgScanGUI::recalculate() {
@@ -222,6 +224,7 @@ void pgScanGUI::_doOneRound(){
 
     cv::Mat mat2D(nFrames, nCols, CV_32F);
     cv::Mat* measured=new cv::Mat(nRows, nCols, CV_8U);
+    cv::Mat* measuredNot=new cv::Mat(nRows, nCols, CV_8U);
 
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
     if(resultFinalPhase==nullptr) resultFinalPhase=new cv::UMat(nCols, nRows, CV_32F);    //rows and cols flipped for convenience, transpose it after main loop!
@@ -278,6 +281,7 @@ void pgScanGUI::_doOneRound(){
 
         //std::cerr<<"done with dft"<<k<<"\n";
     }
+    bitwise_not(*measured, *measuredNot);
     std::cerr<<"done with dfts\n";
 
     cv::transpose(*resultFinalPhase,*resultFinalPhase);   //now its the same rows,cols as the camera images
@@ -287,38 +291,22 @@ void pgScanGUI::_doOneRound(){
 
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
-    cv::Mat* resultFinalPhaseUW=new cv::Mat;
-    cv::phase_unwrapping::HistogramPhaseUnwrapping::Params params;
-    params.width=nCols;
-    params.height=nRows;
-    cv::Ptr<cv::phase_unwrapping::HistogramPhaseUnwrapping> phaseUnwrapping = cv::phase_unwrapping::HistogramPhaseUnwrapping::create(params);
-
-    //matOp::spread<uchar>(measured);
-    bitwise_not(*measured, *measured);
-    phaseUnwrapping->unwrapPhaseMap(*resultFinalPhaseL, *resultFinalPhaseUW,*measured);
-
+    if(debugDisplayModeSelect->index==0){   // if debug no unwrap is off
+        cv::phase_unwrapping::HistogramPhaseUnwrapping::Params params;
+        params.width=nCols;
+        params.height=nRows;
+        cv::Ptr<cv::phase_unwrapping::HistogramPhaseUnwrapping> phaseUnwrapping = cv::phase_unwrapping::HistogramPhaseUnwrapping::create(params);
+        //matOp::spread<uchar>(measured);
+        phaseUnwrapping->unwrapPhaseMap(*resultFinalPhaseL, *resultFinalPhaseL,*measuredNot);
+    }
     double min,max; cv::Point ignore;
-    cv::minMaxLoc(*resultFinalPhaseUW, &min, &max, &ignore, &ignore, *measured);
-    bitwise_not(*measured, *measured);
-    resultFinalPhaseUW->convertTo(*resultFinalPhaseUW, CV_32F, ((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));
-    //resultFinalPhaseUW->setTo(0,*measured);   //no need for this
-    std::cerr<<"min,max= "<<min<<" "<<max<<"\n";
-    cv::minMaxLoc(*resultFinalPhaseUW, &min, &max);
-    std::cerr<<"min,max= "<<min<<" "<<max<<"\n";
-
-    resultFinalPhaseUW->convertTo(*resultFinalPhaseUW, CV_8U, 1);
-    cv::minMaxLoc(*resultFinalPhaseUW, &min, &max);
-    std::cerr<<"min,max= "<<min<<" "<<max<<"\n";
-
-    resultFinalPhaseL->convertTo(*resultFinalPhaseL, CV_8U, ((1<<8)-1)/M_PI/2);
-    measuredM.putMat(measured);
-    measuredP.putMat(resultFinalPhaseL);
-    measuredPU.putMat(resultFinalPhaseUW);
+    *resultFinalPhaseL*=vsConv(led_wl)/4/M_PI;
+    cv::minMaxLoc(*resultFinalPhaseL, &min, &max, &ignore, &ignore, *measuredNot);  //the ignored mask values will be <min , everything is in nm
+    scanRes.putMat(resultFinalPhaseL,min,max);
+    mask.putMat(measured);
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
     std::cerr<<"operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
-
-
     std::cerr<<"done nr "<<NA<<"\n"; NA++;
     std::cerr<<"Free: "<<go.pGCAM->iuScope->FQsPCcam.getFreeNumber()<<"\n";
     std::cerr<<"Full: "<<go.pGCAM->iuScope->FQsPCcam.getFullNumber()<<"\n";

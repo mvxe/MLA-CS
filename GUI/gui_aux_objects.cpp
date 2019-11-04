@@ -131,6 +131,8 @@ void smp_selector::init(QString label, std::vector<QString> labels){
     _sBtn->setText(_sBtn->menu()->activeAction()->text());
 }
 
+void smp_selector::addWidget(QWidget* widget){layout->insertWidget(layout->count()-1, widget);}
+
 void smp_selector::on_menu_change(){
     if(_sBtn->menu()->activeAction()==nullptr) return;
     _sBtn->setText(_sBtn->menu()->activeAction()->text());
@@ -188,7 +190,7 @@ void twd_selector::on_menu_change(){
 
 // GUI adaptiveScrollBar
 
-adScrlBar::adScrlBar(int Hsize, int Vsize): Hsize(Hsize){
+adScrlBar::adScrlBar(int Hsize, int Vsize, double power): Hsize(Hsize), power(power){
     this->setMouseTracking(false);
     this->setFrameShape(QFrame::Box);
     this->setFrameShadow(QFrame::Plain);
@@ -201,16 +203,20 @@ adScrlBar::adScrlBar(int Hsize, int Vsize): Hsize(Hsize){
 }
 void adScrlBar::wheelEvent(QWheelEvent *event){
     double value=event->delta()*(Hsize-event->pos().x());;
-    Q_EMIT change(value);
+    if(power==1) Q_EMIT change(value);
+    else if(event->pos().x()<Hsize/3) Q_EMIT change((value>0?1:-1)*pow(abs(value),power));
+    else Q_EMIT change(value);
 }
 void adScrlBar::mouseReleaseEvent(QMouseEvent *event){
     double value=((event->button()==Qt::LeftButton)?-1:1)*100*(Hsize-event->pos().x());
-    Q_EMIT change(value);
+    if(power==1) Q_EMIT change(value);
+    else if(event->pos().x()<Hsize/3) Q_EMIT change((value>0?1:-1)*pow(abs(value),power));
+    else Q_EMIT change(value);
 }
 
 // GUI expanded adaptiveScrollBar
 
-eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize, bool locked) : eadScrlBar(label, Hsize, Vsize){
+eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize, bool locked, double power) : eadScrlBar(label, Hsize, Vsize, power){
     cLock=new QPushButton;
     cLock->setCheckable(true);
     cLock->setChecked(locked);
@@ -219,9 +225,9 @@ eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize, bool locked) : eadSc
     connect(cLock, SIGNAL(toggled(bool)), this, SLOT(on_lock(bool)));
     abar->setEnabled(!locked);
 }
-eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize){
+eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize, double power){
     layout=new QHBoxLayout;
-    abar=new adScrlBar(Hsize, Vsize);
+    abar=new adScrlBar(Hsize, Vsize, power);
     QLabel* Label=new QLabel(label);
     layout->addWidget(Label);
     layout->addStretch(0);

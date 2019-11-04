@@ -52,18 +52,25 @@ private:
     pgPosRepGUI* pgPRGUI;
 
     smp_selector* cm_sel;       //for selecting the colormap for display
+    QPushButton* epc_sel;       //for selecting the excluded pixel color
+    cc_save<double> _scolorR{exclColor[0], 0,&go.gui_config.save,"tab_camera-exclColor-R"};
+    cc_save<double> _scolorG{exclColor[1], 0,&go.gui_config.save,"tab_camera-exclColor-G"};
+    cc_save<double> _scolorB{exclColor[2], 0,&go.gui_config.save,"tab_camera-exclColor-B"};
+    double exclColor[3];
+    bool exclColorChanged{false};
 
     FQ* framequeueDisp;
     const cv::Mat* mat;
     const cv::Mat* onDisplay;
 
     constexpr static unsigned work_call_time=33;    //work_fun is called periodically via timer every this many milliseconds
-
+bool changed=true;
 
 
 private Q_SLOTS:
     void work_fun();
     void on_tab_change(int index);
+    void on_EP_sel_released();
 
 };
 

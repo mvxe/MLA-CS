@@ -15,15 +15,15 @@ class cvMat_safe        // provides a thread safe way to shuffle a single image 
 {                       // also takes care of memory management (IT DESTOROYS MATRICES SO YOU DONT HAVE TO)
 public:
     ~cvMat_safe();
-    cv::Mat* getMat();
-    void putMat(cv::Mat* pmat);
+    cv::Mat* getMat(double* min=nullptr, double* max=nullptr);
+    void putMat(cv::Mat* pmat, double min=0, double max=0);
     const std::atomic<bool>& changed{_changed};
 private:
     std::mutex lockx;
     cv::Mat* mat{nullptr};
     cv::Mat* oldMat{nullptr};
     std::atomic<bool> _changed{false};
-
+    double _min,_max;
 };
 
 //MATOP

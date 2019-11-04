@@ -20,7 +20,7 @@ tab_camera::tab_camera(QWidget* parent){
     layout->addWidget(LDisplay);
     layout->addWidget(tBarW);
 
-    selDisp=new smp_selector("Display mode:", 0, {"Camera","FFT","FFT+overlay","FFT-UnWr" });
+    selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map"});
     layoutTBarW->addWidget(selDisp);
 
     TWCtrl = new QTabWidget;
@@ -59,6 +59,9 @@ tab_camera::tab_camera(QWidget* parent){
 
     cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
     layoutTBarW->addWidget(cm_sel);
+    epc_sel=new QPushButton("Excl."); epc_sel->setFlat(true); epc_sel->setIcon(QPixmap(":/color.svg"));
+    connect(epc_sel, SIGNAL(released()), this, SLOT(on_EP_sel_released()));
+    cm_sel->addWidget(epc_sel);
 
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
@@ -70,36 +73,27 @@ void tab_camera::work_fun(){
     else framequeueDisp->setUserFps(0);
     onDisplay=framequeueDisp->getUserMat();
 
-    cv::Mat *mat;
-    switch(selDisp->index){
-    case 3: if(pgSGUI->measuredPU.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm){
-                mat=pgSGUI->measuredPU.getMat();                        //FFT Unwrapped
-                if(mat!=nullptr){
-                    cv::Mat colorImg;
-                    cv::applyColorMap(*mat, colorImg, OCV_CM::ids[cm_sel->index]);
-                    LDisplay->setPixmap(QPixmap::fromImage(QImage(colorImg.data, colorImg.cols, colorImg.rows, colorImg.step, QImage::Format_RGB888)));
-                }
+    if(selDisp->index==0){  // Camera
+        if(onDisplay!=nullptr){
+            LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
+        }
+    }else{                  // Depth map
+        if(pgSGUI->scanRes.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged){
+            double min,max;
+            cv::Mat *mat;
+            mat=pgSGUI->scanRes.getMat(&min, &max);
+            if(mat!=nullptr){
+                cv::Mat colorImg;
+                mat->convertTo(colorImg, CV_8U, ((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));
+                cv::applyColorMap(colorImg, colorImg, OCV_CM::ids[cm_sel->index]);
+                colorImg.setTo(cv::Scalar(exclColor[0],exclColor[1],exclColor[2]), *(pgSGUI->mask.getMat()));
+                LDisplay->setPixmap(QPixmap::fromImage(QImage(colorImg.data, colorImg.cols, colorImg.rows, colorImg.step, QImage::Format_RGB888)));
             }
-        break;
-    case 2:
-    case 1: if(pgSGUI->measuredP.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm){
-                mat=pgSGUI->measuredP.getMat();                         //FFT+overlay
-                if(mat!=nullptr){
-                    cv::Mat colorImg;
-                    cv::applyColorMap(*mat, colorImg, OCV_CM::ids[cm_sel->index]);
-                    if(selDisp->index==2) colorImg.setTo(cv::Scalar(255,0,0), *pgSGUI->measuredM.getMat());
-                    LDisplay->setPixmap(QPixmap::fromImage(QImage(colorImg.data, colorImg.cols, colorImg.rows, colorImg.step, QImage::Format_RGB888)));
-                }
-            }
-        break;
-    case 0: if(onDisplay!=nullptr){                         //Camera
-                LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
-            }
-        break;
+            oldCm=cm_sel->index;
+            exclColorChanged=false;
+        }
     }
     oldIndex=selDisp->index;
-    oldCm=cm_sel->index;
-
     if(onDisplay!=nullptr) framequeueDisp->freeUserMat();
 }
 
@@ -107,9 +101,13 @@ void tab_camera::on_tab_change(int index){
     if(index==index_pgSGUI) Q_EMIT pgSGUI->recalculate();
     else if(index==index_pgFGUI) Q_EMIT pgFGUI->recalculate();
 }
-
-
-
+void tab_camera::on_EP_sel_released(){
+    QColor color=QColorDialog::getColor(Qt::white, this, "Select excluded pixel color");
+    exclColor[0]=color.red();
+    exclColor[1]=color.green();
+    exclColor[2]=color.blue();
+    exclColorChanged=true;
+}
 
 void tab_camera::tab_entered(){
     if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;

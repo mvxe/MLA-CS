@@ -4,6 +4,7 @@
 #include "PROCEDURES/procedure.h"
 #include "UTIL/img_util.h"
 class val_selector;
+class smp_selector;
 class QLabel;
 class QVBoxLayout;
 class QHBoxLayout;
@@ -31,9 +32,8 @@ public:
 
     void doOneRound();
 
-    cvMat_safe measuredM;   //contains the mask
-    cvMat_safe measuredP;   //contains the phase map
-    cvMat_safe measuredPU;  //contains the unwrapped phase map
+    cvMat_safe scanRes;     //contains the scan result
+    cvMat_safe mask;        //contains the excluded pixel mask
 
     std::mutex& _lock_mes;
     std::mutex& _lock_comp;
@@ -62,6 +62,7 @@ private:
     val_selector* dis_thresh;   //if the checked peaks within peakLocRange of the freq peak are higher than peakThresh x the main peak the pixel is added to the mask (of bad pixels)
     QLabel* calcL;
     constexpr static unsigned timer_delay=500;  //if the program is busy measuring we cannot update the variables, so wait for this ammount and try again
+    smp_selector* debugDisplayModeSelect;
 
     int totalFrameNum;
     int peakLoc;        //the expected peak position in the FFT spectrum

@@ -14,5 +14,6 @@
         <file>player_stop.svg</file>
         <file>down.svg</file>
         <file>locked.svg</file>
+        <file>color.svg</file>
     </qresource>
 </RCC>
