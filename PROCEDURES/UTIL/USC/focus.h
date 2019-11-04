@@ -42,6 +42,7 @@ public:
     val_selector* tilt;         //ammount of tilt
     QPushButton* testTilt;
     QLabel* calcL;
+    double mmPerFrame;
 
     int totalFrameNum;
     constexpr static unsigned timer_delay=500;

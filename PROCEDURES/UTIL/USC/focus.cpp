@@ -90,6 +90,7 @@ void pgFocusGUI::updatePVT(std::string &report){
     PVTsRdy=false;
     PVTScan->clear();
 
+
     double movTime=2*sqrt(2*Offset/vsConv(pgSGUI->max_acc));
     double movMaxVelocity=vsConv(pgSGUI->max_acc)*movTime;
 
@@ -97,6 +98,7 @@ void pgFocusGUI::updatePVT(std::string &report){
 
     double darkFrameTime=pgSGUI->darkFrameNum/maxFPS;
     totalFrameNum=readTime*maxFPS;
+    mmPerFrame=readRangeDis/totalFrameNum;
     report+=util::toString("\nTotal expected number of useful frames for focusing: ",totalFrameNum,"\n");
     report+=util::toString("\nTotal time needed for focusing (+computation): ",2*movTime+2*readAccelTime+darkFrameTime+readTime," s\n");
     report+=util::toString("\nTime needed to tilt (one way): ",tilt->val/pgTGUI->tilt_motor_speed->val*60," s\n");
@@ -177,7 +179,7 @@ void pgFocusGUI::_refocus(){
     wfile.close();
     cv::Point minLoc,maxLoc;
     cv::minMaxLoc(result, &min, &max, &minLoc, &maxLoc);
-    std::cout<<"Focus is at:"<<maxLoc.y-nFrames/2.<<"\n";
-
-
+    double focus=(maxLoc.y-nFrames/2.)*mmPerFrame;
+    std::cout<<"Focus is at:"<<focus<<"\n";
+    go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,focus,-focus);
 }
