@@ -14,7 +14,7 @@ class QPushButton;
 
 namespace cv{class Mat;}
 
-class pgFocusGUI: public QWidget{
+class pgFocusGUI: public QObject{
     Q_OBJECT
     //GUI
 public:

@@ -21,7 +21,7 @@ private:
 };
 
 
-class pgScanGUI: public QWidget{
+class pgScanGUI: public QObject{
     Q_OBJECT
     //GUI
 public:
@@ -29,6 +29,8 @@ public:
     QWidget* gui_activation;
     QWidget* gui_settings;
     QTimer* timer;
+    QTimer* timerCM;  // we use this timer to maintain continuous measurments. If a measurement thread does this recursively opencv/opencl for some reason shits itself.
+    constexpr static unsigned timerCM_delay=100;
 
     void doOneRound();
 
@@ -76,13 +78,7 @@ private:
 
     void _doOneRound();
     std::atomic<bool> keepMeasuring{false};
-    cv::UMat* resultFinalPhase{nullptr};
-    cv::UMat Umat2D;
-    cv::UMat Ufft2D;
-    cv::UMat magn;
-    std::vector<cv::UMat> planes{2};
-    cv::UMat cmpRes;
-    cv::UMat cmpFinRes;
+
 public Q_SLOTS:
     void recalculate();
 private Q_SLOTS:

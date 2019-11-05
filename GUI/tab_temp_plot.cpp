@@ -99,7 +99,7 @@ tab_temp_plot::tab_temp_plot(QWidget* parent){
 void tab_temp_plot::on_load_file_clicked(){
     QString fileName = QFileDialog::getOpenFileName(this,tr("Image"), "",tr("Images (*.png *.xpm *.jpg)"));
     if(fileName.isEmpty()) return;
-    *imgMat=cv::imread(fileName.toStdString(), CV_LOAD_IMAGE_ANYDEPTH);
+    *imgMat=cv::imread(fileName.toStdString(), cv::IMREAD_ANYDEPTH);
     if(imgMat->data){
         if(imgMat->depth()!=CV_8U) imgMat->convertTo(*imgMat8bit, CV_8U, 1/256.);
         else imgMat->copyTo(*imgMat8bit);
@@ -214,7 +214,7 @@ void tab_temp_plot::redraw(){
 
 
         cv::Mat hVec;
-        reduce(magI, hVec, 0, CV_REDUCE_AVG);
+        reduce(magI, hVec, 0, cv::REDUCE_AVG);
         std::vector<cvect> hStdVec;
         hStdVec.reserve(hVec.cols);
         for(int i=0;i!=hVec.cols;i++){
@@ -223,7 +223,7 @@ void tab_temp_plot::redraw(){
             hStdVec.back().pos=i;
         }
 
-        normalize(magI, magI, 0, 255, CV_MINMAX); // Transform the matrix with float values into a
+        normalize(magI, magI, 0, 255, cv::NORM_MINMAX); // Transform the matrix with float values into a
                                                 // viewable image form (float between values 0 and 1).
         magI.convertTo(magI, CV_8U);
 

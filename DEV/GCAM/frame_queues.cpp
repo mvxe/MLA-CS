@@ -72,11 +72,13 @@ FQ* FQsPC::getNewFQ(){
     return &user_queues.back();
 }
 void FQsPC::deleteFQ(FQ* fq){
+    if(fq==nullptr) return; //already deleted
     std::lock_guard<std::mutex>lock(qmx);
     fq->setUserFps(0);
     while(fq->getFullNumber()) fq->freeUserMat();
     delete fq->umx;
     fq->umx=nullptr;  //actual deleting done in FQsPC::reclaim()
+    fq=nullptr;
 }
 void FQsPC::setCamFPS(double nfps){
     std::lock_guard<std::mutex>lock(qmx);

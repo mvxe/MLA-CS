@@ -15,6 +15,7 @@
 #include <iostream>
 #include <UTIL/containers.h>
 #include <UTIL/utility.h>
+#include <UTIL/threadpool.h>
 
 class XPS;
 class GCAM;
@@ -37,7 +38,6 @@ public:
     virtual ~protooth(){}                     //if its virtual, destroying its pointer will call the derived class destructor
     std::atomic<bool> end{false};             //set this to true to externally signal the thread it should close. In each derived object periodically chech if this is true, and if so, exit.
     std::atomic<bool> done{false};            //this flag indicates whether the thread is done      //TODO calling this from mainwindow causes a segfault
-private:
     virtual void run()=0;
 };
 
@@ -89,6 +89,7 @@ public:
     GCAM* pGCAM;    //you can access cameras and frame queues through this, see GCAM/_config.h for members
     RPTY* pRPTY;    //you can access red pitaya functions through this
     CNC* pCNC;      //you can access CNC functions through this
+    threadPool OCL_threadpool{5};   //apparently opencl does not do well with threads: depending on the driver it fails after usage on a number (~200) of different threads. Using threadpool apparently fixes this, hence OCL_threadpool
 
     void startup(int argc, char *argv[]);                                           //subsequent calls of this are ignored
     template <typename T, typename... Args> othr<T>* newThread(Args... args);       //with this you can create a new thread calling any object derived from protooth/procedure, example:  XPS* pXPS=newThread<XPS>()->obj; or othr<proc> name=newThread<proc>();

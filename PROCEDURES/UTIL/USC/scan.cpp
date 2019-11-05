@@ -3,6 +3,7 @@
 #include "GUI/gui_includes.h"
 #include "includes.h"
 #include <opencv2/phase_unwrapping.hpp>
+#include <opencv2/core/ocl.hpp>
 
 pScan::pScan(){
 
@@ -26,6 +27,9 @@ pgScanGUI::pgScanGUI(std::mutex& _lock_mes, std::mutex& _lock_comp): _lock_mes(_
     timer->setInterval(timer_delay);
     timer->setSingleShot(true);
     connect(timer, SIGNAL(timeout()), this, SLOT(recalculate()));
+    timerCM = new QTimer(this);
+    timerCM->setInterval(timerCM_delay);
+    connect(timerCM, SIGNAL(timeout()), this, SLOT(onBScanOne()));
 }
 
 void pgScanGUI::init_gui_activation(){
@@ -44,7 +48,7 @@ void pgScanGUI::init_gui_activation(){
     tlay->addWidget(bScanContinuous); tlay->addStretch(0); tlay->setMargin(0);
     alayout->addWidget(twid);
 }
-void pgScanGUI::onBScanContinuous(bool status){keepMeasuring=status;if(status)onBScanOne();}
+void pgScanGUI::onBScanContinuous(bool status){if(status)timerCM->start(); else timerCM->stop();}
 void pgScanGUI::onBScanOne(){if(_lock_mes.try_lock()){_lock_mes.unlock();doOneRound();}}
 
 void pgScanGUI::init_gui_settings(){
@@ -146,11 +150,10 @@ void pgScanGUI::updatePVTs(std::string &report){
 
     PVTsRdy=true;
 }
-
+int NA=0;
 void pgScanGUI::doOneRound(){
     if(!PVTsRdy) recalculate();
-    std::thread proc(&pgScanGUI::_doOneRound, this);
-    proc.detach();
+    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this));
 }
 
 double pgScanGUI::vsConv(val_selector* vs){
@@ -161,29 +164,8 @@ double pgScanGUI::vsConv(val_selector* vs){
     case 3: return vs->val*vsConv(coh_len);
     }
 }
-int NA=0;
+
 void pgScanGUI::_doOneRound(){
-//    _lock_mes.lock();
-//    std::this_thread::sleep_for (std::chrono::milliseconds(10));
-//    _lock_mes.unlock();
-//    std::lock_guard<std::mutex>lock2(_lock_comp);    //wait till other processing is done
-//    if(keepMeasuring){                              //sometimes processing takes longer, and if we call other before unlocking processing the memory gets flooded with full framebuffers
-//        std::this_thread::sleep_for (std::chrono::milliseconds(1));
-//        if(_lock_mes.try_lock()){_lock_mes.unlock();doOneRound();}
-//    }
-//    std::cerr<<"staring nr "<<NA<<"\n"; NA++;
-//    for(int k=0;k!=1280;k++){
-//        cv::UMat mat2Ds(600, 1024, CV_32F, cv::Scalar(432.324));
-//        mat2Ds.release();
-//    }
-//    std::this_thread::sleep_for (std::chrono::milliseconds(10));
-//    std::cerr<<"done nr "<<NA<<"\n"; NA++;
-//    return;
-
-
-
-
-
     if(!PVTsRdy) return;
     _lock_mes.lock();                       //wait for other measurements to complete
 
@@ -195,13 +177,9 @@ void pgScanGUI::_doOneRound(){
     go.pXPS->execPVTobj(PVTmeasure, &PVTret);
     PVTret.block_till_done();
     framequeue->setUserFps(0);
-    _lock_mes.unlock();
 
-    std::lock_guard<std::mutex>lock(_lock_comp);    //wait till other processing is done
-    if(keepMeasuring){                              //sometimes processing takes longer, and if we call other before unlocking processing the memory gets flooded with full framebuffers
-        std::this_thread::sleep_for (std::chrono::milliseconds(1));
-        if(_lock_mes.try_lock()){_lock_mes.unlock();doOneRound();}
-    }
+    std::lock_guard<std::mutex>lock(_lock_comp);    // wait till other processing is done
+    _lock_mes.unlock();                             // allow new measurement to start
 
     if(framequeue->getFullNumber()<nFrames) {std::cerr<<"ERROR: took "<<framequeue->getFullNumber()<<" frames, expected at least "<<nFrames<<".\n";go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);return;}
     double mean=0;
@@ -227,7 +205,7 @@ void pgScanGUI::_doOneRound(){
     cv::Mat* measuredNot=new cv::Mat(nRows, nCols, CV_8U);
 
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
-    if(resultFinalPhase==nullptr) resultFinalPhase=new cv::UMat(nCols, nRows, CV_32F);    //rows and cols flipped for convenience, transpose it after main loop!
+    cv::UMat resultFinalPhase(nCols, nRows, CV_32F);    //rows and cols flipped for convenience, transpose it after main loop!
     for(int k=0;k!=nRows;k++){      //Processing row by row
         //first copy the matrices such that time becomes a column
         for(int i=0;i!=nFrames;i++)
@@ -242,16 +220,17 @@ void pgScanGUI::_doOneRound(){
 
         //sending the matrix to the GPU, transposing and preforming an DFT
         //Umat2D=mat2D.getUMat(cv::ACCESS_READ);
+        cv::UMat Umat2D;
         mat2D.copyTo(Umat2D);
         cv::transpose(Umat2D,Umat2D);
 
-        cv::dft(Umat2D, Ufft2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
-        //Ufft2D.copyTo(fft2D); //no need to copy the whole matrix
+        cv::dft(Umat2D, Umat2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
+        //Umat2D.copyTo(fft2D); //no need to copy the whole matrix
 
         //some writing to file as a test: TODO remove
         if(k==500){
             cv::Mat fft2D;
-            Ufft2D.copyTo(fft2D);
+            Umat2D.copyTo(fft2D);
             std::ofstream wfile ("onepixtestFFT.txt");
             for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<std::abs(fft2D.at<std::complex<float>>(500, i))<<" "<<std::arg(fft2D.at<std::complex<float>>(500, i))<<"\n";
             wfile.close();
@@ -259,14 +238,17 @@ void pgScanGUI::_doOneRound(){
 
         //getting phase and magnitude, phase at the LED wavelength/2 goes to final matrix, magnitude(2*peakLocRange+1 rows) goes for further eval
 
-
-        cv::split(Ufft2D.colRange(peakLoc-peakLocRange,peakLoc+peakLocRange+1), planes);
+        cv::UMat magn;
+        std::vector<cv::UMat> planes{2};
+        cv::split(Umat2D.colRange(peakLoc-peakLocRange,peakLoc+peakLocRange+1), planes);
         cv::magnitude(planes[0], planes[1], magn);
-        cv::phase(planes[0].col(peakLocRange), planes[1].col(peakLocRange), resultFinalPhase->col(k));       //only the actual peak
+        cv::phase(planes[0].col(peakLocRange), planes[1].col(peakLocRange), resultFinalPhase.col(k));       //only the actual peak
 
         //checking if the magnitudes of peakLocRange number of points around the LED wavelength/2 are higher than it, if so, measurement is unreliable
         bool first=true;
         cv::multiply(dis_thresh->val,magn.col(peakLocRange),magn.col(peakLocRange));
+        cv::UMat cmpRes;
+        cv::UMat cmpFinRes;
         for(int j=1;j<=peakLocRange;j++){
             if(first) {compare(magn.col(peakLocRange), magn.col(peakLocRange+j), cmpFinRes, cv::CMP_LT); first=false;}
             else{
@@ -284,10 +266,9 @@ void pgScanGUI::_doOneRound(){
     bitwise_not(*measured, *measuredNot);
     std::cerr<<"done with dfts\n";
 
-    cv::transpose(*resultFinalPhase,*resultFinalPhase);   //now its the same rows,cols as the camera images
+    cv::transpose(resultFinalPhase,resultFinalPhase);   //now its the same rows,cols as the camera images
     cv::Mat* resultFinalPhaseL=new cv::Mat;
-    resultFinalPhase->copyTo(*resultFinalPhaseL);
-    cv::transpose(*resultFinalPhase,*resultFinalPhase);     //if we reuse it in next iteration
+    resultFinalPhase.copyTo(*resultFinalPhaseL);
 
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
@@ -310,4 +291,5 @@ void pgScanGUI::_doOneRound(){
     std::cerr<<"done nr "<<NA<<"\n"; NA++;
     std::cerr<<"Free: "<<go.pGCAM->iuScope->FQsPCcam.getFreeNumber()<<"\n";
     std::cerr<<"Full: "<<go.pGCAM->iuScope->FQsPCcam.getFullNumber()<<"\n";
+
 }

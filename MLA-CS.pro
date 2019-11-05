@@ -90,7 +90,9 @@ HEADERS += \
     PROCEDURES/UTIL/USC/tilt.h \
     PROCEDURES/UTIL/USC/move.h \
     PROCEDURES/UTIL/USC/focus.h \
-    PROCEDURES/UTIL/USC/position_report.h
+    PROCEDURES/UTIL/USC/position_report.h \
+    PROCEDURES/UTIL/USC/histogram.h \
+    UTIL/threadpool.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -128,10 +130,12 @@ SOURCES += \
     PROCEDURES/UTIL/USC/tilt.cpp \
     PROCEDURES/UTIL/USC/move.cpp \
     PROCEDURES/UTIL/USC/focus.cpp \
-    PROCEDURES/UTIL/USC/position_report.cpp
+    PROCEDURES/UTIL/USC/position_report.cpp \
+    PROCEDURES/UTIL/USC/histogram.cpp \
+    UTIL/threadpool.cpp
 
 
 unix {
     CONFIG += link_pkgconfig
-    PKGCONFIG += opencv glib-2.0 aravis-0.6
+    PKGCONFIG += opencv4 glib-2.0 aravis-0.6
 }

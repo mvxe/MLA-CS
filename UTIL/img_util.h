@@ -60,8 +60,10 @@ void matOp::spread(cv::Mat* mat){
 
 class OCV_CM{
 public:
-    static constexpr char labels[][50]{ "COLORMAP_AUTUMN" , "COLORMAP_BONE" , "COLORMAP_JET" , "COLORMAP_WINTER" , "COLORMAP_RAINBOW" , "COLORMAP_OCEAN" , "COLORMAP_SUMMER" , "COLORMAP_SPRING" , "COLORMAP_COOL" , "COLORMAP_HSV" , "COLORMAP_PINK" , "COLORMAP_HOT" , "COLORMAP_PARULA" };
-    static constexpr int ids[]        {cv::COLORMAP_AUTUMN,cv::COLORMAP_BONE,cv::COLORMAP_JET,cv::COLORMAP_WINTER,cv::COLORMAP_RAINBOW,cv::COLORMAP_OCEAN,cv::COLORMAP_SUMMER,cv::COLORMAP_SPRING,cv::COLORMAP_COOL,cv::COLORMAP_HSV,cv::COLORMAP_PINK,cv::COLORMAP_HOT,cv::COLORMAP_PARULA};
+    static constexpr char labels[][50]{ "COLORMAP_AUTUMN" , "COLORMAP_BONE" , "COLORMAP_JET" , "COLORMAP_WINTER" , "COLORMAP_RAINBOW" , "COLORMAP_OCEAN" , "COLORMAP_SUMMER" , "COLORMAP_SPRING" , "COLORMAP_COOL" , "COLORMAP_HSV" , "COLORMAP_PINK" , "COLORMAP_HOT" , "COLORMAP_PARULA",
+                                        "COLORMAP_MAGMA" , "COLORMAP_INFERNO" , "COLORMAP_PLASMA" , "COLORMAP_VIRIDIS" , "COLORMAP_CIVIDIS" , "COLORMAP_TWILIGHT" , "COLORMAP_TWILIGHT_SHIFTED" , "COLORMAP_TURBO" };
+    static constexpr int ids[]        {cv::COLORMAP_AUTUMN,cv::COLORMAP_BONE,cv::COLORMAP_JET,cv::COLORMAP_WINTER,cv::COLORMAP_RAINBOW,cv::COLORMAP_OCEAN,cv::COLORMAP_SUMMER,cv::COLORMAP_SPRING,cv::COLORMAP_COOL,cv::COLORMAP_HSV,cv::COLORMAP_PINK,cv::COLORMAP_HOT,cv::COLORMAP_PARULA,
+                                       cv::COLORMAP_MAGMA,cv::COLORMAP_INFERNO,cv::COLORMAP_PLASMA,cv::COLORMAP_VIRIDIS,cv::COLORMAP_CIVIDIS,cv::COLORMAP_TWILIGHT,cv::COLORMAP_TWILIGHT_SHIFTED,cv::COLORMAP_TURBO};
     static std::vector<QString> qslabels(){        //for some reason just passing char labels[][50] to std::vector<QString> doesnt work but {"..","..",..} does?! So we workaround with this...
         std::vector<QString> ret;
         int size=sizeof(labels)/50;
@@ -69,5 +71,4 @@ public:
         return ret;
     }
 };
-
 #endif // IMG_UTIL_H

@@ -302,7 +302,7 @@ void MainWindow::on_pushButton_6_released(){    //load video
         ui->progressBar->setValue(i);
         inputVideo>>src;
         if (src.empty()) break;
-        cv::cvtColor(src, src, CV_BGR2GRAY);
+        cv::cvtColor(src, src, cv::COLOR_BGR2GRAY);
         mats->push_back(src);
     }
     expsize=mats->size();

@@ -8,7 +8,7 @@ class QHBoxLayout;
 class val_selector;
 class eadScrlBar;
 
-class pgMoveGUI: public QWidget{
+class pgMoveGUI: public QObject{
     Q_OBJECT
     //GUI
 public:

@@ -168,7 +168,7 @@ void pgFocusGUI::_refocus(){
     double min,max;
     for(int i=0;i!=nFrames;i++){
         framequeue->getUserMat(i)->copyTo(calcMat);
-        cv::reduce(calcMat, calcMatRed, 0, CV_REDUCE_AVG, CV_32F);
+        cv::reduce(calcMat, calcMatRed, 0, cv::REDUCE_AVG, CV_32F);
         cv::minMaxLoc(calcMatRed, &min, &max);
         result.at<float>(i)=max-min;
     }

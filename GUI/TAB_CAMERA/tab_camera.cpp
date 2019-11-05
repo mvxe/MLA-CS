@@ -86,8 +86,10 @@ void tab_camera::work_fun(){
                 cv::Mat colorImg;
                 mat->convertTo(colorImg, CV_8U, ((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));
                 cv::applyColorMap(colorImg, colorImg, OCV_CM::ids[cm_sel->index]);
-                colorImg.setTo(cv::Scalar(exclColor[0],exclColor[1],exclColor[2]), *(pgSGUI->mask.getMat()));
-                LDisplay->setPixmap(QPixmap::fromImage(QImage(colorImg.data, colorImg.cols, colorImg.rows, colorImg.step, QImage::Format_RGB888)));
+                colorImg.setTo(cv::Scalar(exclColor[2],exclColor[1],exclColor[0]), *(pgSGUI->mask.getMat()));
+                QImage qimg(colorImg.data, colorImg.cols, colorImg.rows, colorImg.step, QImage::Format_RGB888);
+                std::move(qimg).rgbSwapped();   //opencv BGR -> qt RGB
+                LDisplay->setPixmap(QPixmap::fromImage(qimg));
             }
             oldCm=cm_sel->index;
             exclColorChanged=false;

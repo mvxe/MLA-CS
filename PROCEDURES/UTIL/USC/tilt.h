@@ -12,7 +12,7 @@ class val_selector;
 class eadScrlBar;
 namespace cv{class Mat;}
 
-class pgTiltGUI: public QWidget{
+class pgTiltGUI: public QObject{
     Q_OBJECT
     friend joyBttn;
     //GUI
