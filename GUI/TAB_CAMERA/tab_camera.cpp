@@ -62,6 +62,8 @@ tab_camera::tab_camera(QWidget* parent){
     epc_sel=new QPushButton("Excl."); epc_sel->setFlat(true); epc_sel->setIcon(QPixmap(":/color.svg"));
     connect(epc_sel, SIGNAL(released()), this, SLOT(on_EP_sel_released()));
     cm_sel->addWidget(epc_sel);
+    pgHistGUI=new pgHistogrameGUI(400, 50, &pgSGUI->scanRes, &pgSGUI->maskN, cm_sel, exclColor);
+    layoutTBarW->addWidget(pgHistGUI);
 
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
@@ -77,16 +79,22 @@ void tab_camera::work_fun(){
         if(onDisplay!=nullptr){
             LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
         }
+        if(pgSGUI->scanRes.changed || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed){
+            pgHistGUI->updateImg();
+            oldCm=cm_sel->index;
+            exclColorChanged=false;
+        }
     }else{                  // Depth map
-        if(pgSGUI->scanRes.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged){
+        if(pgSGUI->scanRes.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed){
             double min,max;
+            pgHistGUI->updateImg(&min, &max);
             cv::Mat *mat;
-            mat=pgSGUI->scanRes.getMat(&min, &max);
+            mat=pgSGUI->scanRes.getMat();
             if(mat!=nullptr){
                 cv::Mat colorImg;
                 mat->convertTo(colorImg, CV_8U, ((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));
                 cv::applyColorMap(colorImg, colorImg, OCV_CM::ids[cm_sel->index]);
-                colorImg.setTo(cv::Scalar(exclColor[2],exclColor[1],exclColor[0]), *(pgSGUI->mask.getMat()));
+                colorImg.setTo(exclColor, *(pgSGUI->mask.getMat()));
                 QImage qimg(colorImg.data, colorImg.cols, colorImg.rows, colorImg.step, QImage::Format_RGB888);
                 std::move(qimg).rgbSwapped();   //opencv BGR -> qt RGB
                 LDisplay->setPixmap(QPixmap::fromImage(qimg));
@@ -105,9 +113,9 @@ void tab_camera::on_tab_change(int index){
 }
 void tab_camera::on_EP_sel_released(){
     QColor color=QColorDialog::getColor(Qt::white, this, "Select excluded pixel color");
-    exclColor[0]=color.red();
-    exclColor[1]=color.green();
-    exclColor[2]=color.blue();
+    exclColor.val[2]=color.red();
+    exclColor.val[1]=color.green();
+    exclColor.val[0]=color.blue();
     exclColorChanged=true;
 }
 

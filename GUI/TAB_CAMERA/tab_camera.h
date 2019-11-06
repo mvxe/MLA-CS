@@ -53,11 +53,12 @@ private:
 
     smp_selector* cm_sel;       //for selecting the colormap for display
     QPushButton* epc_sel;       //for selecting the excluded pixel color
-    cc_save<double> _scolorR{exclColor[0], 0,&go.gui_config.save,"tab_camera-exclColor-R"};
-    cc_save<double> _scolorG{exclColor[1], 0,&go.gui_config.save,"tab_camera-exclColor-G"};
-    cc_save<double> _scolorB{exclColor[2], 0,&go.gui_config.save,"tab_camera-exclColor-B"};
-    double exclColor[3];
+    cv::Scalar exclColor;
+    cc_save<double> _scolorR{exclColor.val[0], 0,&go.gui_config.save,"tab_camera-exclColor-B"};
+    cc_save<double> _scolorG{exclColor.val[1], 0,&go.gui_config.save,"tab_camera-exclColor-G"};
+    cc_save<double> _scolorB{exclColor.val[2], 0,&go.gui_config.save,"tab_camera-exclColor-R"};
     bool exclColorChanged{false};
+    pgHistogrameGUI* pgHistGUI;
 
     FQ* framequeueDisp;
     const cv::Mat* mat;

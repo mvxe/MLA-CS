@@ -201,8 +201,8 @@ void pgScanGUI::_doOneRound(){
     int nCols=framequeue->getUserMat(0)->cols;
 
     cv::Mat mat2D(nFrames, nCols, CV_32F);
-    cv::Mat* measured=new cv::Mat(nRows, nCols, CV_8U);
-    cv::Mat* measuredNot=new cv::Mat(nRows, nCols, CV_8U);
+    cv::Mat* maskMat=new cv::Mat(nRows, nCols, CV_8U);
+    cv::Mat* maskMatNot=new cv::Mat(nRows, nCols, CV_8U);
 
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
     cv::UMat resultFinalPhase(nCols, nRows, CV_32F);    //rows and cols flipped for convenience, transpose it after main loop!
@@ -259,11 +259,11 @@ void pgScanGUI::_doOneRound(){
             add(cmpFinRes, cmpRes, cmpFinRes);
         }
         cmpFinRes=cmpFinRes.reshape(0,1);
-        cmpFinRes.copyTo(measured->row(k));
+        cmpFinRes.copyTo(maskMat->row(k));
 
         //std::cerr<<"done with dft"<<k<<"\n";
     }
-    bitwise_not(*measured, *measuredNot);
+    bitwise_not(*maskMat, *maskMatNot);
     std::cerr<<"done with dfts\n";
 
     cv::transpose(resultFinalPhase,resultFinalPhase);   //now its the same rows,cols as the camera images
@@ -277,14 +277,15 @@ void pgScanGUI::_doOneRound(){
         params.width=nCols;
         params.height=nRows;
         cv::Ptr<cv::phase_unwrapping::HistogramPhaseUnwrapping> phaseUnwrapping = cv::phase_unwrapping::HistogramPhaseUnwrapping::create(params);
-        //matOp::spread<uchar>(measured);
-        phaseUnwrapping->unwrapPhaseMap(*resultFinalPhaseL, *resultFinalPhaseL,*measuredNot);
+        //matOp::spread<uchar>(maskMat);
+        phaseUnwrapping->unwrapPhaseMap(*resultFinalPhaseL, *resultFinalPhaseL,*maskMatNot);
     }
     double min,max; cv::Point ignore;
     *resultFinalPhaseL*=vsConv(led_wl)/4/M_PI;
-    cv::minMaxLoc(*resultFinalPhaseL, &min, &max, &ignore, &ignore, *measuredNot);  //the ignored mask values will be <min , everything is in nm
+    cv::minMaxLoc(*resultFinalPhaseL, &min, &max, &ignore, &ignore, *maskMatNot);  //the ignored mask values will be <min , everything is in nm
+    mask.putMat(maskMat);
+    maskN.putMat(maskMatNot);
     scanRes.putMat(resultFinalPhaseL,min,max);
-    mask.putMat(measured);
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
     std::cerr<<"operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";

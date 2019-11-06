@@ -36,6 +36,7 @@ public:
 
     cvMat_safe scanRes;     //contains the scan result
     cvMat_safe mask;        //contains the excluded pixel mask
+    cvMat_safe maskN;       //inverse mask
 
     std::mutex& _lock_mes;
     std::mutex& _lock_comp;
