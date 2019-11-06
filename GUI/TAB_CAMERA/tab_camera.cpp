@@ -6,24 +6,27 @@ tab_camera::tab_camera(QWidget* parent){
     layout=new QHBoxLayout;
     parent->setLayout(layout);
 
-    LDisplay = new QLabel;
+    LDisplay=new QLabel;
     LDisplay->setMouseTracking(false);
-    LDisplay->setFrameShape(QFrame::Box);
-    LDisplay->setFrameShadow(QFrame::Plain);
     LDisplay->setScaledContents(false);
     LDisplay->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+
+    cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
+    cBar=new colorBar(cm_sel);
+    cBar->hide();
 
     tBarW=new QWidget;
     layoutTBarW= new QVBoxLayout;
     tBarW->setLayout(layoutTBarW);
 
     layout->addWidget(LDisplay);
+    layout->addWidget(cBar);
     layout->addWidget(tBarW);
 
     selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map"});
     layoutTBarW->addWidget(selDisp);
 
-    TWCtrl = new QTabWidget;
+    TWCtrl=new QTabWidget;
     TWCtrl->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Expanding);
     layoutTBarW->addWidget(TWCtrl);
 
@@ -33,17 +36,17 @@ tab_camera::tab_camera(QWidget* parent){
     pgFGUI=new pgFocusGUI(_lock_mes, _lock_comp, pgSGUI, pgTGUI);
     pgPRGUI=new pgPosRepGUI;
 
-    pageMotion = new twd_selector(false);
+    pageMotion=new twd_selector(false);
         pageMotion->addWidget(pgSGUI->gui_activation);
         pageMotion->addWidget(pgMGUI->gui_activation);  connect(pgPRGUI, SIGNAL(changed(double,double,double,double)), pgMGUI, SLOT(onFZdifChange(double,double,double,double)));
         pageMotion->addWidget(pgTGUI->gui_activation);
         pageMotion->addWidget(pgFGUI->gui_activation);
         pageMotion->addWidget(pgPRGUI);
 
-    pageWriting = new twd_selector(false);
+    pageWriting=new twd_selector(false);
         //pageWriting->addWidget(pgPRGUI->gui,pgPRGUI->timer);
 
-    pageSettings = new twd_selector;
+    pageSettings=new twd_selector;
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));
         pageSettings->addWidget(pgSGUI->gui_settings,"Scan");
         pageSettings->addWidget(pgMGUI->gui_settings,"Move");
@@ -57,7 +60,6 @@ tab_camera::tab_camera(QWidget* parent){
 
     TWCtrl->addTab(pageSettings,"Settings");
 
-    cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
     layoutTBarW->addWidget(cm_sel);
     epc_sel=new QPushButton("Excl."); epc_sel->setFlat(true); epc_sel->setIcon(QPixmap(":/color.svg"));
     connect(epc_sel, SIGNAL(released()), this, SLOT(on_EP_sel_released()));
@@ -65,7 +67,8 @@ tab_camera::tab_camera(QWidget* parent){
     pgHistGUI=new pgHistogrameGUI(400, 50, &pgSGUI->scanRes, &pgSGUI->maskN, cm_sel, exclColor);
     layoutTBarW->addWidget(pgHistGUI);
 
-    timer = new QTimer(this);
+
+    timer=new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
 
 }
@@ -84,6 +87,7 @@ void tab_camera::work_fun(){
             oldCm=cm_sel->index;
             exclColorChanged=false;
         }
+        cBar->hide();
     }else{                  // Depth map
         if(pgSGUI->scanRes.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed){
             double min,max;
@@ -98,6 +102,7 @@ void tab_camera::work_fun(){
                 QImage qimg(colorImg.data, colorImg.cols, colorImg.rows, colorImg.step, QImage::Format_RGB888);
                 std::move(qimg).rgbSwapped();   //opencv BGR -> qt RGB
                 LDisplay->setPixmap(QPixmap::fromImage(qimg));
+                cBar->show(min,max,mat->rows);
             }
             oldCm=cm_sel->index;
             exclColorChanged=false;

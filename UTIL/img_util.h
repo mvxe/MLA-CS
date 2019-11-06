@@ -71,4 +71,5 @@ public:
         return ret;
     }
 };
+
 #endif // IMG_UTIL_H

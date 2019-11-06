@@ -1,6 +1,7 @@
 #ifndef CONFIG_TAB_CAMERA_H
 #define CONFIG_TAB_CAMERA_H
 #include "GUI/gui_includes.h"
+#include "colorbar.h"
 
     // These are from the old camera tab; TODO remove when replaced!
 class tab_camera_old{
@@ -34,6 +35,7 @@ private:
 
     QHBoxLayout* layout;
     QLabel* LDisplay;
+    colorBar* cBar;
     QWidget* tBarW;
     QVBoxLayout* layoutTBarW;
     smp_selector* selDisp;

@@ -92,7 +92,8 @@ HEADERS += \
     PROCEDURES/UTIL/USC/focus.h \
     PROCEDURES/UTIL/USC/position_report.h \
     PROCEDURES/UTIL/USC/histogram.h \
-    UTIL/threadpool.h
+    UTIL/threadpool.h \
+    GUI/TAB_CAMERA/colorbar.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -132,7 +133,8 @@ SOURCES += \
     PROCEDURES/UTIL/USC/focus.cpp \
     PROCEDURES/UTIL/USC/position_report.cpp \
     PROCEDURES/UTIL/USC/histogram.cpp \
-    UTIL/threadpool.cpp
+    UTIL/threadpool.cpp \
+    GUI/TAB_CAMERA/colorbar.cpp
 
 
 unix {

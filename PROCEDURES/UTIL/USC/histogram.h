@@ -17,7 +17,7 @@ public:
     void updateImg(double* rmin=nullptr, double* rmax=nullptr);
     const double& hPcnt{_hPcnt};
     const double& lPcnt{_lPcnt};
-    const bool changed{_changed};
+    const bool& changed{_changed};
 private:
     QLabel* imgDisp;
     QVBoxLayout* layout;
