@@ -32,3 +32,8 @@ void cvMat_safe::putMat(cv::Mat* pmat, double min, double max){
 
 const char OCV_CM::labels[][50];
 const int  OCV_CM::ids[];
+
+//OpenCV FONTFACES
+
+const char OCV_FF::labels[][50];
+const int  OCV_FF::ids[];

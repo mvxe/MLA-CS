@@ -18,13 +18,13 @@ pgHistogrameGUI::pgHistogrameGUI(int Hsize, int Vsize, cvMat_safe* cvms_img, cvM
     connect(_hPcnt_sel, SIGNAL(valueChanged(double)), this, SLOT(onValueChanged_hPcnt(double)));
     btnLayout->addWidget(_lPcnt_sel);
     btnLayout->addWidget(_hPcnt_sel);
+    outOfRangeToExcl=new QCheckBox("Exl.");
+    outOfRangeToExcl->setChecked(cbOORtE);
+    connect(outOfRangeToExcl, SIGNAL(stateChanged(int)), this, SLOT(onValueChanged_cbox(int)));
+    btnLayout->addWidget(outOfRangeToExcl);
     btnLayout->addStretch();
     btnLayout->setMargin(0);
     layout->setMargin(0);
-
-    cv::Mat display(Vsize,Hsize,CV_8U, cv::Scalar(0));
-    QImage qimg(display.data, display.cols, display.rows, display.step, QImage::Format_Indexed8);   //init to empty
-    imgDisp->setPixmap(QPixmap::fromImage(qimg));
 }
 
 void pgHistogrameGUI::updateImg(double *rmin, double *rmax){
@@ -56,16 +56,30 @@ void pgHistogrameGUI::updateImg(double *rmin, double *rmax){
         for(int i=imax;i!=Hsize;i++)  lin.at<uchar>(i)=255;
 
         cv::applyColorMap(lin, lin, OCV_CM::ids[cm_sel->index]);
-        cv::Mat display(Vsize,Hsize,CV_8UC3,exclColor);
+        cv::cvtColor(lin, lin, cv::COLOR_BGR2RGBA);
+        if(cbOORtE){
+            for(int i=0;i!=imin;i++)      lin.at<cv::Vec4b>(i)={(uchar)exclColor.val[2],(uchar)exclColor.val[1],(uchar)exclColor.val[0],255};
+            for(int i=imax;i!=Hsize;i++)  lin.at<cv::Vec4b>(i)={(uchar)exclColor.val[2],(uchar)exclColor.val[1],(uchar)exclColor.val[0],255};
+        }
+        cv::Mat display(Vsize+1,Hsize,CV_8UC4,{0,0,0,0});
         double minh,maxh;
         cv::minMaxIdx(hist,&minh,&maxh);
         for(int i=0;i!=Hsize;i++){
             int lim=hist.at<float>(i)/maxh*Vsize;
+            int limPrev, limNext;
+            if(i!=0) limPrev=hist.at<float>(i-1)/maxh*Vsize;
+            else limPrev=0;
+            if(i!=Hsize-1)  limNext=hist.at<float>(i+1)/maxh*Vsize;
+            else limNext=0;
+            if(limNext<limPrev) limNext=limPrev;
             for(int j=0;j!=lim;j++)
-                display.at<cv::Vec3b>(Vsize-j-1,i)=lin.at<cv::Vec3b>(i);
+                display.at<cv::Vec4b>(Vsize-1-j,i)=lin.at<cv::Vec4b>(i);
+            if(limNext>lim) for(int j=lim;j!=limNext;j++)
+                display.at<cv::Vec4b>(Vsize-1-j,i)={0,0,0,255};
+            display.at<cv::Vec4b>(Vsize,i)={0,0,0,255};
+            display.at<cv::Vec4b>(Vsize-lim,i)={0,0,0,255};
         }
-        QImage qimg(display.data, display.cols, display.rows, display.step, QImage::Format_RGB888);
-        std::move(qimg).rgbSwapped();
+        QImage qimg(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888);
         imgDisp->setPixmap(QPixmap::fromImage(qimg));
         _changed=false;
     }
@@ -79,5 +93,9 @@ void pgHistogrameGUI::onValueChanged_hPcnt(double value){
 void pgHistogrameGUI::onValueChanged_lPcnt(double value){
     _lPcnt=value;
     _hPcnt_sel->setMinimum(_lPcnt);
+    _changed=true;
+}
+void pgHistogrameGUI::onValueChanged_cbox(int state){
+    cbOORtE=outOfRangeToExcl->isChecked();
     _changed=true;
 }

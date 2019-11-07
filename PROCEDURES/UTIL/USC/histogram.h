@@ -8,6 +8,7 @@ class smp_selector;
 class QVBoxLayout;
 class QHBoxLayout;
 class QDoubleSpinBox;
+class QCheckBox;
 
 class pgHistogrameGUI: public QWidget{
     Q_OBJECT
@@ -18,6 +19,7 @@ public:
     const double& hPcnt{_hPcnt};
     const double& lPcnt{_lPcnt};
     const bool& changed{_changed};
+    const bool& ExclOOR{cbOORtE};
 private:
     QLabel* imgDisp;
     QVBoxLayout* layout;
@@ -25,10 +27,13 @@ private:
     QHBoxLayout* btnLayout;
     QDoubleSpinBox* _hPcnt_sel;
     QDoubleSpinBox* _lPcnt_sel;
+    QCheckBox* outOfRangeToExcl;
 
     double _hPcnt, _lPcnt;
+    bool cbOORtE;
     cc_save<double> sv_hPcnt{_hPcnt, 100,&go.gui_config.save,"pgHistogrameGUI_hPcnt"};
     cc_save<double> sv_lPcnt{_lPcnt,   0,&go.gui_config.save,"pgHistogrameGUI_lPcnt"};
+    cc_save<bool> sv_outOfRangeToExcl{cbOORtE,false,&go.gui_config.save,"pgHistogrameGUI_outOfRangeToExcl"};
     bool _changed{false};
     cvMat_safe* cvms_img;
     cvMat_safe* cvms_mask;
@@ -39,5 +44,6 @@ private:
 private Q_SLOTS:
     void onValueChanged_hPcnt(double value);
     void onValueChanged_lPcnt(double value);
+    void onValueChanged_cbox(int state);
 };
 #endif // HISTOGRAM_H

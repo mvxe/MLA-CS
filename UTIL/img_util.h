@@ -72,4 +72,18 @@ public:
     }
 };
 
+//OpenCV FONTFACES
+
+class OCV_FF{
+public:
+    static constexpr char labels[][50]{ "FONT_HERSHEY_SIMPLEX" , "FONT_HERSHEY_PLAIN" , "FONT_HERSHEY_DUPLEX" , "FONT_HERSHEY_COMPLEX" , "FONT_HERSHEY_TRIPLEX" , "FONT_HERSHEY_COMPLEX_SMALL" , "FONT_HERSHEY_SCRIPT_SIMPLEX" , "FONT_HERSHEY_SCRIPT_COMPLEX" , "FONT_ITALIC" };
+    static constexpr int ids[]        {cv::FONT_HERSHEY_SIMPLEX,cv::FONT_HERSHEY_PLAIN,cv::FONT_HERSHEY_DUPLEX,cv::FONT_HERSHEY_COMPLEX,cv::FONT_HERSHEY_TRIPLEX,cv::FONT_HERSHEY_COMPLEX_SMALL,cv::FONT_HERSHEY_SCRIPT_SIMPLEX,cv::FONT_HERSHEY_SCRIPT_COMPLEX,cv::FONT_ITALIC};
+    static std::vector<QString> qslabels(){
+        std::vector<QString> ret;
+        int size=sizeof(labels)/50;
+        for(int i=0;i!=size;i++) ret.push_back(OCV_FF::labels[i]);
+        return ret;
+    }
+};
+
 #endif // IMG_UTIL_H

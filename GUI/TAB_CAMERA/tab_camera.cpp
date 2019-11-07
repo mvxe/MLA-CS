@@ -11,16 +11,11 @@ tab_camera::tab_camera(QWidget* parent){
     LDisplay->setScaledContents(false);
     LDisplay->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
 
-    cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
-    cBar=new colorBar(cm_sel);
-    cBar->hide();
-
     tBarW=new QWidget;
     layoutTBarW= new QVBoxLayout;
     tBarW->setLayout(layoutTBarW);
 
     layout->addWidget(LDisplay);
-    layout->addWidget(cBar);
     layout->addWidget(tBarW);
 
     selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map"});
@@ -35,6 +30,8 @@ tab_camera::tab_camera(QWidget* parent){
     pgTGUI=new pgTiltGUI;
     pgFGUI=new pgFocusGUI(_lock_mes, _lock_comp, pgSGUI, pgTGUI);
     pgPRGUI=new pgPosRepGUI;
+    cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
+    cMap=new colorMap(cm_sel, exclColor);
 
     pageMotion=new twd_selector(false);
         pageMotion->addWidget(pgSGUI->gui_activation);
@@ -52,6 +49,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageSettings->addWidget(pgMGUI->gui_settings,"Move");
         pageSettings->addWidget(pgTGUI->gui_settings,"Tilt");
         pageSettings->addWidget(pgFGUI->gui_settings,"Focus");
+        pageSettings->addWidget(cMap,"ColorMap");
 
     TWCtrl->addTab(pageMotion,"Motion");
         //scanOne->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Minimum);
@@ -66,7 +64,6 @@ tab_camera::tab_camera(QWidget* parent){
     cm_sel->addWidget(epc_sel);
     pgHistGUI=new pgHistogrameGUI(400, 50, &pgSGUI->scanRes, &pgSGUI->maskN, cm_sel, exclColor);
     layoutTBarW->addWidget(pgHistGUI);
-
 
     timer=new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
@@ -87,22 +84,17 @@ void tab_camera::work_fun(){
             oldCm=cm_sel->index;
             exclColorChanged=false;
         }
-        cBar->hide();
     }else{                  // Depth map
-        if(pgSGUI->scanRes.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed){
+        if(pgSGUI->scanRes.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed){
             double min,max;
             pgHistGUI->updateImg(&min, &max);
-            cv::Mat *mat;
+            cv::Mat* mat;
             mat=pgSGUI->scanRes.getMat();
             if(mat!=nullptr){
-                cv::Mat colorImg;
-                mat->convertTo(colorImg, CV_8U, ((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));
-                cv::applyColorMap(colorImg, colorImg, OCV_CM::ids[cm_sel->index]);
-                colorImg.setTo(exclColor, *(pgSGUI->mask.getMat()));
-                QImage qimg(colorImg.data, colorImg.cols, colorImg.rows, colorImg.step, QImage::Format_RGB888);
-                std::move(qimg).rgbSwapped();   //opencv BGR -> qt RGB
+                cv::Mat display;
+                cMap->colormappize(mat, &display, pgSGUI->mask.getMat(), min, max, pgHistGUI->ExclOOR);
+                QImage qimg(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888);
                 LDisplay->setPixmap(QPixmap::fromImage(qimg));
-                cBar->show(min,max,mat->rows);
             }
             oldCm=cm_sel->index;
             exclColorChanged=false;
