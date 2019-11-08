@@ -36,13 +36,14 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
     double div;
     double tick=1;
     double diff[2]={DBL_MAX,DBL_MAX};
-    bool done=false;
+    bool done=false; int ignore;
 
     int nticks=-1;
     if(isForExport && exportANTicks->val!=0) div=range/exportANTicks->val;
     else if(displayANTicks->val!=0) div=range/displayANTicks->val;
     else nticks=0;
 
+    cv::Mat cblabel;
     if(nticks!=0){
         for(int mult=-2;mult!=100;mult++){
             for(auto& val:stdTicks){
@@ -55,10 +56,13 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
         }
         nticks=range/tick+1;  //rounds down
         //std::cout<<"range= "<<range<<" ,div= "<<div<<" ,tick= "<<tick<<"\n";
+        cv::Size size=cv::getTextSize(util::toString("Depth[nm]"), OCV_FF::ids[fontFace->index], fontSize->val, fontThickness->val, &ignore);
+        cblabel=cv::Mat(size.height*2,size.width,CV_8UC4,{0,0,0,0});
+        cv::putText(cblabel,util::toString("Depth[nm]"), {0,4*size.height/3}, OCV_FF::ids[fontFace->index], fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
+        cv::rotate(cblabel,cblabel,cv::ROTATE_90_COUNTERCLOCKWISE);
     }
     int textMaxWidth=1;
     int textMaxHeight=1;  //all should be the same though
-    int ignore;
     for(int i=0;i!=nticks;i++){
         cv::Size size=cv::getTextSize(util::toString(i*tick), OCV_FF::ids[fontFace->index], fontSize->val, fontThickness->val, &ignore);
         if(textMaxWidth<size.width) textMaxWidth=size.width;
@@ -67,7 +71,7 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
     int marginY=textMaxHeight;  //we make it twice the text max height
 
     int cbhsize=barWidth->val, Gap=barGap->val, textHDis=textOffset->val;
-    *dst=cv::Mat(vsize+2*marginY, hsize+Gap+cbhsize+2*textHDis+textMaxWidth, CV_8UC4, {255,255,255,0});
+    *dst=cv::Mat(vsize+2*marginY, hsize+Gap+cbhsize+textHDis+textMaxWidth+textHDis+cblabel.cols, CV_8UC4, {255,255,255,0});
     cv::Mat temp;
     src->convertTo(temp, CV_8U, ((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));
     cv::applyColorMap(temp, temp, OCV_CM::ids[cm_sel->index]);
@@ -94,6 +98,7 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
         cv::line(*dst, {hsize+Gap,ypos}, {hsize+Gap+(cbhsize-1)/3,ypos}, {0,0,0,255}, 1);
         cv::line(*dst, {hsize+Gap+2*(cbhsize-1)/3,ypos}, {hsize+Gap+cbhsize-1,ypos}, {0,0,0,255}, 1);
     }
+    if(nticks!=0) cblabel.copyTo(cv::Mat(*dst,{hsize+Gap+textHDis+cbhsize+textMaxWidth+textHDis,dst->rows/2-cblabel.rows/2,cblabel.cols,cblabel.rows}));
     _changed=false;
 }
 
