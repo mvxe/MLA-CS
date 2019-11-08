@@ -318,7 +318,7 @@ void pgScanGUI::_doOneRound(){
         cv::Mat slopeY1(nRows, 1, CV_32F);
         cv::UMat slopeUY1(nRows, 1, CV_32F);
         cv::UMat slopeUY(nRows, nCols, CV_32F);
-        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*tan(M_PI/2-phiY);
+        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*tan(M_PI/2+phiY);
         slopeY1.copyTo(slopeUY1);
         cv::repeat(slopeUY1, 1, nCols, slopeUY);
         cv::add(slopeUY,resultFinalPhase,resultFinalPhase);

@@ -46,10 +46,33 @@ void pgMoveGUI::init_gui_settings(){
     slayout->addWidget(zMoveScale);
     fMoveScale=new val_selector(0.001, "pgMoveGUI_fMoveScale", "F move multiplier: ", 0, 100, 6);
     slayout->addWidget(fMoveScale);
+
+    autoadjXZ=new val_selector(0, "pgMoveGUI_autoadjXZ", "Focus adjustment for X: ", -100, 100, 12);
+    slayout->addWidget(autoadjXZ);
+    autoadjYZ=new val_selector(0, "pgMoveGUI_autoadjYZ", "Focus adjustment for Y: ", -100, 100, 12);
+    slayout->addWidget(autoadjYZ);
+    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
+    calib_autoadjXZ=new QPushButton;
+    calib_autoadjXZ->setText("Calibrate XZ");
+    calib_autoadjXZ->setCheckable(true);
+    connect(calib_autoadjXZ, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_X(bool)));
+    tlay->addWidget(calib_autoadjXZ);
+    calib_autoadjYZ=new QPushButton;
+    calib_autoadjYZ->setText("Calibrate YZ");
+    calib_autoadjYZ->setCheckable(true);
+    connect(calib_autoadjYZ, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_Y(bool)));
+    tlay->addWidget(calib_autoadjYZ);
+    QLabel* txt=new QLabel("(Click -> move X/Y -> focus -> Click)");
+    tlay->addWidget(txt); tlay->addStretch(0); tlay->setMargin(0);
+    slayout->addWidget(twid);
 }
 
 void pgMoveGUI::onMove(double Xmov, double Ymov, double Zmov, double Fmov){
-    go.pXPS->MoveRelative(XPS::mgroup_XYZF,Xmov*xMoveScale->val/1000,Ymov*xMoveScale->val/1000,Zmov*zMoveScale->val/1000,Fmov*fMoveScale->val/1000-Zmov*zMoveScale->val/1000);
+    double _Xmov=Xmov*xMoveScale->val/1000;
+    double _Ymov=Ymov*xMoveScale->val/1000;
+    double _Zmov=Zmov*zMoveScale->val/1000+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;
+    double _Fmov=Fmov*fMoveScale->val/1000-_Zmov;
+    go.pXPS->MoveRelative(XPS::mgroup_XYZF,_Xmov,_Ymov,_Zmov,_Fmov);
 }
 
 void pgMoveGUI::onFZdifChange(double X, double Y, double Z, double F){
@@ -64,4 +87,16 @@ void pgMoveGUI::_onMoveZF(double difference){
     if(FZdifCur==-9999) return;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,0,difference-FZdifCur);
     FZdifCur=difference;
+}
+
+void pgMoveGUI::onCalibrate(bool isStart, bool isX){
+    if(isStart){
+        if(isX) X_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[0];
+        else    Y_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[1];
+        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[2];
+    }else{
+        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[2]-Z_cum;
+        if(isX) autoadjXZ->setValue(Z_cum/(go.pXPS->getPos(XPS::mgroup_XYZF).pos[0]-X_cum));
+        else    autoadjYZ->setValue(Z_cum/(go.pXPS->getPos(XPS::mgroup_XYZF).pos[1]-Y_cum));
+    }
 }

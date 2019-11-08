@@ -74,10 +74,10 @@ void pgTiltGUI::onCalibrate(bool isStart, bool isX){
     if(isStart){
         if(isX) Tilt_cum_X=0;
         else    Tilt_cum_Y=0;
-        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[3];
+        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[2];
     }else{
-        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[3]-Z_cum;
-        if(isX) focus_autoadjX->setValue(-Z_cum/Tilt_cum_X);
-        else    focus_autoadjY->setValue(-Z_cum/Tilt_cum_Y);
+        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[2]-Z_cum;
+        if(isX) focus_autoadjX->setValue(Z_cum/Tilt_cum_X);
+        else    focus_autoadjY->setValue(Z_cum/Tilt_cum_Y);
     }
 }
