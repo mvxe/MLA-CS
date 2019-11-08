@@ -47,6 +47,11 @@ void pgScanGUI::init_gui_activation(){
     connect(bScanContinuous, SIGNAL(toggled(bool)), this, SLOT(onBScanContinuous(bool)));
     tlay->addWidget(bScanContinuous); tlay->addStretch(0); tlay->setMargin(0);
     alayout->addWidget(twid);
+    cbCorrectTilt=new QCheckBox("Correct Tilt");
+    cbCorrectTilt->setChecked(correctTilt);
+    alayout->addWidget(cbCorrectTilt);
+    connect(cbCorrectTilt, SIGNAL(toggled(bool)),this, SLOT(setCorrectTilt(bool)));
+    alayout->addStretch(0);
 }
 void pgScanGUI::onBScanContinuous(bool status){if(status)timerCM->start(); else timerCM->stop();}
 void pgScanGUI::onBScanOne(){if(_lock_mes.try_lock()){_lock_mes.unlock();doOneRound();}}
@@ -201,8 +206,8 @@ void pgScanGUI::_doOneRound(){
     int nCols=framequeue->getUserMat(0)->cols;
 
     cv::Mat mat2D(nFrames, nCols, CV_32F);
-    cv::Mat* maskMat=new cv::Mat(nRows, nCols, CV_8U);
-    cv::Mat* maskMatNot=new cv::Mat(nRows, nCols, CV_8U);
+    cv::UMat maskUMat(nRows, nCols, CV_8U);
+    cv::UMat maskUMatNot(nRows, nCols, CV_8U);
 
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
     cv::UMat resultFinalPhase(nCols, nRows, CV_32F);    //rows and cols flipped for convenience, transpose it after main loop!
@@ -259,12 +264,16 @@ void pgScanGUI::_doOneRound(){
             add(cmpFinRes, cmpRes, cmpFinRes);
         }
         cmpFinRes=cmpFinRes.reshape(0,1);
-        cmpFinRes.copyTo(maskMat->row(k));
+        cmpFinRes.copyTo(maskUMat.row(k));
 
         //std::cerr<<"done with dft"<<k<<"\n";
     }
-    bitwise_not(*maskMat, *maskMatNot);
     std::cerr<<"done with dfts\n";
+    bitwise_not(maskUMat, maskUMatNot);
+    cv::Mat* maskMat=new cv::Mat;
+    cv::Mat* maskMatNot=new cv::Mat;
+    maskUMat.copyTo(*maskMat);
+    maskUMatNot.copyTo(*maskMatNot);
 
     cv::transpose(resultFinalPhase,resultFinalPhase);   //now its the same rows,cols as the camera images
     cv::Mat* resultFinalPhaseL=new cv::Mat;
@@ -273,16 +282,70 @@ void pgScanGUI::_doOneRound(){
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
     if(debugDisplayModeSelect->index==0){   // if debug no unwrap is off
+        resultFinalPhase.copyTo(*resultFinalPhaseL);
         cv::phase_unwrapping::HistogramPhaseUnwrapping::Params params;
         params.width=nCols;
         params.height=nRows;
         cv::Ptr<cv::phase_unwrapping::HistogramPhaseUnwrapping> phaseUnwrapping = cv::phase_unwrapping::HistogramPhaseUnwrapping::create(params);
-        //matOp::spread<uchar>(maskMat);
-        phaseUnwrapping->unwrapPhaseMap(*resultFinalPhaseL, *resultFinalPhaseL,*maskMatNot);
+        phaseUnwrapping->unwrapPhaseMap(*resultFinalPhaseL, *resultFinalPhaseL,*maskMatNot);    //unfortunately this does not work for UMat (segfaults for ocv 4.1.2), thats why we shuffle the mat back and forth
+        resultFinalPhaseL->copyTo(resultFinalPhase);
     }
     double min,max; cv::Point ignore;
-    *resultFinalPhaseL*=vsConv(led_wl)/4/M_PI;
-    cv::minMaxLoc(*resultFinalPhaseL, &min, &max, &ignore, &ignore, *maskMatNot);  //the ignored mask values will be <min , everything is in nm
+    resultFinalPhase.convertTo(resultFinalPhase,-1,vsConv(led_wl)/4/M_PI);
+
+    if(correctTilt){ //autocorrect tilt
+        cv::UMat padded;
+        int m=cv::getOptimalDFTSize(resultFinalPhase.rows);
+        int n=cv::getOptimalDFTSize(resultFinalPhase.cols);
+        cv::copyMakeBorder(resultFinalPhase, padded, 0, m-resultFinalPhase.rows, 0, n-resultFinalPhase.cols, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+        cv::UMat dftRes;
+        padded.setTo(cv::Scalar::all(0), maskUMat);
+        cv::dft(padded, dftRes);
+        cv::Mat res;
+        cv::UMat(dftRes,{0,0,2,2}).copyTo(res);
+        double phiX=M_PI/2-atan(std::abs(res.at<std::complex<float>>(0,1))/nRows/nCols/nCols*2*M_PI);
+        double phiY=M_PI/2-atan(std::abs(res.at<std::complex<float>>(1,0))/nRows/nCols/nRows*2*M_PI);
+        std::cout<<"Phases X,Y: "<<phiX<< " "<<phiY<<"\n";
+
+        cv::Mat slopeX1(1, nCols, CV_32F);
+        cv::UMat slopeUX1(1, nCols, CV_32F);
+        cv::UMat slopeUX(nRows, nCols, CV_32F);
+        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=i*tan(M_PI/2-phiX);
+        slopeX1.copyTo(slopeUX1);
+        cv::repeat(slopeUX1, nRows, 1, slopeUX);
+        cv::add(slopeUX,resultFinalPhase,resultFinalPhase);
+
+        cv::Mat slopeY1(nRows, 1, CV_32F);
+        cv::UMat slopeUY1(nRows, 1, CV_32F);
+        cv::UMat slopeUY(nRows, nCols, CV_32F);
+        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*tan(M_PI/2-phiY);
+        slopeY1.copyTo(slopeUY1);
+        cv::repeat(slopeUY1, 1, nCols, slopeUY);
+        cv::add(slopeUY,resultFinalPhase,resultFinalPhase);
+    }
+
+    cv::minMaxLoc(resultFinalPhase, &min, &max, &ignore, &ignore, maskUMatNot);  //the ignored mask values will be <min , everything is in nm
+    resultFinalPhase.copyTo(*resultFinalPhaseL);
+
+
+//    if(true) for(int j=0;j!=101;j++){ //autocorrect tilt
+//        double phiXX=M_PI/2/100*j;
+//        cv::Mat slopeX1(1, nCols, CV_32F);
+//        cv::UMat slopeUX1(1, nCols, CV_32F);
+//        cv::UMat slopeUX(nRows, nCols, CV_32F);
+//        const double nmPPx=500;
+//        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=nmPPx*i*tan(M_PI/2-phiXX);
+//        slopeX1.copyTo(slopeUX1);
+//        cv::repeat(slopeUX1, nRows, 1, slopeUX);
+//        cv::UMat padded;
+//        cv::dft(slopeUX, padded);
+//        cv::Mat res;
+//        cv::UMat(padded,{0,0,2,2}).copyTo(res);
+//        double phiX=std::abs(res.at<std::complex<float>>(1,0));
+//        double phiY=std::abs(res.at<std::complex<float>>(0,1));
+//        std::cout<<"angle, amplitudes X,Y, angles Y: "<<phiXX<< " "<<phiX/nRows/nCols<< " "<<M_PI/2-atan(phiY/nRows/nCols/nmPPx/nCols*2*M_PI)<<"\n";
+//    }
+
     mask.putMat(maskMat);
     maskN.putMat(maskMatNot);
     scanRes.putMat(resultFinalPhaseL,min,max);

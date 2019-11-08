@@ -10,9 +10,9 @@ class QVBoxLayout;
 class QHBoxLayout;
 class PVTobj;
 class QPushButton;
+class QCheckBox;
 
-class pScan: public sproc
-{
+class pScan: public sproc{
 public:
     pScan();
     ~pScan();
@@ -50,6 +50,9 @@ private:
     QPushButton* bScanOne;
     QPushButton* bScanContinuous;
     QPushButton* bCenter;
+    QCheckBox* cbCorrectTilt;
+    bool correctTilt;
+    cc_save<bool> sv_correctTilt{correctTilt,false,&go.gui_config.save,"pgScanGUI_ct"};
 
     //settings
     QVBoxLayout* slayout;
@@ -85,6 +88,7 @@ public Q_SLOTS:
 private Q_SLOTS:
     void onBScanOne();
     void onBScanContinuous(bool status);
+    void setCorrectTilt(bool state){correctTilt=state;}
 };
 
 #endif // SCAN_H

@@ -24,6 +24,7 @@ class tab_camera: public QWidget{
 
 public:
     tab_camera(QWidget* parent);
+    ~tab_camera();
 
     void tab_entered();
     void tab_exited();

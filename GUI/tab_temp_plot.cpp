@@ -188,12 +188,15 @@ void tab_temp_plot::redraw(){
         cv::merge(planes, 2, complexI);
         cv::dft(complexI, complexI);
         cv::split(complexI, planes);                   // planes[0] = Re(DFT(I), planes[1] = Im(DFT(I))
-        cv::magnitude(planes[0], planes[1], planes[0]);// planes[0] = magnitude
+      //cv::magnitude(planes[0], planes[1], planes[0]);// planes[0] = magnitude
+        cv::phase(planes[0], planes[1], planes[0]);// planes[0] = phase
         cv::Mat magI = planes[0];
-        magI += cv::Scalar::all(1);                    // switch to logarithmic scale
-        cv::log(magI, magI);
+      //magI += cv::Scalar::all(1);                    // switch to logarithmic scale
+      //cv::log(magI, magI);
         // crop the spectrum, if it has an odd number of rows or columns
         magI = magI(cv::Rect(0, 0, magI.cols & -2, magI.rows & -2));
+        std::cout<<"phase at 0,1: "<<magI.at<float>(0,1)<<"\n";
+        std::cout<<"phase at 1,0: "<<magI.at<float>(1,0)<<"\n";
         // rearrange the quadrants of Fourier image  so that the origin is at the image center
         int cx = magI.cols/2;
         int cy = magI.rows/2;
@@ -242,14 +245,14 @@ void tab_temp_plot::redraw(){
 //            peaks.push_back(*max);
 //        }
 
-        for(int i=0;i!=hStdVec.size();i++){
-            printf("%f %d\n",hStdVec[i].val, hStdVec[i].pos);
-        }printf("\n");
+//        for(int i=0;i!=hStdVec.size();i++){
+//            printf("%f %d\n",hStdVec[i].val, hStdVec[i].pos);
+//        }printf("\n");
 
-        std::sort (hStdVec.begin(), hStdVec.end(), compfun);
-        for(int i=0;i!=40;i++){
-            printf("%f %d\n",hStdVec[i].val, hStdVec[i].pos);
-        }printf("\n");
+//        std::sort (hStdVec.begin(), hStdVec.end(), compfun);
+//        for(int i=0;i!=40;i++){
+//            printf("%f %d\n",hStdVec[i].val, hStdVec[i].pos);
+//        }printf("\n");
 
 
     }

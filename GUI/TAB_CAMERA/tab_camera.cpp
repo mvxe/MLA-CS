@@ -67,7 +67,14 @@ tab_camera::tab_camera(QWidget* parent){
 
     timer=new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
+}
 
+tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
+    delete pgSGUI;
+    delete pgMGUI;
+    delete pgTGUI;
+    delete pgFGUI;
+    delete pgPRGUI;
 }
 
 void tab_camera::work_fun(){

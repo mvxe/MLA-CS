@@ -34,6 +34,7 @@ private:
     cc_save<double> sv_hPcnt{_hPcnt, 100,&go.gui_config.save,"pgHistogrameGUI_hPcnt"};
     cc_save<double> sv_lPcnt{_lPcnt,   0,&go.gui_config.save,"pgHistogrameGUI_lPcnt"};
     cc_save<bool> sv_outOfRangeToExcl{cbOORtE,false,&go.gui_config.save,"pgHistogrameGUI_outOfRangeToExcl"};
+
     bool _changed{false};
     cvMat_safe* cvms_img;
     cvMat_safe* cvms_mask;
