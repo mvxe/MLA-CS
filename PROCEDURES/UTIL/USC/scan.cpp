@@ -303,14 +303,14 @@ void pgScanGUI::_doOneRound(){
         cv::dft(padded, dftRes);
         cv::Mat res;
         cv::UMat(dftRes,{0,0,2,2}).copyTo(res);
-        double phiX=M_PI/2-atan(std::abs(res.at<std::complex<float>>(0,1))/nRows/nCols/nCols*2*M_PI);
-        double phiY=M_PI/2-atan(std::abs(res.at<std::complex<float>>(1,0))/nRows/nCols/nRows*2*M_PI);
+        double phiX= 2*M_PI*std::abs(res.at<std::complex<float>>(0,1))/nRows/nCols/nCols;
+        double phiY=-2*M_PI*std::abs(res.at<std::complex<float>>(1,0))/nRows/nCols/nRows;
         std::cout<<"Phases X,Y: "<<phiX<< " "<<phiY<<"\n";
 
         cv::Mat slopeX1(1, nCols, CV_32F);
         cv::UMat slopeUX1(1, nCols, CV_32F);
         cv::UMat slopeUX(nRows, nCols, CV_32F);
-        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=i*tan(M_PI/2-phiX);
+        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=i*phiX;
         slopeX1.copyTo(slopeUX1);
         cv::repeat(slopeUX1, nRows, 1, slopeUX);
         cv::add(slopeUX,resultFinalPhase,resultFinalPhase);
@@ -318,7 +318,7 @@ void pgScanGUI::_doOneRound(){
         cv::Mat slopeY1(nRows, 1, CV_32F);
         cv::UMat slopeUY1(nRows, 1, CV_32F);
         cv::UMat slopeUY(nRows, nCols, CV_32F);
-        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*tan(M_PI/2+phiY);
+        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*phiY;
         slopeY1.copyTo(slopeUY1);
         cv::repeat(slopeUY1, 1, nCols, slopeUY);
         cv::add(slopeUY,resultFinalPhase,resultFinalPhase);
