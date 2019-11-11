@@ -16,6 +16,7 @@ private:
     QVBoxLayout* layout;
     smp_selector* fontFace;
     val_selector* fontSize;
+    val_selector* fontSizeExport;
     val_selector* fontThickness;
     val_selector* barWidth;
     val_selector* barGap;

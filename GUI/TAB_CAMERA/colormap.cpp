@@ -7,9 +7,11 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor): cm_sel(cm_sel),
     fontFace=new smp_selector("colorBar_fontFace", "Font: ", 0, OCV_FF::qslabels());
     connect(fontFace, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(fontFace);
-    fontSize=new val_selector(1., "colorBar_fontSize", "Font Size: ", 0, 10., 2);
+    fontSize=new val_selector(1., "colorBar_fontSize", "Font Size for Display: ", 0, 10., 2);
     connect(fontSize, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(fontSize);
+    fontSizeExport=new val_selector(1., "colorBar_fontSiz_exporte", "Font Size for Export: ", 0, 10., 2);
+    layout->addWidget(fontSizeExport);
     fontThickness=new val_selector(1, "colorBar_fontThickness", "Font Thickness: ", 1, 10, 0, 0, {"px"});
     connect(fontThickness, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(fontThickness);
@@ -56,15 +58,15 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
         }
         nticks=range/tick+1;  //rounds down
         //std::cout<<"range= "<<range<<" ,div= "<<div<<" ,tick= "<<tick<<"\n";
-        cv::Size size=cv::getTextSize(util::toString("Depth[nm]"), OCV_FF::ids[fontFace->index], fontSize->val, fontThickness->val, &ignore);
+        cv::Size size=cv::getTextSize(util::toString("Depth[nm]"), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
         cblabel=cv::Mat(size.height*2,size.width,CV_8UC4,{0,0,0,0});
-        cv::putText(cblabel,util::toString("Depth[nm]"), {0,4*size.height/3}, OCV_FF::ids[fontFace->index], fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
+        cv::putText(cblabel,util::toString("Depth[nm]"), {0,4*size.height/3}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
         cv::rotate(cblabel,cblabel,cv::ROTATE_90_COUNTERCLOCKWISE);
     }
     int textMaxWidth=1;
     int textMaxHeight=1;  //all should be the same though
     for(int i=0;i!=nticks;i++){
-        cv::Size size=cv::getTextSize(util::toString(i*tick), OCV_FF::ids[fontFace->index], fontSize->val, fontThickness->val, &ignore);
+        cv::Size size=cv::getTextSize(util::toString(i*tick), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
         if(textMaxWidth<size.width) textMaxWidth=size.width;
         if(textMaxHeight<size.height) textMaxHeight=size.height;
     }
@@ -94,7 +96,7 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
 
     for(int i=0;i!=nticks;i++){
         int ypos=vsize-1+marginY- (i*tick*(vsize-1)/range);
-        cv::putText(*dst,util::toString(i*tick), cv::Point(hsize+Gap+textHDis+cbhsize,ypos+textMaxHeight/2), OCV_FF::ids[fontFace->index], fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
+        cv::putText(*dst,util::toString(i*tick), cv::Point(hsize+Gap+textHDis+cbhsize,ypos+textMaxHeight/2), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
         cv::line(*dst, {hsize+Gap,ypos}, {hsize+Gap+(cbhsize-1)/3,ypos}, {0,0,0,255}, 1);
         cv::line(*dst, {hsize+Gap+2*(cbhsize-1)/3,ypos}, {hsize+Gap+cbhsize-1,ypos}, {0,0,0,255}, 1);
     }
