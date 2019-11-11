@@ -31,8 +31,7 @@ void pgFocusGUI::init_gui_activation(){
 void pgFocusGUI::onRefocus(){if(_lock_mes.try_lock()){_lock_mes.unlock();refocus();}}
 void pgFocusGUI::refocus(){
     if(!PVTsRdy) recalculate();
-    std::thread proc(&pgFocusGUI::_refocus, this);
-    proc.detach();
+    go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::_refocus,this));
 }
 
 void pgFocusGUI::init_gui_settings(){

@@ -327,25 +327,6 @@ void pgScanGUI::_doOneRound(){
     cv::minMaxLoc(resultFinalPhase, &min, &max, &ignore, &ignore, maskUMatNot);  //the ignored mask values will be <min , everything is in nm
     resultFinalPhase.copyTo(*resultFinalPhaseL);
 
-
-//    if(true) for(int j=0;j!=101;j++){ //autocorrect tilt
-//        double phiXX=M_PI/2/100*j;
-//        cv::Mat slopeX1(1, nCols, CV_32F);
-//        cv::UMat slopeUX1(1, nCols, CV_32F);
-//        cv::UMat slopeUX(nRows, nCols, CV_32F);
-//        const double nmPPx=500;
-//        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=nmPPx*i*tan(M_PI/2-phiXX);
-//        slopeX1.copyTo(slopeUX1);
-//        cv::repeat(slopeUX1, nRows, 1, slopeUX);
-//        cv::UMat padded;
-//        cv::dft(slopeUX, padded);
-//        cv::Mat res;
-//        cv::UMat(padded,{0,0,2,2}).copyTo(res);
-//        double phiX=std::abs(res.at<std::complex<float>>(1,0));
-//        double phiY=std::abs(res.at<std::complex<float>>(0,1));
-//        std::cout<<"angle, amplitudes X,Y, angles Y: "<<phiXX<< " "<<phiX/nRows/nCols<< " "<<M_PI/2-atan(phiY/nRows/nCols/nmPPx/nCols*2*M_PI)<<"\n";
-//    }
-
     mask.putMat(maskMat);
     maskN.putMat(maskMatNot);
     scanRes.putMat(resultFinalPhaseL,min,max);
