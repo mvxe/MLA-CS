@@ -31,7 +31,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgFGUI=new pgFocusGUI(_lock_mes, _lock_comp, pgSGUI, pgTGUI);
     pgPRGUI=new pgPosRepGUI;
     cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
-    cMap=new colorMap(cm_sel, exclColor);
+    cMap=new colorMap(cm_sel, exclColor, pgSGUI, pgTGUI);
 
     pageMotion=new twd_selector(false);
         pageMotion->addWidget(pgSGUI->gui_activation);

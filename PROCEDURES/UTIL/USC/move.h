@@ -50,13 +50,14 @@ private Q_SLOTS:
     void _onMoveY(double magnitude){onMove(0,magnitude,0,0);}
     void _onMoveZ(double magnitude){onMove(0,0,magnitude,0);}
     void _onMoveF(double magnitude){onMove(0,0,0,magnitude);}
-    void _onMoveZF(double difference);
     void onLockF(bool locked);
-    void onMove(double Xmov, double Ymov, double Zmov, double Fmov);
     void onFZdifChange(double X, double Y, double Z, double F);
     void onCalibrate(bool isStart, bool isX);
     void _onCalibrate_X(bool isStart){onCalibrate(isStart, true);}
     void _onCalibrate_Y(bool isStart){onCalibrate(isStart, false);}
+public Q_SLOTS:
+    void _onMoveZF(double difference);
+    void onMove(double Xmov, double Ymov, double Zmov, double Fmov);
 };
 
 #endif // MOVE_H

@@ -121,14 +121,14 @@ void pgFocusGUI::updatePVT(std::string &report){
 }
 
 void pgFocusGUI::onTestTilt(bool state){
-    if(state) pgTGUI->doTilt(tilt->val,true,false);
-    else pgTGUI->doTilt(-tilt->val,true,false);
+    if(state) pgTGUI->doTilt(tilt->val,0,false);
+    else pgTGUI->doTilt(-tilt->val,0,false);
 }
 
 void pgFocusGUI::_refocus(){
     if(!PVTsRdy) return;
     _lock_mes.lock();                       //wait for other measurements to complete
-    pgTGUI->doTilt(tilt->val, true, false);
+    pgTGUI->doTilt(tilt->val, 0, false);
     std::this_thread::sleep_for (std::chrono::milliseconds(int(tilt->val/pgTGUI->tilt_motor_speed->val*60*1000)));      //wait till it tilts
     int nFrames=totalFrameNum;
     FQ* framequeue;
@@ -137,7 +137,7 @@ void pgFocusGUI::_refocus(){
     go.pXPS->execPVTobj(PVTScan, &PVTret);
     PVTret.block_till_done();
     framequeue->setUserFps(0);
-    pgTGUI->doTilt(-tilt->val, true, false); //we dont wait for it to tilt back
+    pgTGUI->doTilt(-tilt->val, 0, false); //we dont wait for it to tilt back
     _lock_mes.unlock();
     std::lock_guard<std::mutex>lock(_lock_comp);    //wait till other processing is done
 

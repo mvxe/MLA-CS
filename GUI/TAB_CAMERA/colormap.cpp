@@ -1,7 +1,7 @@
 #include "colormap.h"
 #include "GUI/gui_includes.h"
 
-colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor): cm_sel(cm_sel), exclColor(exclColor){
+colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI): cm_sel(cm_sel), exclColor(exclColor), pgSGUI(pgSGUI), pgTGUI(pgTGUI){
     layout=new QVBoxLayout;
     this->setLayout(layout);
     fontFace=new smp_selector("colorBar_fontFace", "Font: ", 0, OCV_FF::qslabels());
@@ -29,6 +29,25 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor): cm_sel(cm_sel),
     layout->addWidget(displayANTicks);
     exportANTicks=new val_selector(10, "colorBar_exportANTicks", "Approximate Number of Ticks for Export: ", 0, 100, 0);
     layout->addWidget(exportANTicks);
+
+    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
+    calibXY=new QPushButton;
+    calibXY->setText("Calibrate YZ Scan");
+    calibXY->setCheckable(true);
+    connect(calibXY, SIGNAL(toggled(bool)), this, SLOT(onCalibrateXY(bool)));
+    tlay->addWidget(calibXY);
+    tilt=new val_selector(1., "colorMap_tilt", "Ammount of tilt: ", 1, 10000., 0);
+    tlay->addWidget(tilt);
+    movTilt=new QPushButton;
+    movTilt->setText("Tilt");
+    movTilt->setCheckable(true);
+    connect(movTilt, SIGNAL(toggled(bool)), this, SLOT(onMovTilt(bool)));
+    tlay->addWidget(movTilt);
+    tlay->addStretch(0); tlay->setMargin(0);
+    layout->addWidget(twid);
+
+    QLabel* txt=new QLabel("(Scan -> Tilt -> Refocus -> Scan -> Tilt -> Refocus)");
+    layout->addWidget(txt);
 }
 
 void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double min, double max, bool excludeOutOfRange, bool isForExport){
@@ -106,4 +125,23 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
 
 void colorMap::onChanged(){
     _changed=true;
+}
+
+void colorMap::onCalibrateXY(bool state){
+    if(state){      //start
+        pgSGUI->doOneRound();
+        while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
+        phiX0=pgSGUI->phiXres;
+        phiY0=pgSGUI->phiYres;
+    }else{
+        pgSGUI->doOneRound();
+        while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
+        phiX1=pgSGUI->phiXres;
+        phiY1=pgSGUI->phiYres;
+    }
+}
+
+void colorMap::onMovTilt(bool state){
+    if(state) pgTGUI->doTilt( tilt->val, tilt->val, false);
+    else      pgTGUI->doTilt(-tilt->val,-tilt->val, false);
 }

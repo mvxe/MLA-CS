@@ -32,6 +32,7 @@ public:
     QTimer* timerCM;  // we use this timer to maintain continuous measurments. If a measurement thread does this recursively opencv/opencl for some reason shits itself.
     constexpr static unsigned timerCM_delay=100;
 
+    std::atomic<bool> measurementInProgress{false}; //for outside calling functions
     void doOneRound();
 
     cvMat_safe scanRes;     //contains the scan result
@@ -41,6 +42,9 @@ public:
     std::mutex& _lock_mes;
     std::mutex& _lock_comp;
     double vsConv(val_selector* vs);
+
+    std::atomic<double> phiXres;
+    std::atomic<double> phiYres;
 private:
     void init_gui_activation();
     void init_gui_settings();
@@ -80,9 +84,8 @@ private:
     std::atomic<bool> PVTsRdy{false};
     void updatePVTs(std::string &report);   // update PVTs whenever measurement paramaters are changed, returns true if PVT fails or accels/speeds are to high
 
-    void _doOneRound();
     std::atomic<bool> keepMeasuring{false};
-
+    void _doOneRound();
 public Q_SLOTS:
     void recalculate();
 private Q_SLOTS:

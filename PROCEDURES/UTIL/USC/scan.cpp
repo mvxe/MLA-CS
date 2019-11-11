@@ -158,6 +158,7 @@ void pgScanGUI::updatePVTs(std::string &report){
 int NA=0;
 void pgScanGUI::doOneRound(){
     if(!PVTsRdy) recalculate();
+    measurementInProgress=true;
     go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this));
 }
 
@@ -304,8 +305,11 @@ void pgScanGUI::_doOneRound(){
         cv::Mat res;
         cv::UMat(dftRes,{0,0,2,2}).copyTo(res);
         double phiX= 2*M_PI*std::abs(res.at<std::complex<float>>(0,1))/nRows/nCols/nCols;
-        double phiY=-2*M_PI*std::abs(res.at<std::complex<float>>(1,0))/nRows/nCols/nRows;
+        double phiY= 2*M_PI*std::abs(res.at<std::complex<float>>(1,0))/nRows/nCols/nRows;
         std::cout<<"Phases X,Y: "<<phiX<< " "<<phiY<<"\n";
+        if(std::arg(res.at<std::complex<float>>(0,1))>0) phiX*=-1;
+        if(std::arg(res.at<std::complex<float>>(1,0))>0) phiY*=-1;
+        std::cout<<"CPhases X,Y: "<<phiX<< " "<<phiY<<"\n";
 
         cv::Mat slopeX1(1, nCols, CV_32F);
         cv::UMat slopeUX1(1, nCols, CV_32F);
@@ -322,6 +326,9 @@ void pgScanGUI::_doOneRound(){
         slopeY1.copyTo(slopeUY1);
         cv::repeat(slopeUY1, 1, nCols, slopeUY);
         cv::add(slopeUY,resultFinalPhase,resultFinalPhase);
+
+        phiXres=phiX;
+        phiYres=phiY;
     }
 
     cv::minMaxLoc(resultFinalPhase, &min, &max, &ignore, &ignore, maskUMatNot);  //the ignored mask values will be <min , everything is in nm
@@ -337,4 +344,5 @@ void pgScanGUI::_doOneRound(){
     std::cerr<<"Free: "<<go.pGCAM->iuScope->FQsPCcam.getFreeNumber()<<"\n";
     std::cerr<<"Full: "<<go.pGCAM->iuScope->FQsPCcam.getFullNumber()<<"\n";
 
+    if(_lock_mes.try_lock()){_lock_mes.unlock();measurementInProgress=false;}
 }

@@ -75,7 +75,6 @@ private Q_SLOTS:
     void work_fun();
     void on_tab_change(int index);
     void on_EP_sel_released();
-
 };
 
 

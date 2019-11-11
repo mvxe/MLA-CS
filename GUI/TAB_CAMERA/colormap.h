@@ -5,11 +5,14 @@
 class smp_selector;
 class val_selector;
 class QVBoxLayout;
+class pgScanGUI;
+class pgTiltGUI;
+class QPushButton;
 
 class colorMap: public QWidget{
     Q_OBJECT
 public:
-    colorMap(smp_selector* cm_sel, cv::Scalar& exclColor);
+    colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI);
     void colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double min, double max, bool excludeOutOfRange=false, bool isForExport=false);
     const bool& changed{_changed};
 private:
@@ -23,13 +26,21 @@ private:
     val_selector* textOffset;
     val_selector* displayANTicks;
     val_selector* exportANTicks;
+    QPushButton* calibXY;
+    val_selector* tilt;
+    QPushButton* movTilt;
+    double phiX0, phiY0, phiX1, phiY1;
 
     smp_selector* cm_sel;
     cv::Scalar& exclColor;
+    pgScanGUI* pgSGUI;      //for XY calibration
+    pgTiltGUI* pgTGUI;      // ^^
     std::array<int,3> stdTicks{1,2,5}; //and further times 10
     bool _changed{false};
 private Q_SLOTS:
     void onChanged();
+    void onCalibrateXY(bool state);
+    void onMovTilt(bool state);
 };
 
 #endif // COLORMAP_H

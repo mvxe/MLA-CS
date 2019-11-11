@@ -45,10 +45,10 @@ public:
 public:
     val_selector* tilt_motor_speed; //the speed of the tilt motor, units/MIN !!!
 public Q_SLOTS:
-    void doTilt(double magnitude, bool isX, bool scale=true);
+    void doTilt(double magnitudeX, double magnitudeY, bool scale=true);
 private Q_SLOTS:
-    void _doTilt_T(double magnitude){doTilt(magnitude, true);}
-    void _doTilt_F(double magnitude){doTilt(magnitude, false);}
+    void _doTilt_X(double magnitude){doTilt(magnitude,0);}
+    void _doTilt_Y(double magnitude){doTilt(0,magnitude);}
     void onCalibrate(bool isStart, bool isX);
     void _onCalibrate_X(bool isStart){onCalibrate(isStart, true);}
     void _onCalibrate_Y(bool isStart){onCalibrate(isStart, false);}
