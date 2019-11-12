@@ -166,9 +166,6 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     if((event->button()==Qt::LeftButton)){
         int disX=size().width()/2-event->pos().x()+1;
         int disY=size().height()/2-event->pos().y()+2;
-        std::cout<<"width, height= "<<size().width()<<" "<<size().height()<<"\n";
-        std::cout<<"disx, disy= "<<disX<<" "<<disY<<"\n";
-        std::cout<<"disx, disy= "<<disX*parent->cMap->getXYnmppx()/1000000<<" "<<disY*parent->cMap->getXYnmppx()/1000000<<"\n";
         parent->pgMGUI->onMove(disX*parent->cMap->getXYnmppx()/1000000,disY*parent->cMap->getXYnmppx()/1000000,0,0);
     }
 }

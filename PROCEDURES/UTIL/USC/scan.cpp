@@ -275,6 +275,7 @@ void pgScanGUI::_doOneRound(){
     cv::Mat* maskMatNot=new cv::Mat;
     maskUMat.copyTo(*maskMat);
     maskUMatNot.copyTo(*maskMatNot);
+    int maskNonZero=cv::countNonZero(maskUMat);
 
     cv::transpose(resultFinalPhase,resultFinalPhase);   //now its the same rows,cols as the camera images
     cv::Mat* resultFinalPhaseL=new cv::Mat;
@@ -304,8 +305,10 @@ void pgScanGUI::_doOneRound(){
         cv::dft(padded, dftRes);
         cv::Mat res;
         cv::UMat(dftRes,{0,0,2,2}).copyTo(res);
-        double phiX= 2*M_PI*std::abs(res.at<std::complex<float>>(0,1))/nRows/nCols/nCols;
-        double phiY= 2*M_PI*std::abs(res.at<std::complex<float>>(1,0))/nRows/nCols/nRows;
+        long int totalnum=nRows*nCols;  //this already excludes padded
+        totalnum-=maskNonZero;          //subtract the mask events
+        double phiX= 2*M_PI*std::abs(res.at<std::complex<float>>(0,1))/totalnum/nCols;
+        double phiY= 2*M_PI*std::abs(res.at<std::complex<float>>(1,0))/totalnum/nRows;
         std::cout<<"Phases X,Y: "<<phiX<< " "<<phiY<<"\n";
         if(std::arg(res.at<std::complex<float>>(0,1))>0) phiX*=-1;
         if(std::arg(res.at<std::complex<float>>(1,0))>0) phiY*=-1;
