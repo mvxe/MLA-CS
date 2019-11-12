@@ -243,3 +243,5 @@ void colorMap::onMovTilt(bool state){
         phiYR-=tilt->val/62230;
     }
 }
+
+double colorMap::getXYnmppx(){return XYnmppx->val;}

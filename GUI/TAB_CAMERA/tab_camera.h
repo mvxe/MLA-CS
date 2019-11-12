@@ -2,6 +2,7 @@
 #define CONFIG_TAB_CAMERA_H
 #include "GUI/gui_includes.h"
 #include "colormap.h"
+class iImageDisplay;
 
     // These are from the old camera tab; TODO remove when replaced!
 class tab_camera_old{
@@ -21,7 +22,7 @@ class tab_camera_old{
 
 class tab_camera: public QWidget{
     Q_OBJECT
-
+friend iImageDisplay;
 public:
     tab_camera(QWidget* parent);
     ~tab_camera();
@@ -35,7 +36,7 @@ private:
     QTimer *timer;
 
     QHBoxLayout* layout;
-    QLabel* LDisplay;
+    iImageDisplay* LDisplay;
     colorMap* cMap;
     QWidget* tBarW;
     QVBoxLayout* layoutTBarW;
@@ -79,5 +80,15 @@ private Q_SLOTS:
     void on_EP_sel_released();
 };
 
+
+class iImageDisplay : public QLabel{
+    using QLabel::QLabel;
+    void mouseMoveEvent(QMouseEvent *event);
+    void mousePressEvent(QMouseEvent *event);
+    void mouseReleaseEvent(QMouseEvent *event);
+    void wheelEvent(QWheelEvent *event);
+public:
+    tab_camera* parent;
+};
 
 #endif // CONFIG_TAB_CAMERA_H

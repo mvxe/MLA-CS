@@ -47,10 +47,10 @@ public:
     bool ignoreNext=false;
 
 private Q_SLOTS:
-    void _onMoveX(double magnitude){onMove(magnitude,0,0,0);}
-    void _onMoveY(double magnitude){onMove(0,magnitude,0,0);}
-    void _onMoveZ(double magnitude){onMove(0,0,magnitude,0);}
-    void _onMoveF(double magnitude){onMove(0,0,0,magnitude);}
+    void _onMoveX(double magnitude);
+    void _onMoveY(double magnitude);
+    void _onMoveZ(double magnitude);
+    void _onMoveF(double magnitude);
     void onLockF(bool locked);
     void onFZdifChange(double X, double Y, double Z, double F);
     void onCalibrate(bool isStart, bool isX);

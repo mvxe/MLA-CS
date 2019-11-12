@@ -18,6 +18,7 @@ public:
     const bool& changed{_changed};
     void draw_bw_target(cv::Mat* src);
     void draw_bw_scalebar(cv::Mat* src);
+    double getXYnmppx();
 private:
     QVBoxLayout* layout;
     smp_selector* fontFace;

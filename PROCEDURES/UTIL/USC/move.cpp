@@ -73,11 +73,15 @@ void pgMoveGUI::init_gui_settings(){
     slayout->addWidget(twid);
 }
 
+void pgMoveGUI::_onMoveX(double magnitude){onMove(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0,0);}
+void pgMoveGUI::_onMoveY(double magnitude){onMove(0,magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0);}
+void pgMoveGUI::_onMoveZ(double magnitude){onMove(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val),0);}
+void pgMoveGUI::_onMoveF(double magnitude){onMove(0,0,0,magnitude*fMoveScale->val/1000*pow(10,mpow->val));}
 void pgMoveGUI::onMove(double Xmov, double Ymov, double Zmov, double Fmov){
-    double _Xmov=Xmov*xMoveScale->val/1000*pow(10,mpow->val);
-    double _Ymov=Ymov*xMoveScale->val/1000*pow(10,mpow->val);
-    double _Zmov=Zmov*zMoveScale->val/1000*pow(10,mpow->val)+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;
-    double _Fmov=Fmov*fMoveScale->val/1000*pow(10,mpow->val)-_Zmov;
+    double _Xmov=Xmov;
+    double _Ymov=Ymov;
+    double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;
+    double _Fmov=Fmov-_Zmov;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,_Xmov,_Ymov,_Zmov,_Fmov);
 }
 

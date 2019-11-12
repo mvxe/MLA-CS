@@ -6,7 +6,8 @@ tab_camera::tab_camera(QWidget* parent){
     layout=new QHBoxLayout;
     parent->setLayout(layout);
 
-    LDisplay=new QLabel;
+    LDisplay=new iImageDisplay;
+    LDisplay->parent=this;
     LDisplay->setMouseTracking(false);
     LDisplay->setScaledContents(false);
     LDisplay->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
@@ -149,4 +150,28 @@ void tab_camera::tab_entered(){
 void tab_camera::tab_exited(){
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
     timer->stop();
+}
+
+
+
+//  iImageDisplay EVENT HANDLING
+
+void iImageDisplay::mouseMoveEvent(QMouseEvent *event){
+
+}
+void iImageDisplay::mousePressEvent(QMouseEvent *event){
+
+}
+void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
+    if((event->button()==Qt::LeftButton)){
+        int disX=size().width()/2-event->pos().x()+1;
+        int disY=size().height()/2-event->pos().y()+2;
+        std::cout<<"width, height= "<<size().width()<<" "<<size().height()<<"\n";
+        std::cout<<"disx, disy= "<<disX<<" "<<disY<<"\n";
+        std::cout<<"disx, disy= "<<disX*parent->cMap->getXYnmppx()/1000000<<" "<<disY*parent->cMap->getXYnmppx()/1000000<<"\n";
+        parent->pgMGUI->onMove(disX*parent->cMap->getXYnmppx()/1000000,disY*parent->cMap->getXYnmppx()/1000000,0,0);
+    }
+}
+void iImageDisplay::wheelEvent(QWheelEvent *event){
+
 }
