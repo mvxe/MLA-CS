@@ -12,23 +12,29 @@ void pgMoveGUI::init_gui_activation(){
     alayout=new QVBoxLayout;
     gui_activation->setLayout(alayout);
 
-    xMove=new eadScrlBar("Move X: ", 200,20,1.5);
+    xMove=new eadScrlBar("Move X: ", 200,20);
     connect(xMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveX(double)));
     alayout->addWidget(xMove);
-    yMove=new eadScrlBar("Move Y: ", 200,20,1.5);
+    yMove=new eadScrlBar("Move Y: ", 200,20);
     connect(yMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveY(double)));
     alayout->addWidget(yMove);
-    zMove=new eadScrlBar("Move Z: ", 200,20,false,1.5);
+    zMove=new eadScrlBar("Move Z: ", 200,20,false);
     connect(zMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveZ(double)));
     alayout->addWidget(zMove);
-    fMove=new eadScrlBar("Move F: ", 200,20,true,1.5);
+    fMove=new eadScrlBar("Move F: ", 200,20,true);
     connect(fMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveF(double)));
     alayout->addWidget(fMove);
+
+    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
     FZdif=new val_selector(0, "F-Z= ", -200, 200, 6, 0, {"mm"});
     FZdif->setEnabled(false);
     connect(FZdif, SIGNAL(changed(double)), this, SLOT(_onMoveZF(double)));
     connect(fMove, SIGNAL(lock(bool)), this, SLOT(onLockF(bool)));
-    alayout->addWidget(FZdif);
+    tlay->addWidget(FZdif);
+    mpow=new val_selector(0, "Move X10^", 0, 6, 0);
+    tlay->addWidget(mpow);
+    tlay->addStretch(0); tlay->setMargin(0);
+    alayout->addWidget(twid);
 }
 
 void pgMoveGUI::onLockF(bool locked){FZdif->setEnabled(!locked);}
@@ -68,10 +74,10 @@ void pgMoveGUI::init_gui_settings(){
 }
 
 void pgMoveGUI::onMove(double Xmov, double Ymov, double Zmov, double Fmov){
-    double _Xmov=Xmov*xMoveScale->val/1000;
-    double _Ymov=Ymov*xMoveScale->val/1000;
-    double _Zmov=Zmov*zMoveScale->val/1000+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;
-    double _Fmov=Fmov*fMoveScale->val/1000-_Zmov;
+    double _Xmov=Xmov*xMoveScale->val/1000*pow(10,mpow->val);
+    double _Ymov=Ymov*xMoveScale->val/1000*pow(10,mpow->val);
+    double _Zmov=Zmov*zMoveScale->val/1000*pow(10,mpow->val)+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;
+    double _Fmov=Fmov*fMoveScale->val/1000*pow(10,mpow->val)-_Zmov;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,_Xmov,_Ymov,_Zmov,_Fmov);
 }
 

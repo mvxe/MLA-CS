@@ -29,6 +29,7 @@ public:
     eadScrlBar* zMove;
     eadScrlBar* fMove;
     val_selector* FZdif;
+    val_selector* mpow;    //to speed up movement by 10 to the power
 
     //settings
     QVBoxLayout* slayout;
