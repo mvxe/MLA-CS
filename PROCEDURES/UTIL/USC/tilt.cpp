@@ -47,6 +47,8 @@ void pgTiltGUI::init_gui_settings(){
 
     tilt_motor_speed=new val_selector(100, "pgTiltGUI_tilt_motor_speed", "Tilt motor speed: ", 0, 5000, 0);
     slayout->addWidget(tilt_motor_speed);
+    backlashc=new val_selector(1, "pgTiltGUI_backlashc", "Backlash Correction: ", 0, 100, 4);
+    slayout->addWidget(backlashc);
 }
 
 void pgTiltGUI::doTilt(double magnitudeX, double magnitudeY, bool scale){
@@ -67,9 +69,23 @@ void pgTiltGUI::doTilt(double magnitudeX, double magnitudeY, bool scale){
         dY=magnitudeY;
     }
     vel=tilt_motor_speed->val;
-    if(magnitudeX!=0 && magnitudeY!=0) go.pCNC->execCommand("G1 X",dX," Y",dY," F",vel,"\n");
-    else if(magnitudeX!=0)             go.pCNC->execCommand("G1 X",dX," F",vel,"\n");
-    else if(magnitudeY!=0)             go.pCNC->execCommand("G1 Y",dY," F",vel,"\n");
+    double bcorX, bcorY;
+
+    if(magnitudeX>0) bcorX=backlashc->val;
+    else if(magnitudeX<0) bcorX=-backlashc->val;
+    else bcorX=0;
+    if(magnitudeY>0) bcorY=backlashc->val;
+    else if(magnitudeY<0) bcorY=-backlashc->val;
+    else bcorY=0;
+
+    if(magnitudeX!=0 && magnitudeY!=0) go.pCNC->execCommand("G1 X",dX+bcorX," Y",dY+bcorY," F",vel,"\n");
+    else if(magnitudeX!=0)             go.pCNC->execCommand("G1 X",dX+bcorX," F",vel,"\n");
+    else if(magnitudeY!=0)             go.pCNC->execCommand("G1 Y",dY+bcorY," F",vel,"\n");
+
+    if(bcorX!=0 && bcorY!=0) go.pCNC->execCommand("G1 X",-bcorX," Y",-bcorY," F",vel,"\n");
+    else if(bcorX!=0)        go.pCNC->execCommand("G1 X",-bcorX," F",vel,"\n");
+    else if(bcorY!=0)        go.pCNC->execCommand("G1 Y",-bcorY," F",vel,"\n");
+
     if(magnitudeX!=0) dZ+=dX*focus_autoadjX->val;
     if(magnitudeY!=0) dZ+=dY*focus_autoadjY->val;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,dZ,-dZ);

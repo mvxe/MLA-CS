@@ -36,6 +36,7 @@ public:
     val_selector* tilt_mult;        //pixels time this gives the movement per unit interval
     val_selector* focus_autoadjX;   //how much is the Z adjusted per unit interval change of X
     val_selector* focus_autoadjY;
+    val_selector* backlashc;         //backlash correction, for every move it will go this much more, and then go back by the same ammount
 
     QPushButton* calib_focus_autoadjX;  //autocalibrates the focus adjustment
     QPushButton* calib_focus_autoadjY;

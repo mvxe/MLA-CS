@@ -236,10 +236,22 @@ eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize, double power){
     this->setLayout(layout);
 }
 
+// CHECKBOX WITH SAVE
 
-
-
-
+checkbox_save::checkbox_save(bool initialState, std::string varSaveName, QString label): valueSave(value, initialState, &go.gui_config.save,varSaveName){
+    this->setChecked(value);
+    this->setText(label);
+    connect(this, SIGNAL(toggled(bool)), this, SLOT(on_toggled(bool)));
+}
+void checkbox_save::on_toggled(bool state){
+    value=state;
+    Q_EMIT changed(value);
+    Q_EMIT changed();
+}
+void checkbox_save::setValue(bool nvalue){
+    value=nvalue;
+    this->setChecked(value);
+}
 
 
 

@@ -8,6 +8,7 @@ class QVBoxLayout;
 class pgScanGUI;
 class pgTiltGUI;
 class QPushButton;
+class checkbox_save;
 
 class colorMap: public QWidget{
     Q_OBJECT
@@ -26,10 +27,24 @@ private:
     val_selector* textOffset;
     val_selector* displayANTicks;
     val_selector* exportANTicks;
+    val_selector* XYnmppx;
     QPushButton* calibXY;
     val_selector* tilt;
     QPushButton* movTilt;
-    double phiX0, phiY0, phiX1, phiY1;
+
+    val_selector* xysbar_unit;
+    val_selector* xysbar_thck;
+    val_selector* xysbar_txtoffset;
+    val_selector* xysbar_xoffset;
+    val_selector* xysbar_yoffset;
+    checkbox_save* xysbar_color_inv;
+
+    val_selector* xysbar_unit_Export;
+    val_selector* xysbar_xoffset_Export;
+    val_selector* xysbar_yoffset_Export;
+
+
+    double phiX0, phiY0, phiX1, phiY1, phiXR, phiYR;
 
     smp_selector* cm_sel;
     cv::Scalar& exclColor;

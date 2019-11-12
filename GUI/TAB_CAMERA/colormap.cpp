@@ -10,8 +10,6 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
     fontSize=new val_selector(1., "colorBar_fontSize", "Font Size for Display: ", 0, 10., 2);
     connect(fontSize, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(fontSize);
-    fontSizeExport=new val_selector(1., "colorBar_fontSiz_exporte", "Font Size for Export: ", 0, 10., 2);
-    layout->addWidget(fontSizeExport);
     fontThickness=new val_selector(1, "colorBar_fontThickness", "Font Thickness: ", 1, 10, 0, 0, {"px"});
     connect(fontThickness, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(fontThickness);
@@ -27,16 +25,54 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
     displayANTicks=new val_selector(10, "colorBar_displayANTicks", "Approximate Number of Ticks for Display: ", 0, 100, 0);
     connect(displayANTicks, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(displayANTicks);
+
+    xysbar_unit=new val_selector(0, "colorBar_xysbar_unit", "XY Scalebar Unit: ", -1000, 1000, 2, 0, {"um"});
+    connect(xysbar_unit, SIGNAL(changed()), this, SLOT(onChanged()));
+    layout->addWidget(xysbar_unit);
+    xysbar_thck=new val_selector(1, "colorBar_xysbar_thck", "XY Scalebar Thickness: ", 1, 100, 0, 0, {"px"});
+    connect(xysbar_thck, SIGNAL(changed()), this, SLOT(onChanged()));
+    layout->addWidget(xysbar_thck);
+    xysbar_txtoffset=new val_selector(2, "colorBar_xysbar_txtoffset", "XY Scalebar Text Offset: ", 0, 100, 0, 0, {"px"});
+    connect(xysbar_txtoffset, SIGNAL(changed()), this, SLOT(onChanged()));
+    layout->addWidget(xysbar_txtoffset);
+    xysbar_xoffset=new val_selector(0, "colorBar_xysbar_xoffset", "Horizontal Offset for XY Scalebar: ", -10000, 10000, 0, 0, {"px"});
+    connect(xysbar_xoffset, SIGNAL(changed()), this, SLOT(onChanged()));
+    layout->addWidget(xysbar_xoffset);
+    xysbar_yoffset=new val_selector(0, "colorBar_xysbar_yoffset", "Vertical Offset for XY Scalebar: ", -10000, 10000, 0, 0, {"px"});
+    connect(xysbar_yoffset, SIGNAL(changed()), this, SLOT(onChanged()));
+    layout->addWidget(xysbar_yoffset);
+    xysbar_color_inv=new checkbox_save(false,"colorBar_xysbar_inverclr","Invert XY Scalebar Color: ");
+    connect(xysbar_color_inv, SIGNAL(changed()), this, SLOT(onChanged()));
+    layout->addWidget(xysbar_color_inv);
+
+    QLabel* hline=new QLabel;
+    hline->setFrameStyle(QFrame::HLine | QFrame::Plain);
+    layout->addWidget(hline);
+
+    fontSizeExport=new val_selector(1., "colorBar_fontSiz_exporte", "Font Size for Export: ", 0, 10., 2);
+    layout->addWidget(fontSizeExport);
     exportANTicks=new val_selector(10, "colorBar_exportANTicks", "Approximate Number of Ticks for Export: ", 0, 100, 0);
     layout->addWidget(exportANTicks);
+    xysbar_unit_Export=new val_selector(0, "colorBar_xysbar_unit_Export", "XY Scalebar Unit for Export: ", -1000, 1000, 2, 0, {"um"});
+    layout->addWidget(xysbar_unit_Export);
+    xysbar_xoffset_Export=new val_selector(0, "colorBar_xysbar_xoffset_Export", "Horizontal Offset for XY Scalebar for Export: ", -10000, 10000, 0, 0, {"px"});
+    layout->addWidget(xysbar_xoffset_Export);
+    xysbar_yoffset_Export=new val_selector(0, "colorBar_xysbar_yoffset_Export", "Vertical Offset for XY Scalebar for Export: ", -10000, 10000, 0, 0, {"px"});
+    layout->addWidget(xysbar_yoffset_Export);
 
+    QLabel* hline2=new QLabel;
+    hline2->setFrameStyle(QFrame::HLine | QFrame::Plain);
+    layout->addWidget(hline2);
+
+    XYnmppx=new val_selector(10, "colorBar_XYnmppx", "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
+    layout->addWidget(XYnmppx);
     QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
     calibXY=new QPushButton;
     calibXY->setText("Calibrate YZ Scan");
     calibXY->setCheckable(true);
     connect(calibXY, SIGNAL(toggled(bool)), this, SLOT(onCalibrateXY(bool)));
     tlay->addWidget(calibXY);
-    tilt=new val_selector(1., "colorMap_tilt", "Ammount of tilt: ", 1, 10000., 0);
+    tilt=new val_selector(1., "colorMap_tilt", "Ammount of tilt: ", -10000., 10000., 0);
     tlay->addWidget(tilt);
     movTilt=new QPushButton;
     movTilt->setText("Tilt");
@@ -104,6 +140,21 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
         cv::compare(*src, max, mask, cv::CMP_GT);
         temp.setTo(exclColor, mask);
     }
+
+    double lxysbar_unit=isForExport?xysbar_unit_Export->val:xysbar_unit->val;
+    if(lxysbar_unit!=0 && XYnmppx->val!=0){
+        cv::Size size=cv::getTextSize(util::toString(xysbar_unit->val," um"), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
+        int xofs=temp.cols/2+(isForExport?xysbar_xoffset_Export->val:xysbar_xoffset->val);
+        int yofs=temp.rows/2+(isForExport?xysbar_yoffset_Export->val:xysbar_yoffset->val);
+        cv::Scalar frontC,backC;
+        frontC=xysbar_color_inv->val?cv::Scalar{255,255,255}:cv::Scalar{0,0,0};
+        backC=xysbar_color_inv->val?cv::Scalar{0,0,0}:cv::Scalar{255,255,255};
+        cv::putText(temp,util::toString(lxysbar_unit," um"), {xofs-size.width/2, yofs-(int)xysbar_txtoffset->val}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, backC, fontThickness->val+1, cv::LINE_AA);
+        cv::putText(temp,util::toString(lxysbar_unit," um"), {xofs-size.width/2, yofs-(int)xysbar_txtoffset->val}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, frontC, fontThickness->val, cv::LINE_AA);
+        cv::rectangle(temp, {xofs-(int)(lxysbar_unit*1000/XYnmppx->val/2)-1, yofs-1, (int)(lxysbar_unit*1000/XYnmppx->val)+2, (int)xysbar_thck->val+2}, backC,-1);
+        cv::rectangle(temp, {xofs-(int)(lxysbar_unit*1000/XYnmppx->val/2), yofs, (int)(lxysbar_unit*1000/XYnmppx->val), (int)xysbar_thck->val}, frontC,-1);
+    }
+
     cv::cvtColor(temp, cv::Mat(*dst,{1,marginY+1,hsize-2,vsize-2}), cv::COLOR_BGR2RGBA);
     cv::rectangle(*dst, {0,marginY}, {hsize-1,marginY+vsize-1}, {0,0,0,255}, 1);
     cv::Mat amat(vsize, 1, CV_8U);
@@ -133,15 +184,30 @@ void colorMap::onCalibrateXY(bool state){
         while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
         phiX0=pgSGUI->phiXres;
         phiY0=pgSGUI->phiYres;
+        phiXR=0;
+        phiYR=0;
     }else{
         pgSGUI->doOneRound();
         while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
         phiX1=pgSGUI->phiXres;
         phiY1=pgSGUI->phiYres;
+        double phiD, phiR;
+        phiD=sqrt(pow(phiX1-phiX0,2)+pow(phiY1-phiY0,2));
+        phiR=sqrt(pow(phiXR,2)+pow(phiYR,2));
+        double result;
+        result=phiD/phiR;
+        XYnmppx->setValue(abs(result));
     }
 }
 
 void colorMap::onMovTilt(bool state){
-    if(state) pgTGUI->doTilt( tilt->val, tilt->val, false);
-    else      pgTGUI->doTilt(-tilt->val,-tilt->val, false);
+    if(state) {
+        pgTGUI->doTilt( tilt->val, tilt->val, false);
+        phiXR+=tilt->val/62230;
+        phiYR+=tilt->val/62230;
+    }
+    else{ pgTGUI->doTilt(-tilt->val,-tilt->val, false);
+        phiXR-=tilt->val/62230;
+        phiYR-=tilt->val/62230;
+    }
 }

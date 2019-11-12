@@ -5,6 +5,7 @@
 #include <QWidget>
 #include <QLabel>
 #include <QToolButton>
+#include <QCheckBox>
 #include "UTIL/containers.h"
 
 class QHBoxLayout;
@@ -132,7 +133,24 @@ Q_SIGNALS:
 
 
 
+//  CHECKBOX WITH SAVE
 
+class checkbox_save : public QCheckBox{       //template for devices
+    Q_OBJECT
+public:
+    checkbox_save(bool initialState, std::string varSaveName, QString label);
+    const bool& val{value};
+    void setValue(bool nvalue);
+
+private:
+    bool value;
+    cc_save<bool> valueSave;
+private Q_SLOTS:
+    void on_toggled(bool state);
+Q_SIGNALS:
+    void changed();
+    void changed(bool state);
+};
 
 
 // Adding scroll to QToolButton
