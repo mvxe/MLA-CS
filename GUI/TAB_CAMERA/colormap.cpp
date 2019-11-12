@@ -41,7 +41,7 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
     xysbar_yoffset=new val_selector(0, "colorBar_xysbar_yoffset", "Vertical Offset for XY Scalebar: ", -10000, 10000, 0, 0, {"px"});
     connect(xysbar_yoffset, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(xysbar_yoffset);
-    xysbar_color_inv=new checkbox_save(false,"colorBar_xysbar_inverclr","Invert XY Scalebar Color: ");
+    xysbar_color_inv=new checkbox_save(false,"colorBar_xysbar_inverclr","Invert XY Scalebar Color");
     connect(xysbar_color_inv, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(xysbar_color_inv);
 
@@ -149,10 +149,10 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
         cv::Scalar frontC,backC;
         frontC=xysbar_color_inv->val?cv::Scalar{255,255,255}:cv::Scalar{0,0,0};
         backC=xysbar_color_inv->val?cv::Scalar{0,0,0}:cv::Scalar{255,255,255};
-        cv::putText(temp,util::toString(lxysbar_unit," um"), {xofs-size.width/2, yofs-(int)xysbar_txtoffset->val}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, backC, fontThickness->val+1, cv::LINE_AA);
-        cv::putText(temp,util::toString(lxysbar_unit," um"), {xofs-size.width/2, yofs-(int)xysbar_txtoffset->val}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, frontC, fontThickness->val, cv::LINE_AA);
-        cv::rectangle(temp, {xofs-(int)(lxysbar_unit*1000/XYnmppx->val/2)-1, yofs-1, (int)(lxysbar_unit*1000/XYnmppx->val)+2, (int)xysbar_thck->val+2}, backC,-1);
-        cv::rectangle(temp, {xofs-(int)(lxysbar_unit*1000/XYnmppx->val/2), yofs, (int)(lxysbar_unit*1000/XYnmppx->val), (int)xysbar_thck->val}, frontC,-1);
+        for(int i=1;i>=0;i--){
+            cv::putText(temp,util::toString(lxysbar_unit," um"), {xofs-size.width/2, yofs-(int)xysbar_txtoffset->val}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, i?backC:frontC, fontThickness->val+i, cv::LINE_AA);
+            cv::rectangle(temp, {xofs-(int)(lxysbar_unit*1000/XYnmppx->val/2)-i, yofs-i, (int)(lxysbar_unit*1000/XYnmppx->val)+2*i, (int)xysbar_thck->val+2*i}, i?backC:frontC,-1);
+        }
     }
 
     cv::cvtColor(temp, cv::Mat(*dst,{1,marginY+1,hsize-2,vsize-2}), cv::COLOR_BGR2RGBA);
@@ -172,6 +172,38 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
     }
     if(nticks!=0) cblabel.copyTo(cv::Mat(*dst,{hsize+Gap+textHDis+cbhsize+textMaxWidth+textHDis,dst->rows/2-cblabel.rows/2,cblabel.cols,cblabel.rows}));
     _changed=false;
+}
+
+void colorMap::draw_bw_target(cv::Mat* src){
+    const int targWidth=2;
+    const int targLenght=20;
+    const int targDis=10;
+    int xofs=src->cols/2;
+    int yofs=src->rows/2;
+    cv::Scalar frontC,backC;
+    frontC=xysbar_color_inv->val?cv::Scalar{255}:cv::Scalar{0};
+    backC=xysbar_color_inv->val?cv::Scalar{0}:cv::Scalar{255};
+    for(int i=1;i>=0;i--){
+        cv::rectangle(*src, {xofs-targLenght-targDis-i, yofs-targWidth/2-i, targLenght+2*i, targWidth+2*i}, i?backC:frontC,-1);
+        cv::rectangle(*src, {xofs+targDis-i, yofs-targWidth/2-i, targLenght+2*i, targWidth+2*i}, i?backC:frontC,-1);
+        cv::rectangle(*src, {xofs-targWidth/2-i, yofs-targLenght-targDis-i, targWidth+2*i, targLenght+2*i}, i?backC:frontC,-1);
+        cv::rectangle(*src, {xofs-targWidth/2-i, yofs+targDis-i, targWidth+2*i, targLenght+2*i}, i?backC:frontC,-1);
+    }
+}
+void colorMap::draw_bw_scalebar(cv::Mat* src){
+    double lxysbar_unit=xysbar_unit->val; int ignore;
+    if(lxysbar_unit!=0 && XYnmppx->val!=0){
+        cv::Size size=cv::getTextSize(util::toString(xysbar_unit->val," um"), OCV_FF::ids[fontFace->index], fontSize->val, fontThickness->val, &ignore);
+        int xofs=src->cols/2+xysbar_xoffset->val;
+        int yofs=src->rows/2+xysbar_yoffset->val;
+        cv::Scalar frontC,backC;
+        frontC=xysbar_color_inv->val?cv::Scalar{255}:cv::Scalar{0};
+        backC=xysbar_color_inv->val?cv::Scalar{0}:cv::Scalar{255};
+        for(int i=1;i>=0;i--){
+            cv::putText(*src,util::toString(lxysbar_unit," um"), {xofs-size.width/2, yofs-(int)xysbar_txtoffset->val}, OCV_FF::ids[fontFace->index], fontSize->val, i?backC:frontC, fontThickness->val+i, cv::LINE_AA);
+            cv::rectangle(*src, {xofs-(int)(lxysbar_unit*1000/XYnmppx->val/2)-i, yofs-i, (int)(lxysbar_unit*1000/XYnmppx->val)+2*i, (int)xysbar_thck->val+2*i}, i?backC:frontC,-1);
+        }
+    }
 }
 
 void colorMap::onChanged(){

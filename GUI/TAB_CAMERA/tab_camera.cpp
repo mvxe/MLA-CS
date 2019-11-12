@@ -65,6 +65,14 @@ tab_camera::tab_camera(QWidget* parent){
     pgHistGUI=new pgHistogrameGUI(400, 50, &pgSGUI->scanRes, &pgSGUI->maskN, cm_sel, exclColor);
     layoutTBarW->addWidget(pgHistGUI);
 
+    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
+    main_show_scale=new checkbox_save(false,"tab_camera_main_show_scale","ScaleBar");
+    tlay->addWidget(main_show_scale);
+    main_show_target=new checkbox_save(false,"tab_camera_main_show_target","Target");
+    tlay->addWidget(main_show_target);
+    tlay->addStretch(0); tlay->setMargin(0);
+    layoutTBarW->addWidget(twid);
+
     timer=new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
 }
@@ -84,7 +92,14 @@ void tab_camera::work_fun(){
 
     if(selDisp->index==0){  // Camera
         if(onDisplay!=nullptr){
-            LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
+            if(main_show_target->isChecked() || main_show_scale->isChecked()){
+                cv::Mat temp;
+                temp=onDisplay->clone();
+                if(main_show_target->isChecked()) cMap->draw_bw_target(&temp);
+                if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp);
+                LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_Indexed8)));
+            }
+            else LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
         }
         if(pgSGUI->scanRes.changed || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed){
             pgHistGUI->updateImg();

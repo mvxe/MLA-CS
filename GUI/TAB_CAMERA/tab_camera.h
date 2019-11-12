@@ -62,6 +62,8 @@ private:
     cc_save<double> _scolorB{exclColor.val[2], 0,&go.gui_config.save,"tab_camera-exclColor-R"};
     bool exclColorChanged{false};
     pgHistogrameGUI* pgHistGUI;
+    checkbox_save* main_show_scale;
+    checkbox_save* main_show_target;
 
     FQ* framequeueDisp;
     const cv::Mat* mat;

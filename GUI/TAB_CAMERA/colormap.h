@@ -16,6 +16,8 @@ public:
     colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI);
     void colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double min, double max, bool excludeOutOfRange=false, bool isForExport=false);
     const bool& changed{_changed};
+    void draw_bw_target(cv::Mat* src);
+    void draw_bw_scalebar(cv::Mat* src);
 private:
     QVBoxLayout* layout;
     smp_selector* fontFace;
