@@ -170,5 +170,5 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     }
 }
 void iImageDisplay::wheelEvent(QWheelEvent *event){
-
+    parent->pgMGUI->_onMoveZ(10*event->delta());
 }

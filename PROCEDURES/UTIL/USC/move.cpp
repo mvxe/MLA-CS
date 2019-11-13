@@ -78,6 +78,7 @@ void pgMoveGUI::_onMoveY(double magnitude){onMove(0,magnitude*xMoveScale->val/10
 void pgMoveGUI::_onMoveZ(double magnitude){onMove(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val),0);}
 void pgMoveGUI::_onMoveF(double magnitude){onMove(0,0,0,magnitude*fMoveScale->val/1000*pow(10,mpow->val));}
 void pgMoveGUI::onMove(double Xmov, double Ymov, double Zmov, double Fmov){
+    if(!go.pXPS->connected) return;
     double _Xmov=Xmov;
     double _Ymov=Ymov;
     double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;
@@ -93,6 +94,7 @@ void pgMoveGUI::onFZdifChange(double X, double Y, double Z, double F){
 }
 
 void pgMoveGUI::_onMoveZF(double difference){
+    if(!go.pXPS->connected) return;
     if(ignoreNext){ignoreNext=false;return;}
     if(FZdifCur==-9999) return;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,0,difference-FZdifCur);
