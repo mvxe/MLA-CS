@@ -78,7 +78,11 @@ tab_camera::tab_camera(QWidget* parent){
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
 
     clickMenu=new QMenu;
-    clickMenu->addAction("Save int. and fft. at this pixel on next measurement.", this, SLOT(onSavePixData()));
+    clickMenu->addAction("Save int. and fft. at this pixel on next measurement", this, SLOT(onSavePixData()));
+    clickMenu->addAction("Save image to file", this, SLOT(onSaveCameraPicture()));
+
+    clickMenuDepth=new QMenu;
+    clickMenuDepth->addAction("Save image (wtih border, scalebar and colorbar) to file", this, SLOT(onSaveDepthMap()));
 }
 
 tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
@@ -98,8 +102,7 @@ void tab_camera::work_fun(){
         LDisplay->isDepth=false;
         if(onDisplay!=nullptr){
             if(main_show_target->isChecked() || main_show_scale->isChecked()){
-                cv::Mat temp;
-                temp=onDisplay->clone();
+                cv::Mat temp=onDisplay->clone();
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp);
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp);
                 LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_Indexed8)));
@@ -116,8 +119,7 @@ void tab_camera::work_fun(){
         if(pgSGUI->scanRes.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed){
             double min,max;
             pgHistGUI->updateImg(&min, &max);
-            cv::Mat* mat;
-            mat=pgSGUI->scanRes.getMat();
+            cv::Mat* mat=pgSGUI->scanRes.getMat();
             if(mat!=nullptr){
                 cv::Mat display;
                 cMap->colormappize(mat, &display, pgSGUI->mask.getMat(), min, max, pgHistGUI->ExclOOR);
@@ -172,14 +174,18 @@ void iImageDisplay::mousePressEvent(QMouseEvent *event){
 void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     int xcoord=event->pos().x()-(width()-pixmap()->width())/2;
     int ycoord=event->pos().y()-(height()-pixmap()->height())/2;
+    parent->clickCoordX=xcoord;
+    parent->clickCoordY=ycoord;
     if(xcoord<0 || xcoord>=pixmap()->width() || ycoord<0 || ycoord>=pixmap()->height()) return; //ignore events outside pixmap; NOTE: the depth pixmap is expanded!, need additional filtering
-    if(isDepth){}
+    if(isDepth){
+        if(event->button()==Qt::RightButton){
+            parent->clickMenuDepth->popup(QCursor::pos());
+        }
+    }
     else{
         if(event->button()==Qt::LeftButton){
             parent->pgMGUI->onMove((pixmap()->width()/2-xcoord)*parent->cMap->getXYnmppx()/1000000,(pixmap()->height()/2-ycoord)*parent->cMap->getXYnmppx()/1000000,0,0);
         }else if(event->button()==Qt::RightButton){
-            parent->clickCoordX=xcoord;
-            parent->clickCoordY=ycoord;
             parent->clickMenu->popup(QCursor::pos());
         }
     }
@@ -193,7 +199,7 @@ void iImageDisplay::wheelEvent(QWheelEvent *event){
 
 
 void tab_camera::onSavePixData(void){
-    QString fileName = QFileDialog::getSaveFileName(this,"Select text file for saving pixel data.", "","Text (*.txt *.dat *.csv)");
+    QString fileName=QFileDialog::getSaveFileName(this,"Select text file for saving pixel data.", "","Text (*.txt *.dat *.csv)");
     if(fileName.isEmpty())return;
     std::lock_guard<std::mutex>lock(pgSGUI->clickDataLock);
     pgSGUI->savePix=true;
@@ -201,4 +207,31 @@ void tab_camera::onSavePixData(void){
     if(pgSGUI->clickFilename.find(".txt")==std::string::npos && pgSGUI->clickFilename.find(".dat")==std::string::npos && pgSGUI->clickFilename.find(".csv")==std::string::npos) pgSGUI->clickFilename+=".txt";
     pgSGUI->clickCoordX=clickCoordX;
     pgSGUI->clickCoordY=clickCoordY;
+}
+void tab_camera::onSaveCameraPicture(void){
+    std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving Camera Picture.", "","Images (*.png)").toStdString();
+    if(fileName.empty())return;
+    if(fileName.find(".png")==std::string::npos) fileName+=".png";
+    FQ* fq=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
+    fq->setUserFps(999,1);
+    while(fq->getUserMat()==nullptr);
+    cv::Mat temp=onDisplay->clone();
+    if(main_show_target->isChecked()) cMap->draw_bw_target(&temp);
+    if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp);
+    imwrite(fileName, temp,{cv::IMWRITE_PNG_COMPRESSION,9});
+    go.pGCAM->iuScope->FQsPCcam.deleteFQ(fq);
+}
+void tab_camera::onSaveDepthMap(void){
+    std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving Depth Map (wtih border, scalebar and colorbar).", "","Images (*.png)").toStdString();
+    if(fileName.empty())return;
+    if(fileName.find(".png")==std::string::npos) fileName+=".png";
+    double min,max;
+    pgHistGUI->updateImg(&min, &max);
+    cv::Mat* mat=pgSGUI->scanRes.getMat();
+    if(mat!=nullptr){
+        cv::Mat display;
+        cMap->colormappize(mat, &display, pgSGUI->mask.getMat(), min, max, pgHistGUI->ExclOOR);
+        cv::cvtColor(display, display, cv::COLOR_RGBA2BGRA);
+        imwrite(fileName, display,{cv::IMWRITE_PNG_COMPRESSION,9});
+    }
 }

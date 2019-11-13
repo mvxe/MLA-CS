@@ -67,6 +67,7 @@ private:
     checkbox_save* main_show_target;
 
     QMenu* clickMenu;
+    QMenu* clickMenuDepth;
     int clickCoordX, clickCoordY;
     FQ* framequeueDisp;
     const cv::Mat* mat;
@@ -82,6 +83,8 @@ private Q_SLOTS:
     void on_EP_sel_released();
 
     void onSavePixData(void);
+    void onSaveCameraPicture(void);
+    void onSaveDepthMap(void);
 };
 
 
