@@ -35,6 +35,21 @@ void pgMoveGUI::init_gui_activation(){
     tlay->addWidget(mpow);
     tlay->addStretch(0); tlay->setMargin(0);
     alayout->addWidget(twid);
+
+    QWidget* twid2=new QWidget; QHBoxLayout* tlay2=new QHBoxLayout; twid2->setLayout(tlay2);
+    addDial=new QPushButton;
+    connect(addDial, SIGNAL(released()), this, SLOT(onAddDial()));
+    addDial->setIcon(QPixmap(":/edit-add.svg"));
+    addDial->setMaximumSize(20,20);
+    tlay2->addWidget(addDial);
+    rmDial=new QPushButton;
+    connect(rmDial, SIGNAL(released()), this, SLOT(onRmDial()));
+    rmDial->setIcon(QPixmap(":/gtk-no.svg"));
+    rmDial->setMaximumSize(20,20);
+    tlay2->addWidget(rmDial);
+    tlay2->addWidget(new QLabel("Dis./Ang. Ctrl."));
+    tlay2->addStretch(0); tlay2->setMargin(0);
+    alayout->addWidget(twid2);
 }
 
 void pgMoveGUI::onLockF(bool locked){FZdif->setEnabled(!locked);}
@@ -68,8 +83,8 @@ void pgMoveGUI::init_gui_settings(){
     calib_autoadjYZ->setCheckable(true);
     connect(calib_autoadjYZ, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_Y(bool)));
     tlay->addWidget(calib_autoadjYZ);
-    QLabel* txt=new QLabel("(Click -> move X/Y -> focus -> Click)");
-    tlay->addWidget(txt); tlay->addStretch(0); tlay->setMargin(0);
+    tlay->addWidget(new QLabel("(Click -> move X/Y -> focus -> Click)"));
+    tlay->addStretch(0); tlay->setMargin(0);
     slayout->addWidget(twid);
 }
 
@@ -112,3 +127,17 @@ void pgMoveGUI::onCalibrate(bool isStart, bool isX){
         else    autoadjYZ->setValue(Z_cum/(go.pXPS->getPos(XPS::mgroup_XYZF).pos[1]-Y_cum));
     }
 }
+
+void pgMoveGUI::onAddDial(){
+    moveDial* moveFixed=new moveDial;
+    alayout->insertWidget(alayout->count()-1,moveFixed);
+    connect(moveFixed, SIGNAL(doMove(double,double)), this, SLOT(onDialMove(double,double)));
+    moveDials.push_back(moveFixed);
+}
+void pgMoveGUI::onRmDial(){
+    if(!moveDials.empty()){
+        delete moveDials.back();
+        moveDials.pop_back();
+    }
+}
+void pgMoveGUI::onDialMove(double x,double y){onMove(-x/1000, -y/1000, 0, 0);}

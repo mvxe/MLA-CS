@@ -48,13 +48,15 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
     QLabel* hline=new QLabel;
     hline->setFrameStyle(QFrame::HLine | QFrame::Plain);
     layout->addWidget(hline);
-
+    layout->addWidget(new QLabel("For whole image export settings above apply. For selection export:"));
     fontSizeExport=new val_selector(1., "colorBar_fontSiz_exporte", "Font Size for Export: ", 0, 10., 2);
     layout->addWidget(fontSizeExport);
     exportANTicks=new val_selector(10, "colorBar_exportANTicks", "Approximate Number of Ticks for Export: ", 0, 100, 0);
     layout->addWidget(exportANTicks);
     xysbar_unit_Export=new val_selector(0, "colorBar_xysbar_unit_Export", "XY Scalebar Unit for Export: ", -1000, 1000, 2, 0, {"um"});
     layout->addWidget(xysbar_unit_Export);
+    xysbar_corner_Export=new smp_selector("colorBar_xysbar_corner_Export", "Select XY Scalebar reference position: ", 0, {"center","top","bottom","left","right","top-left","top-right","bottom-left","bottom-right"});
+    layout->addWidget(xysbar_corner_Export);
     xysbar_xoffset_Export=new val_selector(0, "colorBar_xysbar_xoffset_Export", "Horizontal Offset for XY Scalebar for Export: ", -10000, 10000, 0, 0, {"px"});
     layout->addWidget(xysbar_xoffset_Export);
     xysbar_yoffset_Export=new val_selector(0, "colorBar_xysbar_yoffset_Export", "Vertical Offset for XY Scalebar for Export: ", -10000, 10000, 0, 0, {"px"});
@@ -141,11 +143,19 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
     }
     *dst=cv::Mat(vsize+2*marginY, hsize+Gap+cbhsize+textHDis+textMaxWidth+textHDis+cblabel.cols, CV_8UC4, {255,255,255,0});
 
+    // adding scalebar
     double lxysbar_unit=isForExport?xysbar_unit_Export->val:xysbar_unit->val;
     if(lxysbar_unit!=0 && XYnmppx->val!=0){
         cv::Size size=cv::getTextSize(util::toString(xysbar_unit->val," um"), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
         int xofs=temp.cols/2+(isForExport?xysbar_xoffset_Export->val:xysbar_xoffset->val);
         int yofs=temp.rows/2+(isForExport?xysbar_yoffset_Export->val:xysbar_yoffset->val);
+        if(isForExport) {
+            int in=xysbar_corner_Export->index;
+            if(in==1 || in==5 || in==6) yofs-=temp.rows/2;  //top
+            if(in==2 || in==7 || in==8) yofs+=temp.rows/2;  //bottom
+            if(in==3 || in==5 || in==7) xofs-=temp.cols/2;  //left
+            if(in==4 || in==6 || in==8) xofs+=temp.cols/2;  //right
+        }
         cv::Scalar frontC,backC;
         frontC=xysbar_color_inv->val?cv::Scalar{255,255,255}:cv::Scalar{0,0,0};
         backC=xysbar_color_inv->val?cv::Scalar{0,0,0}:cv::Scalar{255,255,255};

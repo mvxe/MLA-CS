@@ -264,3 +264,57 @@ void QScrollToolButton::wheelEvent(QWheelEvent *event){
     }
 }
 
+// MOVE DIAL
+
+
+moveDial::moveDial(){
+    layout=new QHBoxLayout;
+    lw=new QWidget;
+    layoutv=new QVBoxLayout;
+    move=new QPushButton;
+    move->setMaximumSize(50,50);
+    move->setMinimumSize(50,50);
+    move->setText("Move");
+    dial=new QDial;
+    dial->setMaximumSize(50,50);
+    dial->setMinimumSize(50,50);
+    dial->setRange(0,359);
+    dial->setWrapping(true);
+    dial->setValue(270);
+    connect(dial, SIGNAL(sliderMoved(int)), this, SLOT(onDialChanged(int)));
+    dis=new QDoubleSpinBox;
+    dis->setRange(0,10000);
+    dis->setDecimals(3);
+    dis->setValue(1);
+    dis->setPrefix("[Distance] "); dis->setSuffix(" um");
+    ang=new QDoubleSpinBox;
+    ang->setRange(0,360);
+    ang->setDecimals(3);
+    ang->setValue(0);
+    ang->setPrefix("[Angle] "); ang->setSuffix(" deg");
+    connect(ang, SIGNAL(valueChanged(double)), this, SLOT(onAngChanged(double)));
+    this->setLayout(layout);
+    lw->setLayout(layoutv);
+    layout->addWidget(move);
+    layout->addWidget(lw);
+    layout->addWidget(dial);
+    layoutv->addWidget(dis);
+    layoutv->addWidget(ang);
+    layout->setMargin(0);
+    layout->addStretch(0);
+    layoutv->setMargin(0);
+    connect(move, SIGNAL(released()), this, SLOT(onMove()));
+}
+void moveDial::onMove(){
+    Q_EMIT doMove(dis->value()*cos(ang->value()/180*M_PI), dis->value()*sin(ang->value()/180*M_PI));
+}
+void moveDial::onDialChanged(int val){
+    int res=val-270;
+    if(res<0) res+=360;
+    ang->setValue(res);
+}
+void moveDial::onAngChanged(double val){
+    int res=round(val+270);
+    if(res>=360) res-=360;
+    dial->setValue(res);
+}

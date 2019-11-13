@@ -15,6 +15,7 @@ class QDoubleSpinBox;
 class QTimer;
 class QPushButton;
 class QScrollToolButton;
+class QDial;
 
 //  VAL SELECTOR
 
@@ -158,6 +159,29 @@ class QScrollToolButton : public QToolButton{
     Q_OBJECT
 private:
     void wheelEvent(QWheelEvent *event);
+};
+
+
+// MOVE DIAL
+
+class moveDial : public QWidget{
+    Q_OBJECT
+public:
+    moveDial();
+
+    QHBoxLayout* layout;
+    QWidget* lw;
+    QVBoxLayout* layoutv;
+    QPushButton* move;
+    QDial* dial;
+    QDoubleSpinBox* dis;
+    QDoubleSpinBox* ang;
+private Q_SLOTS:
+    void onMove();
+    void onDialChanged(int val);
+    void onAngChanged(double val);
+Q_SIGNALS:
+    void doMove(double dx, double dy);
 };
 
 #endif // GUI_AUX_OBJECTS_H

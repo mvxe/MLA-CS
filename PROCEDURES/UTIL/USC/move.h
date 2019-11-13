@@ -8,6 +8,7 @@ class QHBoxLayout;
 class val_selector;
 class eadScrlBar;
 class QPushButton;
+class moveDial;
 
 class pgMoveGUI: public QObject{
     Q_OBJECT
@@ -30,6 +31,9 @@ public:
     eadScrlBar* fMove;
     val_selector* FZdif;
     val_selector* mpow;    //to speed up movement by 10 to the power
+    std::vector<moveDial*> moveDials;
+    QPushButton* addDial;
+    QPushButton* rmDial;
 
     //settings
     QVBoxLayout* slayout;
@@ -52,6 +56,9 @@ private Q_SLOTS:
     void onCalibrate(bool isStart, bool isX);
     void _onCalibrate_X(bool isStart){onCalibrate(isStart, true);}
     void _onCalibrate_Y(bool isStart){onCalibrate(isStart, false);}
+    void onAddDial();
+    void onRmDial();
+    void onDialMove(double x,double y);
 public Q_SLOTS:
     void _onMoveX(double magnitude);
     void _onMoveY(double magnitude);

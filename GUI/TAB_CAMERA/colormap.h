@@ -44,6 +44,7 @@ private:
     checkbox_save* xysbar_color_inv;
 
     val_selector* xysbar_unit_Export;
+    smp_selector* xysbar_corner_Export;
     val_selector* xysbar_xoffset_Export;
     val_selector* xysbar_yoffset_Export;
 
