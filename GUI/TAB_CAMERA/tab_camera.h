@@ -68,7 +68,13 @@ private:
 
     QMenu* clickMenu;
     QMenu* clickMenuDepth;
-    int clickCoordX, clickCoordY;
+
+    int selStartX, selStartY;
+    int selCurX, selCurY;
+    int selEndX, selEndY;
+    bool selectingDRB{false};
+    bool lastSelectingDRB{false};
+
     FQ* framequeueDisp;
     const cv::Mat* mat;
     const cv::Mat* onDisplay;

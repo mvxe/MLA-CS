@@ -116,13 +116,14 @@ void tab_camera::work_fun(){
         }
     }else{                  // Depth map
         LDisplay->isDepth=true;
-        if(pgSGUI->scanRes.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed){
+        if(pgSGUI->scanRes.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed || selectingDRB || lastSelectingDRB){
             double min,max;
             pgHistGUI->updateImg(&min, &max);
             cv::Mat* mat=pgSGUI->scanRes.getMat();
             if(mat!=nullptr){
                 cv::Mat display;
                 cMap->colormappize(mat, &display, pgSGUI->mask.getMat(), min, max, pgHistGUI->ExclOOR);
+                if(selectingDRB) cv::rectangle(display, {selStartX+1,selStartY+1},{selCurX+1,selCurY+1}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, (abs(selCurX-selStartX)>=50 && abs(selCurY-selStartY)>=50)?1:-1);
                 QImage qimg(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888);
                 LDisplay->setPixmap(QPixmap::fromImage(qimg));
             }
@@ -132,6 +133,7 @@ void tab_camera::work_fun(){
     }
     oldIndex=selDisp->index;
     if(onDisplay!=nullptr) framequeueDisp->freeUserMat();
+    lastSelectingDRB=selectingDRB;
 }
 
 void tab_camera::on_tab_change(int index){
@@ -164,22 +166,37 @@ void tab_camera::tab_exited(){
 //  iImageDisplay EVENT HANDLING
 
 void iImageDisplay::mouseMoveEvent(QMouseEvent *event){
-    if(isDepth){}
+    int xcoord=event->pos().x()-(width()-pixmap()->width())/2;
+    int ycoord=event->pos().y()-(height()-pixmap()->height())/2;
+    parent->selCurX=xcoord;
+    parent->selCurY=ycoord;
+    if(isDepth){
+
+    }
     else{}
 }
 void iImageDisplay::mousePressEvent(QMouseEvent *event){
-    if(isDepth){}
+    int xcoord=event->pos().x()-(width()-pixmap()->width())/2;
+    int ycoord=event->pos().y()-(height()-pixmap()->height())/2;
+    parent->selStartX=xcoord; parent->selCurX=xcoord;
+    parent->selStartY=ycoord; parent->selCurY=ycoord;
+    if(isDepth){
+        if(event->button()==Qt::RightButton){
+            parent->selectingDRB=true;
+        }
+    }
     else{}
 }
 void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     int xcoord=event->pos().x()-(width()-pixmap()->width())/2;
     int ycoord=event->pos().y()-(height()-pixmap()->height())/2;
-    parent->clickCoordX=xcoord;
-    parent->clickCoordY=ycoord;
+    parent->selEndX=xcoord;
+    parent->selEndY=ycoord;
     if(xcoord<0 || xcoord>=pixmap()->width() || ycoord<0 || ycoord>=pixmap()->height()) return; //ignore events outside pixmap; NOTE: the depth pixmap is expanded!, need additional filtering
     if(isDepth){
         if(event->button()==Qt::RightButton){
             parent->clickMenuDepth->popup(QCursor::pos());
+            parent->selectingDRB=false;
         }
     }
     else{
@@ -205,8 +222,8 @@ void tab_camera::onSavePixData(void){
     pgSGUI->savePix=true;
     pgSGUI->clickFilename=fileName.toStdString();
     if(pgSGUI->clickFilename.find(".txt")==std::string::npos && pgSGUI->clickFilename.find(".dat")==std::string::npos && pgSGUI->clickFilename.find(".csv")==std::string::npos) pgSGUI->clickFilename+=".txt";
-    pgSGUI->clickCoordX=clickCoordX;
-    pgSGUI->clickCoordY=clickCoordY;
+    pgSGUI->clickCoordX=selEndX;
+    pgSGUI->clickCoordY=selEndY;
 }
 void tab_camera::onSaveCameraPicture(void){
     std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving Camera Picture.", "","Images (*.png)").toStdString();
@@ -230,7 +247,14 @@ void tab_camera::onSaveDepthMap(void){
     cv::Mat* mat=pgSGUI->scanRes.getMat();
     if(mat!=nullptr){
         cv::Mat display;
-        cMap->colormappize(mat, &display, pgSGUI->mask.getMat(), min, max, pgHistGUI->ExclOOR);
+        int width=abs(selEndX-selStartX);
+        int height=abs(selEndY-selStartY);
+        if(width>=50 && height>=50){
+            cv::Mat temp0(                  *mat,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+            cv::Mat temp1(*pgSGUI->mask.getMat(),{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+            cMap->colormappize(&temp0, &display, &temp1, min, max, pgHistGUI->ExclOOR, true);
+        }
+        else cMap->colormappize(mat, &display, pgSGUI->mask.getMat(), min, max, pgHistGUI->ExclOOR);
         cv::cvtColor(display, display, cv::COLOR_RGBA2BGRA);
         imwrite(fileName, display,{cv::IMWRITE_PNG_COMPRESSION,9});
     }

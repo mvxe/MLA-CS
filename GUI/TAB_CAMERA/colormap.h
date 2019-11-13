@@ -19,6 +19,7 @@ public:
     void draw_bw_target(cv::Mat* src);
     void draw_bw_scalebar(cv::Mat* src);
     double getXYnmppx();
+    void draw_color_box(cv::Mat* src, int x0, int x1, int y0, int y1);
 private:
     QVBoxLayout* layout;
     smp_selector* fontFace;

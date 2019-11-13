@@ -128,7 +128,6 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
     int marginY=textMaxHeight;  //we make it twice the text max height
 
     int cbhsize=barWidth->val, Gap=barGap->val, textHDis=textOffset->val;
-    *dst=cv::Mat(vsize+2*marginY, hsize+Gap+cbhsize+textHDis+textMaxWidth+textHDis+cblabel.cols, CV_8UC4, {255,255,255,0});
     cv::Mat temp;
     src->convertTo(temp, CV_8U, ((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));
     cv::applyColorMap(temp, temp, OCV_CM::ids[cm_sel->index]);
@@ -140,6 +139,7 @@ void colorMap::colormappize(cv::Mat* src, cv::Mat* dst, cv::Mat* mask, double mi
         cv::compare(*src, max, mask, cv::CMP_GT);
         temp.setTo(exclColor, mask);
     }
+    *dst=cv::Mat(vsize+2*marginY, hsize+Gap+cbhsize+textHDis+textMaxWidth+textHDis+cblabel.cols, CV_8UC4, {255,255,255,0});
 
     double lxysbar_unit=isForExport?xysbar_unit_Export->val:xysbar_unit->val;
     if(lxysbar_unit!=0 && XYnmppx->val!=0){
@@ -204,6 +204,9 @@ void colorMap::draw_bw_scalebar(cv::Mat* src){
             cv::rectangle(*src, {xofs-(int)(lxysbar_unit*1000/XYnmppx->val/2)-i, yofs-i, (int)(lxysbar_unit*1000/XYnmppx->val)+2*i, (int)xysbar_thck->val+2*i}, i?backC:frontC,-1);
         }
     }
+}
+void colorMap::draw_color_box(cv::Mat* src, int x0, int x1, int y0, int y1){
+    cv::rectangle(*src, {x0+1,y0+1},{x1,y1}, exclColor);
 }
 
 void colorMap::onChanged(){
