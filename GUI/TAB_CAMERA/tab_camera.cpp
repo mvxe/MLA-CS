@@ -76,6 +76,9 @@ tab_camera::tab_camera(QWidget* parent){
 
     timer=new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
+
+    clickMenu=new QMenu;
+    clickMenu->addAction("Save int. and fft. at this pixel on next measurement.", this, SLOT(onSavePixData()));
 }
 
 tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
@@ -92,6 +95,7 @@ void tab_camera::work_fun(){
     onDisplay=framequeueDisp->getUserMat();
 
     if(selDisp->index==0){  // Camera
+        LDisplay->isDepth=false;
         if(onDisplay!=nullptr){
             if(main_show_target->isChecked() || main_show_scale->isChecked()){
                 cv::Mat temp;
@@ -108,6 +112,7 @@ void tab_camera::work_fun(){
             exclColorChanged=false;
         }
     }else{                  // Depth map
+        LDisplay->isDepth=true;
         if(pgSGUI->scanRes.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed){
             double min,max;
             pgHistGUI->updateImg(&min, &max);
@@ -157,18 +162,43 @@ void tab_camera::tab_exited(){
 //  iImageDisplay EVENT HANDLING
 
 void iImageDisplay::mouseMoveEvent(QMouseEvent *event){
-
+    if(isDepth){}
+    else{}
 }
 void iImageDisplay::mousePressEvent(QMouseEvent *event){
-
+    if(isDepth){}
+    else{}
 }
 void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
-    if((event->button()==Qt::LeftButton)){
-        int disX=size().width()/2-event->pos().x()+1;
-        int disY=size().height()/2-event->pos().y()+2;
-        parent->pgMGUI->onMove(disX*parent->cMap->getXYnmppx()/1000000,disY*parent->cMap->getXYnmppx()/1000000,0,0);
+    int xcoord=event->pos().x()-(width()-pixmap()->width())/2;
+    int ycoord=event->pos().y()-(height()-pixmap()->height())/2;
+    if(xcoord<0 || xcoord>=pixmap()->width() || ycoord<0 || ycoord>=pixmap()->height()) return; //ignore events outside pixmap; NOTE: the depth pixmap is expanded!, need additional filtering
+    if(isDepth){}
+    else{
+        if(event->button()==Qt::LeftButton){
+            parent->pgMGUI->onMove((pixmap()->width()/2-xcoord)*parent->cMap->getXYnmppx()/1000000,(pixmap()->height()/2-ycoord)*parent->cMap->getXYnmppx()/1000000,0,0);
+        }else if(event->button()==Qt::RightButton){
+            parent->clickCoordX=xcoord;
+            parent->clickCoordY=ycoord;
+            parent->clickMenu->popup(QCursor::pos());
+        }
     }
 }
 void iImageDisplay::wheelEvent(QWheelEvent *event){
-    parent->pgMGUI->_onMoveZ(10*event->delta());
+    if(isDepth){}
+    else{
+        parent->pgMGUI->_onMoveZ(10*event->delta());
+    }
+}
+
+
+void tab_camera::onSavePixData(void){
+    QString fileName = QFileDialog::getSaveFileName(this,"Select text file for saving pixel data.", "","Text (*.txt *.dat *.csv)");
+    if(fileName.isEmpty())return;
+    std::lock_guard<std::mutex>lock(pgSGUI->clickDataLock);
+    pgSGUI->savePix=true;
+    pgSGUI->clickFilename=fileName.toStdString();
+    if(pgSGUI->clickFilename.find(".txt")==std::string::npos && pgSGUI->clickFilename.find(".dat")==std::string::npos && pgSGUI->clickFilename.find(".csv")==std::string::npos) pgSGUI->clickFilename+=".txt";
+    pgSGUI->clickCoordX=clickCoordX;
+    pgSGUI->clickCoordY=clickCoordY;
 }

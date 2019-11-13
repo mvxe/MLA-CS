@@ -212,17 +212,25 @@ void pgScanGUI::_doOneRound(){
 
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
     cv::UMat resultFinalPhase(nCols, nRows, CV_32F);    //rows and cols flipped for convenience, transpose it after main loop!
+
+    int savePixX{-1}, savePixY{-1}; //writing pixel to file: for selected pixel
+    std::string savePixFname;
+    if(clickDataLock.try_lock()){
+        if(savePix){
+            if(clickCoordX>=0 && clickCoordX<nCols && clickCoordY>=0 && clickCoordY<nRows){
+                savePixX=clickCoordX;
+                savePixY=clickCoordY;
+                savePixFname=clickFilename;
+            }
+            savePix=false;
+        }
+        clickDataLock.unlock();
+    }
+
     for(int k=0;k!=nRows;k++){      //Processing row by row
         //first copy the matrices such that time becomes a column
         for(int i=0;i!=nFrames;i++)
             framequeue->getUserMat(i)->row(k).copyTo(mat2D.row(i));
-
-        //some writing to file as a test: TODO remove
-        if(k==500){
-            std::ofstream wfile ("onepixtest.txt");
-            for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<mat2D.at<float>(i,500)<<"\n";
-            wfile.close();
-        }
 
         //sending the matrix to the GPU, transposing and preforming an DFT
         //Umat2D=mat2D.getUMat(cv::ACCESS_READ);
@@ -233,12 +241,12 @@ void pgScanGUI::_doOneRound(){
         cv::dft(Umat2D, Umat2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
         //Umat2D.copyTo(fft2D); //no need to copy the whole matrix
 
-        //some writing to file as a test: TODO remove
-        if(k==500){
+        //writing pixel to file: for selected pixel
+        if(k==savePixY){
+            std::ofstream wfile(savePixFname);
             cv::Mat fft2D;
             Umat2D.copyTo(fft2D);
-            std::ofstream wfile ("onepixtestFFT.txt");
-            for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<std::abs(fft2D.at<std::complex<float>>(500, i))<<" "<<std::arg(fft2D.at<std::complex<float>>(500, i))<<"\n";
+            for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<mat2D.at<float>(i,savePixX)<<" "<<std::abs(fft2D.at<std::complex<float>>(savePixX, i))<<" "<<std::arg(fft2D.at<std::complex<float>>(savePixX, i))<<"\n";
             wfile.close();
         }
 

@@ -1,4 +1,4 @@
-#ifndef CONFIG_TAB_CAMERA_H
+﻿#ifndef CONFIG_TAB_CAMERA_H
 #define CONFIG_TAB_CAMERA_H
 #include "GUI/gui_includes.h"
 #include "colormap.h"
@@ -66,6 +66,8 @@ private:
     checkbox_save* main_show_scale;
     checkbox_save* main_show_target;
 
+    QMenu* clickMenu;
+    int clickCoordX, clickCoordY;
     FQ* framequeueDisp;
     const cv::Mat* mat;
     const cv::Mat* onDisplay;
@@ -78,17 +80,21 @@ private Q_SLOTS:
     void work_fun();
     void on_tab_change(int index);
     void on_EP_sel_released();
+
+    void onSavePixData(void);
 };
 
 
 class iImageDisplay : public QLabel{
     using QLabel::QLabel;
+public:
+    bool isDepth{false};
+    tab_camera* parent;
+private:
     void mouseMoveEvent(QMouseEvent *event);
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void wheelEvent(QWheelEvent *event);
-public:
-    tab_camera* parent;
 };
 
 #endif // CONFIG_TAB_CAMERA_H

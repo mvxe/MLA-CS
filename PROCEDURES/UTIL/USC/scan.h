@@ -65,6 +65,13 @@ public:
     val_selector* max_vel;      //maximum microscope axis velocity
     val_selector* max_acc;      //maximum microscope axis acceleration
     constexpr static int darkFrameNum=4;
+
+    //save pixel to file
+    std::mutex clickDataLock;
+    bool savePix{false};
+    int clickCoordX, clickCoordY;
+    std::string clickFilename;
+
 private:
     val_selector* coh_len;      //coherence length
     val_selector* range;        //scan range
@@ -85,6 +92,7 @@ private:
     void updatePVTs(std::string &report);   // update PVTs whenever measurement paramaters are changed, returns true if PVT fails or accels/speeds are to high
 
     std::atomic<bool> keepMeasuring{false};
+
     void _doOneRound();
 public Q_SLOTS:
     void recalculate();
