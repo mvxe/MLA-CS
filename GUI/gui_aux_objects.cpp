@@ -318,3 +318,15 @@ void moveDial::onAngChanged(double val){
     if(res>=360) res-=360;
     dial->setValue(res);
 }
+
+// HORIZONTAL LAYOUT WIDGET FOR CONVENIENCE
+
+twid::twid(){
+    layout=new QHBoxLayout;
+    this->setLayout(layout);
+    layout->setMargin(0);
+    layout->addStretch(0);
+}
+void twid::addWidget(QWidget* widget, bool front){
+    layout->insertWidget(front?0:(layout->count()-1), widget);
+}

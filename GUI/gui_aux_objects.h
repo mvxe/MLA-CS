@@ -184,4 +184,19 @@ Q_SIGNALS:
     void doMove(double dx, double dy);
 };
 
+// HORIZONTAL LAYOUT WIDGET FOR CONVENIENCE (HAS NO MARGIN, AND STRETCH)
+
+class twid  : public QWidget{
+    Q_OBJECT
+public:
+    twid();
+    template<typename... Args> twid(QWidget* widget, Args... args);
+    void addWidget(QWidget* widget, bool front=false);
+private:
+    QHBoxLayout* layout{nullptr};
+};
+template<typename... Args> twid::twid(QWidget* widget, Args... args): twid(args...){
+    addWidget(widget, true);
+}
+
 #endif // GUI_AUX_OBJECTS_H

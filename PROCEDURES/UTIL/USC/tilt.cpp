@@ -30,20 +30,16 @@ void pgTiltGUI::init_gui_settings(){
     focus_autoadjY=new val_selector(0, "pgTiltGUI_focus_autoadjY", "Focus adjustment for Y: ", -100, 100, 12);
     slayout->addWidget(focus_autoadjY);
 
-    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
     calib_focus_autoadjX=new QPushButton;
     calib_focus_autoadjX->setText("Calibrate X");
     calib_focus_autoadjX->setCheckable(true);
     connect(calib_focus_autoadjX, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_X(bool)));
-    tlay->addWidget(calib_focus_autoadjX);
     calib_focus_autoadjY=new QPushButton;
     calib_focus_autoadjY->setText("Calibrate Y");
     calib_focus_autoadjY->setCheckable(true);
     connect(calib_focus_autoadjY, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_Y(bool)));
-    tlay->addWidget(calib_focus_autoadjY);
     QLabel* txt=new QLabel("(Click -> tilt -> focus -> Click)");
-    tlay->addWidget(txt); tlay->addStretch(0); tlay->setMargin(0);
-    slayout->addWidget(twid);
+    slayout->addWidget(new twid(calib_focus_autoadjX, calib_focus_autoadjY, txt));
 
     tilt_motor_speed=new val_selector(100, "pgTiltGUI_tilt_motor_speed", "Tilt motor speed: ", 0, 5000, 0);
     slayout->addWidget(tilt_motor_speed);

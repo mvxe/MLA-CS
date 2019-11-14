@@ -68,21 +68,16 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
 
     XYnmppx=new val_selector(10, "colorBar_XYnmppx", "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
     layout->addWidget(XYnmppx);
-    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
     calibXY=new QPushButton;
     calibXY->setText("Calibrate YZ Scan");
     calibXY->setCheckable(true);
     connect(calibXY, SIGNAL(toggled(bool)), this, SLOT(onCalibrateXY(bool)));
-    tlay->addWidget(calibXY);
     tilt=new val_selector(1., "colorMap_tilt", "Ammount of tilt: ", -10000., 10000., 0);
-    tlay->addWidget(tilt);
     movTilt=new QPushButton;
     movTilt->setText("Tilt");
     movTilt->setCheckable(true);
     connect(movTilt, SIGNAL(toggled(bool)), this, SLOT(onMovTilt(bool)));
-    tlay->addWidget(movTilt);
-    tlay->addStretch(0); tlay->setMargin(0);
-    layout->addWidget(twid);
+    layout->addWidget(new twid(calibXY, tilt, movTilt));
 
     QLabel* txt=new QLabel("(Scan -> Tilt -> Refocus -> Scan -> Tilt -> Refocus)");
     layout->addWidget(txt);

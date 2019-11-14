@@ -25,31 +25,22 @@ void pgMoveGUI::init_gui_activation(){
     connect(fMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveF(double)));
     alayout->addWidget(fMove);
 
-    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
     FZdif=new val_selector(0, "F-Z= ", -200, 200, 6, 0, {"mm"});
     FZdif->setEnabled(false);
     connect(FZdif, SIGNAL(changed(double)), this, SLOT(_onMoveZF(double)));
     connect(fMove, SIGNAL(lock(bool)), this, SLOT(onLockF(bool)));
-    tlay->addWidget(FZdif);
     mpow=new val_selector(0, "Move X10^", 0, 6, 0);
-    tlay->addWidget(mpow);
-    tlay->addStretch(0); tlay->setMargin(0);
-    alayout->addWidget(twid);
+    alayout->addWidget(new twid(FZdif, mpow));
 
-    QWidget* twid2=new QWidget; QHBoxLayout* tlay2=new QHBoxLayout; twid2->setLayout(tlay2);
     addDial=new QPushButton;
     connect(addDial, SIGNAL(released()), this, SLOT(onAddDial()));
     addDial->setIcon(QPixmap(":/edit-add.svg"));
     addDial->setMaximumSize(20,20);
-    tlay2->addWidget(addDial);
     rmDial=new QPushButton;
     connect(rmDial, SIGNAL(released()), this, SLOT(onRmDial()));
     rmDial->setIcon(QPixmap(":/gtk-no.svg"));
     rmDial->setMaximumSize(20,20);
-    tlay2->addWidget(rmDial);
-    tlay2->addWidget(new QLabel("Dis./Ang. Ctrl."));
-    tlay2->addStretch(0); tlay2->setMargin(0);
-    alayout->addWidget(twid2);
+    alayout->addWidget(new twid(addDial, rmDial, new QLabel("Dis./Ang. Ctrl.")));
 }
 
 void pgMoveGUI::onLockF(bool locked){FZdif->setEnabled(!locked);}
@@ -72,20 +63,15 @@ void pgMoveGUI::init_gui_settings(){
     slayout->addWidget(autoadjXZ);
     autoadjYZ=new val_selector(0, "pgMoveGUI_autoadjYZ", "Focus adjustment for Y: ", -100, 100, 12);
     slayout->addWidget(autoadjYZ);
-    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
     calib_autoadjXZ=new QPushButton;
     calib_autoadjXZ->setText("Calibrate XZ");
     calib_autoadjXZ->setCheckable(true);
     connect(calib_autoadjXZ, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_X(bool)));
-    tlay->addWidget(calib_autoadjXZ);
     calib_autoadjYZ=new QPushButton;
     calib_autoadjYZ->setText("Calibrate YZ");
     calib_autoadjYZ->setCheckable(true);
     connect(calib_autoadjYZ, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_Y(bool)));
-    tlay->addWidget(calib_autoadjYZ);
-    tlay->addWidget(new QLabel("(Click -> move X/Y -> focus -> Click)"));
-    tlay->addStretch(0); tlay->setMargin(0);
-    slayout->addWidget(twid);
+    slayout->addWidget(new twid(calib_autoadjXZ, calib_autoadjYZ, new QLabel("(Click -> move X/Y -> focus -> Click)")));
 }
 
 void pgMoveGUI::_onMoveX(double magnitude){onMove(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0,0);}

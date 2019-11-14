@@ -36,17 +36,14 @@ void pgScanGUI::init_gui_activation(){
     gui_activation=new QWidget;
     alayout=new QHBoxLayout;
     gui_activation->setLayout(alayout);
-    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
     bScanOne=new QPushButton;
     bScanOne->setText("One scan");
     connect(bScanOne, SIGNAL(released()), this, SLOT(onBScanOne()));
-    tlay->addWidget(bScanOne);
     bScanContinuous=new QPushButton;
     bScanContinuous->setText("Continuous scan");
     bScanContinuous->setCheckable(true);
     connect(bScanContinuous, SIGNAL(toggled(bool)), this, SLOT(onBScanContinuous(bool)));
-    tlay->addWidget(bScanContinuous); tlay->addStretch(0); tlay->setMargin(0);
-    alayout->addWidget(twid);
+    alayout->addWidget(new twid(bScanOne, bScanContinuous));
     cbCorrectTilt=new QCheckBox("Correct Tilt");
     cbCorrectTilt->setChecked(correctTilt);
     alayout->addWidget(cbCorrectTilt);

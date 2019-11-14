@@ -21,12 +21,10 @@ void pgFocusGUI::init_gui_activation(){
     gui_activation=new QWidget;
     alayout=new QHBoxLayout;
     gui_activation->setLayout(alayout);
-    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
     bFocus=new QPushButton;
     bFocus->setText("ReFocus");
     connect(bFocus, SIGNAL(released()), this, SLOT(onRefocus()));
-    tlay->addWidget(bFocus); tlay->addStretch(0); tlay->setMargin(0);
-    alayout->addWidget(twid);
+    alayout->addWidget(new twid(bFocus));
 }
 void pgFocusGUI::onRefocus(){if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();refocus();}}
 void pgFocusGUI::refocus(){
@@ -51,13 +49,11 @@ void pgFocusGUI::init_gui_settings(){
     slayout->addWidget(tilt);
     calcL=new QLabel;
     slayout->addWidget(calcL);
-    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
     testTilt=new QPushButton;
     testTilt->setText("Test Tilt");
     testTilt->setCheckable(true);
     connect(testTilt, SIGNAL(toggled(bool)), this, SLOT(onTestTilt(bool)));
-    tlay->addWidget(testTilt); tlay->addStretch(0); tlay->setMargin(0);
-    slayout->addWidget(twid);
+    slayout->addWidget(new twid(testTilt));
 }
 
 void pgFocusGUI::recalculate() {

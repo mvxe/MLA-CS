@@ -68,23 +68,13 @@ tab_camera::tab_camera(QWidget* parent){
     pgHistGUI=new pgHistogrameGUI(400, 50, &pgSGUI->scanRes, &pgSGUI->maskN, cm_sel, exclColor);
     layoutTBarW->addWidget(pgHistGUI);
 
-    QWidget* twid=new QWidget; QHBoxLayout* tlay=new QHBoxLayout; twid->setLayout(tlay);
     main_show_scale=new checkbox_save(false,"tab_camera_main_show_scale","ScaleBar");
-    tlay->addWidget(main_show_scale);
     main_show_target=new checkbox_save(false,"tab_camera_main_show_target","Target");
-    tlay->addWidget(main_show_target);
-    tlay->addStretch(0); tlay->setMargin(0);
-    layoutTBarW->addWidget(twid);
+    layoutTBarW->addWidget(new twid(main_show_scale, main_show_target));
 
-    QWidget* twid2=new QWidget; QHBoxLayout* tlay2=new QHBoxLayout; twid2->setLayout(tlay2);
-    tlay2->addWidget(new QLabel("Action: "));
     measPB=new QProgressBar; measPB->setRange(0,100);
-    tlay2->addWidget(measPB);
-    tlay2->addWidget(new QLabel("Computation: "));
     compPB=new QProgressBar; compPB->setRange(0,100);
-    tlay2->addWidget(compPB);
-    tlay2->addStretch(0); tlay2->setMargin(0);
-    layoutTBarW->addWidget(twid2);
+    layoutTBarW->addWidget(new twid(new QLabel("Action: "), measPB, new QLabel("Computation: "), compPB));
 
     timer=new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
