@@ -3,6 +3,7 @@
 #include "GUI/gui_includes.h"
 #include "colormap.h"
 #include "other_settings.h"
+#include "UTIL/measurement.h"
 class iImageDisplay;
 
     // These are from the old camera tab; TODO remove when replaced!
@@ -31,8 +32,7 @@ public:
     void tab_entered();
     void tab_exited();
 
-    std::mutex _lock_mes;
-    std::mutex _lock_comp;
+    mesLockProg MLP;
 private:
     QTimer *timer;
 
@@ -67,6 +67,8 @@ private:
     pgHistogrameGUI* pgHistGUI;
     checkbox_save* main_show_scale;
     checkbox_save* main_show_target;
+    QProgressBar* measPB;
+    QProgressBar* compPB;
 
     QMenu* clickMenu;
     QMenu* clickMenuDepth;

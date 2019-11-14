@@ -19,7 +19,7 @@ void pScan::run(){
 
 //GUI
 
-pgScanGUI::pgScanGUI(std::mutex& _lock_mes, std::mutex& _lock_comp): _lock_mes(_lock_mes), _lock_comp(_lock_comp) {
+pgScanGUI::pgScanGUI(mesLockProg& MLP): MLP(MLP){
     PVTmeasure=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, util::toString("camera_PVTmeasure.txt").c_str());
     init_gui_activation();
     init_gui_settings();
@@ -54,7 +54,7 @@ void pgScanGUI::init_gui_activation(){
     alayout->addStretch(0);
 }
 void pgScanGUI::onBScanContinuous(bool status){if(status)timerCM->start(); else timerCM->stop();}
-void pgScanGUI::onBScanOne(){if(_lock_mes.try_lock()){_lock_mes.unlock();doOneRound();}}
+void pgScanGUI::onBScanOne(){if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();doOneRound();}}
 
 void pgScanGUI::init_gui_settings(){
     gui_settings=new QWidget;
@@ -111,15 +111,15 @@ void pgScanGUI::onMenuChange(int index){
 }
 
 void pgScanGUI::recalculate() {
-    if(_lock_mes.try_lock()){
-        if(_lock_comp.try_lock()){
+    if(MLP._lock_meas.try_lock()){
+        if(MLP._lock_comp.try_lock()){
             std::string report;
             updatePVTs(report);
             calcL->setText(report.c_str());
-            _lock_comp.unlock();
+            MLP._lock_comp.unlock();
         }
         else timer->start();
-        _lock_mes.unlock();
+        MLP._lock_meas.unlock();
     }
     else timer->start();
 }
@@ -173,6 +173,7 @@ void pgScanGUI::updatePVTs(std::string &report){
         PVTmeasure->add(darkFrameTime-movTime-readAccelTime,  0,0, 0,0, 0,0, 0,0);
     PVTmeasure->add(movTime, 0,0, 0,0, -Offset,0, 0,0);
     PVTmeasure->addAction(XPS::iuScopeLED,true);
+    total_meas_time=2*movTime+2*readAccelTime+readTime+((darkFrameTime>movTime+readAccelTime)?(darkFrameTime-movTime-readAccelTime):0);
 
     exec_dat ret;
     ret=go.pXPS->verifyPVTobj(PVTmeasure);
@@ -199,7 +200,7 @@ double pgScanGUI::vsConv(val_selector* vs){
 void pgScanGUI::_doOneRound(){
     if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     if(!PVTsRdy) return;
-    _lock_mes.lock();                       //wait for other measurements to complete
+    MLP._lock_meas.lock();                       //wait for other measurements to complete
 
     int nFrames=totalFrameNum;
     FQ* framequeue;
@@ -207,11 +208,18 @@ void pgScanGUI::_doOneRound(){
     framequeue->setUserFps(99999);
 
     go.pXPS->execPVTobj(PVTmeasure, &PVTret);
+
+    for(int i=0;i!=95;i++){
+        std::this_thread::sleep_for(std::chrono::milliseconds((int)(total_meas_time*1000/100)));
+        MLP.progress_meas=i+1;
+        if(PVTret.check_if_done()) break;
+    }
     PVTret.block_till_done();
+    MLP.progress_meas=100;
     framequeue->setUserFps(0);
 
-    std::lock_guard<std::mutex>lock(_lock_comp);    // wait till other processing is done
-    _lock_mes.unlock();                             // allow new measurement to start
+    std::lock_guard<std::mutex>lock(MLP._lock_comp);    // wait till other processing is done
+    MLP._lock_meas.unlock();                             // allow new measurement to start
 
     if(framequeue->getFullNumber()<nFrames) {std::cerr<<"ERROR: took "<<framequeue->getFullNumber()<<" frames, expected at least "<<nFrames<<".\n";go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);return;}
     double mean=0;
@@ -253,6 +261,7 @@ void pgScanGUI::_doOneRound(){
         clickDataLock.unlock();
     }
 
+    MLP.progress_comp=0;
     for(int k=0;k!=nRows;k++){      //Processing row by row
         //first copy the matrices such that time becomes a column
         for(int i=0;i!=nFrames;i++)
@@ -302,6 +311,7 @@ void pgScanGUI::_doOneRound(){
         cmpFinRes.copyTo(maskUMat.row(k));
 
         //std::cerr<<"done with dft"<<k<<"\n";
+        MLP.progress_comp=60*(k+1)/nRows;
     }
     std::cerr<<"done with dfts\n";
     bitwise_not(maskUMat, maskUMatNot);
@@ -329,6 +339,8 @@ void pgScanGUI::_doOneRound(){
     }
     double min,max; cv::Point ignore;
     resultFinalPhase.convertTo(resultFinalPhase,-1,vsConv(led_wl)/4/M_PI);
+
+    MLP.progress_comp=90;
 
     if(correctTilt){ //autocorrect tilt
         cv::UMat padded;
@@ -382,7 +394,8 @@ void pgScanGUI::_doOneRound(){
     std::cerr<<"Free: "<<go.pGCAM->iuScope->FQsPCcam.getFreeNumber()<<"\n";
     std::cerr<<"Full: "<<go.pGCAM->iuScope->FQsPCcam.getFullNumber()<<"\n";
 
-    if(_lock_mes.try_lock()){_lock_mes.unlock();measurementInProgress=false;}
+    MLP.progress_comp=100;
+    if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();measurementInProgress=false;}
 }
 
 void pgScanGUI::calcExpMinMax(FQ* framequeue, cv::Mat* mask){

@@ -13,6 +13,7 @@ class QPushButton;
 class QCheckBox;
 class FQ;
 class scanSettings;
+class mesLockProg;
 
 class pScan: public sproc{
 public:
@@ -27,7 +28,7 @@ class pgScanGUI: public QObject{
     Q_OBJECT
     //GUI
 public:
-    pgScanGUI(std::mutex& _lock_mes, std::mutex& _lock_comp);
+    pgScanGUI(mesLockProg& MLP);
     QWidget* gui_activation;
     QWidget* gui_settings;
     QTimer* timer;
@@ -41,8 +42,7 @@ public:
     cvMat_safe mask;        //contains the excluded pixel mask
     cvMat_safe maskN;       //inverse mask
 
-    std::mutex& _lock_mes;
-    std::mutex& _lock_comp;
+    mesLockProg& MLP;
     double vsConv(val_selector* vs);
 
     std::atomic<double> phiXres;
@@ -101,6 +101,8 @@ private:
     void updatePVTs(std::string &report);   // update PVTs whenever measurement paramaters are changed, returns true if PVT fails or accels/speeds are to high
 
     std::atomic<bool> keepMeasuring{false};
+
+    double total_meas_time;
 
     void _doOneRound();
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);

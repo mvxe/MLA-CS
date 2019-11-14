@@ -26,10 +26,10 @@ tab_camera::tab_camera(QWidget* parent){
     TWCtrl->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Expanding);
     layoutTBarW->addWidget(TWCtrl);
 
-    pgSGUI=new pgScanGUI(_lock_mes, _lock_comp);
+    pgSGUI=new pgScanGUI(MLP);
     pgMGUI=new pgMoveGUI;
     pgTGUI=new pgTiltGUI;
-    pgFGUI=new pgFocusGUI(_lock_mes, _lock_comp, pgSGUI, pgTGUI);
+    pgFGUI=new pgFocusGUI(MLP, pgSGUI, pgTGUI);
     pgPRGUI=new pgPosRepGUI;
     cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
     cMap=new colorMap(cm_sel, exclColor, pgSGUI, pgTGUI);
@@ -75,6 +75,16 @@ tab_camera::tab_camera(QWidget* parent){
     tlay->addWidget(main_show_target);
     tlay->addStretch(0); tlay->setMargin(0);
     layoutTBarW->addWidget(twid);
+
+    QWidget* twid2=new QWidget; QHBoxLayout* tlay2=new QHBoxLayout; twid2->setLayout(tlay2);
+    tlay2->addWidget(new QLabel("Action: "));
+    measPB=new QProgressBar; measPB->setRange(0,100);
+    tlay2->addWidget(measPB);
+    tlay2->addWidget(new QLabel("Computation: "));
+    compPB=new QProgressBar; compPB->setRange(0,100);
+    tlay2->addWidget(compPB);
+    tlay2->addStretch(0); tlay2->setMargin(0);
+    layoutTBarW->addWidget(twid2);
 
     timer=new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
@@ -136,6 +146,9 @@ void tab_camera::work_fun(){
     oldIndex=selDisp->index;
     if(onDisplay!=nullptr) framequeueDisp->freeUserMat();
     lastSelectingDRB=selectingDRB;
+
+    measPB->setValue(MLP.progress_meas);
+    compPB->setValue(MLP.progress_comp);
 }
 
 void tab_camera::on_tab_change(int index){

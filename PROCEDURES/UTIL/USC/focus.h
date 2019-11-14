@@ -11,6 +11,7 @@ class QLabel;
 class pgScanGUI;
 class pgTiltGUI;
 class QPushButton;
+class mesLockProg;
 
 namespace cv{class Mat;}
 
@@ -18,13 +19,12 @@ class pgFocusGUI: public QObject{
     Q_OBJECT
     //GUI
 public:
-    pgFocusGUI(std::mutex& _lock_mes, std::mutex& _lock_comp, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI);
+    pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI);
     QWidget* gui_activation;
     QWidget* gui_settings;
     QTimer* timer;
 
-    std::mutex& _lock_mes;
-    std::mutex& _lock_comp;
+    mesLockProg& MLP;
  private:
     void init_gui_activation();
     void init_gui_settings();
@@ -50,6 +50,8 @@ public:
     exec_ret PVTret;
     bool PVTsRdy=false;
     void updatePVT(std::string &report);
+
+    double total_meas_time;
 
     void refocus();
     void _refocus();

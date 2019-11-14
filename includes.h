@@ -15,6 +15,7 @@
 #include "UTIL/utility.h"
 #include "UTIL/img_util.h"
 #include "UTIL/threadpool.h"
+#include "UTIL/measurement.h"
 #include <iostream>
 
 #endif // INCLUDES_H

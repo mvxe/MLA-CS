@@ -7,7 +7,7 @@
 
 //GUI
 
-pgFocusGUI::pgFocusGUI(std::mutex& _lock_mes, std::mutex& _lock_comp, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI): _lock_mes(_lock_mes), _lock_comp(_lock_comp), pgSGUI(pgSGUI), pgTGUI(pgTGUI) {
+pgFocusGUI::pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI): MLP(MLP), pgSGUI(pgSGUI), pgTGUI(pgTGUI) {
     PVTScan=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, util::toString("camera_PVTfocus.txt").c_str());
     init_gui_activation();
     init_gui_settings();
@@ -28,7 +28,7 @@ void pgFocusGUI::init_gui_activation(){
     tlay->addWidget(bFocus); tlay->addStretch(0); tlay->setMargin(0);
     alayout->addWidget(twid);
 }
-void pgFocusGUI::onRefocus(){if(_lock_mes.try_lock()){_lock_mes.unlock();refocus();}}
+void pgFocusGUI::onRefocus(){if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();refocus();}}
 void pgFocusGUI::refocus(){
     if(!PVTsRdy) recalculate();
     go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::_refocus,this));
@@ -61,15 +61,15 @@ void pgFocusGUI::init_gui_settings(){
 }
 
 void pgFocusGUI::recalculate() {
-    if(_lock_mes.try_lock()){
-        if(_lock_comp.try_lock()){
+    if(MLP._lock_meas.try_lock()){
+        if(MLP._lock_comp.try_lock()){
             std::string report;
             updatePVT(report);
             calcL->setText(report.c_str());
-            _lock_comp.unlock();
+            MLP._lock_comp.unlock();
         }
         else timer->start();
-        _lock_mes.unlock();
+        MLP._lock_meas.unlock();
     }
     else timer->start();
 }
@@ -113,6 +113,7 @@ void pgFocusGUI::updatePVT(std::string &report){
         PVTScan->add(darkFrameTime-movTime-readAccelTime,  0,0, 0,0, 0,0, 0,0);
     PVTScan->add(movTime, 0,0, 0,0, -Offset,0, 0,0);
     PVTScan->addAction(XPS::iuScopeLED,true);
+    total_meas_time=2*movTime+2*readAccelTime+readTime+((darkFrameTime>movTime+readAccelTime)?(darkFrameTime-movTime-readAccelTime):0);
 
     exec_dat ret;
     ret=go.pXPS->verifyPVTobj(PVTScan);
@@ -129,7 +130,7 @@ void pgFocusGUI::onTestTilt(bool state){
 void pgFocusGUI::_refocus(){
     if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     if(!PVTsRdy) return;
-    _lock_mes.lock();                       //wait for other measurements to complete
+    MLP._lock_meas.lock();                       //wait for other measurements to complete
     pgTGUI->doTilt(tilt->val, 0, false);
     std::this_thread::sleep_for (std::chrono::milliseconds(int(tilt->val/pgTGUI->tilt_motor_speed->val*60*1000)));      //wait till it tilts
     int nFrames=totalFrameNum;
@@ -139,9 +140,10 @@ void pgFocusGUI::_refocus(){
     go.pXPS->execPVTobj(PVTScan, &PVTret);
     PVTret.block_till_done();
     framequeue->setUserFps(0);
+
     pgTGUI->doTilt(-tilt->val, 0, false); //we dont wait for it to tilt back
-    _lock_mes.unlock();
-    std::lock_guard<std::mutex>lock(_lock_comp);    //wait till other processing is done
+    MLP._lock_meas.unlock();
+    std::lock_guard<std::mutex>lock(MLP._lock_comp);    //wait till other processing is done
 
         //TODO: this is copy paste from scan, maybe join them in a function to reuse code?
     if(framequeue->getFullNumber()<nFrames) {std::cerr<<"ERROR: took "<<framequeue->getFullNumber()<<" frames, expected at least "<<nFrames<<".\n";return;}
@@ -181,6 +183,7 @@ void pgFocusGUI::_refocus(){
     cv::Point minLoc,maxLoc;
     cv::minMaxLoc(result, &min, &max, &minLoc, &maxLoc);
     double focus=(maxLoc.y-nFrames/2.)*mmPerFrame;
+
     std::cout<<"Focus is at:"<<focus<<"\n";
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,focus,-focus);
 }
