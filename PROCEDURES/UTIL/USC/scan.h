@@ -12,6 +12,7 @@ class PVTobj;
 class QPushButton;
 class QCheckBox;
 class FQ;
+class scanSettings;
 
 class pScan: public sproc{
 public:
@@ -77,6 +78,10 @@ public:
     std::atomic<bool> getExpMinMax{false};
 
 private:
+    smp_selector* selectScanSetting;    //scan setting
+    std::vector<scanSettings*> settingWdg;
+    constexpr static unsigned Nset{5};
+
     val_selector* coh_len;      //coherence length
     val_selector* range;        //scan range
     val_selector* ppwl;         //points per wavelength
@@ -105,8 +110,25 @@ private Q_SLOTS:
     void onBScanOne();
     void onBScanContinuous(bool status);
     void setCorrectTilt(bool state){correctTilt=state;}
+    void onMenuChange(int index);
 Q_SIGNALS:
     void doneExpMinmax(int min, int max);
+};
+
+class scanSettings: public QWidget{
+    Q_OBJECT
+    //GUI
+public:
+    scanSettings(uint num, pgScanGUI* parent);
+    QVBoxLayout* slayout;
+    val_selector* led_wl;
+    val_selector* coh_len;
+    val_selector* range;
+    val_selector* ppwl;
+    val_selector* max_vel;
+    val_selector* max_acc;
+    val_selector* dis_thresh;
+    pgScanGUI* parent;
 };
 
 #endif // SCAN_H

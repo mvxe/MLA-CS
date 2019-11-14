@@ -76,7 +76,7 @@ private Q_SLOTS:
     void on_menu_change();
 Q_SIGNALS:
     void changed();
-    void changed(double value);
+    void changed(int index);
 };
 
 // TAB WIDGET DISPLAY SELECTOR

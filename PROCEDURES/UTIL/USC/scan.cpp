@@ -60,30 +60,54 @@ void pgScanGUI::init_gui_settings(){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
-    led_wl=new val_selector(470., "tab_camera_led_wl", "LED Wavelength:", 0.001, 2000., 2, 0, {"nm","um"});
-    connect(led_wl, SIGNAL(changed()), this, SLOT(recalculate()));
-    slayout->addWidget(led_wl);
-    coh_len=new val_selector(20., "tab_camera_coh_len", "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)});
-    connect(coh_len, SIGNAL(changed()), this, SLOT(recalculate()));
-    slayout->addWidget(coh_len);
-    range=new val_selector(10., "tab_camera_range", "Scan Range:", 1., 2000., 3, 3 , {"nm","um",QChar(0x03BB),"L"});
-    connect(range, SIGNAL(changed()), this, SLOT(recalculate()));
-    slayout->addWidget(range);
-    ppwl=new val_selector(20., "tab_camera_ppwl", "Points Per Wavelength: ", 6, 2000., 2);
-    connect(ppwl, SIGNAL(changed()), this, SLOT(recalculate()));
-    slayout->addWidget(ppwl);
-    max_vel=new val_selector(300., "tab_camera_max_vel", "UScope stage max velocity: ", 1e-9, 300., 2, 0, {"mm/s"});
-    connect(max_vel, SIGNAL(changed()), this, SLOT(recalculate()));
-    slayout->addWidget(max_vel);
-    max_acc=new val_selector(2500., "tab_camera_max_acc", "UScope stage max acceleration: ", 1e-9, 2500., 2, 0, {"mm/s^2"});
-    connect(max_acc, SIGNAL(changed()), this, SLOT(recalculate()));
-    slayout->addWidget(max_acc);
-    dis_thresh=new val_selector(0.9, "tab_camera_dis_thresh", "Peak Discard Threshold: ", 0.1, 1, 2);
-    slayout->addWidget(dis_thresh);
+    selectScanSetting=new smp_selector("Select scan setting: ", 0, {"Standard", "Precise", "Set2", "Set3", "Set4"});    //should have Nset strings
+    slayout->addWidget(selectScanSetting);
+    for(int i=0;i!=Nset;i++) {
+        settingWdg.push_back(new scanSettings(i, this));
+        slayout->addWidget(settingWdg.back());
+    }
+    connect(selectScanSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     calcL=new QLabel;
     slayout->addWidget(calcL);
     debugDisplayModeSelect=new smp_selector("Display mode select (for debugging purposes): ", 0, {"Unwrapped", "Wrapped"});
     slayout->addWidget(debugDisplayModeSelect);
+    onMenuChange(0);
+}
+
+scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
+    slayout=new QVBoxLayout;
+    this->setLayout(slayout);
+    led_wl=new val_selector(470., util::toString("tab_camera_led_wl",num), "LED Wavelength:", 0.001, 2000., 2, 0, {"nm","um"});
+    connect(led_wl, SIGNAL(changed()), parent, SLOT(recalculate()));
+    slayout->addWidget(led_wl);
+    coh_len=new val_selector(20., util::toString("tab_camera_coh_len",num), "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)});
+    connect(coh_len, SIGNAL(changed()), parent, SLOT(recalculate()));
+    slayout->addWidget(coh_len);
+    range=new val_selector(10., util::toString("tab_camera_range",num), "Scan Range:", 1., 2000., 3, 3 , {"nm","um",QChar(0x03BB),"L"});
+    connect(range, SIGNAL(changed()), parent, SLOT(recalculate()));
+    slayout->addWidget(range);
+    ppwl=new val_selector(20., util::toString("tab_camera_ppwl",num), "Points Per Wavelength: ", 6, 2000., 2);
+    connect(ppwl, SIGNAL(changed()), parent, SLOT(recalculate()));
+    slayout->addWidget(ppwl);
+    max_vel=new val_selector(300., util::toString("tab_camera_max_vel",num), "UScope stage max velocity: ", 1e-9, 300., 2, 0, {"mm/s"});
+    connect(max_vel, SIGNAL(changed()), parent, SLOT(recalculate()));
+    slayout->addWidget(max_vel);
+    max_acc=new val_selector(2500., util::toString("tab_camera_max_acc",num), "UScope stage max acceleration: ", 1e-9, 2500., 2, 0, {"mm/s^2"});
+    connect(max_acc, SIGNAL(changed()), parent, SLOT(recalculate()));
+    slayout->addWidget(max_acc);
+    dis_thresh=new val_selector(0.9, util::toString("tab_camera_dis_thresh",num), "Peak Discard Threshold: ", 0.1, 1, 2);
+    slayout->addWidget(dis_thresh);
+}
+void pgScanGUI::onMenuChange(int index){
+    for(int i=0;i!=Nset;i++) settingWdg[i]->setVisible(i==index?true:false);
+    led_wl=settingWdg[index]->led_wl;
+    coh_len=settingWdg[index]->coh_len;
+    range=settingWdg[index]->range;
+    ppwl=settingWdg[index]->ppwl;
+    max_vel=settingWdg[index]->max_vel;
+    max_acc=settingWdg[index]->max_acc;
+    dis_thresh=settingWdg[index]->dis_thresh;
+    recalculate();
 }
 
 void pgScanGUI::recalculate() {
