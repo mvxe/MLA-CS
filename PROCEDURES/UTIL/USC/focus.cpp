@@ -76,6 +76,7 @@ void pgFocusGUI::recalculate() {
 
 double pgFocusGUI::vsConv(val_selector* vs){return pgSGUI->vsConv(vs);}
 void pgFocusGUI::updatePVT(std::string &report){
+    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     double minFPS,maxFPS;
     go.pGCAM->iuScope->get_frame_rate_bounds (&minFPS, &maxFPS);
     double readTime=vsConv(range)*vsConv(ppwl)/vsConv(pgSGUI->led_wl)/maxFPS*2;   //s
@@ -126,6 +127,7 @@ void pgFocusGUI::onTestTilt(bool state){
 }
 
 void pgFocusGUI::_refocus(){
+    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     if(!PVTsRdy) return;
     _lock_mes.lock();                       //wait for other measurements to complete
     pgTGUI->doTilt(tilt->val, 0, false);

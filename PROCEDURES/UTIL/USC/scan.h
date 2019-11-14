@@ -11,6 +11,7 @@ class QHBoxLayout;
 class PVTobj;
 class QPushButton;
 class QCheckBox;
+class FQ;
 
 class pScan: public sproc{
 public:
@@ -29,7 +30,7 @@ public:
     QWidget* gui_activation;
     QWidget* gui_settings;
     QTimer* timer;
-    QTimer* timerCM;  // we use this timer to maintain continuous measurments. If a measurement thread does this recursively opencv/opencl for some reason shits itself.
+    QTimer* timerCM;  // we use this timer to maintain continuous measurments
     constexpr static unsigned timerCM_delay=100;
 
     std::atomic<bool> measurementInProgress{false}; //for outside calling functions
@@ -72,6 +73,9 @@ public:
     int clickCoordX, clickCoordY;
     std::string clickFilename;
 
+    //get max and min pixel exposure for camera exposure setting
+    std::atomic<bool> getExpMinMax{false};
+
 private:
     val_selector* coh_len;      //coherence length
     val_selector* range;        //scan range
@@ -94,12 +98,15 @@ private:
     std::atomic<bool> keepMeasuring{false};
 
     void _doOneRound();
+    void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
 public Q_SLOTS:
     void recalculate();
 private Q_SLOTS:
     void onBScanOne();
     void onBScanContinuous(bool status);
     void setCorrectTilt(bool state){correctTilt=state;}
+Q_SIGNALS:
+    void doneExpMinmax(int min, int max);
 };
 
 #endif // SCAN_H

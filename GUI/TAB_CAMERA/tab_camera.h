@@ -2,6 +2,7 @@
 #define CONFIG_TAB_CAMERA_H
 #include "GUI/gui_includes.h"
 #include "colormap.h"
+#include "other_settings.h"
 class iImageDisplay;
 
     // These are from the old camera tab; TODO remove when replaced!
@@ -49,11 +50,12 @@ private:
     twd_selector* pageWriting;
     twd_selector* pageSettings;
 
-    pgScanGUI* pgSGUI;  constexpr static unsigned index_pgSGUI{0};
+    pgScanGUI* pgSGUI;      unsigned index_pgSGUI;
     pgMoveGUI* pgMGUI;
     pgTiltGUI* pgTGUI;
-    pgFocusGUI* pgFGUI; constexpr static unsigned index_pgFGUI{3};
+    pgFocusGUI* pgFGUI;     unsigned index_pgFGUI;
     pgPosRepGUI* pgPRGUI;
+    cameraSett* camSet;     unsigned index_camSet;
 
     smp_selector* cm_sel;       //for selecting the colormap for display
     QPushButton* epc_sel;       //for selecting the excluded pixel color

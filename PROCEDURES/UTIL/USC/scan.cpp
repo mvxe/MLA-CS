@@ -101,6 +101,7 @@ void pgScanGUI::recalculate() {
 }
 
 void pgScanGUI::updatePVTs(std::string &report){
+    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     double minFPS,maxFPS;
     go.pGCAM->iuScope->get_frame_rate_bounds (&minFPS, &maxFPS);
     double readTime=vsConv(range)*vsConv(ppwl)/vsConv(led_wl)/maxFPS*2;   //s
@@ -172,6 +173,7 @@ double pgScanGUI::vsConv(val_selector* vs){
 }
 
 void pgScanGUI::_doOneRound(){
+    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     if(!PVTsRdy) return;
     _lock_mes.lock();                       //wait for other measurements to complete
 
@@ -289,6 +291,7 @@ void pgScanGUI::_doOneRound(){
     cv::Mat* resultFinalPhaseL=new cv::Mat;
     resultFinalPhase.copyTo(*resultFinalPhaseL);
 
+    if(getExpMinMax) calcExpMinMax(framequeue, maskMatNot);
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
     if(debugDisplayModeSelect->index==0){   // if debug no unwrap is off
@@ -356,4 +359,15 @@ void pgScanGUI::_doOneRound(){
     std::cerr<<"Full: "<<go.pGCAM->iuScope->FQsPCcam.getFullNumber()<<"\n";
 
     if(_lock_mes.try_lock()){_lock_mes.unlock();measurementInProgress=false;}
+}
+
+void pgScanGUI::calcExpMinMax(FQ* framequeue, cv::Mat* mask){
+    int minn=256,maxx=-1;
+    for(int i=0;i!=framequeue->getFullNumber();i++){
+        double min,max;
+        cv::minMaxLoc(*framequeue->getUserMat(i), &min, &max, 0, 0, *mask);
+        if(min<minn)minn=min;
+        if(max>maxx)maxx=max;
+    }
+    Q_EMIT doneExpMinmax(minn, maxx);
 }

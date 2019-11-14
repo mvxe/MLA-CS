@@ -33,6 +33,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgPRGUI=new pgPosRepGUI;
     cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
     cMap=new colorMap(cm_sel, exclColor, pgSGUI, pgTGUI);
+    camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
 
     pageMotion=new twd_selector(false);
         pageMotion->addWidget(pgSGUI->gui_activation);
@@ -46,11 +47,12 @@ tab_camera::tab_camera(QWidget* parent){
 
     pageSettings=new twd_selector;
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));
-        pageSettings->addWidget(pgSGUI->gui_settings,"Scan");
+        pageSettings->addWidget(pgSGUI->gui_settings,"Scan");   index_pgSGUI=0;
         pageSettings->addWidget(pgMGUI->gui_settings,"Move");
         pageSettings->addWidget(pgTGUI->gui_settings,"Tilt");
-        pageSettings->addWidget(pgFGUI->gui_settings,"Focus");
+        pageSettings->addWidget(pgFGUI->gui_settings,"Focus");  index_pgFGUI=3;
         pageSettings->addWidget(cMap,"ColorMap");
+        pageSettings->addWidget(camSet,"Camera");               index_camSet=5;
 
     TWCtrl->addTab(pageMotion,"Motion");
         //scanOne->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Minimum);
@@ -139,6 +141,7 @@ void tab_camera::work_fun(){
 void tab_camera::on_tab_change(int index){
     if(index==index_pgSGUI) Q_EMIT pgSGUI->recalculate();
     else if(index==index_pgFGUI) Q_EMIT pgFGUI->recalculate();
+    else if(index==index_camSet) Q_EMIT camSet->genReport();
 }
 void tab_camera::on_EP_sel_released(){
     QColor color=QColorDialog::getColor(Qt::white, this, "Select excluded pixel color");
