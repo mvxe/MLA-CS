@@ -95,7 +95,8 @@ HEADERS += \
     UTIL/threadpool.h \
     GUI/TAB_CAMERA/colormap.h \
     GUI/TAB_CAMERA/other_settings.h \
-    UTIL/measurement.h
+    UTIL/measurement.h \
+    PROCEDURES/UTIL/PROC/load.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -137,7 +138,8 @@ SOURCES += \
     PROCEDURES/UTIL/USC/histogram.cpp \
     UTIL/threadpool.cpp \
     GUI/TAB_CAMERA/colormap.cpp \
-    GUI/TAB_CAMERA/other_settings.cpp
+    GUI/TAB_CAMERA/other_settings.cpp \
+    PROCEDURES/UTIL/PROC/load.cpp
 
 
 unix {

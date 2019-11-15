@@ -48,6 +48,7 @@ private:
 
     twd_selector* pageMotion;
     twd_selector* pageWriting;
+    twd_selector* pageProcessing;
     twd_selector* pageSettings;
 
     pgScanGUI* pgSGUI;      unsigned index_pgSGUI;
@@ -95,6 +96,7 @@ private Q_SLOTS:
     void onSavePixData(void);
     void onSaveCameraPicture(void);
     void onSaveDepthMap(void);
+    void onSaveDepthMapRaw(void);
 };
 
 

@@ -45,6 +45,8 @@ tab_camera::tab_camera(QWidget* parent){
     pageWriting=new twd_selector(false);
         //pageWriting->addWidget(pgPRGUI->gui,pgPRGUI->timer);
 
+    pageProcessing=new twd_selector;
+
     pageSettings=new twd_selector;
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));
         pageSettings->addWidget(pgSGUI->gui_settings,"Scan");   index_pgSGUI=0;
@@ -55,10 +57,8 @@ tab_camera::tab_camera(QWidget* parent){
         pageSettings->addWidget(camSet,"Camera");               index_camSet=5;
 
     TWCtrl->addTab(pageMotion,"Motion");
-        //scanOne->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Minimum);
-
     TWCtrl->addTab(pageWriting,"Writing");
-
+    TWCtrl->addTab(pageProcessing,"Processing");
     TWCtrl->addTab(pageSettings,"Settings");
 
     layoutTBarW->addWidget(cm_sel);
@@ -84,7 +84,8 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenu->addAction("Save image to file", this, SLOT(onSaveCameraPicture()));
 
     clickMenuDepth=new QMenu;
-    clickMenuDepth->addAction("Save image (wtih border, scalebar and colorbar) to file", this, SLOT(onSaveDepthMap()));
+    clickMenuDepth->addAction("Save DepthMap (wtih border, scalebar and colorbar) to file", this, SLOT(onSaveDepthMap()));
+    clickMenuDepth->addAction("Save DepthMap (raw, float) to file", this, SLOT(onSaveDepthMapRaw()));
 }
 
 tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
@@ -263,5 +264,16 @@ void tab_camera::onSaveDepthMap(void){
         else cMap->colormappize(mat, &display, pgSGUI->mask.getMat(), min, max, pgHistGUI->ExclOOR);
         cv::cvtColor(display, display, cv::COLOR_RGBA2BGRA);
         imwrite(fileName, display,{cv::IMWRITE_PNG_COMPRESSION,9});
+    }
+}
+void tab_camera::onSaveDepthMapRaw(void){
+    std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
+    if(fileName.empty())return;
+    if(fileName.find(".pfm")==std::string::npos) fileName+=".pfm";
+    cv::Mat* mat=pgSGUI->scanRes.getMat();
+    if(mat!=nullptr){
+        cv::Mat display=*mat;
+        display.setTo(std::numeric_limits<float>::max() , *pgSGUI->mask.getMat());
+        imwrite(fileName, display);
     }
 }

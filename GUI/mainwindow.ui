@@ -1748,23 +1748,6 @@ and intensity in ms)</string>
             <property name="bottomMargin">
              <number>0</number>
             </property>
-            <item row="2" column="1">
-             <widget class="QLineEdit" name="e_xps_xyz">
-              <property name="text">
-               <string>NAME</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_2">
-              <property name="text">
-               <string>XPS port:</string>
-              </property>
-             </widget>
-            </item>
             <item row="0" column="1">
              <widget class="QLineEdit" name="e_xps_ip">
               <property name="text">
@@ -1775,10 +1758,10 @@ and intensity in ms)</string>
               </property>
              </widget>
             </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_3">
+            <item row="7" column="2">
+             <widget class="QLabel" name="e_rpty_ip_resolved">
               <property name="text">
-               <string>XYZ group name:</string>
+               <string/>
               </property>
              </widget>
             </item>
@@ -1792,89 +1775,17 @@ and intensity in ms)</string>
               </property>
              </widget>
             </item>
-            <item row="8" column="1">
-             <widget class="QSpinBox" name="e_rpty_port">
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="maximum">
-               <number>65535</number>
-              </property>
-              <property name="value">
-               <number>9999</number>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QSpinBox" name="e_xps_port">
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="maximum">
-               <number>65535</number>
-              </property>
-              <property name="value">
-               <number>9999</number>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="0">
-             <widget class="Line" name="line_3">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="0">
-             <widget class="QLabel" name="label">
-              <property name="minimumSize">
-               <size>
-                <width>0</width>
-                <height>0</height>
-               </size>
-              </property>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_2">
               <property name="text">
-               <string>XPS IP address:</string>
+               <string>XPS port:</string>
               </property>
              </widget>
             </item>
-            <item row="7" column="0">
-             <widget class="QLabel" name="label_11">
+            <item row="0" column="2">
+             <widget class="QLabel" name="e_xps_ip_resolved">
               <property name="text">
-               <string>RPTY IP address:</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QSpinBox" name="e_xps_timeout">
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="minimum">
-               <number>1</number>
-              </property>
-              <property name="maximum">
-               <number>10000</number>
-              </property>
-              <property name="singleStep">
-               <number>1</number>
-              </property>
-              <property name="value">
-               <number>9999</number>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_15">
-              <property name="text">
-               <string>Keepalive (msec):</string>
-              </property>
-             </widget>
-            </item>
-            <item row="8" column="0">
-             <widget class="QLabel" name="label_12">
-              <property name="text">
-               <string>RPTY port:</string>
+               <string/>
               </property>
              </widget>
             </item>
@@ -1885,42 +1796,10 @@ and intensity in ms)</string>
               </property>
              </widget>
             </item>
-            <item row="9" column="1">
-             <widget class="QSpinBox" name="e_rpty_timeout">
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="minimum">
-               <number>1</number>
-              </property>
-              <property name="maximum">
-               <number>10000</number>
-              </property>
-              <property name="singleStep">
-               <number>1</number>
-              </property>
-              <property name="value">
-               <number>9999</number>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="2">
-             <spacer name="horizontalSpacer_3">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>40</width>
-                <height>20</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-            <item row="0" column="2">
-             <widget class="QLabel" name="e_xps_ip_resolved">
+            <item row="8" column="0">
+             <widget class="QLabel" name="label_12">
               <property name="text">
-               <string/>
+               <string>RPTY port:</string>
               </property>
              </widget>
             </item>
@@ -2050,10 +1929,131 @@ and intensity in ms)</string>
               </item>
              </layout>
             </item>
-            <item row="7" column="2">
-             <widget class="QLabel" name="e_rpty_ip_resolved">
+            <item row="6" column="0">
+             <widget class="Line" name="line_3">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="label">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="text">
-               <string/>
+               <string>XPS IP address:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="label_15">
+              <property name="text">
+               <string>Keepalive (msec):</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="2">
+             <spacer name="horizontalSpacer_3">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_3">
+              <property name="text">
+               <string>XYZ group name:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="0">
+             <widget class="QLabel" name="label_11">
+              <property name="text">
+               <string>RPTY IP address:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QSpinBox" name="e_xps_port">
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="maximum">
+               <number>65535</number>
+              </property>
+              <property name="value">
+               <number>9999</number>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QLineEdit" name="e_xps_xyz">
+              <property name="text">
+               <string>NAME</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="9" column="1">
+             <widget class="QSpinBox" name="e_rpty_timeout">
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>10000</number>
+              </property>
+              <property name="singleStep">
+               <number>1</number>
+              </property>
+              <property name="value">
+               <number>9999</number>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QSpinBox" name="e_xps_timeout">
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>10000</number>
+              </property>
+              <property name="singleStep">
+               <number>1</number>
+              </property>
+              <property name="value">
+               <number>9999</number>
+              </property>
+             </widget>
+            </item>
+            <item row="8" column="1">
+             <widget class="QSpinBox" name="e_rpty_port">
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="maximum">
+               <number>65535</number>
+              </property>
+              <property name="value">
+               <number>9999</number>
               </property>
              </widget>
             </item>

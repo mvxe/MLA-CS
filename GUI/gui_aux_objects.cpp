@@ -62,16 +62,17 @@ void val_selector::init1(std::vector<QString> labels){
     connect(unit->menu(), SIGNAL(aboutToHide()), this, SLOT(on_menu_change()));
 
     if (unitIndex>=labels.size()) unitIndex=0;
-    unit->menu()->setActiveAction( unit->menu()->actions()[unitIndex] );
-    unit->setText(unit->menu()->activeAction()->text());
+    unit->activeAction=unit->menu()->actions()[unitIndex];
+    unit->setText(unit->activeAction->text());
 }
 
 
 void val_selector::on_menu_change(){
     if(unit->menu()->activeAction()==nullptr) return;
-    unit->setText(unit->menu()->activeAction()->text());
+    unit->activeAction=unit->menu()->activeAction();
+    unit->setText(unit->activeAction->text());
     unitIndex=0;
-    for (int i=0;i!=unit->menu()->actions().size();i++) if(unit->menu()->actions()[i]==unit->menu()->activeAction()) {
+    for (int i=0;i!=unit->menu()->actions().size();i++) if(unit->menu()->actions()[i]==unit->activeAction) {
         unitIndex=i;
         break;
     }
@@ -127,17 +128,18 @@ void smp_selector::init(QString label, std::vector<QString> labels){
     connect(_sBtn->menu(), SIGNAL(aboutToHide()), this, SLOT(on_menu_change()));
 
     if (_index>=labels.size()) _index=0;
-    _sBtn->menu()->setActiveAction( _sBtn->menu()->actions()[_index] );
-    _sBtn->setText(_sBtn->menu()->activeAction()->text());
+    _sBtn->activeAction=_sBtn->menu()->actions()[_index];
+    _sBtn->setText(_sBtn->activeAction->text());
 }
 
 void smp_selector::addWidget(QWidget* widget){layout->insertWidget(layout->count()-1, widget);}
 
 void smp_selector::on_menu_change(){
     if(_sBtn->menu()->activeAction()==nullptr) return;
-    _sBtn->setText(_sBtn->menu()->activeAction()->text());
+    _sBtn->activeAction=_sBtn->menu()->activeAction();
+    _sBtn->setText(_sBtn->activeAction->text());
     _index=0;
-    for (int i=0;i!=_sBtn->menu()->actions().size();i++) if(_sBtn->menu()->actions()[i]==_sBtn->menu()->activeAction()) {
+    for (int i=0;i!=_sBtn->menu()->actions().size();i++) if(_sBtn->menu()->actions()[i]==_sBtn->activeAction) {
         _index=i;
         break;
     }
@@ -176,8 +178,9 @@ void twd_selector::addWidget(QWidget* widget, QString label){
 }
 void twd_selector::on_menu_change(){
     if(select->menu()->activeAction()==nullptr) return;
-    select->setText(select->menu()->activeAction()->text());
-    for (int i=0;i!=select->menu()->actions().size();i++) if(select->menu()->actions()[i]==select->menu()->activeAction()) {
+    select->activeAction=select->menu()->activeAction();
+    select->setText(select->activeAction->text());
+    for (int i=0;i!=select->menu()->actions().size();i++) if(select->menu()->actions()[i]==select->activeAction) {
         if(active_index!=-1){
             widgets[active_index]->hide();
         }
@@ -254,12 +257,13 @@ void checkbox_save::setValue(bool nvalue){
 void QScrollToolButton::wheelEvent(QWheelEvent *event){
     int index=-1;
     for(int i=0;i!=this->menu()->actions().size();i++){
-        if(this->menu()->actions()[i]==this->menu()->activeAction())
+        if(this->menu()->actions()[i]==activeAction)
         {index=i; break;}
     }
     index-=event->delta()/120;
     if(index>=0 && index<this->menu()->actions().size()){
-        this->menu()->setActiveAction(this->menu()->actions()[index]);
+        activeAction=this->menu()->actions()[index];
+        this->menu()->setActiveAction(activeAction);
         Q_EMIT this->menu()->aboutToHide();
     }
 }

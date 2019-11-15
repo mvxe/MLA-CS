@@ -157,6 +157,8 @@ Q_SIGNALS:
 
 class QScrollToolButton : public QToolButton{
     Q_OBJECT
+public:
+    QAction* activeAction{nullptr};
 private:
     void wheelEvent(QWheelEvent *event);
 };
