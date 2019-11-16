@@ -38,15 +38,20 @@ public:
     std::atomic<bool> measurementInProgress{false}; //for outside calling functions
     void doOneRound();
 
-    cvMat_safe scanRes;     //contains the scan result
-    cvMat_safe mask;        //contains the excluded pixel mask
-    cvMat_safe maskN;       //inverse mask
+    struct scanRes{
+        cv::Mat depth;
+        cv::Mat mask;
+        cv::Mat maskN;  //for convenience, much faster to do while its already on the gpu
+        double min;
+        double max;
+        double tiltCor[2];  //X, and Y
+        double pos[3];  //X,Y and Z at the time of measurement, might be useful
+        double XYnmppx{-1}; //useful if we load a scan which was done at different settings, -1 means the one in settings is valid
+    };
+    varShare<scanRes> result;
 
     mesLockProg& MLP;
     double vsConv(val_selector* vs);
-
-    std::atomic<double> phiXres;
-    std::atomic<double> phiYres;
 private:
     void init_gui_activation();
     void init_gui_settings();

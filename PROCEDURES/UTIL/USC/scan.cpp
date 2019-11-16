@@ -197,6 +197,7 @@ double pgScanGUI::vsConv(val_selector* vs){
 void pgScanGUI::_doOneRound(){
     if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     if(!PVTsRdy) return;
+    scanRes* res=new scanRes;
     MLP._lock_meas.lock();                       //wait for other measurements to complete
 
     int nFrames=totalFrameNum;
@@ -204,6 +205,8 @@ void pgScanGUI::_doOneRound(){
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeue->setUserFps(99999);
 
+    XPS::raxis poss=go.pXPS->getPos(XPS::mgroup_XYZF);
+    for(int i=0;i!=2;i++) res->pos[i]=poss.pos[i];
     go.pXPS->execPVTobj(PVTmeasure, &PVTret);
 
     for(int i=0;i!=95;i++){
@@ -312,29 +315,26 @@ void pgScanGUI::_doOneRound(){
     }
     std::cerr<<"done with dfts\n";
     bitwise_not(maskUMat, maskUMatNot);
-    cv::Mat* maskMat=new cv::Mat;
-    cv::Mat* maskMatNot=new cv::Mat;
-    maskUMat.copyTo(*maskMat);
-    maskUMatNot.copyTo(*maskMatNot);
+    maskUMat.copyTo(res->mask);
+    maskUMatNot.copyTo(res->maskN);
     int maskNonZero=cv::countNonZero(maskUMat);
 
     cv::transpose(resultFinalPhase,resultFinalPhase);   //now its the same rows,cols as the camera images
-    cv::Mat* resultFinalPhaseL=new cv::Mat;
-    resultFinalPhase.copyTo(*resultFinalPhaseL);
+    resultFinalPhase.copyTo(res->depth);
 
-    if(getExpMinMax) calcExpMinMax(framequeue, maskMatNot);
+    if(getExpMinMax) calcExpMinMax(framequeue, &res->maskN);
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
     if(debugDisplayModeSelect->index==0){   // if debug no unwrap is off
-        resultFinalPhase.copyTo(*resultFinalPhaseL);
+        resultFinalPhase.copyTo(res->depth);
         cv::phase_unwrapping::HistogramPhaseUnwrapping::Params params;
         params.width=nCols;
         params.height=nRows;
         cv::Ptr<cv::phase_unwrapping::HistogramPhaseUnwrapping> phaseUnwrapping = cv::phase_unwrapping::HistogramPhaseUnwrapping::create(params);
-        phaseUnwrapping->unwrapPhaseMap(*resultFinalPhaseL, *resultFinalPhaseL,*maskMatNot);    //unfortunately this does not work for UMat (segfaults for ocv 4.1.2), thats why we shuffle the mat back and forth
-        resultFinalPhaseL->copyTo(resultFinalPhase);
+        phaseUnwrapping->unwrapPhaseMap(res->depth, res->depth,res->maskN);    //unfortunately this does not work for UMat (segfaults for ocv 4.1.2), thats why we shuffle the mat back and forth
+        res->depth.copyTo(resultFinalPhase);
     }
-    double min,max; cv::Point ignore;
+    cv::Point ignore;
     resultFinalPhase.convertTo(resultFinalPhase,-1,vsConv(led_wl)/4/M_PI);
 
     MLP.progress_comp=90;
@@ -344,24 +344,24 @@ void pgScanGUI::_doOneRound(){
         int m=cv::getOptimalDFTSize(resultFinalPhase.rows);
         int n=cv::getOptimalDFTSize(resultFinalPhase.cols);
         cv::copyMakeBorder(resultFinalPhase, padded, 0, m-resultFinalPhase.rows, 0, n-resultFinalPhase.cols, cv::BORDER_CONSTANT, cv::Scalar::all(0));
-        cv::UMat dftRes;
+        cv::UMat dftResM;
         padded.setTo(cv::Scalar::all(0), maskUMat);
-        cv::dft(padded, dftRes);
-        cv::Mat res;
-        cv::UMat(dftRes,{0,0,2,2}).copyTo(res);
+        cv::dft(padded, dftResM);
+        cv::Mat resM;
+        cv::UMat(dftResM,{0,0,2,2}).copyTo(resM);
         long int totalnum=nRows*nCols;  //this already excludes padded
         totalnum-=maskNonZero;          //subtract the mask events
-        double phiX= 2*M_PI*std::abs(res.at<std::complex<float>>(0,1))/totalnum/nCols;
-        double phiY= 2*M_PI*std::abs(res.at<std::complex<float>>(1,0))/totalnum/nRows;
-        std::cout<<"Phases X,Y: "<<phiX<< " "<<phiY<<"\n";
-        if(std::arg(res.at<std::complex<float>>(0,1))>0) phiX*=-1;
-        if(std::arg(res.at<std::complex<float>>(1,0))>0) phiY*=-1;
-        std::cout<<"CPhases X,Y: "<<phiX<< " "<<phiY<<"\n";
+        res->tiltCor[0]=2*M_PI*std::abs(resM.at<std::complex<float>>(0,1))/totalnum/nCols;
+        res->tiltCor[1]=2*M_PI*std::abs(resM.at<std::complex<float>>(1,0))/totalnum/nRows;
+        std::cout<<"Phases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
+        if(std::arg(resM.at<std::complex<float>>(0,1))>0) res->tiltCor[0]*=-1;
+        if(std::arg(resM.at<std::complex<float>>(1,0))>0) res->tiltCor[1]*=-1;
+        std::cout<<"CPhases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
 
         cv::Mat slopeX1(1, nCols, CV_32F);
         cv::UMat slopeUX1(1, nCols, CV_32F);
         cv::UMat slopeUX(nRows, nCols, CV_32F);
-        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=i*phiX;
+        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=i*res->tiltCor[0];
         slopeX1.copyTo(slopeUX1);
         cv::repeat(slopeUX1, nRows, 1, slopeUX);
         cv::add(slopeUX,resultFinalPhase,resultFinalPhase);
@@ -369,21 +369,16 @@ void pgScanGUI::_doOneRound(){
         cv::Mat slopeY1(nRows, 1, CV_32F);
         cv::UMat slopeUY1(nRows, 1, CV_32F);
         cv::UMat slopeUY(nRows, nCols, CV_32F);
-        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*phiY;
+        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*res->tiltCor[1];
         slopeY1.copyTo(slopeUY1);
         cv::repeat(slopeUY1, 1, nCols, slopeUY);
         cv::add(slopeUY,resultFinalPhase,resultFinalPhase);
-
-        phiXres=phiX;
-        phiYres=phiY;
     }
 
-    cv::minMaxLoc(resultFinalPhase, &min, &max, &ignore, &ignore, maskUMatNot);  //the ignored mask values will be <min , everything is in nm
-    resultFinalPhase.copyTo(*resultFinalPhaseL);
+    cv::minMaxLoc(resultFinalPhase, &res->min, &res->max, &ignore, &ignore, maskUMatNot);  //the ignored mask values will be <min , everything is in nm
+    resultFinalPhase.copyTo(res->depth);
 
-    mask.putMat(maskMat);
-    maskN.putMat(maskMatNot);
-    scanRes.putMat(resultFinalPhaseL,min,max);
+    result.put(res);
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
     std::cerr<<"operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";

@@ -66,4 +66,50 @@ void tsvar<T>::err(T initial){
 }
 
 
+/*########## VARIABLE FOR SAFE DISTRIBUTING SERVER -> MULTIPLE CLIENTS ##########*/
+
+
+template <typename T> varShareClient<T>::~varShareClient(){
+    std::lock_guard<std::mutex>lock(parent->active_lock);
+    if(var!=nullptr) var->num--;
+}
+template <typename T> const T* varShareClient<T>::get(){
+    std::lock_guard<std::mutex>lock(parent->active_lock);
+    if(var!=nullptr) var->num--;
+    if(parent->active.empty()) return nullptr;
+    var=parent->active.front();
+    var->num++;
+    return var->var;
+}
+template <typename T> bool varShareClient<T>::changed(){
+    return (var!=parent->current);
+}
+template <typename T> void varShare<T>::put(T* var){
+    std::lock_guard<std::mutex>lock(active_lock);
+    active.push_front(new varSt{var,0});
+    current=active.front();
+    cleanup();
+}
+template <typename T> void varShare<T>::cleanup(){
+    if(active.empty()) return;
+    typename std::list<varSt*>::iterator it=active.begin(); it++;
+    while(it!=active.end()){
+        if((*it)->num==0){
+            typename std::list<varSt*>::iterator itt=it;
+            it++;
+            delete *itt;
+            active.erase(itt);
+        } else it++;
+    }
+}
+template <typename T>  varShare<T>::~varShare(){
+    while(!active.empty()) {
+        delete active.back();
+        active.pop_back();
+    }
+}
+template <typename T>  varShareClient<T>* varShare<T>::getClient(){
+    return new varShareClient<T>(this);
+}
+
 #endif // CONTAINERSTEMPLATE_H

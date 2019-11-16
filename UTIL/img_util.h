@@ -26,6 +26,7 @@ private:
     double _min,_max;
 };
 
+
 //MATOP
 
 class matOp{

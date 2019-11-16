@@ -50,6 +50,7 @@ private:
     twd_selector* pageWriting;
     twd_selector* pageProcessing;
     twd_selector* pageSettings;
+    varShareClient<pgScanGUI::scanRes>* scanRes;
 
     pgScanGUI* pgSGUI;      unsigned index_pgSGUI;
     pgMoveGUI* pgMGUI;
@@ -81,7 +82,6 @@ private:
     bool lastSelectingDRB{false};
 
     FQ* framequeueDisp;
-    const cv::Mat* mat;
     const cv::Mat* onDisplay;
 
     constexpr static unsigned work_call_time=33;    //work_fun is called periodically via timer every this many milliseconds

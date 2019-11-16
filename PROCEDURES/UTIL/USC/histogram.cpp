@@ -3,7 +3,7 @@
 #include "opencv2/opencv.hpp"
 #include "GUI/gui_includes.h"
 
-pgHistogrameGUI::pgHistogrameGUI(int Hsize, int Vsize, cvMat_safe* cvms_img, cvMat_safe* cvms_mask, smp_selector* cm_sel, cv::Scalar& exclColor): Hsize(Hsize), Vsize(Vsize), cvms_img(cvms_img), cvms_mask(cvms_mask), cm_sel(cm_sel), exclColor(exclColor){
+pgHistogrameGUI::pgHistogrameGUI(int Hsize, int Vsize,  varShareClient<pgScanGUI::scanRes>* scanRes, smp_selector* cm_sel, cv::Scalar& exclColor): Hsize(Hsize), Vsize(Vsize), scanRes(scanRes), cm_sel(cm_sel), exclColor(exclColor){
     layout=new QVBoxLayout;
     btnLayout= new QHBoxLayout;
     this->setLayout(layout);
@@ -28,12 +28,11 @@ pgHistogrameGUI::pgHistogrameGUI(int Hsize, int Vsize, cvMat_safe* cvms_img, cvM
 }
 
 void pgHistogrameGUI::updateImg(double *rmin, double *rmax){
-    double min,max;
-    cv::Mat* img=cvms_img->getMat(&min, &max);
-    if(img!=nullptr){
+    const pgScanGUI::scanRes* res=scanRes->get();
+    if(res!=nullptr){
         cv::Mat hist;
-        int histSize[]={Hsize}; float hranges[]={(float)min, (float)max}; const float* ranges[]={hranges}; int channels[]={0};
-        cv::calcHist(img, 1, channels, *cvms_mask->getMat(), hist, 1, histSize, ranges);
+        int histSize[]={Hsize}; float hranges[]={(float)res->min, (float)res->max}; const float* ranges[]={hranges}; int channels[]={0};
+        cv::calcHist(&res->depth, 1, channels, res->maskN, hist, 1, histSize, ranges);
 
         //calc min,max from _lPcnt,_hPcnt
         float sum=cv::sum(hist).val[0];
@@ -47,8 +46,8 @@ void pgHistogrameGUI::updateImg(double *rmin, double *rmax){
             sumc+=hist.at<float>(i);
             if(sumc>=(100-_hPcnt)/100*sum) {imax=i; break;}
         }
-        if(rmin!=nullptr) *rmin=min+imin*(max-min)/(Hsize-1);
-        if(rmax!=nullptr) *rmax=min+imax*(max-min)/(Hsize-1);
+        if(rmin!=nullptr) *rmin=res->min+imin*(res->max-res->min)/(Hsize-1);
+        if(rmax!=nullptr) *rmax=res->min+imax*(res->max-res->min)/(Hsize-1);
 
         cv::Mat lin(1,Hsize,CV_8U);
         for(int i=0;i!=imin;i++)      lin.at<uchar>(i)=0;

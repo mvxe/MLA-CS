@@ -7,6 +7,7 @@
 #include <thread>
 #include <sstream>
 #include <iostream>
+#include <list>
 
 namespace _containers_internal {
     void quit();
@@ -126,6 +127,39 @@ protected:
     time_t mf;
     std::mutex *mx;
     bool var{false};
+};
+
+
+
+/*########## VARIABLE FOR SAFE DISTRIBUTING SERVER -> MULTIPLE CLIENTS ##########
+ provides a thread safe way to shuffle a variable or object between different threads*/
+
+template <typename T> class varShare;
+template <typename T> class varShareClient{     //after getting the client, you need to destroy it yourself, also all varShareClients should be destroyed before varShare, otherwise you will get an segfault
+public:
+    varShareClient(varShare<T>* parent):parent(parent){}
+    ~varShareClient();
+    const T* get();     //After getting the pointer, changed flag will be turned off, and the next get call may have a new variable. The old pointer is valid until a new one is returned, at which point the old data might be deleted (depending whether other clients still use it).
+    bool changed();     //returns true if new data is available
+private:
+    typename varShare<T>::varSt* var{nullptr};
+    varShare<T>* parent;
+};
+template <typename T> class varShare{   // also takes care of memory management
+public:
+    ~varShare();
+    void put(T* var);                   //for the server, the object takes ownership now, and will delete the var when done with it
+    varShareClient<T>* getClient();     //for the client
+protected:
+    void cleanup();
+    friend class varShareClient<T>;
+    struct varSt{
+        T* var;
+        uint num{0};
+    };
+    std::mutex active_lock;
+    std::list<varSt*> active;
+    std::atomic<varSt*> current;    //just to reduce locking, used by varShareClient to return changed
 };
 
 

@@ -3,6 +3,7 @@
 
 #include "PROCEDURES/procedure.h"
 #include "UTIL/img_util.h"
+#include "scan.h"
 class QLabel;
 class smp_selector;
 class QVBoxLayout;
@@ -14,7 +15,8 @@ class pgHistogrameGUI: public QWidget{
     Q_OBJECT
     //GUI
 public:
-    pgHistogrameGUI(int Hsize, int Vsize, cvMat_safe* cvms_img, cvMat_safe* cvms_mask, smp_selector* cm_sel, cv::Scalar& exclColor);        //cvms_mask is inverse mask!
+    pgHistogrameGUI(int Hsize, int Vsize, varShareClient<pgScanGUI::scanRes>* scanRes, smp_selector* cm_sel, cv::Scalar& exclColor);        //cvms_mask is inverse mask!
+    ~pgHistogrameGUI(){delete scanRes;}
     void updateImg(double* rmin=nullptr, double* rmax=nullptr);
     const double& hPcnt{_hPcnt};
     const double& lPcnt{_lPcnt};
@@ -36,8 +38,7 @@ private:
     cc_save<bool> sv_outOfRangeToExcl{cbOORtE,false,&go.gui_config.save,"pgHistogrameGUI_outOfRangeToExcl"};
 
     bool _changed{false};
-    cvMat_safe* cvms_img;
-    cvMat_safe* cvms_mask;
+    varShareClient<pgScanGUI::scanRes>* scanRes;
     smp_selector* cm_sel;
     int Hsize;
     int Vsize;

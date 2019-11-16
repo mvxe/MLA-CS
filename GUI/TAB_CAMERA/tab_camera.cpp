@@ -27,6 +27,7 @@ tab_camera::tab_camera(QWidget* parent){
     layoutTBarW->addWidget(TWCtrl);
 
     pgSGUI=new pgScanGUI(MLP);
+    scanRes=pgSGUI->result.getClient();
     pgMGUI=new pgMoveGUI;
     pgTGUI=new pgTiltGUI;
     pgFGUI=new pgFocusGUI(MLP, pgSGUI, pgTGUI);
@@ -45,7 +46,7 @@ tab_camera::tab_camera(QWidget* parent){
     pageWriting=new twd_selector(false);
         //pageWriting->addWidget(pgPRGUI->gui,pgPRGUI->timer);
 
-    pageProcessing=new twd_selector;
+    pageProcessing=new twd_selector(false);
 
     pageSettings=new twd_selector;
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));
@@ -65,7 +66,7 @@ tab_camera::tab_camera(QWidget* parent){
     epc_sel=new QPushButton("Excl."); epc_sel->setFlat(true); epc_sel->setIcon(QPixmap(":/color.svg"));
     connect(epc_sel, SIGNAL(released()), this, SLOT(on_EP_sel_released()));
     cm_sel->addWidget(epc_sel);
-    pgHistGUI=new pgHistogrameGUI(400, 50, &pgSGUI->scanRes, &pgSGUI->maskN, cm_sel, exclColor);
+    pgHistGUI=new pgHistogrameGUI(400, 50, pgSGUI->result.getClient(), cm_sel, exclColor);
     layoutTBarW->addWidget(pgHistGUI);
 
     main_show_scale=new checkbox_save(false,"tab_camera_main_show_scale","ScaleBar");
@@ -89,6 +90,7 @@ tab_camera::tab_camera(QWidget* parent){
 }
 
 tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
+    delete scanRes;
     delete pgSGUI;
     delete pgMGUI;
     delete pgTGUI;
@@ -112,20 +114,20 @@ void tab_camera::work_fun(){
             }
             else LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
         }
-        if(pgSGUI->scanRes.changed || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed){
+        if(scanRes->changed() || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed){
             pgHistGUI->updateImg();
             oldCm=cm_sel->index;
             exclColorChanged=false;
         }
     }else{                  // Depth map
         LDisplay->isDepth=true;
-        if(pgSGUI->scanRes.changed || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed || selectingDRB || lastSelectingDRB){
+        if(scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed || selectingDRB || lastSelectingDRB){
             double min,max;
             pgHistGUI->updateImg(&min, &max);
-            cv::Mat* mat=pgSGUI->scanRes.getMat();
-            if(mat!=nullptr){
+            const pgScanGUI::scanRes* res=scanRes->get();
+            if(res!=nullptr){
                 cv::Mat display;
-                cMap->colormappize(mat, &display, pgSGUI->mask.getMat(), min, max, pgHistGUI->ExclOOR);
+                cMap->colormappize(&res->depth, &display, &res->mask, min, max, pgHistGUI->ExclOOR);
                 if(selectingDRB) cv::rectangle(display, {selStartX+1,selStartY+1},{selCurX+1,selCurY+1}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, (abs(selCurX-selStartX)>=50 && abs(selCurY-selStartY)>=50)?1:-1);
                 QImage qimg(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888);
                 LDisplay->setPixmap(QPixmap::fromImage(qimg));
@@ -251,17 +253,17 @@ void tab_camera::onSaveDepthMap(void){
     if(fileName.find(".png")==std::string::npos) fileName+=".png";
     double min,max;
     pgHistGUI->updateImg(&min, &max);
-    cv::Mat* mat=pgSGUI->scanRes.getMat();
-    if(mat!=nullptr){
+    const pgScanGUI::scanRes* res=scanRes->get();
+    if(res!=nullptr){
         cv::Mat display;
         int width=abs(selEndX-selStartX);
         int height=abs(selEndY-selStartY);
         if(width>=50 && height>=50){
-            cv::Mat temp0(                  *mat,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
-            cv::Mat temp1(*pgSGUI->mask.getMat(),{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+            cv::Mat temp0(res->depth,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+            cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
             cMap->colormappize(&temp0, &display, &temp1, min, max, pgHistGUI->ExclOOR, true);
         }
-        else cMap->colormappize(mat, &display, pgSGUI->mask.getMat(), min, max, pgHistGUI->ExclOOR);
+        else cMap->colormappize(&res->depth, &display, &res->mask, min, max, pgHistGUI->ExclOOR);
         cv::cvtColor(display, display, cv::COLOR_RGBA2BGRA);
         imwrite(fileName, display,{cv::IMWRITE_PNG_COMPRESSION,9});
     }
@@ -270,10 +272,10 @@ void tab_camera::onSaveDepthMapRaw(void){
     std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
     if(fileName.empty())return;
     if(fileName.find(".pfm")==std::string::npos) fileName+=".pfm";
-    cv::Mat* mat=pgSGUI->scanRes.getMat();
-    if(mat!=nullptr){
-        cv::Mat display=*mat;
-        display.setTo(std::numeric_limits<float>::max() , *pgSGUI->mask.getMat());
+    const pgScanGUI::scanRes* res=scanRes->get();
+    if(res!=nullptr){
+        cv::Mat display=res->depth;
+        display.setTo(std::numeric_limits<float>::max() , res->mask);
         imwrite(fileName, display);
     }
 }
