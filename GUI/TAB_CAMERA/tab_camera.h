@@ -38,7 +38,6 @@ private:
 
     QHBoxLayout* layout;
     iImageDisplay* LDisplay;
-    colorMap* cMap;
     QWidget* tBarW;
     QVBoxLayout* layoutTBarW;
     smp_selector* selDisp;
@@ -52,6 +51,7 @@ private:
     twd_selector* pageSettings;
     varShareClient<pgScanGUI::scanRes>* scanRes;
 
+    colorMap* cMap;
     pgScanGUI* pgSGUI;      unsigned index_pgSGUI;
     pgMoveGUI* pgMGUI;
     pgTiltGUI* pgTGUI;
@@ -72,6 +72,8 @@ private:
     QProgressBar* measPB;
     QProgressBar* compPB;
 
+    QPushButton* loadRawBtn;
+
     QMenu* clickMenu;
     QMenu* clickMenuDepth;
 
@@ -85,7 +87,7 @@ private:
     const cv::Mat* onDisplay;
 
     constexpr static unsigned work_call_time=33;    //work_fun is called periodically via timer every this many milliseconds
-bool changed=true;
+    pgScanGUI::scanRes loadedScan; bool loadedScanChanged{false}; bool loadedOnDisplay{false};
 
 
 private Q_SLOTS:
@@ -97,6 +99,7 @@ private Q_SLOTS:
     void onSaveCameraPicture(void);
     void onSaveDepthMap(void);
     void onSaveDepthMapRaw(void);
+    void onLoadDepthMapRaw(void);
 };
 
 

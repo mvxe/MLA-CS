@@ -4,6 +4,7 @@
 #include "includes.h"
 #include <opencv2/phase_unwrapping.hpp>
 #include <opencv2/core/ocl.hpp>
+#include "GUI/TAB_CAMERA/colormap.h"
 
 pScan::pScan(){
 
@@ -378,6 +379,8 @@ void pgScanGUI::_doOneRound(){
     cv::minMaxLoc(resultFinalPhase, &res->min, &res->max, &ignore, &ignore, maskUMatNot);  //the ignored mask values will be <min , everything is in nm
     resultFinalPhase.copyTo(res->depth);
 
+    if(cMap==nullptr) res->XYnmppx=0;
+    else res->XYnmppx=cMap->getXYnmppx();
     result.put(res);
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();

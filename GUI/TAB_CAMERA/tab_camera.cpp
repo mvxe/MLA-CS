@@ -34,6 +34,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgPRGUI=new pgPosRepGUI;
     cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
     cMap=new colorMap(cm_sel, exclColor, pgSGUI, pgTGUI);
+    pgSGUI->cMap=cMap;
     camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
 
     pageMotion=new twd_selector(false);
@@ -47,6 +48,8 @@ tab_camera::tab_camera(QWidget* parent){
         //pageWriting->addWidget(pgPRGUI->gui,pgPRGUI->timer);
 
     pageProcessing=new twd_selector(false);
+        loadRawBtn=new QPushButton("Load measurement"); connect(loadRawBtn, SIGNAL(released()), this, SLOT(onLoadDepthMapRaw()));
+        pageProcessing->addWidget(new twid(loadRawBtn, false));
 
     pageSettings=new twd_selector;
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));
@@ -66,7 +69,7 @@ tab_camera::tab_camera(QWidget* parent){
     epc_sel=new QPushButton("Excl."); epc_sel->setFlat(true); epc_sel->setIcon(QPixmap(":/color.svg"));
     connect(epc_sel, SIGNAL(released()), this, SLOT(on_EP_sel_released()));
     cm_sel->addWidget(epc_sel);
-    pgHistGUI=new pgHistogrameGUI(400, 50, pgSGUI->result.getClient(), cm_sel, exclColor);
+    pgHistGUI=new pgHistogrameGUI(400, 50, cm_sel, exclColor);
     layoutTBarW->addWidget(pgHistGUI);
 
     main_show_scale=new checkbox_save(false,"tab_camera_main_show_scale","ScaleBar");
@@ -114,31 +117,41 @@ void tab_camera::work_fun(){
             }
             else LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
         }
-        if(scanRes->changed() || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed){
-            pgHistGUI->updateImg();
+        if(scanRes->changed() || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || loadedScanChanged){
+            const pgScanGUI::scanRes* res;
+            if(scanRes->changed()) loadedOnDisplay=false;
+            if(loadedOnDisplay) res=&loadedScan;
+            else res=scanRes->get();
+            pgHistGUI->updateImg(res);
             oldCm=cm_sel->index;
-            exclColorChanged=false;
         }
     }else{                  // Depth map
         LDisplay->isDepth=true;
-        if(scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed || selectingDRB || lastSelectingDRB){
+        if(scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed || selectingDRB || lastSelectingDRB || loadedScanChanged){
+            const pgScanGUI::scanRes* res;
+            if(scanRes->changed()) loadedOnDisplay=false;
+            if(loadedOnDisplay) res=&loadedScan;
+            else res=scanRes->get();
+
             double min,max;
-            pgHistGUI->updateImg(&min, &max);
-            const pgScanGUI::scanRes* res=scanRes->get();
+            pgHistGUI->updateImg(res, &min, &max);
+
             if(res!=nullptr){
                 cv::Mat display;
-                cMap->colormappize(&res->depth, &display, &res->mask, min, max, pgHistGUI->ExclOOR);
+                cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
                 if(selectingDRB) cv::rectangle(display, {selStartX+1,selStartY+1},{selCurX+1,selCurY+1}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, (abs(selCurX-selStartX)>=50 && abs(selCurY-selStartY)>=50)?1:-1);
                 QImage qimg(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888);
                 LDisplay->setPixmap(QPixmap::fromImage(qimg));
             }
             oldCm=cm_sel->index;
-            exclColorChanged=false;
+
         }
     }
     oldIndex=selDisp->index;
     if(onDisplay!=nullptr) framequeueDisp->freeUserMat();
     lastSelectingDRB=selectingDRB;
+    exclColorChanged=false;
+    loadedScanChanged=false;
 
     measPB->setValue(MLP.progress_meas);
     compPB->setValue(MLP.progress_comp);
@@ -252,8 +265,8 @@ void tab_camera::onSaveDepthMap(void){
     if(fileName.empty())return;
     if(fileName.find(".png")==std::string::npos) fileName+=".png";
     double min,max;
-    pgHistGUI->updateImg(&min, &max);
     const pgScanGUI::scanRes* res=scanRes->get();
+    pgHistGUI->updateImg(res, &min, &max);
     if(res!=nullptr){
         cv::Mat display;
         int width=abs(selEndX-selStartX);
@@ -261,9 +274,9 @@ void tab_camera::onSaveDepthMap(void){
         if(width>=50 && height>=50){
             cv::Mat temp0(res->depth,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
             cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
-            cMap->colormappize(&temp0, &display, &temp1, min, max, pgHistGUI->ExclOOR, true);
+            cMap->colormappize(&temp0, &display, &temp1, min, max, res->XYnmppx, pgHistGUI->ExclOOR, true);
         }
-        else cMap->colormappize(&res->depth, &display, &res->mask, min, max, pgHistGUI->ExclOOR);
+        else cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
         cv::cvtColor(display, display, cv::COLOR_RGBA2BGRA);
         imwrite(fileName, display,{cv::IMWRITE_PNG_COMPRESSION,9});
     }
@@ -276,6 +289,31 @@ void tab_camera::onSaveDepthMapRaw(void){
     if(res!=nullptr){
         cv::Mat display=res->depth;
         display.setTo(std::numeric_limits<float>::max() , res->mask);
-        imwrite(fileName, display);
+        cv::imwrite(fileName, display);
     }
+    std::ofstream wfile(fileName, std::ofstream::app);
+    wfile.write(reinterpret_cast<const char*>(&(res->min)),sizeof(res->min));
+    wfile.write(reinterpret_cast<const char*>(&(res->max)),sizeof(res->max));
+    wfile.write(reinterpret_cast<const char*>(res->tiltCor),sizeof(res->tiltCor));
+    wfile.write(reinterpret_cast<const char*>(res->pos),sizeof(res->pos));
+    wfile.write(reinterpret_cast<const char*>(&(res->XYnmppx)),sizeof(res->XYnmppx));
+    wfile.close();
+}
+void tab_camera::onLoadDepthMapRaw(void){
+    std::string fileName=QFileDialog::getOpenFileName(this,"Select file to load Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
+    if(fileName.empty())return;
+    loadedScan.depth=cv::imread(fileName, cv::IMREAD_UNCHANGED);
+    cv::compare(loadedScan.depth, std::numeric_limits<float>::max(), loadedScan.mask, cv::CMP_EQ);
+    cv::bitwise_not(loadedScan.mask, loadedScan.maskN);
+    std::ifstream rfile(fileName);
+    int size=sizeof(loadedScan.min)+sizeof(loadedScan.max)+sizeof(loadedScan.tiltCor)+sizeof(loadedScan.pos)+sizeof(loadedScan.XYnmppx);
+    rfile.seekg(-size, rfile.end);
+    rfile.read(reinterpret_cast<char*>(&(loadedScan.min)),sizeof(loadedScan.min));
+    rfile.read(reinterpret_cast<char*>(&(loadedScan.max)),sizeof(loadedScan.max));
+    rfile.read(reinterpret_cast<char*>(loadedScan.tiltCor),sizeof(loadedScan.tiltCor));
+    rfile.read(reinterpret_cast<char*>(loadedScan.pos),sizeof(loadedScan.pos));
+    rfile.read(reinterpret_cast<char*>(&(loadedScan.XYnmppx)),sizeof(loadedScan.XYnmppx));
+    rfile.close();
+    loadedScanChanged=true;
+    loadedOnDisplay=true;
 }

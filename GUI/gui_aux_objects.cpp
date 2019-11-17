@@ -325,12 +325,16 @@ void moveDial::onAngChanged(double val){
 
 // HORIZONTAL LAYOUT WIDGET FOR CONVENIENCE
 
-twid::twid(){
+twid::twid(bool setmargin){
     layout=new QHBoxLayout;
     this->setLayout(layout);
-    layout->setMargin(0);
+    if(setmargin) layout->setMargin(0);
     layout->addStretch(0);
 }
 void twid::addWidget(QWidget* widget, bool front){
     layout->insertWidget(front?0:(layout->count()-1), widget);
 }
+twid::twid(QWidget* widget, bool setmargin): twid(setmargin){
+    addWidget(widget, true);
+}
+

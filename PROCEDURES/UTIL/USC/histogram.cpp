@@ -3,7 +3,7 @@
 #include "opencv2/opencv.hpp"
 #include "GUI/gui_includes.h"
 
-pgHistogrameGUI::pgHistogrameGUI(int Hsize, int Vsize,  varShareClient<pgScanGUI::scanRes>* scanRes, smp_selector* cm_sel, cv::Scalar& exclColor): Hsize(Hsize), Vsize(Vsize), scanRes(scanRes), cm_sel(cm_sel), exclColor(exclColor){
+pgHistogrameGUI::pgHistogrameGUI(int Hsize, int Vsize, smp_selector* cm_sel, cv::Scalar& exclColor): Hsize(Hsize), Vsize(Vsize), cm_sel(cm_sel), exclColor(exclColor){
     layout=new QVBoxLayout;
     btnLayout= new QHBoxLayout;
     this->setLayout(layout);
@@ -27,8 +27,7 @@ pgHistogrameGUI::pgHistogrameGUI(int Hsize, int Vsize,  varShareClient<pgScanGUI
     layout->setMargin(0);
 }
 
-void pgHistogrameGUI::updateImg(double *rmin, double *rmax){
-    const pgScanGUI::scanRes* res=scanRes->get();
+void pgHistogrameGUI::updateImg(const pgScanGUI::scanRes* res ,double *rmin, double *rmax){
     if(res!=nullptr){
         cv::Mat hist;
         int histSize[]={Hsize}; float hranges[]={(float)res->min, (float)res->max}; const float* ranges[]={hranges}; int channels[]={0};

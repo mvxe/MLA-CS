@@ -15,9 +15,8 @@ class pgHistogrameGUI: public QWidget{
     Q_OBJECT
     //GUI
 public:
-    pgHistogrameGUI(int Hsize, int Vsize, varShareClient<pgScanGUI::scanRes>* scanRes, smp_selector* cm_sel, cv::Scalar& exclColor);        //cvms_mask is inverse mask!
-    ~pgHistogrameGUI(){delete scanRes;}
-    void updateImg(double* rmin=nullptr, double* rmax=nullptr);
+    pgHistogrameGUI(int Hsize, int Vsize, smp_selector* cm_sel, cv::Scalar& exclColor);        //cvms_mask is inverse mask!
+    void updateImg(const pgScanGUI::scanRes* scanres, double* rmin=nullptr, double* rmax=nullptr);
     const double& hPcnt{_hPcnt};
     const double& lPcnt{_lPcnt};
     const bool& changed{_changed};
@@ -38,7 +37,6 @@ private:
     cc_save<bool> sv_outOfRangeToExcl{cbOORtE,false,&go.gui_config.save,"pgHistogrameGUI_outOfRangeToExcl"};
 
     bool _changed{false};
-    varShareClient<pgScanGUI::scanRes>* scanRes;
     smp_selector* cm_sel;
     int Hsize;
     int Vsize;

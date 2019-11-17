@@ -191,7 +191,8 @@ Q_SIGNALS:
 class twid  : public QWidget{
     Q_OBJECT
 public:
-    twid();
+    twid(bool setmargin=true);
+    twid(QWidget* widget, bool setmargin=true);
     template<typename... Args> twid(QWidget* widget, Args... args);
     void addWidget(QWidget* widget, bool front=false);
 private:

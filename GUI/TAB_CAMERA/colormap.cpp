@@ -83,7 +83,7 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
     layout->addWidget(txt);
 }
 
-void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, bool excludeOutOfRange, bool isForExport, double XYnmppx_override){
+void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange, bool isForExport){
     int vsize=src->rows+2;
     int hsize=src->cols+2;
     double range=max-min;
@@ -140,10 +140,7 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
 
     // adding scalebar
     double lxysbar_unit=isForExport?xysbar_unit_Export->val:xysbar_unit->val;
-    double local_XYnmppx;
-    if(XYnmppx_override!=-1) local_XYnmppx=XYnmppx_override;
-    else local_XYnmppx=XYnmppx->val;
-    if(lxysbar_unit!=0 && local_XYnmppx){
+    if(lxysbar_unit!=0 && XYnmppx){
         cv::Size size=cv::getTextSize(util::toString(xysbar_unit->val," um"), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
         int xofs=temp.cols/2+(isForExport?xysbar_xoffset_Export->val:xysbar_xoffset->val);
         int yofs=temp.rows/2+(isForExport?xysbar_yoffset_Export->val:xysbar_yoffset->val);
@@ -159,7 +156,7 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
         backC=xysbar_color_inv->val?cv::Scalar{0,0,0}:cv::Scalar{255,255,255};
         for(int i=1;i>=0;i--){
             cv::putText(temp,util::toString(lxysbar_unit," um"), {xofs-size.width/2, yofs-(int)xysbar_txtoffset->val}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, i?backC:frontC, fontThickness->val+i, cv::LINE_AA);
-            cv::rectangle(temp, {xofs-(int)(lxysbar_unit*1000/local_XYnmppx/2)-i, yofs-i, (int)(lxysbar_unit*1000/local_XYnmppx)+2*i, (int)xysbar_thck->val+2*i}, i?backC:frontC,-1);
+            cv::rectangle(temp, {xofs-(int)(lxysbar_unit*1000/XYnmppx/2)-i, yofs-i, (int)(lxysbar_unit*1000/XYnmppx)+2*i, (int)xysbar_thck->val+2*i}, i?backC:frontC,-1);
         }
     }
 
@@ -259,4 +256,4 @@ void colorMap::onMovTilt(bool state){
     }
 }
 
-double colorMap::getXYnmppx(){return XYnmppx->val;}
+double colorMap::getXYnmppx(){std::lock_guard<std::mutex>lock(glock); return XYnmppx->val;}

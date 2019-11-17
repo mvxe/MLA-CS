@@ -14,7 +14,7 @@ class colorMap: public QWidget{
     Q_OBJECT
 public:
     colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI);
-    void colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, bool excludeOutOfRange=false, bool isForExport=false, double XYnmppx_override=-1);
+    void colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange=false, bool isForExport=false);
     const bool& changed{_changed};
     void draw_bw_target(cv::Mat* src);
     void draw_bw_scalebar(cv::Mat* src);
@@ -31,7 +31,7 @@ private:
     val_selector* textOffset;
     val_selector* displayANTicks;
     val_selector* exportANTicks;
-    val_selector* XYnmppx;
+    val_selector* XYnmppx;  std::mutex glock;
     QPushButton* calibXY;
     val_selector* tilt;
     QPushButton* movTilt;

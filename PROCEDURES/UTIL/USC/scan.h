@@ -14,6 +14,7 @@ class QCheckBox;
 class FQ;
 class scanSettings;
 class mesLockProg;
+class colorMap;
 
 class pScan: public sproc{
 public:
@@ -46,7 +47,7 @@ public:
         double max;
         double tiltCor[2];  //X, and Y
         double pos[3];  //X,Y and Z at the time of measurement, might be useful
-        double XYnmppx{-1}; //useful if we load a scan which was done at different settings, -1 means the one in settings is valid
+        double XYnmppx; //useful if we load a scan which was done at different settings, -1 means the one in settings is valid
     };
     varShare<scanRes> result;
 
@@ -81,7 +82,7 @@ public:
 
     //get max and min pixel exposure for camera exposure setting
     std::atomic<bool> getExpMinMax{false};
-
+    colorMap* cMap{nullptr};
 private:
     smp_selector* selectScanSetting;    //scan setting
     std::vector<scanSettings*> settingWdg;
