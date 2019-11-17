@@ -53,6 +53,11 @@ public:
 
     mesLockProg& MLP;
     double vsConv(val_selector* vs);
+
+    static void saveScan(const scanRes* scan, std::string fileName="");
+    static void saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName="");
+    static bool loadScan(scanRes* scan, std::string fileName="");                       //return true if success
+    static QWidget* parent; //for dialogs
 private:
     void init_gui_activation();
     void init_gui_settings();

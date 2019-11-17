@@ -403,3 +403,47 @@ void pgScanGUI::calcExpMinMax(FQ* framequeue, cv::Mat* mask){
     }
     Q_EMIT doneExpMinmax(minn, maxx);
 }
+
+
+
+// SOME STATIC FUNCTIONS
+
+QWidget* pgScanGUI::parent{nullptr};
+void pgScanGUI::saveScan(const scanRes* scan, std::string fileName){
+    pgScanGUI::saveScan(scan, {0,0,scan->depth.cols,scan->depth.rows}, fileName);
+}
+void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName){
+    if(scan==nullptr) return;
+    if(fileName=="") fileName=QFileDialog::getSaveFileName(parent,"Select file for saving Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
+    if(fileName.empty())return;
+    if(fileName.find(".pfm")==std::string::npos) fileName+=".pfm";
+
+    cv::Mat display(scan->depth, roi);
+    display.setTo(std::numeric_limits<float>::max() , cv::Mat(scan->mask, roi));
+    cv::imwrite(fileName, display);
+    std::ofstream wfile(fileName, std::ofstream::app);
+    wfile.write(reinterpret_cast<const char*>(&(scan->min)),sizeof(scan->min));
+    wfile.write(reinterpret_cast<const char*>(&(scan->max)),sizeof(scan->max));
+    wfile.write(reinterpret_cast<const char*>(scan->tiltCor),sizeof(scan->tiltCor));
+    wfile.write(reinterpret_cast<const char*>(scan->pos),sizeof(scan->pos));
+    wfile.write(reinterpret_cast<const char*>(&(scan->XYnmppx)),sizeof(scan->XYnmppx));
+    wfile.close();
+}
+bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
+    if(scan==nullptr) scan=new scanRes;
+    if(fileName=="") fileName=QFileDialog::getOpenFileName(parent,"Select file to load Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
+    if(fileName.empty())return false;
+    scan->depth=cv::imread(fileName, cv::IMREAD_UNCHANGED);
+    cv::compare(scan->depth, std::numeric_limits<float>::max(), scan->mask, cv::CMP_EQ);
+    cv::bitwise_not(scan->mask, scan->maskN);
+    std::ifstream rfile(fileName);
+    int size=sizeof(scan->min)+sizeof(scan->max)+sizeof(scan->tiltCor)+sizeof(scan->pos)+sizeof(scan->XYnmppx);
+    rfile.seekg(-size, rfile.end);
+    rfile.read(reinterpret_cast<char*>(&(scan->min)),sizeof(scan->min));
+    rfile.read(reinterpret_cast<char*>(&(scan->max)),sizeof(scan->max));
+    rfile.read(reinterpret_cast<char*>(scan->tiltCor),sizeof(scan->tiltCor));
+    rfile.read(reinterpret_cast<char*>(scan->pos),sizeof(scan->pos));
+    rfile.read(reinterpret_cast<char*>(&(scan->XYnmppx)),sizeof(scan->XYnmppx));
+    rfile.close();
+    return true;
+}

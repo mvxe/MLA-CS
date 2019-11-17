@@ -3,6 +3,7 @@
 #include "includes.h"
 
 tab_camera::tab_camera(QWidget* parent){
+    pgScanGUI::parent=this; //for dialogs in pgScanGUI static functions
     layout=new QHBoxLayout;
     parent->setLayout(layout);
 
@@ -282,38 +283,15 @@ void tab_camera::onSaveDepthMap(void){
     }
 }
 void tab_camera::onSaveDepthMapRaw(void){
-    std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
-    if(fileName.empty())return;
-    if(fileName.find(".pfm")==std::string::npos) fileName+=".pfm";
-    const pgScanGUI::scanRes* res=scanRes->get();
-    if(res!=nullptr){
-        cv::Mat display=res->depth;
-        display.setTo(std::numeric_limits<float>::max() , res->mask);
-        cv::imwrite(fileName, display);
-    }
-    std::ofstream wfile(fileName, std::ofstream::app);
-    wfile.write(reinterpret_cast<const char*>(&(res->min)),sizeof(res->min));
-    wfile.write(reinterpret_cast<const char*>(&(res->max)),sizeof(res->max));
-    wfile.write(reinterpret_cast<const char*>(res->tiltCor),sizeof(res->tiltCor));
-    wfile.write(reinterpret_cast<const char*>(res->pos),sizeof(res->pos));
-    wfile.write(reinterpret_cast<const char*>(&(res->XYnmppx)),sizeof(res->XYnmppx));
-    wfile.close();
+    int width=abs(selEndX-selStartX);
+    int height=abs(selEndY-selStartY);
+    if(width>=50 && height>=50){
+           pgScanGUI::saveScan(scanRes->get(), cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
+    } else pgScanGUI::saveScan(scanRes->get());
 }
 void tab_camera::onLoadDepthMapRaw(void){
-    std::string fileName=QFileDialog::getOpenFileName(this,"Select file to load Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
-    if(fileName.empty())return;
-    loadedScan.depth=cv::imread(fileName, cv::IMREAD_UNCHANGED);
-    cv::compare(loadedScan.depth, std::numeric_limits<float>::max(), loadedScan.mask, cv::CMP_EQ);
-    cv::bitwise_not(loadedScan.mask, loadedScan.maskN);
-    std::ifstream rfile(fileName);
-    int size=sizeof(loadedScan.min)+sizeof(loadedScan.max)+sizeof(loadedScan.tiltCor)+sizeof(loadedScan.pos)+sizeof(loadedScan.XYnmppx);
-    rfile.seekg(-size, rfile.end);
-    rfile.read(reinterpret_cast<char*>(&(loadedScan.min)),sizeof(loadedScan.min));
-    rfile.read(reinterpret_cast<char*>(&(loadedScan.max)),sizeof(loadedScan.max));
-    rfile.read(reinterpret_cast<char*>(loadedScan.tiltCor),sizeof(loadedScan.tiltCor));
-    rfile.read(reinterpret_cast<char*>(loadedScan.pos),sizeof(loadedScan.pos));
-    rfile.read(reinterpret_cast<char*>(&(loadedScan.XYnmppx)),sizeof(loadedScan.XYnmppx));
-    rfile.close();
-    loadedScanChanged=true;
-    loadedOnDisplay=true;
+    if(pgScanGUI::loadScan(&loadedScan)){
+        loadedScanChanged=true;
+        loadedOnDisplay=true;
+    }
 }
