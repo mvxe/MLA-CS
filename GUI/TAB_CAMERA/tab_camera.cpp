@@ -38,21 +38,23 @@ tab_camera::tab_camera(QWidget* parent){
     pgSGUI->cMap=cMap;
     camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
 
-    pageMotion=new twd_selector(false);
+    pgBGUI=new pgBoundsGUI;
+
+    pageMotion=new twd_selector;
         pageMotion->addWidget(pgSGUI->gui_activation);
         pageMotion->addWidget(pgMGUI->gui_activation);  connect(pgPRGUI, SIGNAL(changed(double,double,double,double)), pgMGUI, SLOT(onFZdifChange(double,double,double,double)));
         pageMotion->addWidget(pgTGUI->gui_activation);
         pageMotion->addWidget(pgFGUI->gui_activation);
         pageMotion->addWidget(pgPRGUI);
 
-    pageWriting=new twd_selector(false);
-        //pageWriting->addWidget(pgPRGUI->gui,pgPRGUI->timer);
+    pageWriting=new twd_selector;
+        pageWriting->addWidget(pgBGUI);
 
-    pageProcessing=new twd_selector(false);
+    pageProcessing=new twd_selector;
         loadRawBtn=new QPushButton("Load measurement"); connect(loadRawBtn, SIGNAL(released()), this, SLOT(onLoadDepthMapRaw()));
         pageProcessing->addWidget(new twid(loadRawBtn, false));
 
-    pageSettings=new twd_selector;
+    pageSettings=new twd_selector("","Select");
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));
         pageSettings->addWidget(pgSGUI->gui_settings,"Scan");   index_pgSGUI=0;
         pageSettings->addWidget(pgMGUI->gui_settings,"Move");

@@ -13,5 +13,6 @@
 #include "PROCEDURES/UTIL/USC/focus.h"
 #include "PROCEDURES/UTIL/USC/position_report.h"
 #include "PROCEDURES/UTIL/USC/histogram.h"
+#include "PROCEDURES/UTIL/WRT/bounds.h"
 
 #endif // _INCL_PROCEDURES_H

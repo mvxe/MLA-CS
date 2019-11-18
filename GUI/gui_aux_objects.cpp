@@ -150,11 +150,13 @@ void smp_selector::on_menu_change(){
 // TAB WIDGET DISPLAY SELECTOR
 
 
-twd_selector::twd_selector(bool showSel): showSel(showSel){
+twd_selector::twd_selector(std::string menu, std::string init, bool twidSetMargin, bool addStretch): showSel(menu!="" || init!=""){
     layout=new QVBoxLayout;
-    layout->addStretch(0);
+    if(addStretch) layout->addStretch(0);
     layout->setMargin(0);
     this->setLayout(layout);
+    insertOfs=(addStretch)?1:0;
+
     if(showSel){
         select=new QScrollToolButton();
         select->setAutoRaise(true);
@@ -162,7 +164,9 @@ twd_selector::twd_selector(bool showSel): showSel(showSel){
         select->setPopupMode(QToolButton::InstantPopup);
         select->setMenu(new QMenu);
         connect(select->menu(), SIGNAL(aboutToHide()), this, SLOT(on_menu_change()));
-        layout->insertWidget(layout->count()-1, select);
+        if(menu!="") layout->insertWidget(layout->count()-insertOfs, new twid(new QLabel(QString::fromStdString(menu)) ,select, twidSetMargin));
+        else         layout->insertWidget(layout->count()-insertOfs, select);
+        select->setText(QString::fromStdString(init));
     }
 }
 void twd_selector::addWidget(QWidget* widget, QString label){
@@ -172,9 +176,8 @@ void twd_selector::addWidget(QWidget* widget, QString label){
         QAction* action=new QAction;
         action->setText(label);
         select->menu()->addAction(action);
-        select->setText("Select settings");
     }
-    layout->insertWidget(layout->count()-1, widget);
+    layout->insertWidget(layout->count()-insertOfs, widget);
 }
 void twd_selector::on_menu_change(){
     if(select->menu()->activeAction()==nullptr) return;

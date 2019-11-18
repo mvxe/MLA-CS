@@ -74,6 +74,9 @@ private:
 
     QPushButton* loadRawBtn;
 
+    // writing
+    pgBoundsGUI* pgBGUI;
+
     QMenu* clickMenu;
     QMenu* clickMenuDepth;
 

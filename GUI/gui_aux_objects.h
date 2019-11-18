@@ -84,15 +84,17 @@ Q_SIGNALS:
 class twd_selector : public QWidget{       //template for devices
     Q_OBJECT
 public:
-    twd_selector(bool showSel=true);
+    twd_selector(std::string menu="", std::string init="", bool twidSetMargin=true, bool addStretch=true); //if menu=="" it wont show the selector
     void addWidget(QWidget* widget, QString label="");
     void timerStop();
     void timerStart();
     bool showSel;
+    const int& index{active_index};
 private:
     QVBoxLayout* layout;
     QScrollToolButton* select;
     std::vector<QWidget*> widgets;
+    int insertOfs;
     int active_index=-1;
 Q_SIGNALS:
     void changed(int index);
