@@ -73,23 +73,27 @@ pgBoundsGUI::~pgBoundsGUI(){
 
 void pgBoundsGUI::onSetCircCenter(){
     if(!go.pXPS->connected) return;
-    for(int i=0;i!=2;i++) circCenter[i]=go.pXPS->getPos(XPS::mgroup_XYZF).pos[i];
+    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
+    for(int i=0;i!=2;i++) circCenter[i]=tmp.pos[i];
     setCircCenterTxt->setText(QString::fromStdString(util::toString("Corrds: ",circCenter[0],", ",circCenter[1])));
 }
 void pgBoundsGUI::onSetCircEdge(){
     if(!go.pXPS->connected) return;
-    for(int i=0;i!=2;i++) circEdge[cIter][i]=go.pXPS->getPos(XPS::mgroup_XYZF).pos[i];
+    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
+    for(int i=0;i!=2;i++) circEdge[cIter][i]=tmp.pos[i];
     cIter++; if(cIter>2) cIter=0;
     setCircEdgeTxt->setText(QString::fromStdString(util::toString(getStatCirc())));
 }
 void pgBoundsGUI::onSetRectCenter(){
     if(!go.pXPS->connected) return;
-    for(int i=0;i!=2;i++) rectCenter[i]=go.pXPS->getPos(XPS::mgroup_XYZF).pos[i];
+    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
+    for(int i=0;i!=2;i++) rectCenter[i]=tmp.pos[i];
     setRectCenterTxt->setText(QString::fromStdString(util::toString("Corrds: ",rectCenter[0],", ",rectCenter[1])));
 }
 void pgBoundsGUI::onSetRectEdge(){
     if(!go.pXPS->connected) return;
-    for(int i=0;i!=2;i++) rectEdge[rIter][i]=go.pXPS->getPos(XPS::mgroup_XYZF).pos[i];
+    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
+    for(int i=0;i!=2;i++) rectEdge[rIter][i]=tmp.pos[i];
     rIter++; if(rIter>3) rIter=0;
     setRectEdgeTxt->setText(QString::fromStdString(util::toString(getStatRect())));
 }
@@ -118,7 +122,7 @@ bool pgBoundsGUI::isWithinBounds(double x, double y){
 }
 
 
-void pgBoundsGUI::calcCenRad(double &x, double &y, double &rad){
+void pgBoundsGUI::calcCenRad(double &x, double &y, double &rad){        // TODO: these two keep doing the same calcs every time, perhaps save them in variables instead?
     if (((circEdge[0][0]==circEdge[1][0]) && (circEdge[2][0]==circEdge[1][0]))||((circEdge[0][1]==circEdge[1][1]) && (circEdge[2][1]==circEdge[1][1]))){
         rad=0; x=0; y=0;
     }
@@ -169,9 +173,61 @@ void pgBoundsGUI::getLineDisDir(double a, double b, double x, double y, bool* di
 
 void pgBoundsGUI::update(){
     double cur[2];
-    for(int i=0;i!=2;i++) cur[i]=go.pXPS->getPos(XPS::mgroup_XYZF).pos[i];
+    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
+    for(int i=0;i!=2;i++) cur[i]=tmp.pos[i];
     if(isWithinBounds(cur[0],cur[1])) OOBLabel->setPixmap(QPixmap(":/dialog-ok.svg"));
     else OOBLabel->setPixmap(QPixmap(":/gtk-no.svg"));
 }
 
+void pgBoundsGUI::drawBound(cv::Mat* img, double XYnmppx){
+    double cur[2];
+    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
+    for(int i=0;i!=2;i++) cur[i]=tmp.pos[i];
+    int ofsX=img->cols/2;
+    int ofsY=img->rows/2;
 
+    double clr[2]={0,255}; int thck[2]={3,1};
+    for(int i=0;i!=2;i++)
+    if(selector->index==1){
+        for(int i=0;i!=2;i++)
+            cv::circle(*img, {(int)((cur[0]-circCenter[0])*1000000/XYnmppx+ofsX),(int)((cur[1]-circCenter[1])*1000000/XYnmppx+ofsY)}, (int)(selCircRadius->val*1000/XYnmppx), {clr[i]}, thck[i], cv::LINE_AA);
+    }else if(selector->index==2){
+        double xx,yy,rad;
+        calcCenRad(xx, yy, rad);
+        for(int i=0;i!=2;i++)
+            cv::circle(*img, {(int)((cur[0]-xx)*1000000/XYnmppx+ofsX),(int)((cur[1]-yy)*1000000/XYnmppx+ofsY)}, (int)((rad-circClearance->val/1000)*1000000/XYnmppx), {clr[i]}, thck[i], cv::LINE_AA);
+    }else if(selector->index==3){
+        for(int i=0;i!=2;i++)
+            cv::rectangle(*img, {(int)((cur[0]-rectCenter[0]-selRectWidth->val/1000/2)*1000000/XYnmppx+ofsX),(int)((cur[1]-rectCenter[1]-selRectHeight->val/1000/2)*1000000/XYnmppx+ofsY),(int)(selRectWidth->val*1000/XYnmppx),(int)(selRectHeight->val*1000/XYnmppx)}, {clr[i]}, thck[i], cv::LINE_AA);
+    }else if(selector->index==4){
+        double points[4][2]; double avgPt[2]={0,0};
+        double lines[4][2];
+        for(int i=0;i!=4;i++){
+            int itr[4];
+            for(int j=0;j!=4;j++) itr[j]=(i+j)%4;
+            lines[i][0]=(rectEdge[itr[0]][1]-rectEdge[itr[1]][1])/(rectEdge[itr[0]][0]-rectEdge[itr[1]][0]);
+            lines[i][1]=rectEdge[itr[0]][1]-lines[i][0]*rectEdge[itr[0]][0];
+            avgPt[0]+=rectEdge[i][0];
+            avgPt[1]+=rectEdge[i][1];
+        }
+        avgPt[0]/=4; avgPt[1]/=4;
+        if(!isWithinRect(avgPt[0], avgPt[1])) break;
+        bool dirs[4];
+        for(int i=0;i!=4;i++){
+            getLineDisDir(lines[i][0], lines[i][1], avgPt[0], avgPt[1], &dirs[i]);
+            lines[i][1]+=rectClearance->val/1000/cos(atan(-lines[i][0]))*(dirs[i]?(-1):1)*(lines[i][0]<0?(-1):1);
+        }
+        for(int i=0;i!=4;i++){
+            int itr[4];
+            for(int j=0;j!=4;j++) itr[j]=(i+j)%4;
+            points[i][0]=(lines[itr[1]][1]-lines[itr[0]][1])/(lines[itr[0]][0]-lines[itr[1]][0]);
+            points[i][1]=points[i][0]*lines[itr[0]][0]+lines[itr[0]][1];
+        }
+        for(int j=0;j!=2;j++)
+            for(int i=0;i!=4;i++){
+                int itr[4];
+                for(int j=0;j!=4;j++) itr[j]=(i+j)%4;
+                cv::line(*img, {(int)((cur[0]-points[itr[0]][0])*1000000/XYnmppx+ofsX),(int)((cur[1]-points[itr[0]][1])*1000000/XYnmppx+ofsY)}, {(int)((cur[0]-points[itr[1]][0])*1000000/XYnmppx+ofsX),(int)((cur[1]-points[itr[1]][1])*1000000/XYnmppx+ofsY)}, {clr[j]}, thck[j], cv::LINE_AA);
+            }
+    }
+}

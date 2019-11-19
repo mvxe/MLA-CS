@@ -69,6 +69,7 @@ private:
     pgHistogrameGUI* pgHistGUI;
     checkbox_save* main_show_scale;
     checkbox_save* main_show_target;
+    checkbox_save* main_show_bounds;
     QProgressBar* measPB;
     QProgressBar* compPB;
 

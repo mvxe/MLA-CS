@@ -77,7 +77,8 @@ tab_camera::tab_camera(QWidget* parent){
 
     main_show_scale=new checkbox_save(false,"tab_camera_main_show_scale","ScaleBar");
     main_show_target=new checkbox_save(false,"tab_camera_main_show_target","Target");
-    layoutTBarW->addWidget(new twid(main_show_scale, main_show_target));
+    main_show_bounds=new checkbox_save(false,"tab_camera_main_show_bounds","Write Bounds");
+    layoutTBarW->addWidget(new twid(main_show_scale, main_show_target, main_show_bounds));
 
     measPB=new QProgressBar; measPB->setRange(0,100);
     compPB=new QProgressBar; compPB->setRange(0,100);
@@ -113,8 +114,9 @@ void tab_camera::work_fun(){
     if(selDisp->index==0){  // Camera
         LDisplay->isDepth=false;
         if(onDisplay!=nullptr){
-            if(main_show_target->isChecked() || main_show_scale->isChecked()){
+            if(main_show_target->isChecked() || main_show_scale->isChecked() || main_show_bounds->isChecked()){
                 cv::Mat temp=onDisplay->clone();
+                if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, cMap->getXYnmppx());
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp);
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp);
                 LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_Indexed8)));
@@ -259,6 +261,7 @@ void tab_camera::onSaveCameraPicture(void){
     fq->setUserFps(999,1);
     while(fq->getUserMat()==nullptr);
     cv::Mat temp=onDisplay->clone();
+    if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, cMap->getXYnmppx());
     if(main_show_target->isChecked()) cMap->draw_bw_target(&temp);
     if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp);
     imwrite(fileName, temp,{cv::IMWRITE_PNG_COMPRESSION,9});
