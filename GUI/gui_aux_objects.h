@@ -90,6 +90,7 @@ public:
     void timerStart();
     bool showSel;
     const int& index{active_index};
+    void setIndex(int index);
 private:
     QVBoxLayout* layout;
     QScrollToolButton* select;

@@ -5,20 +5,20 @@
 //  VAL SELECTOR
 
 val_selector::val_selector(double initialValue, QString label, double min, double max, double precision):
-        valueSave(value, initialValue, nullptr, " "), unitIndexSave(unitIndex, 0, nullptr, " "){
+        valueSave(value, initialValue, nullptr, ""), unitIndexSave(unitIndex, 0, nullptr, ""){
     init0(label, min, max, precision);
     layout->addStretch(0);
 }
 
 val_selector::val_selector(double initialValue, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels):
-        valueSave(value, initialValue, nullptr, " "), unitIndexSave(unitIndex, initialIndex, nullptr, " "){
+        valueSave(value, initialValue, nullptr, ""), unitIndexSave(unitIndex, initialIndex, nullptr, ""){
     init0(label, min, max, precision);
     init1(labels);
     layout->addStretch(0);
 }
 
 val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision):
-        valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, 0, nullptr, " "){
+        valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, 0, nullptr, ""){
     init0(label, min, max, precision);
     layout->addStretch(0);
 }
@@ -96,7 +96,7 @@ void val_selector::setValue(double nvalue){
 //  SIMPLE SELECTOR
 
 smp_selector::smp_selector(QString label, int initialIndex, std::vector<QString> labels):
-    indexSave(_index, initialIndex, nullptr, " "){
+    indexSave(_index, initialIndex, nullptr, ""){
     init(label, labels);
 }
 smp_selector::smp_selector(std::string varSaveName, QString label, int initialIndex, std::vector<QString> labels):
@@ -178,6 +178,11 @@ void twd_selector::addWidget(QWidget* widget, QString label){
         select->menu()->addAction(action);
     }
     layout->insertWidget(layout->count()-insertOfs, widget);
+}
+void twd_selector::setIndex(int index){
+    if(index>=select->menu()->actions().size()) return;
+    select->menu()->setActiveAction(select->menu()->actions()[index]);
+    on_menu_change();
 }
 void twd_selector::on_menu_change(){
     if(select->menu()->activeAction()==nullptr) return;

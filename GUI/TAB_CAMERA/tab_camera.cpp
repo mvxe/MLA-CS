@@ -102,6 +102,7 @@ tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables
     delete pgTGUI;
     delete pgFGUI;
     delete pgPRGUI;
+    delete pgBGUI;
 }
 
 void tab_camera::work_fun(){
