@@ -180,9 +180,10 @@ void pgBoundsGUI::update(){
 }
 
 void pgBoundsGUI::drawBound(cv::Mat* img, double XYnmppx){
-    double cur[2];
-    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
-    for(int i=0;i!=2;i++) cur[i]=tmp.pos[i];
+    if(go.pXPS->connected) if(go.pXPS->isQueueEmpty()){
+        XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
+        for(int i=0;i!=2;i++) cur[i]=tmp.pos[i];
+    }
     int ofsX=img->cols/2;
     int ofsY=img->rows/2;
 

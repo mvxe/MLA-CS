@@ -68,6 +68,7 @@ private:
     cc_save<double> saveRectEdgeY2{rectEdge[2][1], 0,&go.gui_config.save,"pgBoundsGUI_saveRectCenterY2"};
     cc_save<double> saveRectEdgeY3{rectEdge[3][1], 0,&go.gui_config.save,"pgBoundsGUI_saveRectCenterY3"};
     cc_save<int> saveIndex{index, 0,&go.gui_config.save,"pgBoundsGUI_index"};
+    double cur[2]{0,0};
 
     std::string getStatCirc();
     std::string getStatRect();
