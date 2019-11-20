@@ -377,6 +377,7 @@ void pgScanGUI::_doOneRound(){
     }
 
     cv::minMaxLoc(resultFinalPhase, &res->min, &res->max, &ignore, &ignore, maskUMatNot);  //the ignored mask values will be <min , everything is in nm
+    resultFinalPhase.setTo(std::numeric_limits<float>::max() , maskUMat);
     resultFinalPhase.copyTo(res->depth);
 
     if(cMap==nullptr) res->XYnmppx=0;
@@ -419,7 +420,6 @@ void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string f
     if(fileName.find(".pfm")==std::string::npos) fileName+=".pfm";
 
     cv::Mat display(scan->depth, roi);
-    display.setTo(std::numeric_limits<float>::max() , cv::Mat(scan->mask, roi));
     cv::imwrite(fileName, display);
     std::ofstream wfile(fileName, std::ofstream::app);
     wfile.write(reinterpret_cast<const char*>(&(scan->min)),sizeof(scan->min));
