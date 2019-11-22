@@ -31,7 +31,7 @@ tab_camera::tab_camera(QWidget* parent){
     scanRes=pgSGUI->result.getClient();
     pgMGUI=new pgMoveGUI;
     pgTGUI=new pgTiltGUI;
-    pgFGUI=new pgFocusGUI(MLP, pgSGUI, pgTGUI);
+    pgFGUI=new pgFocusGUI(MLP, pgSGUI);
     pgPRGUI=new pgPosRepGUI;
     cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
     cMap=new colorMap(cm_sel, exclColor, pgSGUI, pgTGUI);

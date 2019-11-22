@@ -12,6 +12,8 @@ class pgScanGUI;
 class pgTiltGUI;
 class QPushButton;
 class mesLockProg;
+class smp_selector;
+class focusSettings;
 
 namespace cv{class Mat;}
 
@@ -19,17 +21,19 @@ class pgFocusGUI: public QObject{
     Q_OBJECT
     //GUI
 public:
-    pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI);
+    pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI);
     QWidget* gui_activation;
     QWidget* gui_settings;
     QTimer* timer;
 
     mesLockProg& MLP;
  private:
+    smp_selector* selectFocusSetting;
+    std::vector<focusSettings*> settingWdg;
+    constexpr static unsigned Nset{3};
     void init_gui_activation();
     void init_gui_settings();
     pgScanGUI* pgSGUI;          //we share some settings with this
-    pgTiltGUI* pgTGUI;          //we call its functions to tilt
 
     //activation
     QHBoxLayout* alayout;
@@ -39,8 +43,6 @@ public:
     QVBoxLayout* slayout;
     val_selector* range;        //scan range
     val_selector* ppwl;         //points per wavelength
-    val_selector* tilt;         //ammount of tilt
-    QPushButton* testTilt;
     QLabel* calcL;
     double mmPerFrame;
 
@@ -60,7 +62,18 @@ public Q_SLOTS:
     void recalculate();
 private Q_SLOTS:
     void onRefocus();
-    void onTestTilt(bool state);
+    void onMenuChange(int index);
+};
+
+class focusSettings: public QWidget{
+    Q_OBJECT
+    //GUI
+public:
+    focusSettings(uint num, pgFocusGUI* parent);
+    QVBoxLayout* slayout;
+    val_selector* range;        //scan range
+    val_selector* ppwl;         //points per wavelength
+    pgFocusGUI* parent;
 };
 
 #endif // FOCUS_H

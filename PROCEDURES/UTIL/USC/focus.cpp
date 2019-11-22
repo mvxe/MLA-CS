@@ -7,7 +7,7 @@
 
 //GUI
 
-pgFocusGUI::pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI): MLP(MLP), pgSGUI(pgSGUI), pgTGUI(pgTGUI) {
+pgFocusGUI::pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI): MLP(MLP), pgSGUI(pgSGUI){
     PVTScan=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, util::toString("camera_PVTfocus.txt").c_str());
     init_gui_activation();
     init_gui_settings();
@@ -36,24 +36,34 @@ void pgFocusGUI::init_gui_settings(){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
-    QLabel* tlabel=new QLabel("Some settings borrowed from Scan!");
-    slayout->addWidget(tlabel);
-    range=new val_selector(10., "pgFocusGUI_range", "Scan Range:", 1., 2000., 3, 3 , {"nm","um",QChar(0x03BB),"L"});
-    connect(range, SIGNAL(changed()), this, SLOT(recalculate()));
-    slayout->addWidget(range);
-    ppwl=new val_selector(1., "pgFocusGUI_ppwl", "Points Per Wavelength: ", 0.001, 100., 3);
-    connect(ppwl, SIGNAL(changed()), this, SLOT(recalculate()));
-    slayout->addWidget(ppwl);
-    tilt=new val_selector(1., "pgFocusGUI_tilt", "Ammount of tilt: ", 1, 10000., 0);
-    connect(tilt, SIGNAL(changed()), this, SLOT(recalculate()));
-    slayout->addWidget(tilt);
+    slayout->addWidget(new QLabel("Some settings borrowed from Scan!"));
+    selectFocusSetting=new smp_selector("Select focus setting: ", 0, {"Short", "Medium", "Long"});    //should have Nset strings
+    slayout->addWidget(selectFocusSetting);
+    for(int i=0;i!=Nset;i++) {
+        settingWdg.push_back(new focusSettings(i, this));
+        slayout->addWidget(settingWdg.back());
+    }
+    connect(selectFocusSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     calcL=new QLabel;
     slayout->addWidget(calcL);
-    testTilt=new QPushButton;
-    testTilt->setText("Test Tilt");
-    testTilt->setCheckable(true);
-    connect(testTilt, SIGNAL(toggled(bool)), this, SLOT(onTestTilt(bool)));
-    slayout->addWidget(new twid(testTilt));
+    onMenuChange(0);
+}
+
+focusSettings::focusSettings(uint num, pgFocusGUI* parent): parent(parent){
+    slayout=new QVBoxLayout;
+    this->setLayout(slayout);
+    range=new val_selector(10., util::toString("pgFocusGUI_range",num), "Scan Range:", 1., 2000., 3, 3 , {"nm","um",QChar(0x03BB),"L"});
+    connect(range, SIGNAL(changed()), parent, SLOT(recalculate()));
+    slayout->addWidget(range);
+    ppwl=new val_selector(10., util::toString("pgFocusGUI_ppwl",num), "Points Per Wavelength: ", 0.001, 100., 3);
+    connect(ppwl, SIGNAL(changed()), parent, SLOT(recalculate()));
+    slayout->addWidget(ppwl);
+}
+void pgFocusGUI::onMenuChange(int index){
+    for(int i=0;i!=Nset;i++) settingWdg[i]->setVisible(i==index?true:false);
+    range=settingWdg[index]->range;
+    ppwl=settingWdg[index]->ppwl;
+    recalculate();
 }
 
 void pgFocusGUI::recalculate() {
@@ -97,7 +107,6 @@ void pgFocusGUI::updatePVT(std::string &report){
     mmPerFrame=readRangeDis/totalFrameNum;
     report+=util::toString("\nTotal expected number of useful frames for focusing: ",totalFrameNum,"\n");
     report+=util::toString("\nTotal time needed for focusing (+computation): ",2*movTime+2*readAccelTime+darkFrameTime+readTime," s\n");
-    report+=util::toString("\nTime needed to tilt (one way): ",tilt->val/pgTGUI->tilt_motor_speed->val*60," s\n");
 
     PVTScan->addAction(XPS::iuScopeLED,true);
     PVTScan->add(movTime, 0,0, 0,0, -Offset,0, 0,0);
@@ -118,17 +127,10 @@ void pgFocusGUI::updatePVT(std::string &report){
     PVTsRdy=true;
 }
 
-void pgFocusGUI::onTestTilt(bool state){
-    if(state) pgTGUI->doTilt(tilt->val,0,false);
-    else pgTGUI->doTilt(-tilt->val,0,false);
-}
-
 void pgFocusGUI::_refocus(){
     if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     if(!PVTsRdy) return;
-    MLP._lock_meas.lock();                       //wait for other measurements to complete
-    pgTGUI->doTilt(tilt->val, 0, false);
-    std::this_thread::sleep_for (std::chrono::milliseconds(int(tilt->val/pgTGUI->tilt_motor_speed->val*60*1000)));      //wait till it tilts
+    std::lock_guard<std::mutex>lock(MLP._lock_meas);                       //wait for other measurements to complete
     int nFrames=totalFrameNum;
     FQ* framequeue;
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
@@ -137,9 +139,7 @@ void pgFocusGUI::_refocus(){
     PVTret.block_till_done();
     framequeue->setUserFps(0);
 
-    pgTGUI->doTilt(-tilt->val, 0, false); //we dont wait for it to tilt back
-    MLP._lock_meas.unlock();
-    std::lock_guard<std::mutex>lock(MLP._lock_comp);    //wait till other processing is done
+    std::lock_guard<std::mutex>lock2(MLP._lock_comp);    //wait till other processing is done
 
         //TODO: this is copy paste from scan, maybe join them in a function to reuse code?
     if(framequeue->getFullNumber()<nFrames) {std::cerr<<"ERROR: took "<<framequeue->getFullNumber()<<" frames, expected at least "<<nFrames<<".\n";return;}
@@ -173,13 +173,11 @@ void pgFocusGUI::_refocus(){
     }
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
-    std::ofstream wfile ("focus.txt");
-    for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<result.at<float>(i)<<"\n";
-    wfile.close();
+//    std::ofstream wfile ("focus.txt");
+//    for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<result.at<float>(i)<<"\n";
+//    wfile.close();
     cv::Point minLoc,maxLoc;
     cv::minMaxLoc(result, &min, &max, &minLoc, &maxLoc);
     double focus=(maxLoc.y-nFrames/2.)*mmPerFrame;
-
-    std::cout<<"Focus is at:"<<focus<<"\n";
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,focus,-focus);
 }
