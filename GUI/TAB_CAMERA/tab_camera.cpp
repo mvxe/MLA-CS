@@ -20,7 +20,7 @@ tab_camera::tab_camera(QWidget* parent){
     layout->addWidget(LDisplay);
     layout->addWidget(tBarW);
 
-    selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map"});
+    selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map","Modified"});
     layoutTBarW->addWidget(selDisp);
 
     TWCtrl=new QTabWidget;
@@ -120,6 +120,9 @@ void tab_camera::work_fun(){
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp);
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp);
                 LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_Indexed8)));
+//                cv::applyColorMap(temp, temp, OCV_CM::ids[cm_sel->index]);
+//                cv::cvtColor(temp, temp, cv::COLOR_BGR2RGB);
+//                LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_RGB888)));
             }
             else LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
         }
@@ -146,8 +149,7 @@ void tab_camera::work_fun(){
                 cv::Mat display;
                 cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
                 if(selectingDRB) cv::rectangle(display, {selStartX+1,selStartY+1},{selCurX+1,selCurY+1}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, (abs(selCurX-selStartX)>=50 && abs(selCurY-selStartY)>=50)?1:-1);
-                QImage qimg(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888);
-                LDisplay->setPixmap(QPixmap::fromImage(qimg));
+                LDisplay->setPixmap(QPixmap::fromImage(QImage(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888)));
             }
             oldCm=cm_sel->index;
 

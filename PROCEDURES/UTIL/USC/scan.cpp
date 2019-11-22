@@ -65,8 +65,6 @@ void pgScanGUI::init_gui_settings(){
         slayout->addWidget(settingWdg.back());
     }
     connect(selectScanSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
-    calcL=new QLabel;
-    slayout->addWidget(calcL);
     debugDisplayModeSelect=new smp_selector("Display mode select (for debugging purposes): ", 0, {"Unwrapped", "Wrapped"});
     slayout->addWidget(debugDisplayModeSelect);
     onMenuChange(0);
@@ -95,6 +93,14 @@ scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
     slayout->addWidget(max_acc);
     dis_thresh=new val_selector(0.9, util::toString("tab_camera_dis_thresh",num), "Peak Discard Threshold: ", 0.1, 1, 2);
     slayout->addWidget(dis_thresh);
+    calcL=new QLabel;
+    slayout->addWidget(calcL);
+    exclDill=new val_selector(0, util::toString("tab_camera_exclDill",num), "Excluded dillation: ", 0, 100, 0, 0, {"px"});
+    slayout->addWidget(exclDill);
+    tiltCorBlur=new val_selector(2, util::toString("tab_camera_tiltCorBlur",num), "Tilt Correction Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
+    slayout->addWidget(tiltCorBlur);
+    tiltCorThrs=new val_selector(0.2, util::toString("tab_camera_tiltCorThrs",num), "Tilt Correction 2nd Derivative Exclusion Threshold: ", 0, 1, 2);
+    slayout->addWidget(tiltCorThrs);
 }
 void pgScanGUI::onMenuChange(int index){
     for(int i=0;i!=Nset;i++) settingWdg[i]->setVisible(i==index?true:false);
@@ -105,6 +111,10 @@ void pgScanGUI::onMenuChange(int index){
     max_vel=settingWdg[index]->max_vel;
     max_acc=settingWdg[index]->max_acc;
     dis_thresh=settingWdg[index]->dis_thresh;
+    calcL=settingWdg[index]->calcL;
+    exclDill=settingWdg[index]->exclDill;
+    tiltCorBlur=settingWdg[index]->tiltCorBlur;
+    tiltCorThrs=settingWdg[index]->tiltCorThrs;
     recalculate();
 }
 
@@ -315,10 +325,15 @@ void pgScanGUI::_doOneRound(){
         MLP.progress_comp=60*(k+1)/nRows;
     }
     std::cerr<<"done with dfts\n";
+    int dilation_size=exclDill->val;
+    if(dilation_size>0){
+        cv::Mat element=cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dilation_size+1,2*dilation_size+1), cv::Point(dilation_size,dilation_size));
+        cv::dilate(maskUMat, maskUMat, element);
+    }
+
     bitwise_not(maskUMat, maskUMatNot);
     maskUMat.copyTo(res->mask);
     maskUMatNot.copyTo(res->maskN);
-    int maskNonZero=cv::countNonZero(maskUMat);
 
     cv::transpose(resultFinalPhase,resultFinalPhase);   //now its the same rows,cols as the camera images
     resultFinalPhase.copyTo(res->depth);
@@ -341,23 +356,29 @@ void pgScanGUI::_doOneRound(){
     MLP.progress_comp=90;
 
     if(correctTilt){ //autocorrect tilt
-        cv::UMat padded;
-        int m=cv::getOptimalDFTSize(resultFinalPhase.rows);
-        int n=cv::getOptimalDFTSize(resultFinalPhase.cols);
-        cv::copyMakeBorder(resultFinalPhase, padded, 0, m-resultFinalPhase.rows, 0, n-resultFinalPhase.cols, cv::BORDER_CONSTANT, cv::Scalar::all(0));
-        cv::UMat dftResM;
-        padded.setTo(cv::Scalar::all(0), maskUMat);
-        cv::dft(padded, dftResM);
-        cv::Mat resM;
-        cv::UMat(dftResM,{0,0,2,2}).copyTo(resM);
-        long int totalnum=nRows*nCols;  //this already excludes padded
-        totalnum-=maskNonZero;          //subtract the mask events
-        res->tiltCor[0]=2*M_PI*std::abs(resM.at<std::complex<float>>(0,1))/totalnum/nCols;
-        res->tiltCor[1]=2*M_PI*std::abs(resM.at<std::complex<float>>(1,0))/totalnum/nRows;
-        std::cout<<"Phases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
-        if(std::arg(resM.at<std::complex<float>>(0,1))>0) res->tiltCor[0]*=-1;
-        if(std::arg(resM.at<std::complex<float>>(1,0))>0) res->tiltCor[1]*=-1;
+        cv::UMat blured;
+        double sigma=tiltCorBlur->val;
+        int ksize=sigma*5;
+        if(!(ksize%2)) ksize++;
+        cv::GaussianBlur(resultFinalPhase, blured, cv::Size(ksize, ksize), sigma, sigma);
+        double derDbound=tiltCorThrs->val;
+        cv::UMat firstD, secondD, mask, maskT;
+        cv::Sobel(blured, firstD, CV_32F,1,0); //X
+        cv::Sobel(blured, secondD, CV_32F,2,0); //X
+        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
+        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
+        mask.setTo(cv::Scalar::all(0), maskT);
+        mask.setTo(cv::Scalar::all(0), maskUMat);
+        res->tiltCor[0]=-cv::mean(firstD,mask)[0]/8;
+        cv::Sobel(blured, firstD, CV_32F,0,1); //Y
+        cv::Sobel(blured, secondD, CV_32F,2,0); //X
+        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
+        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
+        mask.setTo(cv::Scalar::all(0), maskT);
+        mask.setTo(cv::Scalar::all(0), maskUMat);
+        res->tiltCor[1]=-cv::mean(firstD,mask)[0]/8;
         std::cout<<"CPhases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
+
 
         cv::Mat slopeX1(1, nCols, CV_32F);
         cv::UMat slopeUX1(1, nCols, CV_32F);

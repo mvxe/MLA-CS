@@ -99,6 +99,9 @@ private:
     val_selector* dis_thresh;   //if the checked peaks within peakLocRange of the freq peak are higher than peakThresh x the main peak the pixel is added to the mask (of bad pixels)
     QLabel* calcL;
     constexpr static unsigned timer_delay=500;  //if the program is busy measuring we cannot update the variables, so wait for this ammount and try again
+    val_selector* exclDill;
+    val_selector* tiltCorBlur;
+    val_selector* tiltCorThrs;
     smp_selector* debugDisplayModeSelect;
 
     int totalFrameNum;
@@ -141,6 +144,10 @@ public:
     val_selector* max_vel;
     val_selector* max_acc;
     val_selector* dis_thresh;
+    QLabel* calcL;
+    val_selector* exclDill;
+    val_selector* tiltCorBlur;
+    val_selector* tiltCorThrs;
     pgScanGUI* parent;
 };
 
