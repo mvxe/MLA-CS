@@ -36,7 +36,7 @@ RESOURCES += \
     icons/icon.qrc \
     icons/icon.qrc
 
-unix:!macx: LIBS += -lcurlpp -lcurl -lserial -DVIENNACL_WITH_OPENCL  -lOpenCL
+unix:!macx: LIBS += -lcurlpp -lcurl -lserial -DVIENNACL_WITH_OPENCL  -lOpenCL -ldlib -lblas -llapack
 
 INCLUDEPATH += /usr/include/glib-2.0 \
         /usr/include/aravis-0.6

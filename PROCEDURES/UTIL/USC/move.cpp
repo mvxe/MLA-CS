@@ -1,6 +1,7 @@
 #include "move.h"
 #include "GUI/gui_includes.h"
 #include "includes.h"
+#include <dlib/optimization.h>
 
 pgMoveGUI::pgMoveGUI(){
     init_gui_activation();
@@ -71,7 +72,28 @@ void pgMoveGUI::init_gui_settings(){
     calib_autoadjYZ->setText("Calibrate YZ");
     calib_autoadjYZ->setCheckable(true);
     connect(calib_autoadjYZ, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_Y(bool)));
-    slayout->addWidget(new twid(calib_autoadjXZ, calib_autoadjYZ, new QLabel("(Click -> move X/Y -> focus -> Click)")));
+    slayout->addWidget(new twid(calib_autoadjXZ, calib_autoadjYZ));
+    slayout->addWidget(new QLabel("(Click -> move X/Y -> focus -> Click)"));
+
+    QLabel* hline=new QLabel;
+    hline->setFrameStyle(QFrame::HLine | QFrame::Plain);
+    slayout->addWidget(hline);
+
+    markPointForCalib=new QPushButton("Mark Point");
+    markPointForCalib->setCheckable(true);
+    connect(markPointForCalib, SIGNAL(toggled(bool)), this, SLOT(onMarkPointForCalib(bool)));
+    ptFeedback=new QLabel("Have 0 points.");
+    slayout->addWidget(new twid(markPointForCalib, ptFeedback));
+    slayout->addWidget(new QLabel("Check^ -> click on distinct feature\n -> move and center on it -> Uncheck"));
+    calculateCalib=new QPushButton("Calculate Calibration Constants"); calculateCalib->setToolTip("The more points, the better!");
+    connect(calculateCalib, SIGNAL(released()), this, SLOT(onCalculateCalib()));
+    slayout->addWidget(new twid(calculateCalib));
+    calibNmPPx=new val_selector(10, "pgMoveGUI_XYnmppx", "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
+    slayout->addWidget(calibNmPPx);
+    calibAngCamToXMot=new val_selector(0, "pgMoveGUI_calibAngCamToXMot", "Camera/Xmot angle: ", -M_PI/2, M_PI/2, 6, 0, {"rad"});
+    slayout->addWidget(calibAngCamToXMot);
+    calibAngYMotToXMot=new val_selector(0, "pgMoveGUI_calibAngYMotToXMot", "Xmot/Ymot angle ofs: ", -M_PI/2, M_PI/2, 6, 0, {"rad"});
+    slayout->addWidget(calibAngYMotToXMot);
 }
 
 void pgMoveGUI::_onMoveX(double magnitude){onMove(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0,0);}
@@ -127,3 +149,64 @@ void pgMoveGUI::onRmDial(){
     }
 }
 void pgMoveGUI::onDialMove(double x,double y){onMove(-x/1000, -y/1000, 0, 0);}
+
+
+
+void pgMoveGUI::delvrNextClickPixDiff(double Dx, double Dy){
+    reqstNextClickPixDiff=false;
+    curP4calib.DXpx=Dx;
+    curP4calib.DYpx=Dy;
+}
+void pgMoveGUI::onMarkPointForCalib(bool state){
+    if(state){
+        reqstNextClickPixDiff=true;
+        XPS::raxis temp=go.pXPS->getPos(XPS::mgroup_XYZF);
+        curP4calib.DXmm=-temp.pos[0];
+        curP4calib.DYmm=-temp.pos[1];
+    }else{
+        if(reqstNextClickPixDiff==true) return;
+        XPS::raxis temp=go.pXPS->getPos(XPS::mgroup_XYZF);
+        curP4calib.DXmm+=temp.pos[0];
+        curP4calib.DYmm+=temp.pos[1];
+        p4calib.push_back(curP4calib);
+        ptFeedback->setText(QString::fromStdString(util::toString("Have ",p4calib.size()," points.")));
+    }
+}
+
+
+typedef dlib::matrix<double,4,1> input_vector;
+typedef dlib::matrix<double,3,1> parameter_vector;
+double residual(const std::pair<input_vector, double>& data, const parameter_vector& params){
+    double DXpx=data.first(0);  double mmPPx=params(0);
+    double DYpx=data.first(1);  double phi0=params(1);
+    double DXmm=data.first(2);  double phi1=params(2);
+    double DYmm=data.first(3);
+    double model=abs(DXmm*cos(phi0)+DYmm*sin(phi0+phi1)-mmPPx*DXpx)+abs(DXmm*sin(phi0)+DYmm*cos(phi0+phi1)-mmPPx*DYpx);
+    return model*model - data.second;
+}
+
+void pgMoveGUI::onCalculateCalib(){
+    std::vector<std::pair<input_vector, double>> data;
+    while(!p4calib.empty()){
+        std::cout<<"points: "<<p4calib.back().DXpx<<" "<<p4calib.back().DYpx<<" "<<p4calib.back().DXmm<<" "<<p4calib.back().DYmm<<"\n";
+        input_vector input{p4calib.back().DXpx,p4calib.back().DYpx,p4calib.back().DXmm,p4calib.back().DYmm};
+        data.push_back(std::make_pair(input, 0));
+        p4calib.pop_back();
+    }
+    ptFeedback->setText("Have 0 points.");
+    parameter_vector res;
+    res=1;
+    dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-12).be_verbose(), residual, derivative(residual), data, res);
+    std::cout << "inferred parameters: "<< dlib::trans(res) << "\n";
+    if(res(0)<0){
+        res(0)*=-1;
+        res(1)*=-1;
+    }
+    while(res(0)<=-M_PI/2) res(0)+=M_PI;
+    while(res(0) > M_PI/2) res(0)-=M_PI;
+    while(res(1)<=-M_PI/2) res(1)+=M_PI;
+    while(res(1) > M_PI/2) res(1)-=M_PI;
+    calibNmPPx->setValue(res(0)*1000000);
+    calibAngCamToXMot->setValue(res(1));
+    calibAngYMotToXMot->setValue(res(2));
+}

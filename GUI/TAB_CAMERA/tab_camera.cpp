@@ -232,6 +232,7 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     else{
         if(event->button()==Qt::LeftButton){
             parent->pgMGUI->onMove((pixmap()->width()/2-xcoord)*parent->cMap->getXYnmppx()/1000000,(pixmap()->height()/2-ycoord)*parent->cMap->getXYnmppx()/1000000,0,0);
+            if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(pixmap()->width()/2-xcoord, pixmap()->height()/2-ycoord);
         }else if(event->button()==Qt::RightButton){
             parent->clickMenu->popup(QCursor::pos());
         }

@@ -9,6 +9,7 @@ class val_selector;
 class eadScrlBar;
 class QPushButton;
 class moveDial;
+class QLabel;
 
 class pgMoveGUI: public QObject{
     Q_OBJECT
@@ -17,6 +18,9 @@ public:
     pgMoveGUI();
     QWidget* gui_activation;
     QWidget* gui_settings;
+
+    std::atomic<bool> reqstNextClickPixDiff{false};
+    void delvrNextClickPixDiff(double Dx, double Dy);
 
  private:
     void init_gui_activation();
@@ -47,6 +51,19 @@ public:
     QPushButton* calib_autoadjYZ;
     double X_cum, Y_cum, Z_cum;
 
+    QPushButton* markPointForCalib;
+    QLabel* ptFeedback;
+    QPushButton* calculateCalib;
+    val_selector* calibNmPPx;
+    val_selector* calibAngCamToXMot;
+    val_selector* calibAngYMotToXMot;
+    struct dpoint{
+        double DXpx, DYpx;
+        double DXmm, DYmm;
+    };
+    dpoint curP4calib;
+    std::vector<dpoint> p4calib;
+
     double FZdifCur=-9999;
     bool ignoreNext=false;
 
@@ -59,6 +76,8 @@ private Q_SLOTS:
     void onAddDial();
     void onRmDial();
     void onDialMove(double x,double y);
+    void onMarkPointForCalib(bool state);
+    void onCalculateCalib();
 public Q_SLOTS:
     void _onMoveX(double magnitude);
     void _onMoveY(double magnitude);
