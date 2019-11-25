@@ -45,9 +45,7 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
     connect(xysbar_color_inv, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(xysbar_color_inv);
 
-    QLabel* hline=new QLabel;
-    hline->setFrameStyle(QFrame::HLine | QFrame::Plain);
-    layout->addWidget(hline);
+    layout->addWidget(new hline);
     layout->addWidget(new QLabel("For whole image export settings above apply. For selection export:"));
     fontSizeExport=new val_selector(1., "colorBar_fontSiz_exporte", "Font Size for Export: ", 0, 10., 2);
     layout->addWidget(fontSizeExport);
@@ -62,10 +60,7 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
     xysbar_yoffset_Export=new val_selector(0, "colorBar_xysbar_yoffset_Export", "Vertical Offset for XY Scalebar for Export: ", -10000, 10000, 0, 0, {"px"});
     layout->addWidget(xysbar_yoffset_Export);
 
-    QLabel* hline2=new QLabel;
-    hline2->setFrameStyle(QFrame::HLine | QFrame::Plain);
-    layout->addWidget(hline2);
-
+    layout->addWidget(new hline);
     QLabel* tlab=new QLabel("This calibration is not used, however, since it is calculated using the depth measurement it may be used to verify the correctness of the depth calibration by comparing it to the calibration done in Move settings.");
     tlab->setWordWrap(true);
     layout->addWidget(tlab);
@@ -112,7 +107,6 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
             if(done)break;
         }
         nticks=range/tick+1;  //rounds down
-        //std::cout<<"range= "<<range<<" ,div= "<<div<<" ,tick= "<<tick<<"\n";
         cv::Size size=cv::getTextSize(util::toString("Depth[nm]"), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
         cblabel=cv::Mat(size.height*2,size.width,CV_8UC4,{0,0,0,0});
         cv::putText(cblabel,util::toString("Depth[nm]"), {0,4*size.height/3}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);

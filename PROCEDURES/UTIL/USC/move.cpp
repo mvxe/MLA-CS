@@ -75,9 +75,7 @@ void pgMoveGUI::init_gui_settings(){
     slayout->addWidget(new twid(calib_autoadjXZ, calib_autoadjYZ));
     slayout->addWidget(new QLabel("(Click -> move X/Y -> focus -> Click)"));
 
-    QLabel* hline=new QLabel;
-    hline->setFrameStyle(QFrame::HLine | QFrame::Plain);
-    slayout->addWidget(hline);
+    slayout->addWidget(new hline);
 
     markPointForCalib=new QPushButton("Mark Point");
     markPointForCalib->setCheckable(true);

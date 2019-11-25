@@ -8,11 +8,24 @@
 class pgDepthEval: public QWidget{
     Q_OBJECT
 public:
-    pgDepthEval(varShareClient<pgScanGUI::scanRes>* src, varShareClient<pgScanGUI::scanRes>* dst);
+    pgDepthEval();
+    const bool& debugChanged{_debugChanged};
+    const pgScanGUI::scanRes* getDebugImage(const pgScanGUI::scanRes* src);
 private:
-    varShare<pgScanGUI::scanRes> result;
-    varShareClient<pgScanGUI::scanRes>* src;
     QVBoxLayout* layout;
+    smp_selector* debugDisp;
+
+    int debugIndex{0};
+    bool _debugChanged{false};
+
+    val_selector* findf_Blur;
+    val_selector* findf_Thrs;
+    val_selector* findf_Dill;
+
+    pgScanGUI::scanRes res;
+private Q_SLOTS:
+    void onDebugIndexChanged(int index);
+    void onChanged();
 };
 
 #endif // DEPTHEVAL_H

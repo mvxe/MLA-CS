@@ -20,7 +20,7 @@ tab_camera::tab_camera(QWidget* parent){
     layout->addWidget(LDisplay);
     layout->addWidget(tBarW);
 
-    selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map","Modified"});
+    selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map"});
     layoutTBarW->addWidget(selDisp);
 
     TWCtrl=new QTabWidget;
@@ -39,6 +39,7 @@ tab_camera::tab_camera(QWidget* parent){
     camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
 
     pgBGUI=new pgBoundsGUI;
+    pgDpEv=new pgDepthEval;
 
     tiltCor=new QLabel; tiltCor->setMargin(10);
     tiltCor->setVisible(false);
@@ -66,6 +67,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageSettings->addWidget(pgFGUI->gui_settings,"Focus");  index_pgFGUI=3;
         pageSettings->addWidget(cMap,"ColorMap");
         pageSettings->addWidget(camSet,"Camera");               index_camSet=5;
+        pageSettings->addWidget(pgDpEv,"Depth Eval");
 
     TWCtrl->addTab(pageMotion,"Motion");
     TWCtrl->addTab(pageWriting,"Writing");
@@ -141,16 +143,17 @@ void tab_camera::work_fun(){
         }
     }else{                  // Depth map
         LDisplay->isDepth=true;
-        if(scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed || selectingDRB || lastSelectingDRB || loadedScanChanged){
+        if(pgDpEv->debugChanged || scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed || selectingDRB || lastSelectingDRB || loadedScanChanged){
             const pgScanGUI::scanRes* res;
             if(scanRes->changed()) loadedOnDisplay=false;
             if(loadedOnDisplay) res=&loadedScan;
             else res=scanRes->get();
 
-            double min,max;
-            pgHistGUI->updateImg(res, &min, &max);
-
             if(res!=nullptr){
+                res=pgDpEv->getDebugImage(res); //if there is no debug image, it returns res so the command does nothing
+                double min,max;
+                pgHistGUI->updateImg(res, &min, &max);
+
                 cv::Mat display;
                 cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
                 if(selectingDRB) cv::rectangle(display, {selStartX+1,selStartY+1},{selCurX+1,selCurY+1}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, (abs(selCurX-selStartX)>=50 && abs(selCurY-selStartY)>=50)?1:-1);
@@ -162,7 +165,6 @@ void tab_camera::work_fun(){
 
             }
             oldCm=cm_sel->index;
-
         }
     }
     oldIndex=selDisp->index;

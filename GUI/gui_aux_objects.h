@@ -205,4 +205,14 @@ template<typename... Args> twid::twid(QWidget* widget, Args... args): twid(args.
     addWidget(widget, true);
 }
 
+// HORIZONTAL LINE
+
+class hline : public QLabel{
+    Q_OBJECT
+public:
+    hline(){
+        this->setFrameStyle(QFrame::HLine | QFrame::Plain);
+    }
+};
+
 #endif // GUI_AUX_OBJECTS_H

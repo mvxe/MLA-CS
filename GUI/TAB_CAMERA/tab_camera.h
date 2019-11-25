@@ -78,6 +78,7 @@ private:
 
     // writing
     pgBoundsGUI* pgBGUI;
+    pgDepthEval* pgDpEv;
 
     QMenu* clickMenu;
     QMenu* clickMenuDepth;
@@ -93,8 +94,6 @@ private:
 
     constexpr static unsigned work_call_time=33;    //work_fun is called periodically via timer every this many milliseconds
     pgScanGUI::scanRes loadedScan; bool loadedScanChanged{false}; bool loadedOnDisplay{false};
-
-
 private Q_SLOTS:
     void work_fun();
     void on_tab_change(int index);

@@ -10,9 +10,7 @@ cameraSett::cameraSett(std::atomic<bool>& getExpMinMax): getExpMinMax(getExpMinM
     layout->addWidget(new QLabel("[Excluded pixels will not be considered]"));
     report0=new QLabel();
     layout->addWidget(report0);
-    QLabel* hline=new QLabel;
-    hline->setFrameStyle(QFrame::HLine | QFrame::Plain);
-    layout->addWidget(hline);
+    layout->addWidget(new hline);
     expSel=new val_selector(1, "cameraSett_exp", "Set Exposure: ", 0, 9999999, 3, 0, {"us"});
     expSel->setDisabled(true);
     layout->addWidget(expSel);
