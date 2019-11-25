@@ -395,7 +395,7 @@ void pgScanGUI::_doOneRound(){
         slopeY1.copyTo(slopeUY1);
         cv::repeat(slopeUY1, 1, nCols, slopeUY);
         cv::add(slopeUY,resultFinalPhase,resultFinalPhase);
-    }
+    } else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
 
     cv::minMaxLoc(resultFinalPhase, &res->min, &res->max, &ignore, &ignore, maskUMatNot);  //the ignored mask values will be <min , everything is in nm
     resultFinalPhase.setTo(std::numeric_limits<float>::max() , maskUMat);
