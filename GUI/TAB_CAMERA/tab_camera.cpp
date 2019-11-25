@@ -35,7 +35,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgPRGUI=new pgPosRepGUI;
     cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
     cMap=new colorMap(cm_sel, exclColor, pgSGUI, pgTGUI);
-    pgSGUI->cMap=cMap;
+    pgSGUI->pgMGUI=pgMGUI;
     camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
 
     pgBGUI=new pgBoundsGUI;
@@ -120,9 +120,9 @@ void tab_camera::work_fun(){
         if(onDisplay!=nullptr){
             if(main_show_target->isChecked() || main_show_scale->isChecked() || main_show_bounds->isChecked()){
                 cv::Mat temp=onDisplay->clone();
-                if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, cMap->getXYnmppx());
+                if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp);
-                if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp);
+                if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
                 LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_Indexed8)));
 //                cv::applyColorMap(temp, temp, OCV_CM::ids[cm_sel->index]);
 //                cv::cvtColor(temp, temp, cv::COLOR_BGR2RGB);
@@ -232,7 +232,9 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     int ycoord=event->pos().y()-(height()-pixmap()->height())/2;
     parent->selEndX=xcoord;
     parent->selEndY=ycoord;
-    if(xcoord<0 || xcoord>=pixmap()->width() || ycoord<0 || ycoord>=pixmap()->height()) return; //ignore events outside pixmap; NOTE: the depth pixmap is expanded!, need additional filtering
+
+    if(!checkIfInBounds(parent->selStartX, parent->selStartY) || !checkIfInBounds(parent->selEndX, parent->selEndY)) {parent->selectingDRB=false; return;}
+
     if(isDepth){
         if(event->button()==Qt::RightButton){
             parent->clickMenuDepth->popup(QCursor::pos());
@@ -241,12 +243,24 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     }
     else{
         if(event->button()==Qt::LeftButton){
-            parent->pgMGUI->onMove((pixmap()->width()/2-xcoord)*parent->cMap->getXYnmppx()/1000000,(pixmap()->height()/2-ycoord)*parent->cMap->getXYnmppx()/1000000,0,0);
+            double DX, DY;
+            DX=(pixmap()->width()/2-xcoord)*parent->pgMGUI->getNmPPx()/1000000;
+            DY=(pixmap()->height()/2-ycoord)*parent->pgMGUI->getNmPPx()/1000000;
+            parent->pgMGUI->onMove(DX*cos(parent->pgMGUI->getAngCamToXMot())+DY*sin(parent->pgMGUI->getAngCamToXMot()+parent->pgMGUI->getYMotToXMot()),DX*sin(parent->pgMGUI->getAngCamToXMot())+DY*cos(parent->pgMGUI->getAngCamToXMot()+parent->pgMGUI->getYMotToXMot()),0,0);
             if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(pixmap()->width()/2-xcoord, pixmap()->height()/2-ycoord);
         }else if(event->button()==Qt::RightButton){
             parent->clickMenu->popup(QCursor::pos());
         }
     }
+}
+bool iImageDisplay::checkIfInBounds(int xcoord, int ycoord){
+    if(isDepth){
+        const pgScanGUI::scanRes* res=parent->scanRes->get();
+        if(xcoord<1 || xcoord>=res->depth.cols+1 || ycoord<(pixmap()->height()-res->depth.rows)/2 || ycoord>=res->depth.rows+(pixmap()->height()-res->depth.rows)/2 ) return false; //ignore events outside image;
+    }else{
+        if(xcoord<0 || xcoord>=pixmap()->width() || ycoord<0 || ycoord>=pixmap()->height()) return false; //ignore events outside pixmap;
+    }
+    return true;
 }
 void iImageDisplay::wheelEvent(QWheelEvent *event){
     if(isDepth){}
@@ -274,9 +288,9 @@ void tab_camera::onSaveCameraPicture(void){
     fq->setUserFps(999,1);
     while(fq->getUserMat()==nullptr);
     cv::Mat temp=onDisplay->clone();
-    if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, cMap->getXYnmppx());
+    if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
     if(main_show_target->isChecked()) cMap->draw_bw_target(&temp);
-    if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp);
+    if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
     imwrite(fileName, temp,{cv::IMWRITE_PNG_COMPRESSION,9});
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(fq);
 }

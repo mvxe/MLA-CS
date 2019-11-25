@@ -118,6 +118,7 @@ private:
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void wheelEvent(QWheelEvent *event);
+    bool checkIfInBounds(int xcoord, int ycoord);
 };
 
 #endif // CONFIG_TAB_CAMERA_H

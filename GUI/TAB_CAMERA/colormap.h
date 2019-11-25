@@ -17,8 +17,7 @@ public:
     void colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange=false, bool isForExport=false);
     const bool& changed{_changed};
     void draw_bw_target(cv::Mat* src);
-    void draw_bw_scalebar(cv::Mat* src);
-    double getXYnmppx();
+    void draw_bw_scalebar(cv::Mat* src, double XYnmppx);
     void draw_color_box(cv::Mat* src, int x0, int x1, int y0, int y1);
 private:
     QVBoxLayout* layout;

@@ -207,6 +207,9 @@ void pgMoveGUI::onCalculateCalib(){
     while(res(1)<=-M_PI/2) res(1)+=M_PI;
     while(res(1) > M_PI/2) res(1)-=M_PI;
     calibNmPPx->setValue(res(0)*1000000);
-    calibAngCamToXMot->setValue(res(1));
-    calibAngYMotToXMot->setValue(res(2));
+    calibAngCamToXMot->setValue(-res(1));
+    calibAngYMotToXMot->setValue(-res(2));
 }
+double pgMoveGUI::getNmPPx(){return calibNmPPx->val;}
+double pgMoveGUI::getAngCamToXMot(){return calibAngCamToXMot->val;}
+double pgMoveGUI::getYMotToXMot(){return calibAngYMotToXMot->val;}

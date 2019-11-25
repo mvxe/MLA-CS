@@ -14,7 +14,7 @@ class QCheckBox;
 class FQ;
 class scanSettings;
 class mesLockProg;
-class colorMap;
+class pgMoveGUI;
 
 class pScan: public sproc{
 public:
@@ -87,7 +87,8 @@ public:
 
     //get max and min pixel exposure for camera exposure setting
     std::atomic<bool> getExpMinMax{false};
-    colorMap* cMap{nullptr};
+    pgMoveGUI* pgMGUI;
+
 private:
     smp_selector* selectScanSetting;    //scan setting
     std::vector<scanSettings*> settingWdg;

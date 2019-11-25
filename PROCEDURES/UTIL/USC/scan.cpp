@@ -401,8 +401,8 @@ void pgScanGUI::_doOneRound(){
     resultFinalPhase.setTo(std::numeric_limits<float>::max() , maskUMat);
     resultFinalPhase.copyTo(res->depth);
 
-    if(cMap==nullptr) res->XYnmppx=0;
-    else res->XYnmppx=cMap->getXYnmppx();
+    if(pgMGUI==nullptr) res->XYnmppx=0;
+    else res->XYnmppx=pgMGUI->getNmPPx();
     result.put(res);
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();

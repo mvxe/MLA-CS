@@ -22,6 +22,9 @@ public:
     std::atomic<bool> reqstNextClickPixDiff{false};
     void delvrNextClickPixDiff(double Dx, double Dy);
 
+    double getNmPPx();
+    double getAngCamToXMot();
+    double getYMotToXMot();
  private:
     void init_gui_activation();
     void init_gui_settings();

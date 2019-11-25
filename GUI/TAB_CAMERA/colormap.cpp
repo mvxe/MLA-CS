@@ -66,6 +66,9 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
     hline2->setFrameStyle(QFrame::HLine | QFrame::Plain);
     layout->addWidget(hline2);
 
+    QLabel* tlab=new QLabel("This calibration is not used, however, since it is calculated using the depth measurement it may be used to verify the correctness of the depth calibration by comparing it to the calibration done in Move settings.");
+    tlab->setWordWrap(true);
+    layout->addWidget(tlab);
     XYnmppx=new val_selector(10, "colorBar_XYnmppx", "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
     layout->addWidget(XYnmppx);
     calibXY=new QPushButton;
@@ -195,9 +198,9 @@ void colorMap::draw_bw_target(cv::Mat* src){
         cv::rectangle(*src, {xofs-targWidth/2-i, yofs+targDis-i, targWidth+2*i, targLenght+2*i}, i?backC:frontC,-1);
     }
 }
-void colorMap::draw_bw_scalebar(cv::Mat* src){
+void colorMap::draw_bw_scalebar(cv::Mat* src, double XYnmppx){
     double lxysbar_unit=xysbar_unit->val; int ignore;
-    if(lxysbar_unit!=0 && XYnmppx->val!=0){
+    if(lxysbar_unit!=0 && XYnmppx!=0){
         cv::Size size=cv::getTextSize(util::toString(xysbar_unit->val," um"), OCV_FF::ids[fontFace->index], fontSize->val, fontThickness->val, &ignore);
         int xofs=src->cols/2+xysbar_xoffset->val;
         int yofs=src->rows/2+xysbar_yoffset->val;
@@ -206,7 +209,7 @@ void colorMap::draw_bw_scalebar(cv::Mat* src){
         backC=xysbar_color_inv->val?cv::Scalar{0}:cv::Scalar{255};
         for(int i=1;i>=0;i--){
             cv::putText(*src,util::toString(lxysbar_unit," um"), {xofs-size.width/2, yofs-(int)xysbar_txtoffset->val}, OCV_FF::ids[fontFace->index], fontSize->val, i?backC:frontC, fontThickness->val+i, cv::LINE_AA);
-            cv::rectangle(*src, {xofs-(int)(lxysbar_unit*1000/XYnmppx->val/2)-i, yofs-i, (int)(lxysbar_unit*1000/XYnmppx->val)+2*i, (int)xysbar_thck->val+2*i}, i?backC:frontC,-1);
+            cv::rectangle(*src, {xofs-(int)(lxysbar_unit*1000/XYnmppx/2)-i, yofs-i, (int)(lxysbar_unit*1000/XYnmppx)+2*i, (int)xysbar_thck->val+2*i}, i?backC:frontC,-1);
         }
     }
 }
@@ -255,5 +258,3 @@ void colorMap::onMovTilt(bool state){
         phiYR-=tilt->val/62230;
     }
 }
-
-double colorMap::getXYnmppx(){std::lock_guard<std::mutex>lock(glock); return XYnmppx->val;}
