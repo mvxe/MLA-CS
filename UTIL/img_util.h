@@ -87,4 +87,30 @@ public:
     }
 };
 
+
+// Get nearest point to center from mask mat
+
+class imgAux{
+public:
+    static void getNearestFreePointToCenter(const cv::Mat* mask, int &ptX, int &ptY, float randomZD=0);//mask - 0 are free and valid points, 255 are not free
+                                                                                                       //randomZD: once the closest free point is found, having some distance Dc from the center, all free points whose distance from the center
+                                                                                                       //is within [Dc:Dc+randomZD] are put into a list and a random point is selected and returned as the result
+                                                                                                       //returns ptX=-1 and ptY=-1 if no free point found
+private:
+    struct point{
+        int x,y;
+        float dis;
+    };
+    struct pointSort{
+        int width, height;
+        std::vector<point> points;
+    };
+    static std::vector<pointSort*> lookupPtDis; //we use a lookup table to find the nearest, as computing it every time would be too expensive
+                                                //for the first time a mat of a certain width x height is used, this table is generated first and is used for each subsequent query for a matrix of this size
+    static std::mutex mtx;
+    static bool sortF0(point& i,point& j);
+    static bool findLT(point& i);
+    static float target;
+};
+
 #endif // IMG_UTIL_H

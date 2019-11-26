@@ -150,13 +150,12 @@ void smp_selector::on_menu_change(){
 // TAB WIDGET DISPLAY SELECTOR
 
 
-twd_selector::twd_selector(std::string menu, std::string init, bool twidSetMargin, bool addStretch): showSel(menu!="" || init!=""){
+twd_selector::twd_selector(std::string menu, std::string init, bool twidSetMargin, bool addStretch, bool addShown): showSel(menu!="" || init!=""){
     layout=new QVBoxLayout;
-    if(addStretch) layout->addStretch(0);
     layout->setMargin(0);
     this->setLayout(layout);
-    insertOfs=(addStretch)?1:0;
 
+    if(addShown) showBtn=new QPushButton("< show >");
     if(showSel){
         select=new QScrollToolButton();
         select->setAutoRaise(true);
@@ -164,10 +163,24 @@ twd_selector::twd_selector(std::string menu, std::string init, bool twidSetMargi
         select->setPopupMode(QToolButton::InstantPopup);
         select->setMenu(new QMenu);
         connect(select->menu(), SIGNAL(aboutToHide()), this, SLOT(on_menu_change()));
-        if(menu!="") layout->insertWidget(layout->count()-insertOfs, new twid(new QLabel(QString::fromStdString(menu)) ,select, twidSetMargin));
-        else         layout->insertWidget(layout->count()-insertOfs, select);
+        if(menu!="" && addShown) layout->insertWidget(layout->count(), new twid(new QLabel(QString::fromStdString(menu)) ,select, showBtn, twidSetMargin));
+        else if(menu!="") layout->insertWidget(layout->count(), new twid(new QLabel(QString::fromStdString(menu)) ,select, twidSetMargin));
+        else       layout->insertWidget(layout->count(), select);
         select->setText(QString::fromStdString(init));
     }
+    if(addShown){
+        connect(showBtn, SIGNAL(released()), this, SLOT(onClicked()));
+        showBtn->setFlat(true);
+        layout->setSpacing(0);
+        wI=new QWidget;
+        layouts=new QVBoxLayout;
+        wI->setLayout(layouts);
+        layouts->setMargin(0);
+        layout->addWidget(wI);
+        wI->setVisible(false);
+    }else layouts=layout;
+    if(addStretch) layouts->addStretch(0);
+    insertOfs=(addStretch)?1:0;
 }
 void twd_selector::addWidget(QWidget* widget, QString label){
     widgets.push_back(widget);
@@ -177,7 +190,7 @@ void twd_selector::addWidget(QWidget* widget, QString label){
         action->setText(label);
         select->menu()->addAction(action);
     }
-    layout->insertWidget(layout->count()-insertOfs, widget);
+    layouts->insertWidget(layouts->count()-insertOfs, widget);
 }
 void twd_selector::setIndex(int index){
     if(index>=select->menu()->actions().size()) return;
@@ -197,6 +210,10 @@ void twd_selector::on_menu_change(){
         Q_EMIT changed(active_index);
         return;
     }
+}
+void twd_selector::onClicked(){
+    wI->setVisible(!wI->isVisible());
+    showBtn->setText((wI->isVisible())?"< hide >":"< show >");
 }
 
 // GUI adaptiveScrollBar
@@ -346,3 +363,25 @@ twid::twid(QWidget* widget, bool setmargin): twid(setmargin){
     addWidget(widget, true);
 }
 
+// HIDDEN CONTAINER
+
+hidCon::hidCon(){
+    layout=new QVBoxLayout;
+    this->setLayout(layout);
+    showBtn=new QPushButton("< show >");
+    connect(showBtn, SIGNAL(released()), this, SLOT(onClicked()));
+    showBtn->setFlat(true);
+    layout->addWidget(new twid(showBtn));
+    wI=new QWidget;
+    layoutI=new QVBoxLayout;
+    wI->setLayout(layoutI);
+    layoutI->setMargin(0);
+    layout->addWidget(wI);
+    wI->setVisible(false);
+}
+void hidCon::addWidget(QWidget* widget){
+    layoutI->addWidget(widget);
+}
+void hidCon::onClicked(){
+    wI->setVisible(!wI->isVisible());
+}

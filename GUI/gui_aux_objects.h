@@ -84,7 +84,7 @@ Q_SIGNALS:
 class twd_selector : public QWidget{       //template for devices
     Q_OBJECT
 public:
-    twd_selector(std::string menu="", std::string init="", bool twidSetMargin=true, bool addStretch=true); //if menu=="" it wont show the selector
+    twd_selector(std::string menu="", std::string init="", bool twidSetMargin=true, bool addStretch=true, bool addShown=false); //if menu=="" it wont show the selector
     void addWidget(QWidget* widget, QString label="");
     void timerStop();
     void timerStart();
@@ -93,14 +93,19 @@ public:
     void setIndex(int index);
 private:
     QVBoxLayout* layout;
+    QVBoxLayout* layouts;
     QScrollToolButton* select;
     std::vector<QWidget*> widgets;
     int insertOfs;
     int active_index=-1;
+
+    QPushButton* showBtn;   //for addShown
+    QWidget* wI;
 Q_SIGNALS:
     void changed(int index);
 private Q_SLOTS:
     void on_menu_change();
+    void onClicked();   //for addShown
 };
 
 // GUI adaptiveScrollBar
@@ -213,6 +218,22 @@ public:
     hline(){
         this->setFrameStyle(QFrame::HLine | QFrame::Plain);
     }
+};
+
+// HIDDEN CONTAINER - click a button to reveal/hide content
+
+class hidCon : public QWidget{
+    Q_OBJECT
+public:
+    hidCon();
+    void addWidget(QWidget* widget);
+private:
+    QPushButton* showBtn;
+    QVBoxLayout* layout;
+    QWidget* wI;
+    QVBoxLayout* layoutI;
+private Q_SLOTS:
+    void onClicked();
 };
 
 #endif // GUI_AUX_OBJECTS_H

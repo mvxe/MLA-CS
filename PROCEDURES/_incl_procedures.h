@@ -15,5 +15,6 @@
 #include "PROCEDURES/UTIL/USC/histogram.h"
 #include "PROCEDURES/UTIL/WRT/bounds.h"
 #include "PROCEDURES/UTIL/WRT/deptheval.h"
+#include "PROCEDURES/UTIL/WRT/calib.h"
 
 #endif // _INCL_PROCEDURES_H

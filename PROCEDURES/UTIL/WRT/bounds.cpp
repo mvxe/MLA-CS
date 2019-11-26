@@ -6,7 +6,7 @@ pgBoundsGUI::pgBoundsGUI(){
     layout=new QVBoxLayout;
     layout->setMargin(0);
     this->setLayout(layout);
-    selector=new twd_selector("Select active boundary:", "none", false, false);
+    selector=new twd_selector("Select active boundary:", "none", false, false, true);
     OOBLabel=new QLabel(); OOBLabel->setMaximumHeight(20); OOBLabel->setMaximumWidth(20); OOBLabel->setScaledContents(true);
     layout->addWidget(selector);
     layout->addWidget(new twid(new QLabel("In bounds:"),OOBLabel, false));
@@ -172,6 +172,8 @@ void pgBoundsGUI::getLineDisDir(double a, double b, double x, double y, bool* di
 
 
 void pgBoundsGUI::update(){
+    if(!go.pXPS->connected) return;
+    if(!go.pXPS->isQueueEmpty())  return;
     double cur[2];
     XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
     for(int i=0;i!=2;i++) cur[i]=tmp.pos[i];
@@ -179,7 +181,7 @@ void pgBoundsGUI::update(){
     else OOBLabel->setPixmap(QPixmap(":/gtk-no.svg"));
 }
 
-void pgBoundsGUI::drawBound(cv::Mat* img, double XYnmppx){
+void pgBoundsGUI::drawBound(cv::Mat* img, double XYnmppx, bool isMask){
     if(go.pXPS->connected) if(go.pXPS->isQueueEmpty()){
         XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
         for(int i=0;i!=2;i++) cur[i]=tmp.pos[i];
@@ -187,18 +189,26 @@ void pgBoundsGUI::drawBound(cv::Mat* img, double XYnmppx){
     int ofsX=img->cols/2;
     int ofsY=img->rows/2;
 
+    cv::Mat mask;
+    if(isMask) mask=cv::Mat(img->rows,img->cols,CV_8U,cv::Scalar(0));
+
     double clr[2]={0,255}; int thck[2]={3,1};
     for(int i=0;i!=2;i++)
     if(selector->index==1){
-        for(int i=0;i!=2;i++)
+        if(isMask) cv::circle(mask, {(int)((cur[0]-circCenter[0])*1000000/XYnmppx+ofsX),(int)((cur[1]-circCenter[1])*1000000/XYnmppx+ofsY)}, (int)(selCircRadius->val*1000/XYnmppx), 255, -1);
+        else for(int i=0;i!=2;i++){
             cv::circle(*img, {(int)((cur[0]-circCenter[0])*1000000/XYnmppx+ofsX),(int)((cur[1]-circCenter[1])*1000000/XYnmppx+ofsY)}, (int)(selCircRadius->val*1000/XYnmppx), {clr[i]}, thck[i], cv::LINE_AA);
+        }
+
     }else if(selector->index==2){
         double xx,yy,rad;
         calcCenRad(xx, yy, rad);
-        for(int i=0;i!=2;i++)
+        if(isMask) cv::circle(mask, {(int)((cur[0]-xx)*1000000/XYnmppx+ofsX),(int)((cur[1]-yy)*1000000/XYnmppx+ofsY)}, (int)((rad-circClearance->val/1000)*1000000/XYnmppx), 255, -1);
+        else for(int i=0;i!=2;i++)
             cv::circle(*img, {(int)((cur[0]-xx)*1000000/XYnmppx+ofsX),(int)((cur[1]-yy)*1000000/XYnmppx+ofsY)}, (int)((rad-circClearance->val/1000)*1000000/XYnmppx), {clr[i]}, thck[i], cv::LINE_AA);
     }else if(selector->index==3){
-        for(int i=0;i!=2;i++)
+        if(isMask) cv::rectangle(mask, {(int)((cur[0]-rectCenter[0]-selRectWidth->val/1000/2)*1000000/XYnmppx+ofsX),(int)((cur[1]-rectCenter[1]-selRectHeight->val/1000/2)*1000000/XYnmppx+ofsY),(int)(selRectWidth->val*1000/XYnmppx),(int)(selRectHeight->val*1000/XYnmppx)}, 255, -1);
+        else for(int i=0;i!=2;i++)
             cv::rectangle(*img, {(int)((cur[0]-rectCenter[0]-selRectWidth->val/1000/2)*1000000/XYnmppx+ofsX),(int)((cur[1]-rectCenter[1]-selRectHeight->val/1000/2)*1000000/XYnmppx+ofsY),(int)(selRectWidth->val*1000/XYnmppx),(int)(selRectHeight->val*1000/XYnmppx)}, {clr[i]}, thck[i], cv::LINE_AA);
     }else if(selector->index==4){
         double points[4][2]; double avgPt[2]={0,0};
@@ -224,11 +234,20 @@ void pgBoundsGUI::drawBound(cv::Mat* img, double XYnmppx){
             points[i][0]=(lines[itr[1]][1]-lines[itr[0]][1])/(lines[itr[0]][0]-lines[itr[1]][0]);
             points[i][1]=points[i][0]*lines[itr[0]][0]+lines[itr[0]][1];
         }
-        for(int j=0;j!=2;j++)
+        if(isMask){
+            cv::Point cvpoints[4];
+            for(int i=0;i!=4;i++) cvpoints[i]=cv::Point((int)((cur[0]-points[i][0])*1000000/XYnmppx+ofsX),(int)((cur[1]-points[i][1])*1000000/XYnmppx+ofsY));
+            cv::fillConvexPoly(mask, cvpoints, 4, 255);
+        }else for(int j=0;j!=2;j++)
             for(int i=0;i!=4;i++){
                 int itr[4];
                 for(int j=0;j!=4;j++) itr[j]=(i+j)%4;
                 cv::line(*img, {(int)((cur[0]-points[itr[0]][0])*1000000/XYnmppx+ofsX),(int)((cur[1]-points[itr[0]][1])*1000000/XYnmppx+ofsY)}, {(int)((cur[0]-points[itr[1]][0])*1000000/XYnmppx+ofsX),(int)((cur[1]-points[itr[1]][1])*1000000/XYnmppx+ofsY)}, {clr[j]}, thck[j], cv::LINE_AA);
             }
+    }
+
+    if(isMask){
+        cv::bitwise_not(mask, mask);
+        cv::bitwise_or(*img,mask,*img);
     }
 }

@@ -12,7 +12,7 @@ public:
     pgBoundsGUI();
     ~pgBoundsGUI();
     bool isWithinBounds(double x, double y);
-    void drawBound(cv::Mat* img, double XYnmppx);
+    void drawBound(cv::Mat* img, double XYnmppx, bool isMask=false);    //if isMask, the values outside the zone are turned to 255
 private:
     QTimer* timer;
     constexpr static unsigned timer_delay=250;      //we refresh out of bounds indicator every this ms

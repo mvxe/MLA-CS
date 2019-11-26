@@ -97,7 +97,8 @@ HEADERS += \
     GUI/TAB_CAMERA/other_settings.h \
     UTIL/measurement.h \
     PROCEDURES/UTIL/WRT/bounds.h \
-    PROCEDURES/UTIL/WRT/deptheval.h
+    PROCEDURES/UTIL/WRT/deptheval.h \
+    PROCEDURES/UTIL/WRT/calib.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -141,7 +142,8 @@ SOURCES += \
     GUI/TAB_CAMERA/colormap.cpp \
     GUI/TAB_CAMERA/other_settings.cpp \
     PROCEDURES/UTIL/WRT/bounds.cpp \
-    PROCEDURES/UTIL/WRT/deptheval.cpp
+    PROCEDURES/UTIL/WRT/deptheval.cpp \
+    PROCEDURES/UTIL/WRT/calib.cpp
 
 
 unix {

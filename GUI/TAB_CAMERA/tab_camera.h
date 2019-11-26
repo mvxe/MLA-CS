@@ -79,6 +79,7 @@ private:
     // writing
     pgBoundsGUI* pgBGUI;
     pgDepthEval* pgDpEv;
+    pgCalib* pgCal;
 
     QMenu* clickMenu;
     QMenu* clickMenuDepth;

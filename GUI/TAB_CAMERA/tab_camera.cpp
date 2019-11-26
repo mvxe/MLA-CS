@@ -39,7 +39,8 @@ tab_camera::tab_camera(QWidget* parent){
     camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
 
     pgBGUI=new pgBoundsGUI;
-    pgDpEv=new pgDepthEval;
+    pgDpEv=new pgDepthEval(pgBGUI);
+    pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv);
 
     tiltCor=new QLabel; tiltCor->setMargin(10);
     tiltCor->setVisible(false);
@@ -53,6 +54,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageMotion->addWidget(pgPRGUI);
 
     pageWriting=new twd_selector;
+        pageWriting->addWidget(pgCal->gui_activation);
         pageWriting->addWidget(pgBGUI);
 
     pageProcessing=new twd_selector;
@@ -104,6 +106,7 @@ tab_camera::tab_camera(QWidget* parent){
 
 tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
     delete scanRes;
+    delete pgCal;
     delete pgSGUI;
     delete pgMGUI;
     delete pgTGUI;

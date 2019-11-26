@@ -217,7 +217,7 @@ void pgScanGUI::_doOneRound(){
     framequeue->setUserFps(99999);
 
     XPS::raxis poss=go.pXPS->getPos(XPS::mgroup_XYZF);
-    for(int i=0;i!=2;i++) res->pos[i]=poss.pos[i];
+    for(int i=0;i!=3;i++) res->pos[i]=poss.pos[i];
     go.pXPS->execPVTobj(PVTmeasure, &PVTret);
 
     for(int i=0;i!=95;i++){

@@ -2,10 +2,10 @@
 #include "GUI/gui_includes.h"
 #include "includes.h"
 
-pgDepthEval::pgDepthEval(){
+pgDepthEval::pgDepthEval(pgBoundsGUI* pgBGUI): pgBGUI(pgBGUI){
     layout=new QVBoxLayout;
     this->setLayout(layout);
-    debugDisp=new smp_selector("Display debug:", 0, {"none","Blur","^^+Laplacian","^^+Thresh","^^+Dilate"});
+    debugDisp=new smp_selector("Display debug:", 0, {"none","Blur","^^+Laplacian","^^+Thresh","^^+Dilate","^^+Exclusion"});
     connect(debugDisp, SIGNAL(changed(int)), this, SLOT(onDebugIndexChanged(int)));
     layout->addWidget(debugDisp);
     layout->addWidget(new hline);
@@ -15,6 +15,7 @@ pgDepthEval::pgDepthEval(){
     connect(findf_Thrs, SIGNAL(changed()), this, SLOT(onChanged()));
     findf_Dill=new val_selector(0, "pgDepthEval_findf_Dill", "Dillation: ", 0, 100, 0, 0, {"px"});                  //TODO turn this into radius in um / add option
     connect(findf_Dill, SIGNAL(changed()), this, SLOT(onChanged()));
+    findf_Dill->setToolTip("Only used for testing: each call to depth eval should specify a dilation radius corresponding to the beam radius or whatever.");
     layout->addWidget(findf_Blur);
     layout->addWidget(findf_Thrs);
     layout->addWidget(findf_Dill);
@@ -30,7 +31,7 @@ void pgDepthEval::onChanged(){
 
 const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* src){
     _debugChanged=false;
-    if(src==nullptr || debugIndex<0 || debugIndex==0 || debugIndex>4) return src;
+    if(src==nullptr || debugIndex<0 || debugIndex==0 || debugIndex>5) return src;
 
     res.max=src->max; res.min=src->min;
     res.pos[0]=src->pos[0]; res.XYnmppx=src->XYnmppx;
@@ -65,6 +66,38 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
     }
     bitwise_not(res.mask, res.maskN);
     if(debugIndex==4)  return &res;
+    pgBGUI->drawBound(&res.mask, res.XYnmppx, true);
+    if(debugIndex==5)  return &res;
 }
 
+cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, double XYnmppx, int dil, double thresh, double blur){
+    if(dil==-1) dil=findf_Dill->val;
+    if(thresh==-1) thresh=findf_Thrs->val;
+    if(blur==-1) blur=findf_Blur->val;
+
+    cv::Mat retMask;
+    src->mask.copyTo(retMask);
+
+    cv::UMat mat;
+    src->depth.copyTo(mat);
+    double sigma=blur;
+    int ksize=sigma*5;
+    if(!(ksize%2)) ksize++;
+    mat.setTo(src->max+abs(src->max-src->min)/2,src->mask);
+    cv::GaussianBlur(mat, mat, cv::Size(ksize, ksize), sigma, sigma);
+    cv::Point ignore;
+    cv::Laplacian(mat, mat, CV_32F);
+    cv::divide(mat,8,mat);  //should make the unit mm/mm, if its too slow remove this
+    cv::UMat umask, umaskT;
+    cv::compare(mat,  thresh, umask , cv::CMP_GT);
+    cv::compare(mat, -thresh, umaskT, cv::CMP_LT);
+    retMask.setTo(cv::Scalar::all(255), umask);
+    retMask.setTo(cv::Scalar::all(255), umaskT);
+    if(dil>0){
+        cv::Mat element=cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dil+1,2*dil+1), cv::Point(dil,dil));
+        cv::dilate(retMask, retMask, element);
+    }
+    pgBGUI->drawBound(&retMask, XYnmppx, true);
+    return retMask;
+}
 
