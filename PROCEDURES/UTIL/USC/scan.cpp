@@ -216,8 +216,6 @@ void pgScanGUI::_doOneRound(){
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeue->setUserFps(99999);
 
-    XPS::raxis poss=go.pXPS->getPos(XPS::mgroup_XYZF);
-    for(int i=0;i!=3;i++) res->pos[i]=poss.pos[i];
     go.pXPS->execPVTobj(PVTmeasure, &PVTret);
 
     for(int i=0;i!=95;i++){
@@ -228,6 +226,9 @@ void pgScanGUI::_doOneRound(){
     PVTret.block_till_done();
     MLP.progress_meas=100;
     framequeue->setUserFps(0);
+
+    XPS::raxis poss=go.pXPS->getPos(XPS::mgroup_XYZF);
+    for(int i=0;i!=3;i++) res->pos[i]=poss.pos[i];
 
     std::lock_guard<std::mutex>lock(MLP._lock_comp);    // wait till other processing is done
     MLP._lock_meas.unlock();                             // allow new measurement to start

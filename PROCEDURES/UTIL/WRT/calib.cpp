@@ -53,6 +53,7 @@ bool pgCalib::goToNearestFree(){
     dXmm=dXumm*cos(pgMGUI->getAngCamToXMot())+dYumm*sin(pgMGUI->getAngCamToXMot()+pgMGUI->getYMotToXMot());
     dYmm=dXumm*sin(pgMGUI->getAngCamToXMot())+dYumm*cos(pgMGUI->getAngCamToXMot()+pgMGUI->getYMotToXMot());
 
-    pgMGUI->onMove(-dXmm,-dYmm,0,0);
+    //pgMGUI->onMove(-dXmm,-dYmm,0,0);
+    std::cerr<<"moving to "<< dXmm<<" "<<dYmm<<"\n";
     return false;
 }
