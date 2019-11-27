@@ -28,7 +28,10 @@ private:
 
     //activation
     QHBoxLayout* alayout;
+    hidCon* hcGoToNearestFree;
     QPushButton* btnGoToNearestFree;
+    val_selector* selRadDilGoToNearestFree;
+    val_selector* selRadSprGoToNearestFree;
 
     //settings
     QVBoxLayout* slayout;

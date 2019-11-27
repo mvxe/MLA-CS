@@ -225,9 +225,11 @@ public:
 class hidCon : public QWidget{
     Q_OBJECT
 public:
-    hidCon();
+    template<typename... Args> hidCon(Args... args);
+    void hhidCon();
     void addWidget(QWidget* widget);
 private:
+    twid* mainTwid;
     QPushButton* showBtn;
     QVBoxLayout* layout;
     QWidget* wI;
@@ -235,5 +237,9 @@ private:
 private Q_SLOTS:
     void onClicked();
 };
+template<typename... Args> hidCon::hidCon(Args... args): mainTwid(new twid(args...)){
+    hhidCon();
+}
+
 
 #endif // GUI_AUX_OBJECTS_H

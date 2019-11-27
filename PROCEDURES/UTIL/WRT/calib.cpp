@@ -13,7 +13,12 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     btnGoToNearestFree=new QPushButton("Go to nearest free");
     btnGoToNearestFree->setToolTip("This adheres to write boundaries!");
     connect(btnGoToNearestFree, SIGNAL(released()), this, SLOT(goToNearestFree()));
-    alayout->addWidget(new twid(btnGoToNearestFree));
+    hcGoToNearestFree=new hidCon(btnGoToNearestFree);
+    alayout->addWidget(hcGoToNearestFree);
+    selRadDilGoToNearestFree=new val_selector(1, "pgCalib_selRadDilGoToNearestFree", "Exclusion Dilation Radius: ", 0, 100, 2, 0, {"um"});
+    selRadSprGoToNearestFree=new val_selector(1, "pgCalib_selRadSprGoToNearestFree", "Random Selection Radius: ", 0, 100, 2, 0, {"um"});
+    hcGoToNearestFree->addWidget(selRadDilGoToNearestFree);
+    hcGoToNearestFree->addWidget(selRadSprGoToNearestFree);
 
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
@@ -32,16 +37,17 @@ bool pgCalib::goToNearestFree(){
     bool redoScan=false;
     const pgScanGUI::scanRes* res=scanRes->get();
     if(res!=nullptr){
-        for(int i=0;i!=3;i++) {std::cerr<<std::setprecision(12)<<"pos "<<i<<"is"<<res->pos[i]<<" vs "<<tmp.pos[i]<<"\n"; if(res->pos[i]!=tmp.pos[i])redoScan=true;}
+        for(int i=0;i!=3;i++) if(res->pos[i]!=tmp.pos[i])redoScan=true;
     }else redoScan=true;
     if(redoScan){
         pgSGUI->doOneRound();
         while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
         res=scanRes->get();
     }
-    cv::Mat mask=pgDpEv->getMaskFlatness(res, pgMGUI->getNmPPx());
+    int dil=(selRadDilGoToNearestFree->val*1000/pgMGUI->getNmPPx()-0.5); if(dil<0) dil=0;
+    cv::Mat mask=pgDpEv->getMaskFlatness(res, pgMGUI->getNmPPx(), dil);
     int ptX,ptY;
-    imgAux::getNearestFreePointToCenter(&mask, ptX, ptY, 2);    //make radius choosable in nm
+    imgAux::getNearestFreePointToCenter(&mask, ptX, ptY, selRadSprGoToNearestFree->val);    //make radius choosable in nm
     if(ptX==-1){
         std::cerr<<"No free nearby!\n";
         return true;
@@ -53,7 +59,6 @@ bool pgCalib::goToNearestFree(){
     dXmm=dXumm*cos(pgMGUI->getAngCamToXMot())+dYumm*sin(pgMGUI->getAngCamToXMot()+pgMGUI->getYMotToXMot());
     dYmm=dXumm*sin(pgMGUI->getAngCamToXMot())+dYumm*cos(pgMGUI->getAngCamToXMot()+pgMGUI->getYMotToXMot());
 
-    //pgMGUI->onMove(-dXmm,-dYmm,0,0);
-    std::cerr<<"moving to "<< dXmm<<" "<<dYmm<<"\n";
+    pgMGUI->onMove(-dXmm,-dYmm,0,0);
     return false;
 }

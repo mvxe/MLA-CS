@@ -365,16 +365,18 @@ twid::twid(QWidget* widget, bool setmargin): twid(setmargin){
 
 // HIDDEN CONTAINER
 
-hidCon::hidCon(){
+void hidCon::hhidCon(){
     layout=new QVBoxLayout;
     this->setLayout(layout);
     showBtn=new QPushButton("< show >");
     connect(showBtn, SIGNAL(released()), this, SLOT(onClicked()));
     showBtn->setFlat(true);
-    layout->addWidget(new twid(showBtn));
+    mainTwid->addWidget(showBtn);
+    layout->addWidget(mainTwid);
     wI=new QWidget;
     layoutI=new QVBoxLayout;
     wI->setLayout(layoutI);
+    layout->setMargin(0);
     layoutI->setMargin(0);
     layout->addWidget(wI);
     wI->setVisible(false);
@@ -384,4 +386,5 @@ void hidCon::addWidget(QWidget* widget){
 }
 void hidCon::onClicked(){
     wI->setVisible(!wI->isVisible());
+    showBtn->setText((wI->isVisible())?"< hide >":"< show >");
 }
