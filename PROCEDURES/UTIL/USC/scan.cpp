@@ -30,30 +30,31 @@ pgScanGUI::pgScanGUI(mesLockProg& MLP): MLP(MLP){
     connect(timer, SIGNAL(timeout()), this, SLOT(recalculate()));
     timerCM = new QTimer(this);
     timerCM->setInterval(timerCM_delay);
-    connect(timerCM, SIGNAL(timeout()), this, SLOT(onBScanOne()));
+    timerCM->setSingleShot(true);
+    connect(timerCM, SIGNAL(timeout()), this, SLOT(onBScan()));
 }
 
 void pgScanGUI::init_gui_activation(){
-    gui_activation=new QWidget;
-    alayout=new QHBoxLayout;
-    gui_activation->setLayout(alayout);
-    bScanOne=new QPushButton;
-    bScanOne->setText("One scan");
-    connect(bScanOne, SIGNAL(released()), this, SLOT(onBScanOne()));
-    bScanContinuous=new QPushButton;
-    bScanContinuous->setText("Continuous scan");
-    bScanContinuous->setCheckable(true);
+    gui_activation=new twid(false);
+    bScan=new QPushButton;
+    bScan->setText("Scan");
+    connect(bScan, SIGNAL(released()), this, SLOT(onBScan()));
+    bScanContinuous=new QCheckBox;
+    bScanContinuous->setText("Repeating scan");
     connect(bScanContinuous, SIGNAL(toggled(bool)), this, SLOT(onBScanContinuous(bool)));
-    alayout->addWidget(new twid(bScanOne, bScanContinuous));
+    gui_activation->addWidget(bScan);
+    gui_activation->addWidget(bScanContinuous);
     cbCorrectTilt=new QCheckBox("Correct Tilt");
     cbCorrectTilt->setChecked(correctTilt);
-    alayout->addWidget(cbCorrectTilt);
+    gui_activation->addWidget(cbCorrectTilt);
     connect(cbCorrectTilt, SIGNAL(toggled(bool)),this, SLOT(setCorrectTilt(bool)));
-    alayout->addStretch(0);
 }
-void pgScanGUI::onBScanContinuous(bool status){if(status)timerCM->start(); else timerCM->stop();}
-void pgScanGUI::onBScanOne(){if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();doOneRound();}}
-
+void pgScanGUI::onBScanContinuous(bool status){bScan->setCheckable(status);}
+void pgScanGUI::onBScan(){
+    if(bScan->isCheckable() && !bScan->isChecked());
+    else if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();doOneRound();}
+    if(bScan->isCheckable() && bScan->isChecked()) timerCM->start();
+}
 void pgScanGUI::init_gui_settings(){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;

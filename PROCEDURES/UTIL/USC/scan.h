@@ -15,6 +15,7 @@ class FQ;
 class scanSettings;
 class mesLockProg;
 class pgMoveGUI;
+class twid;
 
 class pScan: public sproc{
 public:
@@ -30,7 +31,7 @@ class pgScanGUI: public QObject{
     //GUI
 public:
     pgScanGUI(mesLockProg& MLP);
-    QWidget* gui_activation;
+    twid* gui_activation;
     QWidget* gui_settings;
     QTimer* timer;
     QTimer* timerCM;  // we use this timer to maintain continuous measurments
@@ -63,9 +64,8 @@ private:
     void init_gui_settings();
 
     //activation
-    QHBoxLayout* alayout;
-    QPushButton* bScanOne;
-    QPushButton* bScanContinuous;
+    QPushButton* bScan;
+    QCheckBox* bScanContinuous;
     QPushButton* bCenter;
     QCheckBox* cbCorrectTilt;
     bool correctTilt;
@@ -124,7 +124,7 @@ private:
 public Q_SLOTS:
     void recalculate();
 private Q_SLOTS:
-    void onBScanOne();
+    void onBScan();
     void onBScanContinuous(bool status);
     void setCorrectTilt(bool state){correctTilt=state;}
     void onMenuChange(int index);
