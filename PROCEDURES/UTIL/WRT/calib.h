@@ -27,16 +27,33 @@ private:
     varShareClient<pgScanGUI::scanRes>* scanRes;
 
     //activation
-    QHBoxLayout* alayout;
+    QVBoxLayout* alayout;
     hidCon* hcGoToNearestFree;
     QPushButton* btnGoToNearestFree;
     val_selector* selRadDilGoToNearestFree;
     val_selector* selRadSprGoToNearestFree;
+    QPushButton* btnSelectSaveFolder;
+    std::string saveFolderName{""};
+    QPushButton* btnWriteCalibFocus;
+    QCheckBox* cbContWriteCalibFocus;
 
     //settings
     QVBoxLayout* slayout;
+    val_selector* selWriteCalibFocusDoNMeas;
+    val_selector* selWriteCalibFocusReFocusNth;
+    val_selector* selWriteCalibFocusRadDil;
+    val_selector* selWriteCalibFocusRadSpr;
+    val_selector* selWriteCalibFocusThresh;
+    val_selector* selWriteCalibFocusRange;
+    checkbox_save* selWriteCalibFocusMoveOOTW;
+    val_selector* selWriteCalibFocusMoveOOTWDis;
+    int measCounter{0};
+
 private Q_SLOTS:
     bool goToNearestFree(); //returns true if failed (no free point nearby
+    void onSelSaveF();
+    void onWCF();
+    void onWCFCont(bool state);
 
 };
 

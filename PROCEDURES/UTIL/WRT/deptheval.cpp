@@ -48,7 +48,7 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
     cv::Point  ignore;
     if(debugIndex==1) {res.depth.setTo(std::numeric_limits<float>::max(),res.mask); cv::minMaxLoc(res.depth, &res.min, &res.max, &ignore, &ignore, res.maskN); return &res;}
     cv::Laplacian(res.depth, res.depth, CV_32F);
-    cv::divide(res.depth,8,res.depth);  //this should make the colorbar unit nm/nm
+    cv::divide(res.depth,8,res.depth);  //this should make the colorbar unit nm/nm^2
     res.depth.setTo(std::numeric_limits<float>::max(),res.mask);
     cv::minMaxLoc(res.depth, &res.min, &res.max, &ignore, &ignore, res.maskN);
     if(debugIndex==2) return &res;

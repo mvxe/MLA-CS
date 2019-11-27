@@ -29,6 +29,7 @@ void pgFocusGUI::init_gui_activation(){
 void pgFocusGUI::onRefocus(){if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();refocus();}}
 void pgFocusGUI::refocus(){
     if(!PVTsRdy) recalculate();
+    _focusingDone=false;
     go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::_refocus,this));
 }
 
@@ -180,4 +181,5 @@ void pgFocusGUI::_refocus(){
     cv::minMaxLoc(result, &min, &max, &minLoc, &maxLoc);
     double focus=(maxLoc.y-nFrames/2.)*mmPerFrame;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,focus,-focus);
+    _focusingDone=true;
 }

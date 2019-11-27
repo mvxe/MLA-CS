@@ -27,6 +27,8 @@ public:
     QTimer* timer;
 
     mesLockProg& MLP;
+    void refocus();
+    const std::atomic<bool>& focusingDone{_focusingDone};
  private:
     smp_selector* selectFocusSetting;
     std::vector<focusSettings*> settingWdg;
@@ -55,8 +57,8 @@ public:
 
     double total_meas_time;
 
-    void refocus();
     void _refocus();
+    std::atomic<bool> _focusingDone{false};
     double vsConv(val_selector* vs);
 public Q_SLOTS:
     void recalculate();
