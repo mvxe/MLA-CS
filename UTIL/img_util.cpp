@@ -2,7 +2,6 @@
 #include "opencv2/opencv.hpp"
 #include <random>
 #include <iterator>
-#include <experimental/algorithm>
 
 //CVMAT SAFE
 
@@ -94,8 +93,10 @@ void imgAux::getNearestFreePointToCenter(const cv::Mat* mask, int &ptX, int &ptY
             it--;
         }
 
-        std::vector<point*>justOnePt;
-        std::experimental::sample(pts.begin(), pts.end(), std::back_inserter(justOnePt), 1, std::mt19937{std::random_device{}()});     //TODO eventually when we upgrade GCC the ::experimental will have to go
-        ptX=justOnePt.back()->x; ptY=justOnePt.back()->y;
+        std::cerr<<"size is "<<pts.size()<<" , Ofs is "<<iter<<"\n";
+        std::mt19937 rnd(std::random_device{}());
+        std::uniform_int_distribution<int>dist(0,pts.size()-1);   //NOTE: for some reason this code segfaults after a while, debugger shows its stuck in some kind of loop, GCC version: 4.19.67-2+deb10u1 , according to the internet
+        int itt=dist(rnd);
+        ptX=pts[itt]->x; ptY=pts[itt]->y;
     }
 }

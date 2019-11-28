@@ -88,7 +88,8 @@ public:
     void MoveRelative(GroupID ID, double val);
     template<typename... Args>  void MoveAbsolute(GroupID ID, double val, Args... vals);
     void MoveAbsolute(GroupID ID, double val);
-    void syncPos(GroupID ID, bool homeSet=false);                       //pulls the current position from the xps and updates axisCoords, homeSet just puts it into homePos instead of pos
+    void syncPos(GroupID ID, bool homeSet=false, exec_ret* excRet=nullptr, bool delRet=false); //pulls the current position from the xps and updates axisCoords, homeSet just puts it into homePos instead of pos.
+                                                                                               //If excRet is set it first waits for it to complete before it syncs.  If delret is true it also deleted excRet on exit.
 
 
     raxis getPos(GroupID ID);
@@ -112,7 +113,7 @@ private:
     void flushQueue();
     void __MoveAbsolute(GroupID ID, bool homeGet=false);    //homeGet makes it use homePos instead of pos
     void _restrict_pos(axis& pos);                          //checks if pox? is within min? and max?, if not, sets it to min?/max?
-    void _syncPosHandle(GroupID ID, bool homeSet);
+    void _syncPosHandle(GroupID ID, bool homeSet=false, exec_ret* excRet=nullptr, bool delRet=false);
 
     void run();
 

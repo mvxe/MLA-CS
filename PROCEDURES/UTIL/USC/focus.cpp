@@ -136,8 +136,7 @@ void pgFocusGUI::_refocus(){
     FQ* framequeue;
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeue->setUserFps(99999);
-    go.pXPS->execPVTobj(PVTScan, &PVTret);
-    PVTret.block_till_done();
+    go.pXPS->execPVTobjB(PVTScan);
     framequeue->setUserFps(0);
 
     std::lock_guard<std::mutex>lock2(MLP._lock_comp);    //wait till other processing is done

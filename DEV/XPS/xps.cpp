@@ -201,9 +201,10 @@ void XPS::execPVTobj(pPVTobj obj, exec_ret* ret){
     if (!obj->verified) return;  //retval should be -9999 indicating an error
     for(int i=0;i!=obj->cmdQueue.size();i++)
         execCommandStr(obj->cmdQueue[i]);
-    if (ret!=nullptr) execCommand(ret, "MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
-    else execCommand("MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
-    syncPos(obj->ID);
+    bool delRet=(ret==nullptr);
+    if(delRet) {ret=new exec_ret;}
+    execCommand(ret, "MultipleAxesPVTExecution",groupGetName(obj->ID),obj->filename,1);
+    syncPos(obj->ID, false, ret, delRet);
 }
 exec_dat XPS::execPVTobjB(pPVTobj obj){
     exec_ret ret;
@@ -290,11 +291,15 @@ void XPS::_restrict_pos(axis& pos){ //the mutex should be locked by caller
         else if(pos.pos[i]>pos.max[i]) pos.pos[i]=pos.max[i];
     }
 }
-void XPS::syncPos(GroupID ID, bool homeSet){
-    std::thread handle (&XPS::_syncPosHandle,this,ID,homeSet);
+void XPS::syncPos(GroupID ID, bool homeSet, exec_ret* excRet, bool delRet){
+    std::thread handle (&XPS::_syncPosHandle,this,ID,homeSet,excRet,delRet);
     handle.detach();
 }
-void XPS::_syncPosHandle(GroupID ID, bool homeSet){
+void XPS::_syncPosHandle(GroupID ID, bool homeSet, exec_ret* excRet, bool delRet){
+    if(excRet!=nullptr){
+        excRet->block_till_done();
+        if(delRet) delete excRet;
+    }
     std::lock_guard<std::mutex>lock(axisCoords[ID].mx);
     exec_ret ret;
     std::stringstream buf;

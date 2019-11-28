@@ -246,7 +246,7 @@ void pgBoundsGUI::drawBound(cv::Mat* img, double XYnmppx, bool isMask){
             }
     }
 
-    if(isMask){
+    if(isMask && selector->index!=0){
         cv::bitwise_not(mask, mask);
         cv::bitwise_or(*img,mask,*img);
     }

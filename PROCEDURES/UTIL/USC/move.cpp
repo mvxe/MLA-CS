@@ -14,21 +14,21 @@ void pgMoveGUI::init_gui_activation(){
     gui_activation->setLayout(alayout);
 
     xMove=new eadScrlBar("Move X: ", 200,20);
-    connect(xMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveX(double)));
+    connect(xMove->abar, SIGNAL(change(double)), this, SLOT(moveX(double)));
     alayout->addWidget(xMove);
     yMove=new eadScrlBar("Move Y: ", 200,20);
-    connect(yMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveY(double)));
+    connect(yMove->abar, SIGNAL(change(double)), this, SLOT(moveY(double)));
     alayout->addWidget(yMove);
     zMove=new eadScrlBar("Move Z: ", 200,20,false);
-    connect(zMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveZ(double)));
+    connect(zMove->abar, SIGNAL(change(double)), this, SLOT(moveZ(double)));
     alayout->addWidget(zMove);
     fMove=new eadScrlBar("Move F: ", 200,20,true);
-    connect(fMove->abar, SIGNAL(change(double)), this, SLOT(_onMoveF(double)));
+    connect(fMove->abar, SIGNAL(change(double)), this, SLOT(moveF(double)));
     alayout->addWidget(fMove);
 
     FZdif=new val_selector(0, "F-Z= ", -200, 200, 6, 0, {"mm"});
     FZdif->setEnabled(false);
-    connect(FZdif, SIGNAL(changed(double)), this, SLOT(_onMoveZF(double)));
+    connect(FZdif, SIGNAL(changed(double)), this, SLOT(moveZF(double)));
     connect(fMove, SIGNAL(lock(bool)), this, SLOT(onLockF(bool)));
     mpow=new val_selector(0, "Move X10^", 0, 6, 0);
     alayout->addWidget(new twid(FZdif, mpow));
@@ -94,11 +94,11 @@ void pgMoveGUI::init_gui_settings(){
     slayout->addWidget(calibAngYMotToXMot);
 }
 
-void pgMoveGUI::_onMoveX(double magnitude){onMove(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0,0);}
-void pgMoveGUI::_onMoveY(double magnitude){onMove(0,magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0);}
-void pgMoveGUI::_onMoveZ(double magnitude){onMove(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val),0);}
-void pgMoveGUI::_onMoveF(double magnitude){onMove(0,0,0,magnitude*fMoveScale->val/1000*pow(10,mpow->val));}
-void pgMoveGUI::onMove(double Xmov, double Ymov, double Zmov, double Fmov){
+void pgMoveGUI::moveX(double magnitude){move(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0,0);}
+void pgMoveGUI::moveY(double magnitude){move(0,magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0);}
+void pgMoveGUI::moveZ(double magnitude){move(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val),0);}
+void pgMoveGUI::moveF(double magnitude){move(0,0,0,magnitude*fMoveScale->val/1000*pow(10,mpow->val));}
+void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov){
     if(!go.pXPS->connected) return;
     double _Xmov=Xmov;
     double _Ymov=Ymov;
@@ -114,12 +114,13 @@ void pgMoveGUI::onFZdifChange(double X, double Y, double Z, double F){
     FZdifCur=F+Z;
 }
 
-void pgMoveGUI::_onMoveZF(double difference){
+void pgMoveGUI::moveZF(double difference){
     if(!go.pXPS->connected) return;
     if(ignoreNext){ignoreNext=false;return;}
     if(FZdifCur==-9999) return;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,0,difference-FZdifCur);
     FZdifCur=difference;
+    FZdif->setValue(FZdifCur);
 }
 
 void pgMoveGUI::onCalibrate(bool isStart, bool isX){
@@ -146,7 +147,7 @@ void pgMoveGUI::onRmDial(){
         moveDials.pop_back();
     }
 }
-void pgMoveGUI::onDialMove(double x,double y){onMove(-x/1000, -y/1000, 0, 0);}
+void pgMoveGUI::onDialMove(double x,double y){move(-x/1000, -y/1000, 0, 0);}
 
 
 

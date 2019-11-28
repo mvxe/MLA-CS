@@ -252,7 +252,7 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
             double DX, DY;
             DX=(pixmap()->width()/2-xcoord)*parent->pgMGUI->getNmPPx()/1000000;
             DY=(pixmap()->height()/2-ycoord)*parent->pgMGUI->getNmPPx()/1000000;
-            parent->pgMGUI->onMove(DX*cos(parent->pgMGUI->getAngCamToXMot())+DY*sin(parent->pgMGUI->getAngCamToXMot()+parent->pgMGUI->getYMotToXMot()),DX*sin(parent->pgMGUI->getAngCamToXMot())+DY*cos(parent->pgMGUI->getAngCamToXMot()+parent->pgMGUI->getYMotToXMot()),0,0);
+            parent->pgMGUI->move(DX*cos(parent->pgMGUI->getAngCamToXMot())+DY*sin(parent->pgMGUI->getAngCamToXMot()+parent->pgMGUI->getYMotToXMot()),DX*sin(parent->pgMGUI->getAngCamToXMot())+DY*cos(parent->pgMGUI->getAngCamToXMot()+parent->pgMGUI->getYMotToXMot()),0,0);
             if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(pixmap()->width()/2-xcoord, pixmap()->height()/2-ycoord);
         }else if(event->button()==Qt::RightButton){
             parent->clickMenu->popup(QCursor::pos());
@@ -271,7 +271,7 @@ bool iImageDisplay::checkIfInBounds(int xcoord, int ycoord){
 void iImageDisplay::wheelEvent(QWheelEvent *event){
     if(isDepth){}
     else{
-        parent->pgMGUI->_onMoveZ(10*event->delta());
+        parent->pgMGUI->moveZ(10*event->delta());
     }
 }
 

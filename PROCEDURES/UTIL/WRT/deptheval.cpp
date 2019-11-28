@@ -78,7 +78,7 @@ cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, double XYnmp
     cv::Mat retMask;
     src->mask.copyTo(retMask);
 
-    cv::UMat mat;
+    cv::Mat mat;
     src->depth.copyTo(mat);
     double sigma=blur;
     int ksize=sigma*5;
@@ -88,7 +88,7 @@ cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, double XYnmp
     cv::Point ignore;
     cv::Laplacian(mat, mat, CV_32F);
     cv::divide(mat,8,mat);  //should make the unit mm/mm, if its too slow remove this
-    cv::UMat umask, umaskT;
+    cv::Mat umask, umaskT;
     cv::compare(mat,  thresh, umask , cv::CMP_GT);
     cv::compare(mat, -thresh, umaskT, cv::CMP_LT);
     retMask.setTo(cv::Scalar::all(255), umask);

@@ -25,6 +25,16 @@ public:
     double getNmPPx();
     double getAngCamToXMot();
     double getYMotToXMot();
+    std::atomic<double>& FZdifference{FZdifCur};
+
+public Q_SLOTS:
+    void moveX(double magnitude);
+    void moveY(double magnitude);
+    void moveZ(double magnitude);
+    void moveF(double magnitude);
+    void moveZF(double difference);
+    void move(double Xmov, double Ymov, double Zmov, double Fmov);
+
  private:
     void init_gui_activation();
     void init_gui_settings();
@@ -67,7 +77,7 @@ public:
     dpoint curP4calib;
     std::vector<dpoint> p4calib;
 
-    double FZdifCur=-9999;
+    std::atomic<double> FZdifCur{-9999};
     bool ignoreNext=false;
 
 private Q_SLOTS:
@@ -81,13 +91,6 @@ private Q_SLOTS:
     void onDialMove(double x,double y);
     void onMarkPointForCalib(bool state);
     void onCalculateCalib();
-public Q_SLOTS:
-    void _onMoveX(double magnitude);
-    void _onMoveY(double magnitude);
-    void _onMoveZ(double magnitude);
-    void _onMoveF(double magnitude);
-    void _onMoveZF(double difference);
-    void onMove(double Xmov, double Ymov, double Zmov, double Fmov);
 };
 
 #endif // MOVE_H

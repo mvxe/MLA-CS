@@ -17,7 +17,7 @@ public:
 
     QWidget* gui_activation;
     QWidget* gui_settings;
-
+    bool goToNearestFree(double radDilat, double radRandSpread); //returns true if failed (no free point nearby)
 private:
     pgFocusGUI* pgFGUI;
     pgMoveGUI* pgMGUI;
@@ -49,8 +49,9 @@ private:
     val_selector* selWriteCalibFocusMoveOOTWDis;
     int measCounter{0};
 
+
 private Q_SLOTS:
-    bool goToNearestFree(); //returns true if failed (no free point nearby
+    void onGoToNearestFree();
     void onSelSaveF();
     void onWCF();
     void onWCFCont(bool state);

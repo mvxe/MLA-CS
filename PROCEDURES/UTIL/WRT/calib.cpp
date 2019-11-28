@@ -12,7 +12,7 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     gui_activation->setLayout(alayout);
     btnGoToNearestFree=new QPushButton("Go to nearest free");
     btnGoToNearestFree->setToolTip("This adheres to write boundaries!");
-    connect(btnGoToNearestFree, SIGNAL(released()), this, SLOT(goToNearestFree()));
+    connect(btnGoToNearestFree, SIGNAL(released()), this, SLOT(onGoToNearestFree()));
     hcGoToNearestFree=new hidCon(btnGoToNearestFree);
     alayout->addWidget(hcGoToNearestFree);
     selRadDilGoToNearestFree=new val_selector(1, "pgCalib_selRadDilGoToNearestFree", "Exclusion Dilation Radius: ", 0, 100, 2, 0, {"um"});
@@ -64,8 +64,10 @@ pgCalib::~pgCalib(){
     delete scanRes;
 }
 
-
-bool pgCalib::goToNearestFree(){
+void pgCalib::onGoToNearestFree(){
+    goToNearestFree(selRadDilGoToNearestFree->val, selRadSprGoToNearestFree->val);
+}
+bool pgCalib::goToNearestFree(double radDilat, double radRandSpread){
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //if there is a measurement in progress, wait till its done
     XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);       //first check if the current scan result is valid (done oncurrent position)
     bool redoScan=false;
@@ -78,10 +80,10 @@ bool pgCalib::goToNearestFree(){
         while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
         res=scanRes->get();
     }
-    int dil=(selRadDilGoToNearestFree->val*1000/pgMGUI->getNmPPx()-0.5); if(dil<0) dil=0;
-    cv::Mat mask=pgDpEv->getMaskFlatness(res, pgMGUI->getNmPPx(), dil);
+    int dil=(radDilat*1000/pgMGUI->getNmPPx()-0.5); if(dil<0) dil=0;
+    cv::Mat mask=pgDpEv->getMaskFlatness(res, pgMGUI->getNmPPx(), dil, selWriteCalibFocusThresh->val);
     int ptX,ptY;
-    imgAux::getNearestFreePointToCenter(&mask, ptX, ptY, selRadSprGoToNearestFree->val);    //make radius choosable in nm
+    imgAux::getNearestFreePointToCenter(&mask, ptX, ptY, radRandSpread);
     if(ptX==-1){
         std::cerr<<"No free nearby!\n";
         return true;
@@ -93,7 +95,7 @@ bool pgCalib::goToNearestFree(){
     dXmm=dXumm*cos(pgMGUI->getAngCamToXMot())+dYumm*sin(pgMGUI->getAngCamToXMot()+pgMGUI->getYMotToXMot());
     dYmm=dXumm*sin(pgMGUI->getAngCamToXMot())+dYumm*cos(pgMGUI->getAngCamToXMot()+pgMGUI->getYMotToXMot());
 
-    pgMGUI->onMove(-dXmm,-dYmm,0,0);
+    pgMGUI->move(-dXmm,-dYmm,0,0);
     return false;
 }
 void pgCalib::onSelSaveF(){
@@ -106,13 +108,27 @@ void pgCalib::onWCFCont(bool state){btnWriteCalibFocus->setCheckable(state);}
 void pgCalib::onWCF(){
     if(btnWriteCalibFocus->isCheckable() && !btnWriteCalibFocus->isChecked()) return;
 
+    if((int)(selWriteCalibFocusReFocusNth->val)!=0)
     if(btnWriteCalibFocus->isCheckable() && !(measCounter%((int)(selWriteCalibFocusReFocusNth->val)))){
         pgFGUI->refocus();
-        while(!pgFGUI->focusingDone) QCoreApplication::processEvents(QEventLoop::AllEvents, 1000);
+        while(!pgFGUI->focusingDone) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     }
 
+    std::mt19937 rnd(std::random_device{}());
+    std::uniform_real_distribution<>dist(-selWriteCalibFocusRange->val, selWriteCalibFocusRange->val);
+    double wrFocusOffs=dist(rnd);
+    wrFocusOffs=round(wrFocusOffs*1000)/1000;   //we round it up to 1 nm precision
+    std::cerr<<"wrFocusOffs is: "<<wrFocusOffs<<" um\n";
+    double focus=pgMGUI->FZdifference;
+    std::cerr<<"Focus is: "<<focus<<" mm\n";
+    pgMGUI->moveZF(focus+wrFocusOffs/1000);
+    std::cerr<<"new focus is: "<<focus+wrFocusOffs/1000<<" mm\n";
+
+    goToNearestFree(selWriteCalibFocusRadDil->val,selWriteCalibFocusRadSpr->val);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
 
     std::cerr<<"did one\n";
+    pgMGUI->moveZF(focus);
 
     if(btnWriteCalibFocus->isCheckable() && btnWriteCalibFocus->isChecked()){
         measCounter++;
