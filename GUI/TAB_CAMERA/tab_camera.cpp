@@ -271,7 +271,7 @@ bool iImageDisplay::checkIfInBounds(int xcoord, int ycoord){
 void iImageDisplay::wheelEvent(QWheelEvent *event){
     if(isDepth){}
     else{
-        parent->pgMGUI->moveZ(10*event->delta());
+        parent->pgMGUI->scaledMoveZ(10*event->delta());
     }
 }
 

@@ -14,16 +14,16 @@ void pgMoveGUI::init_gui_activation(){
     gui_activation->setLayout(alayout);
 
     xMove=new eadScrlBar("Move X: ", 200,20);
-    connect(xMove->abar, SIGNAL(change(double)), this, SLOT(moveX(double)));
+    connect(xMove->abar, SIGNAL(change(double)), this, SLOT(scaledMoveX(double)));
     alayout->addWidget(xMove);
     yMove=new eadScrlBar("Move Y: ", 200,20);
-    connect(yMove->abar, SIGNAL(change(double)), this, SLOT(moveY(double)));
+    connect(yMove->abar, SIGNAL(change(double)), this, SLOT(scaledMoveY(double)));
     alayout->addWidget(yMove);
     zMove=new eadScrlBar("Move Z: ", 200,20,false);
-    connect(zMove->abar, SIGNAL(change(double)), this, SLOT(moveZ(double)));
+    connect(zMove->abar, SIGNAL(change(double)), this, SLOT(scaledMoveZ(double)));
     alayout->addWidget(zMove);
     fMove=new eadScrlBar("Move F: ", 200,20,true);
-    connect(fMove->abar, SIGNAL(change(double)), this, SLOT(moveF(double)));
+    connect(fMove->abar, SIGNAL(change(double)), this, SLOT(scaledMoveF(double)));
     alayout->addWidget(fMove);
 
     FZdif=new val_selector(0, "F-Z= ", -200, 200, 6, 0, {"mm"});
@@ -94,10 +94,10 @@ void pgMoveGUI::init_gui_settings(){
     slayout->addWidget(calibAngYMotToXMot);
 }
 
-void pgMoveGUI::moveX(double magnitude){move(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0,0);}
-void pgMoveGUI::moveY(double magnitude){move(0,magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0);}
-void pgMoveGUI::moveZ(double magnitude){move(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val),0);}
-void pgMoveGUI::moveF(double magnitude){move(0,0,0,magnitude*fMoveScale->val/1000*pow(10,mpow->val));}
+void pgMoveGUI::scaledMoveX(double magnitude){move(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0,0);}
+void pgMoveGUI::scaledMoveY(double magnitude){move(0,magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0);}
+void pgMoveGUI::scaledMoveZ(double magnitude){move(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val),0);}
+void pgMoveGUI::scaledMoveF(double magnitude){move(0,0,0,magnitude*fMoveScale->val/1000*pow(10,mpow->val));}
 void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov){
     if(!go.pXPS->connected) return;
     double _Xmov=Xmov;

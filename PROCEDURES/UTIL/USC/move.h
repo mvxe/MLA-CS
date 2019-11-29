@@ -28,13 +28,13 @@ public:
     std::atomic<double>& FZdifference{FZdifCur};
 
 public Q_SLOTS:
-    void moveX(double magnitude);
-    void moveY(double magnitude);
-    void moveZ(double magnitude);
-    void moveF(double magnitude);
-    void moveZF(double difference);
-    void move(double Xmov, double Ymov, double Zmov, double Fmov);
+    void moveZF(double difference);                                 //in mm
+    void move(double Xmov, double Ymov, double Zmov, double Fmov);  //in mm, corrects ZF on X and Y move
 
+    void scaledMoveX(double magnitude);
+    void scaledMoveY(double magnitude);
+    void scaledMoveZ(double magnitude);
+    void scaledMoveF(double magnitude);
  private:
     void init_gui_activation();
     void init_gui_settings();

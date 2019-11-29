@@ -92,8 +92,6 @@ void imgAux::getNearestFreePointToCenter(const cv::Mat* mask, int &ptX, int &ptY
             if(mask->at<uchar>(it->y,it->x)==0) pts.push_back(&(*it));
             it--;
         }
-
-        std::cerr<<"size is "<<pts.size()<<" , Ofs is "<<iter<<"\n";
         std::mt19937 rnd(std::random_device{}());
         std::uniform_int_distribution<int>dist(0,pts.size()-1);   //NOTE: for some reason this code segfaults after a while, debugger shows its stuck in some kind of loop, GCC version: 4.19.67-2+deb10u1 , according to the internet
         int itt=dist(rnd);

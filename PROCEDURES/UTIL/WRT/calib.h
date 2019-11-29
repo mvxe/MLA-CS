@@ -47,6 +47,8 @@ private:
     val_selector* selWriteCalibFocusRange;
     checkbox_save* selWriteCalibFocusMoveOOTW;
     val_selector* selWriteCalibFocusMoveOOTWDis;
+    val_selector* selWriteCalibFocusPulseIntensity;
+    val_selector* selWriteCalibFocusPulseDuration;
     int measCounter{0};
 
 
