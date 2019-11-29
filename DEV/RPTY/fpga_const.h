@@ -117,16 +117,16 @@ inline uint32_t CQF::SG_SAMPLE (W4TRIG_SGCHANNELS channels, int ch0val, int ch1v
 
 class AQF{       //class containing functions that convert from acquisition queue format for FPGA2ARM queues
 public:
-    static inline int32_t getChMSB(uint32_t acq);     //example: gets the fADC_A from fADC_A__fADC_B
-    static inline int32_t getChLSB(uint32_t acq);     //example: gets the fADC_B from fADC_A__fADC_B
+    static inline int16_t getChMSB(uint32_t acq);     //example: gets the fADC_A from fADC_A__fADC_B
+    static inline int16_t getChLSB(uint32_t acq);     //example: gets the fADC_B from fADC_A__fADC_B
 };
 
-inline int32_t AQF::getChMSB(uint32_t acq){
+inline int16_t AQF::getChMSB(uint32_t acq){
     int ret = (acq&0x0FFFC000)>>14;
     if (ret&0x2000) {ret^=0x2000; ret^=0xFFFFE000;}
     return ret;
 }
-inline int32_t AQF::getChLSB(uint32_t acq){
+inline int16_t AQF::getChLSB(uint32_t acq){
     int ret = (acq&0x00003FFF);
     if (ret&0x2000) {ret^=0x2000; ret^=0xFFFFE000;}
     return ret;

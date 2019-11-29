@@ -5,6 +5,7 @@
 #include "PROCEDURES/UTIL/USC/move.h"
 #include "PROCEDURES/UTIL/WRT/bounds.h"
 #include "opencv2/core/utils/filesystem.hpp"
+#include "GUI/tab_monitor.h"    //for debug purposes
 
 pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv): pgSGUI(pgSGUI), pgBGUI(pgBGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgDpEv(pgDpEv){
     gui_activation=new QWidget;
@@ -53,10 +54,10 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     selWriteCalibFocusRange=new val_selector(0, "pgCalib_selWriteCalibFocusRange", "Measurement range around focus: ", 0, 1000, 3, 0, {"um"});
     selWriteCalibFocusRange->setToolTip("Each measurement will be done at a random write beam focus around the starting focus\u00B1 this parameter.");
     slayout->addWidget(selWriteCalibFocusRange);
-    selWriteCalibFocusMoveOOTW=new checkbox_save(false,"pgCalib_selWriteCalibFocusMoveOOTW","Take direct picture of the beam before each measurement.");
-    slayout->addWidget(selWriteCalibFocusMoveOOTW);
-    selWriteCalibFocusMoveOOTWDis=new val_selector(0, "pgCalib_selWriteCalibFocusMoveOOTWDis", "Move X this much to get out of the way: ", -1000, 1000, 3, 0, {"mm"});
-    slayout->addWidget(selWriteCalibFocusMoveOOTWDis);
+//    selWriteCalibFocusMoveOOTW=new checkbox_save(false,"pgCalib_selWriteCalibFocusMoveOOTW","Take direct picture of the beam before each measurement.");
+//    slayout->addWidget(selWriteCalibFocusMoveOOTW);
+//    selWriteCalibFocusMoveOOTWDis=new val_selector(0, "pgCalib_selWriteCalibFocusMoveOOTWDis", "Move X this much to get out of the way: ", -1000, 1000, 3, 0, {"mm"});
+//    slayout->addWidget(selWriteCalibFocusMoveOOTWDis);
     selWriteCalibFocusPulseIntensity=new val_selector(1000, "pgCalib_selWriteCalibFocusPulseIntensity", "Pulse Intensity: ", 0, 8192, 0);
     slayout->addWidget(selWriteCalibFocusPulseIntensity);
     selWriteCalibFocusPulseDuration=new val_selector(10, "pgCalib_selWriteCalibFocusPulseDuration", "Pulse Duration: ", 0.008, 1000000, 3, 0, {"us"});
@@ -111,6 +112,7 @@ void pgCalib::onSelSaveF(){
 void pgCalib::onWCFCont(bool state){btnWriteCalibFocus->setCheckable(state);}
 void pgCalib::onWCF(){
     if(btnWriteCalibFocus->isCheckable() && !btnWriteCalibFocus->isChecked()) return;
+    if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
 
     std::time_t time=std::time(nullptr); std::tm ltime=*std::localtime(&time);
     std::stringstream folder; folder<<saveFolderName;
@@ -136,17 +138,18 @@ void pgCalib::onWCF(){
     pgMGUI->moveZF(focus+wrFocusOffs/1000);
     std::cerr<<"new focus is: "<<focus+wrFocusOffs/1000<<" mm\n";
 
-    if(selWriteCalibFocusMoveOOTW->val){
-        pgMGUI->move( selWriteCalibFocusMoveOOTWDis->val,0,0,0);
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
-        FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-        framequeueDisp->setUserFps(9999,1);
-        while(framequeueDisp->getUserMat()==nullptr) std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        cv::imwrite(util::toString(folder.str(),"/beampic.png"), *framequeueDisp->getUserMat());
-        go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
-        pgMGUI->move(-selWriteCalibFocusMoveOOTWDis->val,0,0,0);
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
-    }
+    //this seams to be useless
+//    if(selWriteCalibFocusMoveOOTW->val){
+//        pgMGUI->move( selWriteCalibFocusMoveOOTWDis->val,0,0,0);
+//        QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
+//        FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
+//        framequeueDisp->setUserFps(9999,1);
+//        for(int i=0;i!=40;i++) while(framequeueDisp->getUserMat()==nullptr) std::this_thread::sleep_for(std::chrono::milliseconds(10));  //we the first few images
+//        cv::imwrite(util::toString(folder.str(),"/beampic.png"), *framequeueDisp->getUserMat());
+//        go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
+//        pgMGUI->move(-selWriteCalibFocusMoveOOTWDis->val,0,0,0);
+//        QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
+//    }
 
 
     goToNearestFree(selWriteCalibFocusRadDil->val,selWriteCalibFocusRadSpr->val);
@@ -158,11 +161,43 @@ void pgCalib::onWCF(){
     int roiD=2*selWriteCalibFocusRadDil->val*1000/pgMGUI->getNmPPx();
     pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD), util::toString(folder.str(),"/before"));
 
-    std::ofstream setFile(util::toString(folder.str(),"/settings.txt"));
-    setFile<<focus+wrFocusOffs/1000<<"\n"<<selWriteCalibFocusRadDil->val<<"\n"<<selWriteCalibFocusPulseIntensity->val<<"\n"<<selWriteCalibFocusPulseDuration->val<<"\n";
-    setFile.close();
-    //do actual writing
+    const int cmdQueue=0;
+    const int recQueue=1;
+    uchar selectedavg=0;
+    int domax=go.pRPTY->getNum(RPTY::A2F_RSMax,recQueue)*0.99;   //we make it a bit smaller to make sure all fits in
+    while(domax*(8e-3)*(1<<selectedavg)<selWriteCalibFocusPulseDuration->val) selectedavg++;
+
+    std::vector<uint32_t> commands;    //do actual writing
+    commands.push_back(CQF::W4TRIG_INTR());
+    commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //RPTY_A2F_queue for debugging purposes
+    commands.push_back(CQF::ACK(1<<recQueue, selectedavg, CQF::fADC_A__fADC_B, true));
+    commands.push_back(CQF::SG_SAMPLE(CQF::O0td, selWriteCalibFocusPulseIntensity->val, 0));
+    commands.push_back(CQF::WAIT(selWriteCalibFocusPulseDuration->val/8e-3 - 1));
+    commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
+    commands.push_back(CQF::ACK(1<<recQueue, selectedavg, CQF::fADC_A__fADC_B, false));
+    go.pRPTY->A2F_write(cmdQueue,commands.data(),commands.size());
+    go.pRPTY->trig(1<<cmdQueue);
+    commands.clear();
+
     //save writing beam waveform
+    uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,recQueue);
+    std::vector<uint32_t> read;
+    read.reserve(toread);
+    go.pRPTY->F2A_read(recQueue,read.data(),toread);
+    std::ofstream wfile(util::toString(folder.str(),"/laser.dat"));
+    //gnuplot: plot "laser.dat" binary format='%int16%int16' using 0:1 with lines, "laser.bin" binary format='%int16%int16' using 0:2 with lines
+    int16_t tmp;
+    for(int i=0; i!=toread; i++){
+        tmp=AQF::getChMSB(read[i]);
+        wfile.write(reinterpret_cast<const char*>(&(tmp)),sizeof(tmp));
+        tmp=AQF::getChLSB(read[i]);
+        wfile.write(reinterpret_cast<const char*>(&(tmp)),sizeof(tmp));
+    }
+    wfile.close();
+
+    std::ofstream setFile(util::toString(folder.str(),"/settings.txt"));
+    setFile<<focus+wrFocusOffs/1000<<"\n"<<selWriteCalibFocusRadDil->val<<"\n"<<selWriteCalibFocusPulseIntensity->val<<"\n"<<selWriteCalibFocusPulseDuration->val<<"\n"<<(int)selectedavg<<"\n";
+    setFile.close();
 
     pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done

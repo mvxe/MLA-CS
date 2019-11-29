@@ -22,7 +22,7 @@ void pBurnArray::run(){
     //XPS checks events every one servo cycle == 100us
 
     po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pBurnArray.txt");
-    std::vector<uint32_t> commands;\
+    std::vector<uint32_t> commands;
     if(filename.empty()){
         commands.push_back(CQF::GPIO_MASK(0x40,0,0));
         commands.push_back(CQF::GPIO_DIR (0x40,0,0));
