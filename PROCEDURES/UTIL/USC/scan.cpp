@@ -173,14 +173,14 @@ void pgScanGUI::updatePVTs(std::string &report){
     if(peakLoc+peakLocRange>=totalFrameNum || peakLoc-peakLocRange<=0){report+=util::toString("Error: PeakLoc+-",peakLocRange," should be between 0 and totalFrameNum!\n"); return;}
 
     PVTmeasure->addAction(XPS::iuScopeLED,true);
-    PVTmeasure->add(movTime, 0,0, 0,0, -Offset,0, 0,0);
-    PVTmeasure->add(readAccelTime,  0,0, 0,0, readAccelDis,readVelocity, 0,0);
-    PVTmeasure->add(readTime, 0,0, 0,0, readRangeDis,readVelocity, 0,0);
+    PVTmeasure->add(movTime, 0,0, 0,0, Offset,0, 0,0);
+    PVTmeasure->add(readAccelTime,  0,0, 0,0, -readAccelDis,-readVelocity, 0,0);
+    PVTmeasure->add(readTime, 0,0, 0,0, -readRangeDis,-readVelocity, 0,0);
     PVTmeasure->addAction(XPS::iuScopeLED,false);
-    PVTmeasure->add(readAccelTime,  0,0, 0,0, readAccelDis,0, 0,0);
+    PVTmeasure->add(readAccelTime,  0,0, 0,0, -readAccelDis,0, 0,0);
     if(darkFrameTime>movTime+readAccelTime)
         PVTmeasure->add(darkFrameTime-movTime-readAccelTime,  0,0, 0,0, 0,0, 0,0);
-    PVTmeasure->add(movTime, 0,0, 0,0, -Offset,0, 0,0);
+    PVTmeasure->add(movTime, 0,0, 0,0, Offset,0, 0,0);
     PVTmeasure->addAction(XPS::iuScopeLED,true);
     total_meas_time=2*movTime+2*readAccelTime+readTime+((darkFrameTime>movTime+readAccelTime)?(darkFrameTime-movTime-readAccelTime):0);
 
