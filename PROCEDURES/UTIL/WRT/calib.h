@@ -17,6 +17,7 @@ public:
 
     QWidget* gui_activation;
     QWidget* gui_settings;
+    QWidget* gui_processing;
     bool goToNearestFree(double radDilat, double radRandSpread); //returns true if failed (no free point nearby)
 private:
     pgFocusGUI* pgFGUI;
@@ -43,6 +44,7 @@ private:
     val_selector* selWriteCalibFocusReFocusNth;
     val_selector* selWriteCalibFocusRadDil;
     val_selector* selWriteCalibFocusRadSpr;
+    val_selector* selWriteCalibFocusBlur;
     val_selector* selWriteCalibFocusThresh;
     val_selector* selWriteCalibFocusRange;
 //    checkbox_save* selWriteCalibFocusMoveOOTW;
@@ -52,11 +54,16 @@ private:
     int measCounter{0};
 
 
+    //processing
+    QVBoxLayout* playout;
+    QPushButton* btnProcessFocusMes;
+
 private Q_SLOTS:
     void onGoToNearestFree();
     void onSelSaveF();
     void onWCF();
     void onWCFCont(bool state);
+    void onProcessFocusMes();
 
 };
 

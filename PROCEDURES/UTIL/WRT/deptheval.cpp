@@ -5,7 +5,7 @@
 pgDepthEval::pgDepthEval(pgBoundsGUI* pgBGUI): pgBGUI(pgBGUI){
     layout=new QVBoxLayout;
     this->setLayout(layout);
-    debugDisp=new smp_selector("Display debug:", 0, {"none","Blur","^^+Laplacian","^^+Thresh","^^+Dilate","^^+Exclusion"});
+    debugDisp=new smp_selector("Display debug:", 0, {"none","Blur","^^+Laplacian","^^+Thresh","^^+Dilate","^^+Exclusion","^^+Border"});
     connect(debugDisp, SIGNAL(changed(int)), this, SLOT(onDebugIndexChanged(int)));
     layout->addWidget(debugDisp);
     layout->addWidget(new hline);
@@ -31,7 +31,7 @@ void pgDepthEval::onChanged(){
 
 const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* src){
     _debugChanged=false;
-    if(src==nullptr || debugIndex<0 || debugIndex==0 || debugIndex>5) return src;
+    if(src==nullptr || debugIndex<0 || debugIndex==0 || debugIndex>6) return src;
 
     res.max=src->max; res.min=src->min;
     res.pos[0]=src->pos[0]; res.XYnmppx=src->XYnmppx;
@@ -66,8 +66,17 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
     }
     bitwise_not(res.mask, res.maskN);
     if(debugIndex==4)  return &res;
+
     pgBGUI->drawBound(&res.mask, res.XYnmppx, true);
     if(debugIndex==5)  return &res;
+
+    int red=dilation_size<res.mask.rows?dilation_size:res.mask.rows;
+    res.mask.rowRange(0,red).setTo(cv::Scalar(255));
+    res.mask.rowRange(res.mask.rows-red,res.mask.rows).setTo(cv::Scalar(255));
+    red=dilation_size<res.mask.cols?dilation_size:res.mask.cols;
+    res.mask.colRange(0,red).setTo(cv::Scalar(255));
+    res.mask.colRange(res.mask.cols-red,res.mask.cols).setTo(cv::Scalar(255));
+    if(debugIndex==6)  return &res;
 }
 
 cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, double XYnmppx, int dil, double thresh, double blur){
@@ -96,6 +105,12 @@ cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, double XYnmp
     if(dil>0){
         cv::Mat element=cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dil+1,2*dil+1), cv::Point(dil,dil));
         cv::dilate(retMask, retMask, element);
+        int red=dil<retMask.rows?dil:retMask.rows;
+        retMask.rowRange(0,red).setTo(cv::Scalar(255));
+        retMask.rowRange(retMask.rows-red,retMask.rows).setTo(cv::Scalar(255));
+        red=dil<retMask.cols?dil:retMask.cols;
+        retMask.colRange(0,red).setTo(cv::Scalar(255));
+        retMask.colRange(retMask.cols-red,retMask.cols).setTo(cv::Scalar(255));
     }
     pgBGUI->drawBound(&retMask, XYnmppx, true);
     return retMask;

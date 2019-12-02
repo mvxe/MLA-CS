@@ -60,6 +60,7 @@ tab_camera::tab_camera(QWidget* parent){
     pageProcessing=new twd_selector;
         loadRawBtn=new QPushButton("Load measurement"); connect(loadRawBtn, SIGNAL(released()), this, SLOT(onLoadDepthMapRaw()));
         pageProcessing->addWidget(new twid(loadRawBtn, false));
+        pageProcessing->addWidget(pgCal->gui_processing);
 
     pageSettings=new twd_selector("","Select");
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));

@@ -6,6 +6,8 @@
 #include "PROCEDURES/UTIL/WRT/bounds.h"
 #include "opencv2/core/utils/filesystem.hpp"
 #include "GUI/tab_monitor.h"    //for debug purposes
+#include <dirent.h>
+#include <sys/stat.h>
 
 pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv): pgSGUI(pgSGUI), pgBGUI(pgBGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgDpEv(pgDpEv){
     gui_activation=new QWidget;
@@ -48,6 +50,8 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     slayout->addWidget(selWriteCalibFocusRadDil);
     selWriteCalibFocusRadSpr=new val_selector(1, "pgCalib_selWriteCalibFocusRadSpr", "Random Selection Radius: ", 0, 100, 2, 0, {"um"});
     slayout->addWidget(selWriteCalibFocusRadSpr);
+    selWriteCalibFocusBlur=new val_selector(2, "pgCalib_selWriteCalibFocusBlur", "Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
+    slayout->addWidget(selWriteCalibFocusBlur);
     selWriteCalibFocusThresh=new val_selector(0.2, "pgCalib_selWriteCalibFocusThresh", "2nd Derivative Exclusion Threshold: ", 0, 1, 4);
     selWriteCalibFocusThresh->setToolTip("Try out values in Depth Eval.");
     slayout->addWidget(selWriteCalibFocusThresh);
@@ -62,6 +66,13 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     slayout->addWidget(selWriteCalibFocusPulseIntensity);
     selWriteCalibFocusPulseDuration=new val_selector(10, "pgCalib_selWriteCalibFocusPulseDuration", "Pulse Duration: ", 0.008, 1000000, 3, 0, {"us"});
     slayout->addWidget(selWriteCalibFocusPulseDuration);
+
+    gui_processing=new QWidget;
+    playout=new QVBoxLayout;
+    gui_processing->setLayout(playout);
+    btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements");
+    connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
+    playout->addWidget(btnProcessFocusMes);
 
     scanRes=pgSGUI->result.getClient();
 }
@@ -86,7 +97,7 @@ bool pgCalib::goToNearestFree(double radDilat, double radRandSpread){
         res=scanRes->get();
     }
     int dil=(radDilat*1000/pgMGUI->getNmPPx()-0.5); if(dil<0) dil=0;
-    cv::Mat mask=pgDpEv->getMaskFlatness(res, pgMGUI->getNmPPx(), dil, selWriteCalibFocusThresh->val);
+    cv::Mat mask=pgDpEv->getMaskFlatness(res, pgMGUI->getNmPPx(), dil, selWriteCalibFocusThresh->val, selWriteCalibFocusBlur->val);
     int ptX,ptY;
     imgAux::getNearestFreePointToCenter(&mask, ptX, ptY, radRandSpread);
     if(ptX==-1){
@@ -114,6 +125,9 @@ void pgCalib::onWCF(){
     if(btnWriteCalibFocus->isCheckable() && !btnWriteCalibFocus->isChecked()) return;
     if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
 
+    if(goToNearestFree(selWriteCalibFocusRadDil->val,selWriteCalibFocusRadSpr->val)) {QMessageBox::critical(this, "Error", "No free nearby, stopping."); return;}
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
+
     std::time_t time=std::time(nullptr); std::tm ltime=*std::localtime(&time);
     std::stringstream folder; folder<<saveFolderName;
     folder<<std::put_time(&ltime, "/%Y-%m-%d/");
@@ -128,15 +142,6 @@ void pgCalib::onWCF(){
         pgFGUI->refocus();
         while(!pgFGUI->focusingDone) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     }
-    std::mt19937 rnd(std::random_device{}());
-    std::uniform_real_distribution<>dist(-selWriteCalibFocusRange->val, selWriteCalibFocusRange->val);
-    double wrFocusOffs=dist(rnd);
-    wrFocusOffs=round(wrFocusOffs*1000)/1000;   //we round it up to 1 nm precision
-    std::cerr<<"wrFocusOffs is: "<<wrFocusOffs<<" um\n";
-    double focus=pgMGUI->FZdifference;
-    std::cerr<<"Focus is: "<<focus<<" mm\n";
-    pgMGUI->moveZF(focus+wrFocusOffs/1000);
-    std::cerr<<"new focus is: "<<focus+wrFocusOffs/1000<<" mm\n";
 
     //this seams to be useless
 //    if(selWriteCalibFocusMoveOOTW->val){
@@ -152,21 +157,27 @@ void pgCalib::onWCF(){
 //    }
 
 
-    goToNearestFree(selWriteCalibFocusRadDil->val,selWriteCalibFocusRadSpr->val);
-    QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
-
     pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
     const pgScanGUI::scanRes* res=scanRes->get();
     int roiD=2*selWriteCalibFocusRadDil->val*1000/pgMGUI->getNmPPx();
     pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD), util::toString(folder.str(),"/before"));
 
+    std::mt19937 rnd(std::random_device{}());
+    std::uniform_real_distribution<>dist(-selWriteCalibFocusRange->val, selWriteCalibFocusRange->val);
+    double wrFocusOffs=dist(rnd);
+    wrFocusOffs=round(wrFocusOffs*1000)/1000;   //we round it up to 1 nm precision
+    std::cerr<<"wrFocusOffs is: "<<wrFocusOffs<<" um\n";
+    double focus=pgMGUI->FZdifference;
+    std::cerr<<"Focus is: "<<focus<<" mm\n";
+    pgMGUI->moveZF(focus+wrFocusOffs/1000);
+    std::cerr<<"new focus is: "<<focus+wrFocusOffs/1000<<" mm\n";
+
     const int cmdQueue=0;
     const int recQueue=1;
     uchar selectedavg=0;
     int domax=go.pRPTY->getNum(RPTY::A2F_RSMax,recQueue)*0.99;   //we make it a bit smaller to make sure all fits in
     while(domax*(8e-3)*(1<<selectedavg)<selWriteCalibFocusPulseDuration->val) selectedavg++;
-
     std::vector<uint32_t> commands;    //do actual writing
     commands.push_back(CQF::W4TRIG_INTR());
     commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //RPTY_A2F_queue for debugging purposes
@@ -179,13 +190,16 @@ void pgCalib::onWCF(){
     go.pRPTY->trig(1<<cmdQueue);
     commands.clear();
 
+    pgMGUI->moveZF(focus);
+
     //save writing beam waveform
+    while(go.pRPTY->getNum(RPTY::A2F_RSCur,cmdQueue)!=0)  QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,recQueue);
     std::vector<uint32_t> read;
     read.reserve(toread);
     go.pRPTY->F2A_read(recQueue,read.data(),toread);
     std::ofstream wfile(util::toString(folder.str(),"/laser.dat"));
-    //gnuplot: plot "laser.dat" binary format='%int16%int16' using 0:1 with lines, "laser.bin" binary format='%int16%int16' using 0:2 with lines
+    //gnuplot: plot "laser.dat" binary format='%int16%int16' using 0:1 with lines, "laser.dat" binary format='%int16%int16' using 0:2 with lines
     int16_t tmp;
     for(int i=0; i!=toread; i++){
         tmp=AQF::getChMSB(read[i]);
@@ -204,12 +218,47 @@ void pgCalib::onWCF(){
     res=scanRes->get();
     pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD), util::toString(folder.str(),"/after"));
 
-
-    pgMGUI->moveZF(focus);
-
     if(btnWriteCalibFocus->isCheckable() && btnWriteCalibFocus->isChecked()){
         measCounter++;
         if(measCounter<(int)selWriteCalibFocusDoNMeas->val) onWCF();
         else {btnWriteCalibFocus->setChecked(false); measCounter=0;}
     } else measCounter=0;
+}
+
+void pgCalib::onProcessFocusMes(){
+    std::vector<std::string> readFolders;   //folders still yet to be checked
+    std::vector<std::string> measFolders;   //folders that contain the expected measurement files
+
+    readFolders.emplace_back(QFileDialog::getExistingDirectory(this, "Select Folder Contatining Measurements. It will be Searched Recursively.").toStdString());
+    DIR *wp;
+    struct dirent *entry;
+    struct stat filetype;
+    std::string curFile;
+    std::string curFolder;
+    while(!readFolders.empty()){
+        curFolder=readFolders.back();
+        readFolders.pop_back();
+        wp=opendir(curFolder.c_str());
+        bool dirHasMes[4]{false,false,false,false};
+        if(wp!=nullptr) while(entry=readdir(wp)){
+            curFile=entry->d_name;
+            if (curFile!="." && curFile!=".."){
+                curFile=curFolder+'/'+entry->d_name;
+
+                stat(curFile.data(),&filetype);
+                if(filetype.st_mode&S_IFDIR) readFolders.push_back(curFile);
+                else if (filetype.st_mode&S_IFREG){
+                    if(strcmp(entry->d_name,"settings.txt")==0) dirHasMes[0]=true;
+                    else if(strcmp(entry->d_name,"before.pfm")==0) dirHasMes[1]=true;
+                    else if(strcmp(entry->d_name,"after.pfm")==0) dirHasMes[2]=true;
+                    else if(strcmp(entry->d_name,"laser.dat")==0) dirHasMes[3]=true;
+                }
+            }
+        }
+        closedir(wp);
+        if(dirHasMes[0]&dirHasMes[1]&dirHasMes[2]&dirHasMes[3]) measFolders.push_back(curFolder);
+    }
+
+    for(auto& fldr:measFolders) std::cerr<<fldr<<"\n";
+
 }
