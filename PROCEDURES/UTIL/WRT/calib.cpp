@@ -177,7 +177,8 @@ void pgCalib::onWCF(){
     const int recQueue=1;
     uchar selectedavg=0;
     int domax=go.pRPTY->getNum(RPTY::A2F_RSMax,recQueue)*0.99;   //we make it a bit smaller to make sure all fits in
-    while(domax*(8e-3)*(1<<selectedavg)<selWriteCalibFocusPulseDuration->val) selectedavg++;
+    double pulsedur=selWriteCalibFocusPulseDuration->val*1.1;    //we make it longer in order to catch the last part of the waveform too
+    while(domax*(8e-3)*(1<<selectedavg)<pulsedur) selectedavg++;
     std::vector<uint32_t> commands;    //do actual writing
     commands.push_back(CQF::W4TRIG_INTR());
     commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //RPTY_A2F_queue for debugging purposes
@@ -185,6 +186,7 @@ void pgCalib::onWCF(){
     commands.push_back(CQF::SG_SAMPLE(CQF::O0td, selWriteCalibFocusPulseIntensity->val, 0));
     commands.push_back(CQF::WAIT(selWriteCalibFocusPulseDuration->val/8e-3 - 1));
     commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
+    commands.push_back(CQF::WAIT(0.1*selWriteCalibFocusPulseDuration->val/8e-3 - 1));
     commands.push_back(CQF::ACK(1<<recQueue, selectedavg, CQF::fADC_A__fADC_B, false));
     go.pRPTY->A2F_write(cmdQueue,commands.data(),commands.size());
     go.pRPTY->trig(1<<cmdQueue);
