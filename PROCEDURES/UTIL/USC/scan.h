@@ -58,6 +58,7 @@ public:
     static void saveScan(const scanRes* scan, std::string fileName="");
     static void saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName="");
     static bool loadScan(scanRes* scan, std::string fileName="");                       //return true if success
+    static scanRes difScans(scanRes* scan0, scanRes* scan1);
     static QWidget* parent; //for dialogs
 private:
     void init_gui_activation();

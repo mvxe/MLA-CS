@@ -470,3 +470,40 @@ bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
     rfile.close();
     return true;
 }
+pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
+    scanRes ret;
+    if(scan0==nullptr || scan1==nullptr) {std::cerr<<"difScans got nullptr input\n"; return ret;}
+    if(scan0->depth.cols!=scan1->depth.cols || scan0->depth.rows!=scan1->depth.rows) {std::cerr<<"difScans got matrices with nonequal dimensions\n"; return ret;}
+
+    cv::subtract(scan1->depth, scan0->depth, ret.depth);
+    int nCols=scan0->depth.cols;
+    int nRows=scan0->depth.rows;
+    if(scan1->tiltCor[0]-scan0->tiltCor[0]!=0){
+        cv::Mat slopeX1(1, nCols, CV_32F);
+        cv::Mat slopeUX1(1, nCols, CV_32F);
+        cv::Mat slopeUX(nRows, nCols, CV_32F);
+        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=-i*(scan1->tiltCor[0]-scan0->tiltCor[0]);
+        slopeX1.copyTo(slopeUX1);
+        cv::repeat(slopeUX1, nRows, 1, slopeUX);
+        cv::add(slopeUX,ret.depth,ret.depth);
+    }
+    if(scan1->tiltCor[1]-scan0->tiltCor[1]!=0){
+        cv::Mat slopeY1(nRows, 1, CV_32F);
+        cv::Mat slopeUY1(nRows, 1, CV_32F);
+        cv::Mat slopeUY(nRows, nCols, CV_32F);
+        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=-i*(scan1->tiltCor[1]-scan0->tiltCor[1]);
+        slopeY1.copyTo(slopeUY1);
+        cv::repeat(slopeUY1, 1, nCols, slopeUY);
+        cv::add(slopeUY,ret.depth,ret.depth);
+    }
+    scan0->mask.copyTo(ret.mask);
+    ret.mask.setTo(255, scan1->mask);
+    bitwise_not(ret.mask, ret.maskN);
+    ret.depth.setTo(std::numeric_limits<float>::max(), ret.mask);
+    cv::Point ignore;
+    cv::minMaxLoc(ret.depth, &ret.min, &ret.max, &ignore, &ignore, ret.maskN);
+    for(int i=0;i!=3;i++) ret.pos[i]=scan0->pos[i];
+    ret.XYnmppx=scan0->XYnmppx;
+    ret.tiltCor[0]=0; ret.tiltCor[1]=0;
+    return ret;
+}

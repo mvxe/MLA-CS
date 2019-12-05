@@ -75,6 +75,7 @@ private:
     QProgressBar* compPB;
 
     QPushButton* loadRawBtn;
+    QPushButton* diff2RawBtn;
 
     // writing
     pgBoundsGUI* pgBGUI;
@@ -105,6 +106,7 @@ private Q_SLOTS:
     void onSaveDepthMap(void);
     void onSaveDepthMapRaw(void);
     void onLoadDepthMapRaw(void);
+    void onDiff2Raw();
 };
 
 

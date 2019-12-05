@@ -8,6 +8,7 @@
 #include "GUI/tab_monitor.h"    //for debug purposes
 #include <dirent.h>
 #include <sys/stat.h>
+#include <dlib/optimization.h>
 
 pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv): pgSGUI(pgSGUI), pgBGUI(pgBGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgDpEv(pgDpEv){
     gui_activation=new QWidget;
@@ -72,7 +73,7 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     gui_processing->setLayout(playout);
     btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements");
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
-    playout->addWidget(btnProcessFocusMes);
+    playout->addWidget(new twid(btnProcessFocusMes));
 
     scanRes=pgSGUI->result.getClient();
 }
@@ -157,10 +158,11 @@ void pgCalib::onWCF(){
 //    }
 
 
-    pgSGUI->doOneRound();
+    redoA:  pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
     const pgScanGUI::scanRes* res=scanRes->get();
     int roiD=2*selWriteCalibFocusRadDil->val*1000/pgMGUI->getNmPPx();
+    if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
     pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD), util::toString(folder.str(),"/before"));
 
     std::mt19937 rnd(std::random_device{}());
@@ -171,6 +173,7 @@ void pgCalib::onWCF(){
     double focus=pgMGUI->FZdifference;
     std::cerr<<"Focus is: "<<focus<<" mm\n";
     pgMGUI->moveZF(focus+wrFocusOffs/1000);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait a bit for movement to complete and stabilize
     std::cerr<<"new focus is: "<<focus+wrFocusOffs/1000<<" mm\n";
 
     const int cmdQueue=0;
@@ -192,8 +195,6 @@ void pgCalib::onWCF(){
     go.pRPTY->trig(1<<cmdQueue);
     commands.clear();
 
-    pgMGUI->moveZF(focus);
-
     //save writing beam waveform
     while(go.pRPTY->getNum(RPTY::A2F_RSCur,cmdQueue)!=0)  QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,recQueue);
@@ -211,22 +212,37 @@ void pgCalib::onWCF(){
     }
     wfile.close();
 
+    pgMGUI->moveZF(focus);
+
     std::ofstream setFile(util::toString(folder.str(),"/settings.txt"));
     setFile<<focus+wrFocusOffs/1000<<"\n"<<selWriteCalibFocusRadDil->val<<"\n"<<selWriteCalibFocusPulseIntensity->val<<"\n"<<selWriteCalibFocusPulseDuration->val<<"\n"<<(int)selectedavg<<"\n";
     setFile.close();
 
-    pgSGUI->doOneRound();
+    redoB:  pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
     res=scanRes->get();
+    if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}
     pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD), util::toString(folder.str(),"/after"));
 
     if(btnWriteCalibFocus->isCheckable() && btnWriteCalibFocus->isChecked()){
         measCounter++;
-        if(measCounter<(int)selWriteCalibFocusDoNMeas->val) onWCF();
+        if(measCounter<(int)selWriteCalibFocusDoNMeas->val) return onWCF();
         else {btnWriteCalibFocus->setChecked(false); measCounter=0;}
     } else measCounter=0;
 }
 
+
+typedef dlib::matrix<double,2,1> input_vector;
+typedef dlib::matrix<double,5,1> parameter_vector;
+double gaussResidual(const std::pair<input_vector, double>& data, const parameter_vector& params){
+    double x0=params(0);  double x=data.first(0);
+    double y0=params(1);  double y=data.first(1);
+    double a=params(2);
+    double w=params(3);
+    double i0=params(4);
+    double model=i0+a*exp(-(pow(x-x0,2)+pow(y-y0,2))/2/pow(w,2));
+    return model-data.second;
+}
 void pgCalib::onProcessFocusMes(){
     std::vector<std::string> readFolders;   //folders still yet to be checked
     std::vector<std::string> measFolders;   //folders that contain the expected measurement files
@@ -261,6 +277,37 @@ void pgCalib::onProcessFocusMes(){
         if(dirHasMes[0]&dirHasMes[1]&dirHasMes[2]&dirHasMes[3]) measFolders.push_back(curFolder);
     }
 
-    for(auto& fldr:measFolders) std::cerr<<fldr<<"\n";
+    for(auto& fldr:measFolders){
+        double FZdif;
+        std::ifstream ifs(util::toString(fldr,"/settings.txt"));
+        ifs>>FZdif;
+        ifs.close();
+
+        //std::cerr<<fldr<<"\n";
+        pgScanGUI::scanRes scanBefore, scanAfter;
+        if(!pgScanGUI::loadScan(&scanBefore, util::toString(fldr,"/before.pfm"))) continue;
+        if(!pgScanGUI::loadScan(&scanAfter, util::toString(fldr,"/after.pfm"))) continue;
+        pgScanGUI::scanRes scanDif=pgScanGUI::difScans(&scanBefore, &scanAfter);
+        //pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
+
+        std::vector<std::pair<input_vector, double>> data;
+//        for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++)
+//            if(scanDif.mask.at<uchar>(j,i)==0) data.push_back(std::make_pair(input_vector{(double)i,(double)j},scanDif.depth.at<float>(j,i)));
+        //std::cout<<"size= "<<data.size()<<"\n";
+
+        parameter_vector res{(double)scanDif.depth.cols/2,(double)scanDif.depth.rows/2,scanDif.max,(double)scanDif.depth.rows/4, scanDif.min};
+        //dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(), gaussResidual, derivative(gaussResidual), data, res);
+//        dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7), gaussResidual, derivative(gaussResidual), data, res);
+        //std::cout << "inferred parameters: "<< dlib::trans(res) << "\n";
+
+//       std::cout<<FZdif<<" "<<res(2)<<" "<<abs(res(3))<<"\n";
+
+        double min,max;
+        cv::Point  ignore;
+        cv::minMaxLoc(scanDif.depth, &min, &max, &ignore, &ignore);
+        std::cout<<FZdif<<" "<<max-min<<"\n";
+
+    }
 
 }
+
