@@ -123,6 +123,10 @@ private Q_SLOTS:
 
     void on_pushButton_13_released();
 
+    void on_pushButton_14_released();
+
+    void on_pushButton_15_released();
+
 public Q_SLOTS:
 
     void on_pushButton_9_released();
