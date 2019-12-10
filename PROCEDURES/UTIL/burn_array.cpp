@@ -24,6 +24,51 @@ void pBurnArray::run(){
     po = go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pBurnArray.txt");
     std::vector<uint32_t> commands;
     if(filename.empty()){
+//        //this part is for laser measurement test
+//        const int recQueue=0;                                               //TODO remove
+//        const int cmdQueue=0;
+//        uchar selectedavg=0;                                                //TODO remove
+//        int domax=go.pRPTY->getNum(RPTY::A2F_RSMax,recQueue)*0.99;          //TODO remove
+//        double maxpulsedur=std::max(exp_lst,exp_fst)*1.1;                      //TODO remove
+//        while(domax*(8e-9)*(1<<selectedavg)<maxpulsedur) selectedavg++;        //TODO remove
+//        for (int i=0;i!=gridX*gridY;i++){
+//            int sp=(((double)int_fst+(int_lst-int_fst)*i/(gridX*gridY-1)));
+//            double pd=((exp_fst+(exp_lst-exp_fst)*i/(gridX*gridY-1)));
+//            commands.push_back(CQF::W4TRIG_INTR());
+//            commands.push_back(CQF::WAIT((maxpulsedur-pd)/8e-9));
+//            commands.push_back(CQF::ACK(1<<recQueue, selectedavg, CQF::fADC_A__fADC_B, true));      //TODO remove
+//            commands.push_back(CQF::SG_SAMPLE(CQF::O0td, sp, 0));
+//            commands.push_back(CQF::WAIT(pd/8e-9 - 1));
+//            commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
+//            commands.push_back(CQF::WAIT(0.1*maxpulsedur/8e-9 - 1));
+//            commands.push_back(CQF::ACK(1<<recQueue, selectedavg, CQF::fADC_A__fADC_B, false));
+//            go.pRPTY->A2F_write(cmdQueue,commands.data(),commands.size());
+//            go.pRPTY->trig(1<<cmdQueue);
+//            commands.clear();
+
+//            do std::this_thread::sleep_for (std::chrono::milliseconds(5000));
+//            while(go.pRPTY->getNum(RPTY::A2F_RSCur,cmdQueue)!=0);
+
+//            uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,recQueue);
+//            std::vector<uint32_t> read;
+//            read.reserve(toread);
+//            go.pRPTY->F2A_read(recQueue,read.data(),toread);
+//            std::ofstream wfile(util::toString("meas4ben/",sp,".dat"));
+//            for(int j=0; j!=toread; j++){
+//                wfile<<j*(1<<selectedavg)*8e-9<<" "<<AQF::getChMSB(read[j])<<" "<<AQF::getChLSB(read[j])<<"\n";
+//            }
+//            wfile.close();
+//            std::cerr<<"did i="<<i<<" sp: "<<sp<<"\n";
+//        }
+
+//        go.pXPS->setGPIO(XPS::iuScopeLED,true);
+//        go.pXPS->setGPIO(XPS::writingLaser,false);
+//        done=true;
+//        end=true;
+//        return;        //TODO remove the block up to here
+
+
+
         commands.push_back(CQF::GPIO_MASK(0x40,0,0));
         commands.push_back(CQF::GPIO_DIR (0x40,0,0));
         commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
