@@ -81,6 +81,7 @@ private:
     pgBoundsGUI* pgBGUI;
     pgDepthEval* pgDpEv;
     pgCalib* pgCal;
+    pgBeamAnalysis* pgBeAn;
 
     QMenu* clickMenu;
     QMenu* clickMenuDepth;

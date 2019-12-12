@@ -16,5 +16,7 @@
 #include "PROCEDURES/UTIL/WRT/bounds.h"
 #include "PROCEDURES/UTIL/WRT/deptheval.h"
 #include "PROCEDURES/UTIL/WRT/calib.h"
+#include "PROCEDURES/UTIL/WRT/beamanl.h"
+
 
 #endif // _INCL_PROCEDURES_H

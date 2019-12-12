@@ -98,7 +98,8 @@ HEADERS += \
     UTIL/measurement.h \
     PROCEDURES/UTIL/WRT/bounds.h \
     PROCEDURES/UTIL/WRT/deptheval.h \
-    PROCEDURES/UTIL/WRT/calib.h
+    PROCEDURES/UTIL/WRT/calib.h \
+    PROCEDURES/UTIL/WRT/beamanl.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -143,7 +144,8 @@ SOURCES += \
     GUI/TAB_CAMERA/other_settings.cpp \
     PROCEDURES/UTIL/WRT/bounds.cpp \
     PROCEDURES/UTIL/WRT/deptheval.cpp \
-    PROCEDURES/UTIL/WRT/calib.cpp
+    PROCEDURES/UTIL/WRT/calib.cpp \
+    PROCEDURES/UTIL/WRT/beamanl.cpp
 
 
 unix {

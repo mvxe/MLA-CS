@@ -41,6 +41,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgBGUI=new pgBoundsGUI;
     pgDpEv=new pgDepthEval(pgBGUI);
     pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv);
+    pgBeAn=new pgBeamAnalysis();
 
     tiltCor=new QLabel; tiltCor->setMargin(10);
     tiltCor->setVisible(false);
@@ -54,6 +55,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageMotion->addWidget(pgPRGUI);
 
     pageWriting=new twd_selector;
+        pageWriting->addWidget(pgBeAn->gui_activation);
         pageWriting->addWidget(pgCal->gui_activation);
         pageWriting->addWidget(pgBGUI);
 

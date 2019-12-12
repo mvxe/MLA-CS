@@ -687,3 +687,9 @@ void MainWindow::on_pushButton_15_released(){   //red laser toggle
     redState=!redState;
     go.pRPTY->A2F_write(1,commands.data(),commands.size());
 }
+bool LEDState=false;
+void MainWindow::on_pushButton_16_released(){
+    if(!go.pRPTY->connected) return;
+    go.pXPS->setGPIO(XPS::iuScopeLED,!LEDState);
+    LEDState=!LEDState;
+}
