@@ -89,7 +89,7 @@ public:
     GCAM* pGCAM;    //you can access cameras and frame queues through this, see GCAM/_config.h for members
     RPTY* pRPTY;    //you can access red pitaya functions through this
     CNC* pCNC;      //you can access CNC functions through this
-    threadPool OCL_threadpool{5};   //apparently opencl does not do well with threads: depending on the driver it fails after usage on a number (~200) of different threads. Using threadpool apparently fixes this, hence OCL_threadpool
+    threadPool OCL_threadpool{16};   //apparently opencl does not do well with threads: depending on the driver it fails after usage on a number (~200) of different threads. Using threadpool apparently fixes this, hence OCL_threadpool
 
     void startup(int argc, char *argv[]);                                           //subsequent calls of this are ignored
     template <typename T, typename... Args> othr<T>* newThread(Args... args);       //with this you can create a new thread calling any object derived from protooth/procedure, example:  XPS* pXPS=newThread<XPS>()->obj; or othr<proc> name=newThread<proc>();

@@ -12,11 +12,20 @@ pgBeamAnalysis::pgBeamAnalysis(){
 }
 
 
-struct spot{
-    float x,y,r;
-    float dx,dy,dd;
-};
-bool sortSpot(spot i,spot j) {return (i.dd<j.dd);}
+
+bool pgBeamAnalysis::sortSpot(spot i,spot j) {return (i.dd<j.dd);}
+void pgBeamAnalysis::solveEllips(cv::Mat& src, int i,std::vector<spot>& spots,int& jobsdone){
+    cv::Mat cmpMat;
+    cv::compare(src, i, cmpMat, cv::CMP_EQ);
+    std::vector<cv::Point> locations;   // output, locations of non-zero pixels
+    cv::findNonZero(cmpMat, locations);
+    if(locations.size()<10) {std::lock_guard<std::mutex>lock(spotLock);jobsdone++;return;}
+    cv::RotatedRect tmp=fitEllipse(locations);
+    std::lock_guard<std::mutex>lock(spotLock);
+    if(std::abs(tmp.size.width-tmp.size.height)<=std::min(tmp.size.width,tmp.size.height)*maxRoundnessDev && std::min(tmp.size.width,tmp.size.height)>=1 && std::max(tmp.size.width,tmp.size.height)<=std::min(cmpMat.cols,cmpMat.rows))
+        spots.push_back({tmp.center.x,tmp.center.y,(tmp.size.width+tmp.size.height)/4,0,0});
+    jobsdone++;
+}
 void pgBeamAnalysis::getWritingBeamCenter(){
     go.pXPS->setGPIO(XPS::iuScopeLED, false);
     std::vector<uint32_t> commands;
@@ -47,17 +56,14 @@ void pgBeamAnalysis::getWritingBeamCenter(){
     int N=cv::connectedComponents(src,src,8,CV_16U);
 
     std::vector<spot> spots;
-
-    const float maxRoundnessDev=0.1;
+    int jobsdone=0;
     for(int i=1;i!=N;i++){  //we skip background 0
-        cv::Mat cmpMat;
-        cv::compare(src, i, cmpMat, cv::CMP_EQ);
-        std::vector<cv::Point> locations;   // output, locations of non-zero pixels
-        cv::findNonZero(cmpMat, locations);
-        if(locations.size()<10) continue;
-        cv::RotatedRect tmp=fitEllipse(locations);
-        if(std::abs(tmp.size.width-tmp.size.height)<=std::min(tmp.size.width,tmp.size.height)*maxRoundnessDev && std::min(tmp.size.width,tmp.size.height)>=1 && std::max(tmp.size.width,tmp.size.height)<=std::min(src.cols,src.rows))
-            spots.push_back({tmp.center.x,tmp.center.y,(tmp.size.width+tmp.size.height)/4,0,0});
+        go.OCL_threadpool.doJob(std::bind(&pgBeamAnalysis::solveEllips,this,src,i,std::ref(spots),std::ref(jobsdone)));
+    }
+    for(;;){
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+        std::lock_guard<std::mutex>lock(spotLock);
+        if(jobsdone==N-1) break;
     }
 
     bool once{false};
@@ -82,7 +88,7 @@ start: once=!once;
     stdDev[0]=sqrt(stdDev[0]/(spots.size()-1));
     stdDev[1]=sqrt(stdDev[1]/(spots.size()-1));
     stdDev[2]=sqrtf(powf(stdDev[0],2)+powf(stdDev[1],2));
-    std::sort(spots.begin(), spots.end(), sortSpot);
+    std::sort(spots.begin(), spots.end(), &pgBeamAnalysis::sortSpot);
 
     const float SDR=1;    //within 2SD is fine
     while(!spots.empty()) if(spots.back().dd>SDR*stdDev[2]) spots.pop_back(); else break;
