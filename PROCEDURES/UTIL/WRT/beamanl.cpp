@@ -26,10 +26,10 @@ void pgBeamAnalysis::getWritingBeamCenter(){
     go.pRPTY->A2F_write(1,commands.data(),commands.size());
     commands.clear();
 
-    QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-    framequeueDisp->setUserFps(9999,1);
-    for(int i=0;i!=40;i++) while(framequeueDisp->getUserMat()==nullptr) QCoreApplication::processEvents(QEventLoop::AllEvents, 10);  //we skip the first few images
+    framequeueDisp->setUserFps(9999,10);
+    while(framequeueDisp->getFullNumber()<10) QCoreApplication::processEvents(QEventLoop::AllEvents, 10);  //we skip the first 9 images
+    for(int i=0;i!=9;i++) framequeueDisp->freeUserMat();
 
     commands.push_back(CQF::GPIO_VAL (0x00,0,0x00));
     go.pRPTY->A2F_write(1,commands.data(),commands.size());
