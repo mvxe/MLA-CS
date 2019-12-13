@@ -27,6 +27,16 @@ void pgBeamAnalysis::solveEllips(cv::Mat& src, int i,std::vector<spot>& spots,in
     jobsdone++;
 }
 void pgBeamAnalysis::getWritingBeamCenter(){
+    float x,y,r,dx,dy;
+    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
+    getCalibWritingBeam(&x, &y, &r, "", &dx, &dy);
+    std::cerr<<"X mean: "<<x<<", stdDev: "<< dx<<"\n";
+    std::cerr<<"Y mean: "<<y<<", stdDev: "<< dy<<"\n";
+    std::cerr<<"Radius: "<<r<<"\n";
+    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
+    std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
+}
+void pgBeamAnalysis::getCalibWritingBeam(float* x, float* y, float* r, std::string radHistSaveFName, float* dx, float* dy){
     go.pXPS->setGPIO(XPS::iuScopeLED, false);
     std::vector<uint32_t> commands;
     commands.push_back(CQF::GPIO_MASK(0x80,0,0x00));
@@ -44,8 +54,7 @@ void pgBeamAnalysis::getWritingBeamCenter(){
     go.pRPTY->A2F_write(1,commands.data(),commands.size());
     go.pXPS->setGPIO(XPS::iuScopeLED, true);
 
-
-    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
+//    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
     //do proc
     cv::Mat img;
     std::vector<cv::Vec3f> circles;
@@ -92,12 +101,9 @@ start: once=!once;
 
     const float SDR=1;    //within 2SD is fine
     while(!spots.empty()) if(spots.back().dd>SDR*stdDev[2]) spots.pop_back(); else break;
-    std::cerr<<"X mean: "<<mean[0]<<", stdDev: "<< stdDev[0]<<"\n";
-    std::cerr<<"Y mean: "<<mean[1]<<", stdDev: "<< stdDev[1]<<"\n";
-    std::cerr<<"DDev: "<< stdDev[2]<<"\n";
     if(!spots.empty() && once) goto start;
 
-    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
+//    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
 
     cv::Mat pol, pol1D;
     cv::linearPolar(*framequeueDisp->getUserMat(), pol, cv::Point(mean[0],mean[1]), framequeueDisp->getUserMat()->rows, cv::INTER_AREA + cv::WARP_FILL_OUTLIERS);
@@ -105,9 +111,8 @@ start: once=!once;
     cv::Point maxp; double ignore; cv::Point ignore2;
     int ofs=((int)mean[2]<pol1D.cols-1)?((int)mean[2]):(pol1D.cols-1);
     cv::minMaxLoc(pol1D.colRange(ofs,pol1D.cols-1),&ignore,&ignore,&ignore2,&maxp);     //we ignore the peaks near the center, we want the outer bright ring as the reference
-    std::cerr<<"maxlvl: "<<ofs+maxp.x<<"\n";
 
-    std::chrono::time_point<std::chrono::system_clock> C=std::chrono::system_clock::now();
+//    std::chrono::time_point<std::chrono::system_clock> C=std::chrono::system_clock::now();
 
     cv::cvtColor(*framequeueDisp->getUserMat(), img, cv::COLOR_GRAY2BGR);
     for(int i=0;i!=spots.size();i++){
@@ -115,15 +120,25 @@ start: once=!once;
         cv::circle( img, cv::Point(spots[i].x,spots[i].y), spots[i].r, cv::Scalar(0,0,255), 1, 8, 0 );
     }
 
-    cv::imwrite("64755464beampic3.png", img);
+//    cv::imwrite("64755464beampic3.png", img);
+    *x=mean[0];
+    *y=mean[1];
+    *r=ofs+maxp.x;
+    if(dx!=nullptr) *dx=stdDev[0];
+    if(dy!=nullptr) *dy=stdDev[1];
+    if(!radHistSaveFName.empty()){
+        std::cerr<<"Saving writing laser calibration radial histogram to "<<radHistSaveFName<<"\n";
+        std::ofstream wfile(radHistSaveFName);
+        for(int i=0;i!=pol1D.cols;i++)
+            wfile.write(reinterpret_cast<char*>(&(pol1D.at<float>(i))),sizeof(float));
+        wfile.close();
+    }
 
-    std::chrono::time_point<std::chrono::system_clock> D=std::chrono::system_clock::now();
-    std::cerr<<"Total operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(D - A).count()<<" microseconds\n";
-    std::cerr<<"First operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
-    std::cerr<<"Second operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(C - B).count()<<" microseconds\n";
-    std::cerr<<"Third operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(D - C).count()<<" microseconds\n";
-
-
+//    std::chrono::time_point<std::chrono::system_clock> D=std::chrono::system_clock::now();
+//    std::cerr<<"Total operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(D - A).count()<<" microseconds\n";
+//    std::cerr<<"First operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
+//    std::cerr<<"Second operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(C - B).count()<<" microseconds\n";
+//    std::cerr<<"Third operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(D - C).count()<<" microseconds\n";
 
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
 }

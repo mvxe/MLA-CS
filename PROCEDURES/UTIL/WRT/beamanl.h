@@ -24,6 +24,7 @@ private:
     static bool sortSpot(spot i,spot j);
     const float maxRoundnessDev{0.1f};
 
+    void getCalibWritingBeam(float* x, float* y, float* r, std::string radHistSaveFName="", float* dx=nullptr, float* dy=nullptr);
 private Q_SLOTS:
     void getWritingBeamCenter();
 };
