@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <dlib/optimization.h>
 
-pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv): pgSGUI(pgSGUI), pgBGUI(pgBGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgDpEv(pgDpEv){
+pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn): pgSGUI(pgSGUI), pgBGUI(pgBGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgDpEv(pgDpEv), pgBeAn(pgBeAn){
     gui_activation=new QWidget;
     alayout=new QVBoxLayout;
     gui_activation->setLayout(alayout);
@@ -100,7 +100,7 @@ bool pgCalib::goToNearestFree(double radDilat, double radRandSpread){
     int dil=(radDilat*1000/pgMGUI->getNmPPx()-0.5); if(dil<0) dil=0;
     cv::Mat mask=pgDpEv->getMaskFlatness(res, pgMGUI->getNmPPx(), dil, selWriteCalibFocusThresh->val, selWriteCalibFocusBlur->val);
     int ptX,ptY;
-    imgAux::getNearestFreePointToCenter(&mask, ptX, ptY, radRandSpread);
+    imgAux::getNearestFreePointToCenter(&mask, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY, ptX, ptY, radRandSpread);
     if(ptX==-1){
         std::cerr<<"No free nearby!\n";
         return true;

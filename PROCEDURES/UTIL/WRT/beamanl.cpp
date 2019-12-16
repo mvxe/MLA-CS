@@ -2,10 +2,12 @@
 #include "GUI/gui_includes.h"
 #include "includes.h"
 
-pgBeamAnalysis::pgBeamAnalysis(){
+pgBeamAnalysis::pgBeamAnalysis(pgMoveGUI* pgMGUI): pgMGUI(pgMGUI){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
+    btnReset=new QPushButton("Reset Center");
+    connect(btnReset, SIGNAL(released()), this, SLOT(onBtnReset()));
     selMaxRoundnessDev=new val_selector(0.1,"pgBeamAnalysis_selMaxRoundnessDev", "Maximum Roundness Deviation:",0.001,1,3);
     selMaxRoundnessDev->setToolTip("Will exclude all Elipses that are too elliptical: where one arm is this factor larger than the other.");
     selCannyThreshL=new val_selector( 50,"pgBeamAnalysis_selCannyThreshL", "Canny Lower Threshold:",0,255,0);
@@ -15,6 +17,7 @@ pgBeamAnalysis::pgBeamAnalysis(){
     btnSaveNextDebug=new QPushButton("Save Next Debug images");
     btnSaveNextDebug->setToolTip("Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.");
     connect(btnSaveNextDebug, SIGNAL(released()), this, SLOT(onBtnSaveNextDebug()));
+    slayout->addWidget(new twid(btnReset));
     slayout->addWidget(selCannyThreshL);
     slayout->addWidget(selCannyThreshU);
     slayout->addWidget(selMinPixNum);
@@ -30,6 +33,11 @@ pgBeamAnalysis::pgBeamAnalysis(){
 }
 void pgBeamAnalysis::onBtnSaveNextDebug(){
     saveNext=QFileDialog::getExistingDirectory(this, "Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.").toStdString();
+}
+void pgBeamAnalysis::onBtnReset(){
+    pgMGUI->move(-_writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000,-_writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000,0,0);
+    _writeBeamCenterOfsX=0;
+    _writeBeamCenterOfsY=0;
 }
 
 bool pgBeamAnalysis::sortSpot(spot i,spot j) {return (i.dd<j.dd);}
@@ -143,6 +151,8 @@ start: once=!once;
         saveNext.clear();
     }
 
+    mean[0]-=src.cols/2;
+    mean[1]-=src.rows/2;
     *x=mean[0];
     *y=mean[1];
     *r=ofs+maxp.x;
@@ -163,4 +173,9 @@ start: once=!once;
 //    std::cerr<<"Third operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(D - C).count()<<" microseconds\n";
 
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
+
+    pgMGUI->move((mean[0]-_writeBeamCenterOfsX)*pgMGUI->getNmPPx()/1000000,(mean[1]-_writeBeamCenterOfsY)*pgMGUI->getNmPPx()/1000000,0,0);        //correct position
+
+    _writeBeamCenterOfsX=mean[0];
+    _writeBeamCenterOfsY=mean[1];
 }

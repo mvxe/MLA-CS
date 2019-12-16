@@ -92,7 +92,7 @@ public:
 
 class imgAux{
 public:
-    static void getNearestFreePointToCenter(const cv::Mat* mask, int &ptX, int &ptY, float randomZD=0);//mask - 0 are free and valid points, 255 are not free
+    static void getNearestFreePointToCenter(const cv::Mat* mask, const int cenX, const int cenY, int &ptX, int &ptY, float randomZD=0);//mask - 0 are free and valid points, 255 are not free
                                                                                                        //randomZD: once the closest free point is found, having some distance Dc from the center, all free points whose distance from the center
                                                                                                        //is within [Dc:Dc+randomZD] are put into a list and a random point is selected and returned as the result
                                                                                                        //returns ptX=-1 and ptY=-1 if no free point found

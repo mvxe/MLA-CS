@@ -176,12 +176,12 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
     _changed=false;
 }
 
-void colorMap::draw_bw_target(cv::Mat* src){
+void colorMap::draw_bw_target(cv::Mat* src, float dX, float dY){
     const int targWidth=2;
     const int targLenght=20;
     const int targDis=10;
-    int xofs=src->cols/2;
-    int yofs=src->rows/2;
+    int xofs=src->cols/2+dX;
+    int yofs=src->rows/2+dY;
     cv::Scalar frontC,backC;
     frontC=xysbar_color_inv->val?cv::Scalar{255}:cv::Scalar{0};
     backC=xysbar_color_inv->val?cv::Scalar{0}:cv::Scalar{255};

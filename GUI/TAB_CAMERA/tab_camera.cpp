@@ -38,10 +38,10 @@ tab_camera::tab_camera(QWidget* parent){
     pgSGUI->pgMGUI=pgMGUI;
     camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
 
-    pgBGUI=new pgBoundsGUI;
+    pgBeAn=new pgBeamAnalysis(pgMGUI);
+    pgBGUI=new pgBoundsGUI(pgMGUI,pgBeAn);
     pgDpEv=new pgDepthEval(pgBGUI);
-    pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv);
-    pgBeAn=new pgBeamAnalysis();
+    pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn);
 
     tiltCor=new QLabel; tiltCor->setMargin(10);
     tiltCor->setVisible(false);
@@ -116,11 +116,12 @@ tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables
     delete scanRes;
     delete pgCal;
     delete pgSGUI;
+    delete pgBGUI;
+    delete pgBeAn;
     delete pgMGUI;
     delete pgTGUI;
     delete pgFGUI;
     delete pgPRGUI;
-    delete pgBGUI;
 }
 
 void tab_camera::work_fun(){
@@ -134,7 +135,7 @@ void tab_camera::work_fun(){
             if(main_show_target->isChecked() || main_show_scale->isChecked() || main_show_bounds->isChecked()){
                 cv::Mat temp=onDisplay->clone();
                 if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
-                if(main_show_target->isChecked()) cMap->draw_bw_target(&temp);
+                if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY);
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
                 LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_Indexed8)));
 //                cv::applyColorMap(temp, temp, OCV_CM::ids[cm_sel->index]);
@@ -257,8 +258,8 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     else{
         if(event->button()==Qt::LeftButton){
             double DX, DY;
-            DX=(pixmap()->width()/2-xcoord)*parent->pgMGUI->getNmPPx()/1000000;
-            DY=(pixmap()->height()/2-ycoord)*parent->pgMGUI->getNmPPx()/1000000;
+            DX=(pixmap()->width()/2+parent->pgBeAn->writeBeamCenterOfsX-xcoord)*parent->pgMGUI->getNmPPx()/1000000;     //we also correct for real writing beam offset from center
+            DY=(pixmap()->height()/2+parent->pgBeAn->writeBeamCenterOfsY-ycoord)*parent->pgMGUI->getNmPPx()/1000000;
             parent->pgMGUI->move(DX*cos(parent->pgMGUI->getAngCamToXMot())+DY*sin(parent->pgMGUI->getAngCamToXMot()+parent->pgMGUI->getYMotToXMot()),DX*sin(parent->pgMGUI->getAngCamToXMot())+DY*cos(parent->pgMGUI->getAngCamToXMot()+parent->pgMGUI->getYMotToXMot()),0,0);
             if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(pixmap()->width()/2-xcoord, pixmap()->height()/2-ycoord);
         }else if(event->button()==Qt::RightButton){
@@ -302,7 +303,7 @@ void tab_camera::onSaveCameraPicture(void){
     while(fq->getUserMat()==nullptr);
     cv::Mat temp=onDisplay->clone();
     if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
-    if(main_show_target->isChecked()) cMap->draw_bw_target(&temp);
+    if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY);
     if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
     imwrite(fileName, temp,{cv::IMWRITE_PNG_COMPRESSION,9});
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(fq);

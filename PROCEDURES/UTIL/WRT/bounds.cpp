@@ -2,7 +2,7 @@
 #include "GUI/gui_includes.h"
 #include "includes.h"
 
-pgBoundsGUI::pgBoundsGUI(){
+pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMGUI), pgBeAn(pgBeAn){
     layout=new QVBoxLayout;
     layout->setMargin(0);
     this->setLayout(layout);
@@ -74,26 +74,30 @@ pgBoundsGUI::~pgBoundsGUI(){
 void pgBoundsGUI::onSetCircCenter(){
     if(!go.pXPS->connected) return;
     XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
-    for(int i=0;i!=2;i++) circCenter[i]=tmp.pos[i];
+    circCenter[0]=tmp.pos[0]-pgBeAn->writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000;  //-correct for noncentered write beam
+    circCenter[1]=tmp.pos[1]-pgBeAn->writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000;
     setCircCenterTxt->setText(QString::fromStdString(util::toString("Corrds: ",circCenter[0],", ",circCenter[1])));
 }
 void pgBoundsGUI::onSetCircEdge(){
     if(!go.pXPS->connected) return;
     XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
-    for(int i=0;i!=2;i++) circEdge[cIter][i]=tmp.pos[i];
+    circEdge[cIter][0]=tmp.pos[0]-pgBeAn->writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000;
+    circEdge[cIter][1]=tmp.pos[1]-pgBeAn->writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000;
     cIter++; if(cIter>2) cIter=0;
     setCircEdgeTxt->setText(QString::fromStdString(util::toString(getStatCirc())));
 }
 void pgBoundsGUI::onSetRectCenter(){
     if(!go.pXPS->connected) return;
     XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
-    for(int i=0;i!=2;i++) rectCenter[i]=tmp.pos[i];
+    rectCenter[0]=tmp.pos[0]-pgBeAn->writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000;
+    rectCenter[1]=tmp.pos[1]-pgBeAn->writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000;
     setRectCenterTxt->setText(QString::fromStdString(util::toString("Corrds: ",rectCenter[0],", ",rectCenter[1])));
 }
 void pgBoundsGUI::onSetRectEdge(){
     if(!go.pXPS->connected) return;
     XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
-    for(int i=0;i!=2;i++) rectEdge[rIter][i]=tmp.pos[i];
+    rectEdge[rIter][0]=tmp.pos[0]-pgBeAn->writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000;
+    rectEdge[rIter][1]=tmp.pos[1]-pgBeAn->writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000;
     rIter++; if(rIter>3) rIter=0;
     setRectEdgeTxt->setText(QString::fromStdString(util::toString(getStatRect())));
 }
@@ -110,12 +114,14 @@ std::string pgBoundsGUI::getStatRect(){
 }
 
 bool pgBoundsGUI::isWithinBounds(double x, double y){
+    x-=pgBeAn->writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000;  //correct for noncentered write beam
+    y-=pgBeAn->writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000;
     switch(selector->index){
         case 1: return (sqrt(pow(x-circCenter[0],2)+pow(y-circCenter[1],2))<selCircRadius->val/1000);
         case 2: double xx,yy,rad;
                 calcCenRad(xx, yy, rad);
                 return (sqrt(pow(x-xx,2)+pow(y-yy,2))<(rad-circClearance->val/1000));
-        case 3: return ((abs(x-rectCenter[0])<selRectWidth->val/1000)&&(abs(y-rectCenter[1])<selRectHeight->val/1000));
+        case 3: return ((abs(x-rectCenter[0])<selRectWidth->val/2000)&&(abs(y-rectCenter[1])<selRectHeight->val/2000));
         case 4: return isWithinRect(x,y);
         default: return true;
     }
@@ -203,6 +209,7 @@ void pgBoundsGUI::drawBound(cv::Mat* img, double XYnmppx, bool isMask){
     }else if(selector->index==2){
         double xx,yy,rad;
         calcCenRad(xx, yy, rad);
+        if(isnan(xx)||isnan(yy)||isnan(rad)) break;
         if(isMask) cv::circle(mask, {(int)((cur[0]-xx)*1000000/XYnmppx+ofsX),(int)((cur[1]-yy)*1000000/XYnmppx+ofsY)}, (int)((rad-circClearance->val/1000)*1000000/XYnmppx), 255, -1);
         else for(int i=0;i!=2;i++)
             cv::circle(*img, {(int)((cur[0]-xx)*1000000/XYnmppx+ofsX),(int)((cur[1]-yy)*1000000/XYnmppx+ofsY)}, (int)((rad-circClearance->val/1000)*1000000/XYnmppx), {clr[i]}, thck[i], cv::LINE_AA);

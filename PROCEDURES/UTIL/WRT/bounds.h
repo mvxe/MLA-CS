@@ -5,15 +5,19 @@
 #include "GUI/gui_aux_objects.h"
 #include <QTimer>
 namespace cv{class Mat;}
+class pgMoveGUI;
+class pgBeamAnalysis;
 
 class pgBoundsGUI: public QWidget{
     Q_OBJECT
 public:
-    pgBoundsGUI();
+    pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn);
     ~pgBoundsGUI();
     bool isWithinBounds(double x, double y);
     void drawBound(cv::Mat* img, double XYnmppx, bool isMask=false);    //if isMask, the values outside the zone are turned to 255
 private:
+    pgMoveGUI* pgMGUI;
+    pgBeamAnalysis* pgBeAn;
     QTimer* timer;
     constexpr static unsigned timer_delay=250;      //we refresh out of bounds indicator every this ms
 

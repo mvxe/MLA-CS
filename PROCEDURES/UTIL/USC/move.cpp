@@ -80,6 +80,7 @@ void pgMoveGUI::init_gui_settings(){
     markPointForCalib=new QPushButton("Mark Point");
     markPointForCalib->setCheckable(true);
     connect(markPointForCalib, SIGNAL(toggled(bool)), this, SLOT(onMarkPointForCalib(bool)));
+    markPointForCalib->setToolTip("Make Sure the Center Mark is On Center (ie. Reset the Writing Beam Correction Offset).");
     ptFeedback=new QLabel("Have 0 points.");
     slayout->addWidget(new twid(markPointForCalib, ptFeedback));
     slayout->addWidget(new QLabel("Check^ -> click on distinct feature\n -> move and center on it -> Uncheck"));

@@ -8,11 +8,12 @@ class pgFocusGUI;
 class pgMoveGUI;
 class pgBoundsGUI;
 class pgDepthEval;
+class pgBeamAnalysis;
 
 class pgCalib: public QWidget{
     Q_OBJECT
 public:
-    pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv);
+    pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn);
     ~pgCalib();
 
     QWidget* gui_activation;
@@ -25,6 +26,7 @@ private:
     pgBoundsGUI* pgBGUI;
     pgScanGUI* pgSGUI;
     pgDepthEval* pgDpEv;
+    pgBeamAnalysis* pgBeAn;
     varShareClient<pgScanGUI::scanRes>* scanRes;
 
     //activation
