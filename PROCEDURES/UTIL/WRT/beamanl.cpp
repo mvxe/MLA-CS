@@ -3,6 +3,24 @@
 #include "includes.h"
 
 pgBeamAnalysis::pgBeamAnalysis(){
+    gui_settings=new QWidget;
+    slayout=new QVBoxLayout;
+    gui_settings->setLayout(slayout);
+    selMaxRoundnessDev=new val_selector(0.1,"pgBeamAnalysis_selMaxRoundnessDev", "Maximum Roundness Deviation:",0.001,1,3);
+    selMaxRoundnessDev->setToolTip("Will exclude all Elipses that are too elliptical: where one arm is this factor larger than the other.");
+    selCannyThreshL=new val_selector( 50,"pgBeamAnalysis_selCannyThreshL", "Canny Lower Threshold:",0,255,0);
+    selCannyThreshU=new val_selector(100,"pgBeamAnalysis_selCannyThreshU", "Canny Upper Threshold:",0,255,0);
+    selMinPixNum=new val_selector(10,"pgBeamAnalysis_selMinPixNum", "Min Ellipse Pixel Number:",1,10000,0);
+    selMinPixNum->setToolTip("Only Connected Pixel Groups (after Canny) With This Many Pixels or More Will be Considered for Ellipse Fitting.");
+    btnSaveNextDebug=new QPushButton("Save Next Debug images");
+    btnSaveNextDebug->setToolTip("Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.");
+    connect(btnSaveNextDebug, SIGNAL(released()), this, SLOT(onBtnSaveNextDebug()));
+    slayout->addWidget(selCannyThreshL);
+    slayout->addWidget(selCannyThreshU);
+    slayout->addWidget(selMinPixNum);
+    slayout->addWidget(selMaxRoundnessDev);
+    slayout->addWidget(new twid(btnSaveNextDebug));
+
     gui_activation=new QWidget;
     alayout=new QVBoxLayout;
     gui_activation->setLayout(alayout);
@@ -10,8 +28,9 @@ pgBeamAnalysis::pgBeamAnalysis(){
     connect(btnGetCenter, SIGNAL(released()), this, SLOT(getWritingBeamCenter()));
     alayout->addWidget(new twid(btnGetCenter));
 }
-
-
+void pgBeamAnalysis::onBtnSaveNextDebug(){
+    saveNext=QFileDialog::getExistingDirectory(this, "Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.").toStdString();
+}
 
 bool pgBeamAnalysis::sortSpot(spot i,spot j) {return (i.dd<j.dd);}
 void pgBeamAnalysis::solveEllips(cv::Mat& src, int i,std::vector<spot>& spots,int& jobsdone){
@@ -19,10 +38,10 @@ void pgBeamAnalysis::solveEllips(cv::Mat& src, int i,std::vector<spot>& spots,in
     cv::compare(src, i, cmpMat, cv::CMP_EQ);
     std::vector<cv::Point> locations;   // output, locations of non-zero pixels
     cv::findNonZero(cmpMat, locations);
-    if(locations.size()<10) {std::lock_guard<std::mutex>lock(spotLock);jobsdone++;return;}
+    if(locations.size()<selMinPixNum->val) {std::lock_guard<std::mutex>lock(spotLock);jobsdone++;return;}
     cv::RotatedRect tmp=fitEllipse(locations);
     std::lock_guard<std::mutex>lock(spotLock);
-    if(std::abs(tmp.size.width-tmp.size.height)<=std::min(tmp.size.width,tmp.size.height)*maxRoundnessDev && std::min(tmp.size.width,tmp.size.height)>=1 && std::max(tmp.size.width,tmp.size.height)<=std::min(cmpMat.cols,cmpMat.rows))
+    if(std::abs(tmp.size.width-tmp.size.height)<=std::min(tmp.size.width,tmp.size.height)*selMaxRoundnessDev->val && std::min(tmp.size.width,tmp.size.height)>=1 && std::max(tmp.size.width,tmp.size.height)<=std::min(cmpMat.cols,cmpMat.rows))
         spots.push_back({tmp.center.x,tmp.center.y,(tmp.size.width+tmp.size.height)/4,0,0});
     jobsdone++;
 }
@@ -56,12 +75,11 @@ void pgBeamAnalysis::getCalibWritingBeam(float* x, float* y, float* r, std::stri
 
 //    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
     //do proc
-    cv::Mat img;
     std::vector<cv::Vec3f> circles;
     cv::Mat src;
-//        cv::imwrite("64755464beampic0.png", *framequeueDisp->getUserMat());
-    cv::Canny(*framequeueDisp->getUserMat(),src, 100/2, 100);
-//        cv::imwrite("64755464beampic2.png", src);
+    if(!saveNext.empty()) cv::imwrite(util::toString(saveNext,"/","0_src.png"), *framequeueDisp->getUserMat());
+    cv::Canny(*framequeueDisp->getUserMat(),src, selCannyThreshL->val, selCannyThreshU->val);
+    if(!saveNext.empty()) cv::imwrite(util::toString(saveNext,"/","1_canny.png"), src);
     int N=cv::connectedComponents(src,src,8,CV_16U);
 
     std::vector<spot> spots;
@@ -114,13 +132,17 @@ start: once=!once;
 
 //    std::chrono::time_point<std::chrono::system_clock> C=std::chrono::system_clock::now();
 
-    cv::cvtColor(*framequeueDisp->getUserMat(), img, cv::COLOR_GRAY2BGR);
-    for(int i=0;i!=spots.size();i++){
-        cv::circle( img, cv::Point(spots[i].x,spots[i].y), 3, cv::Scalar(0,255,0), -1, 8, 0 );
-        cv::circle( img, cv::Point(spots[i].x,spots[i].y), spots[i].r, cv::Scalar(0,0,255), 1, 8, 0 );
+    if(!saveNext.empty()){
+        cv::Mat img;
+        cv::cvtColor(*framequeueDisp->getUserMat(), img, cv::COLOR_GRAY2BGR);
+        for(int i=0;i!=spots.size();i++){
+            cv::circle( img, cv::Point(spots[i].x,spots[i].y), 3, cv::Scalar(0,255,0), -1, 8, 0 );
+            cv::circle( img, cv::Point(spots[i].x,spots[i].y), spots[i].r, cv::Scalar(0,0,255), 1, 8, 0 );
+        }
+        cv::imwrite(util::toString(saveNext,"/","2_final.png"), img);
+        saveNext.clear();
     }
 
-//    cv::imwrite("64755464beampic3.png", img);
     *x=mean[0];
     *y=mean[1];
     *r=ofs+maxp.x;

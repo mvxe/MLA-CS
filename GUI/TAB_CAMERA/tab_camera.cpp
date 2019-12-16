@@ -77,6 +77,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageSettings->addWidget(camSet,"Camera");               index_camSet=5;
         pageSettings->addWidget(pgDpEv,"Depth Eval");
         pageSettings->addWidget(pgCal->gui_settings,"Write Calibration");
+        pageSettings->addWidget(pgBeAn->gui_settings,"Beam Centering");
 
     TWCtrl->addTab(pageMotion,"Motion");
     TWCtrl->addTab(pageWriting,"Writing");
