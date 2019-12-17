@@ -17,12 +17,18 @@ pgBeamAnalysis::pgBeamAnalysis(pgMoveGUI* pgMGUI): pgMGUI(pgMGUI){
     btnSaveNextDebug=new QPushButton("Save Next Debug images");
     btnSaveNextDebug->setToolTip("Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.");
     connect(btnSaveNextDebug, SIGNAL(released()), this, SLOT(onBtnSaveNextDebug()));
+    extraOffsX=new val_selector( 0,"pgBeamAnalysis_extraOffsX", "X Extra Offset:",-100,100,2);
+    extraOffsY=new val_selector( 0,"pgBeamAnalysis_extraOffsY", "Y Extra Offset:",-100,100,2);
+    extraOffsX->setToolTip("In case the two beams do not overlap perfectly, this can be used to correct this. Redo beam centering after changing this value.");
+    extraOffsY->setToolTip(extraOffsX->toolTip());
     slayout->addWidget(new twid(btnReset));
     slayout->addWidget(selCannyThreshL);
     slayout->addWidget(selCannyThreshU);
     slayout->addWidget(selMinPixNum);
     slayout->addWidget(selMaxRoundnessDev);
     slayout->addWidget(new twid(btnSaveNextDebug));
+    slayout->addWidget(extraOffsX);
+    slayout->addWidget(extraOffsY);
 
     gui_activation=new QWidget;
     alayout=new QVBoxLayout;
@@ -56,14 +62,14 @@ void pgBeamAnalysis::solveEllips(cv::Mat& src, int i,std::vector<spot>& spots,in
 void pgBeamAnalysis::getWritingBeamCenter(){
     float x,y,r,dx,dy;
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
-    getCalibWritingBeam(&x, &y, &r, "", &dx, &dy);
-    std::cerr<<"X mean: "<<x<<", stdDev: "<< dx<<"\n";
-    std::cerr<<"Y mean: "<<y<<", stdDev: "<< dy<<"\n";
+    getCalibWritingBeam(&r, "", &dx, &dy);
+    std::cerr<<"X mean: "<<writeBeamCenterOfsX<<", stdDev: "<< dx<<"\n";
+    std::cerr<<"Y mean: "<<writeBeamCenterOfsY<<", stdDev: "<< dy<<"\n";
     std::cerr<<"Radius: "<<r<<"\n";
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
     std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
 }
-void pgBeamAnalysis::getCalibWritingBeam(float* x, float* y, float* r, std::string radHistSaveFName, float* dx, float* dy){
+void pgBeamAnalysis::getCalibWritingBeam(float* r, std::string radHistSaveFName, float* dx, float* dy){
     go.pXPS->setGPIO(XPS::iuScopeLED, false);
     std::vector<uint32_t> commands;
     commands.push_back(CQF::GPIO_MASK(0x80,0,0x00));
@@ -72,11 +78,44 @@ void pgBeamAnalysis::getCalibWritingBeam(float* x, float* y, float* r, std::stri
     go.pRPTY->A2F_write(1,commands.data(),commands.size());
     commands.clear();
 
-    FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-    framequeueDisp->setUserFps(9999,10);
-    while(framequeueDisp->getFullNumber()<10) QCoreApplication::processEvents(QEventLoop::AllEvents, 10);  //we skip the first 9 images
-    for(int i=0;i!=9;i++) framequeueDisp->freeUserMat();
 
+    // first we take frames until we hit the first one that has the LED turned off and the laser turned on. This is recognized using criteria below:
+    const int borderWidth=10;
+    const uchar lIntThresh=25;      // 1/10 of max int
+    const float lOuterRatio=0.75;   // at least lOuterRatio of the pixels within the borderWidth pixel width border must be smaller than lIntThresh
+    const uchar uIntTHresh=128;     // 1/2 of max int
+    const float uInnerRatio=0.01;   // at least uInnerRatio of all the other pixels must be larger than uIntTHresh
+    const int maxTriesFrames=100;   // give up after checking this many frames
+
+    FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
+    framequeueDisp->setUserFps(9999,maxTriesFrames);
+    for(int i=0;i!=maxTriesFrames+1;i++){
+        if(i==maxTriesFrames){
+            std::string text=util::toString("pgBeamAnalysis::getCalibWritingBeam failed after ",maxTriesFrames,"tries.");
+            QMessageBox::critical(this, "Error", QString::fromStdString(text));
+            std::cerr<<text;
+            return;
+        }
+
+        while(framequeueDisp->getUserMat()==nullptr) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+        cv::Mat mask(framequeueDisp->getUserMat()->rows,framequeueDisp->getUserMat()->cols,CV_8U,cv::Scalar(0));
+        cv::rectangle(mask, cv::Point(borderWidth,borderWidth), cv::Point(mask.cols-borderWidth,mask.rows-borderWidth), cv::Scalar(255), cv::FILLED);
+        cv::Mat temp;
+        cv::compare(*framequeueDisp->getUserMat(),lIntThresh,temp,cv::CMP_LT);
+        temp.setTo(0,mask);
+        int lNum=cv::countNonZero(temp);
+        //std::cerr<<"i= "<<i<<", lNum= "<<lNum<<", tot= "<<(mask.cols*mask.rows-(mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<<", ratio: "<<(float)lNum/(mask.cols*mask.rows-(mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<<"\n";
+        if((float)lNum/(mask.cols*mask.rows-(mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<lOuterRatio) {framequeueDisp->freeUserMat(); continue;}
+        cv::compare(*framequeueDisp->getUserMat(),uIntTHresh,temp,cv::CMP_GT);
+        cv::bitwise_not(mask,mask);
+        temp.setTo(0,mask);
+        int uNum=cv::countNonZero(temp);
+        //std::cerr<<"i= "<<i<<", uNum= "<<uNum<<", tot= "<<((mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<<", ratio: "<<(float)uNum/((mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<<"\n";
+        if((float)uNum/((mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<uInnerRatio) {framequeueDisp->freeUserMat(); continue;}
+        break;
+    }
+
+    framequeueDisp->setUserFps(0,maxTriesFrames);
     commands.push_back(CQF::GPIO_VAL (0x00,0,0x00));
     go.pRPTY->A2F_write(1,commands.data(),commands.size());
     go.pXPS->setGPIO(XPS::iuScopeLED, true);
@@ -153,8 +192,6 @@ start: once=!once;
 
     mean[0]-=src.cols/2;
     mean[1]-=src.rows/2;
-    *x=mean[0];
-    *y=mean[1];
     *r=ofs+maxp.x;
     if(dx!=nullptr) *dx=stdDev[0];
     if(dy!=nullptr) *dy=stdDev[1];
@@ -174,8 +211,8 @@ start: once=!once;
 
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
 
-    pgMGUI->move((mean[0]-_writeBeamCenterOfsX)*pgMGUI->getNmPPx()/1000000,(mean[1]-_writeBeamCenterOfsY)*pgMGUI->getNmPPx()/1000000,0,0);        //correct position
+    pgMGUI->move((mean[0]+extraOffsX->val-_writeBeamCenterOfsX)*pgMGUI->getNmPPx()/1000000,(mean[1]+extraOffsY->val-_writeBeamCenterOfsY)*pgMGUI->getNmPPx()/1000000,0,0);        //correct position
 
-    _writeBeamCenterOfsX=mean[0];
-    _writeBeamCenterOfsY=mean[1];
+    _writeBeamCenterOfsX=mean[0]+extraOffsX->val;
+    _writeBeamCenterOfsY=mean[1]+extraOffsY->val;
 }

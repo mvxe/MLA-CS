@@ -157,14 +157,6 @@ void pgCalib::onWCF(){
 //        QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
 //    }
 
-
-    redoA:  pgSGUI->doOneRound();
-    while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
-    const pgScanGUI::scanRes* res=scanRes->get();
-    int roiD=2*selWriteCalibFocusRadDil->val*1000/pgMGUI->getNmPPx();
-    if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
-    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD), util::toString(folder.str(),"/before"));
-
     std::mt19937 rnd(std::random_device{}());
     std::uniform_real_distribution<>dist(-selWriteCalibFocusRange->val, selWriteCalibFocusRange->val);
     double wrFocusOffs=dist(rnd);
@@ -175,6 +167,18 @@ void pgCalib::onWCF(){
     pgMGUI->moveZF(focus+wrFocusOffs/1000);
     QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait a bit for movement to complete and stabilize
     std::cerr<<"new focus is: "<<focus+wrFocusOffs/1000<<" mm\n";
+
+    float focusRad;
+    pgBeAn->getCalibWritingBeam(&focusRad, util::toString(folder.str(),"/focus.dat"));      // recheck writing beam focus and centering
+
+    redoA:  pgSGUI->doOneRound();
+    while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
+    const pgScanGUI::scanRes* res=scanRes->get();
+    int roiD=2*selWriteCalibFocusRadDil->val*1000/pgMGUI->getNmPPx();
+    if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
+    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder.str(),"/before"));
+
+
 
     const int cmdQueue=0;
     const int recQueue=1;
@@ -214,15 +218,19 @@ void pgCalib::onWCF(){
 
     pgMGUI->moveZF(focus);
 
-    std::ofstream setFile(util::toString(folder.str(),"/settings.txt"));
-    setFile<<focus+wrFocusOffs/1000<<"\n"<<selWriteCalibFocusRadDil->val<<"\n"<<selWriteCalibFocusPulseIntensity->val<<"\n"<<selWriteCalibFocusPulseDuration->val<<"\n"<<(int)selectedavg<<"\n";
+    std::ofstream setFile(util::toString(folder.str(),"/settings.txt"));        //this file contains some settings:
+    setFile <<focus+wrFocusOffs/1000<<"\n"                                      // line0:   the focus in mm (stage)
+            <<selWriteCalibFocusRadDil->val<<"\n"                               // line1:   Exclusion radius / ROI radius
+            <<selWriteCalibFocusPulseIntensity->val<<"\n"                       // line2:   Pulse Intensity
+            <<selWriteCalibFocusPulseDuration->val<<"\n"                        // line3:   Pulse Duration
+            <<(int)selectedavg<<"\n"                                            // line4:   Averaging Used in Pulse Raw Data (ie. the time difference between datapoints will be selectedavg*8e-9 sec)
+            <<focusRad<<"\n";                                                   // line5:   The Somewhat Arbitrary but Self Consistent Measured Focus Beam Radius
     setFile.close();
-
     redoB:  pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
     res=scanRes->get();
     if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}
-    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD), util::toString(folder.str(),"/after"));
+    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder.str(),"/after"));
 
     if(btnWriteCalibFocus->isCheckable() && btnWriteCalibFocus->isChecked()){
         measCounter++;

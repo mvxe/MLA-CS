@@ -12,7 +12,7 @@ public:
     pgBeamAnalysis(pgMoveGUI* pgMGUI);
     QWidget* gui_settings;
     QWidget* gui_activation;
-    void getCalibWritingBeam(float* x, float* y, float* r, std::string radHistSaveFName="", float* dx=nullptr, float* dy=nullptr);
+    void getCalibWritingBeam(float* r, std::string radHistSaveFName="", float* dx=nullptr, float* dy=nullptr);
     const float& writeBeamCenterOfsX{_writeBeamCenterOfsX};
     const float& writeBeamCenterOfsY{_writeBeamCenterOfsY};
 private:
@@ -29,6 +29,8 @@ private:
     val_selector* selCannyThreshU;
     val_selector* selMinPixNum;
     QPushButton* btnSaveNextDebug;
+    val_selector* extraOffsX;
+    val_selector* extraOffsY;
 
     QVBoxLayout* alayout;
     QPushButton* btnGetCenter;

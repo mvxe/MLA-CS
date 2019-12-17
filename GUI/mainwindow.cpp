@@ -570,60 +570,116 @@ void MainWindow::on_pushButton_12_toggled(bool checked){
 }
 
 void MainWindow::on_pushButton_11_clicked(){    //RPTY TEST : TODO REMOVE
-    for(int i=0;i!=4;i++){
-        printf("A2F_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSMax,i));
-        printf("A2F_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSCur,i));
-        printf("A2F_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_lostN,i));
-        printf("F2A_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSMax,i));
-        printf("F2A_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSCur,i));
-        printf("F2A_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_lostN,i));
-    }
+//    for(int i=0;i!=4;i++){
+//        printf("A2F_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSMax,i));
+//        printf("A2F_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSCur,i));
+//        printf("A2F_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_lostN,i));
+//        printf("F2A_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSMax,i));
+//        printf("F2A_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSCur,i));
+//        printf("F2A_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_lostN,i));
+//    }
 
-    std::vector<uint32_t> commands;
-    commands.push_back(CQF::W4TRIG_INTR());
-    commands.push_back(CQF::GPIO_MASK(0,0,0xFF));
-    commands.push_back(CQF::GPIO_DIR (0,0,0x00));
-    commands.push_back(CQF::GPIO_VAL (0,0,0x00));
-    commands.push_back(CQF::WAIT(12500000));
-    for(int i=0;i!=8;i++){
-        commands.push_back(CQF::GPIO_MASK(0,0,1<<i));
-        commands.push_back(CQF::GPIO_VAL (0,0,1<<i));
-        commands.push_back(CQF::WAIT(12500000));
-    }
-    for(int i=0;i!=8;i++){
-        commands.push_back(CQF::GPIO_MASK(0,0,1<<i));
-        commands.push_back(CQF::GPIO_VAL (0,0,0));
-        commands.push_back(CQF::WAIT(12500000));
-    }
-    commands.push_back(CQF::GPIO_MASK(0,0,0xFF));
-    commands.push_back(CQF::GPIO_VAL (0,0,0xFF));
-    commands.push_back(CQF::WAIT(12500000));
-    commands.push_back(CQF::GPIO_VAL (0,0,0x00));
-    commands.push_back(CQF::SG_SAMPLE(CQF::O0O1,4000,-8000));
-    go.pRPTY->A2F_write(0,commands.data(),commands.size());
+//    std::vector<uint32_t> commands;
+//    commands.push_back(CQF::W4TRIG_INTR());
+//    commands.push_back(CQF::GPIO_MASK(0,0,0xFF));
+//    commands.push_back(CQF::GPIO_DIR (0,0,0x00));
+//    commands.push_back(CQF::GPIO_VAL (0,0,0x00));
+//    commands.push_back(CQF::WAIT(12500000));
+//    for(int i=0;i!=8;i++){
+//        commands.push_back(CQF::GPIO_MASK(0,0,1<<i));
+//        commands.push_back(CQF::GPIO_VAL (0,0,1<<i));
+//        commands.push_back(CQF::WAIT(12500000));
+//    }
+//    for(int i=0;i!=8;i++){
+//        commands.push_back(CQF::GPIO_MASK(0,0,1<<i));
+//        commands.push_back(CQF::GPIO_VAL (0,0,0));
+//        commands.push_back(CQF::WAIT(12500000));
+//    }
+//    commands.push_back(CQF::GPIO_MASK(0,0,0xFF));
+//    commands.push_back(CQF::GPIO_VAL (0,0,0xFF));
+//    commands.push_back(CQF::WAIT(12500000));
+//    commands.push_back(CQF::GPIO_VAL (0,0,0x00));
+//    commands.push_back(CQF::SG_SAMPLE(CQF::O0O1,4000,-8000));
+//    go.pRPTY->A2F_write(0,commands.data(),commands.size());
 
-    commands.clear();
-    commands.push_back(CQF::W4TRIG_INTR());
-    commands.push_back(CQF::ACK(1, 0, CQF::fADC_A__fADC_B, true));
-    commands.push_back(CQF::WAIT(100));
-    commands.push_back(CQF::ACK(1, 0, CQF::fADC_A__fADC_B, false));
-    go.pRPTY->A2F_write(1,commands.data(),commands.size());
+//    commands.clear();
+//    commands.push_back(CQF::W4TRIG_INTR());
+//    commands.push_back(CQF::ACK(1, 0, CQF::fADC_A__fADC_B, true));
+//    commands.push_back(CQF::WAIT(100));
+//    commands.push_back(CQF::ACK(1, 0, CQF::fADC_A__fADC_B, false));
+//    go.pRPTY->A2F_write(1,commands.data(),commands.size());
 
-    for(int i=0;i!=4;i++){
-        printf("A2F_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSMax,i));
-        printf("A2F_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSCur,i));
-        printf("A2F_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_lostN,i));
-        printf("F2A_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSMax,i));
-        printf("F2A_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSCur,i));
-        printf("F2A_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_lostN,i));
-    }
+//    for(int i=0;i!=4;i++){
+//        printf("A2F_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSMax,i));
+//        printf("A2F_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_RSCur,i));
+//        printf("A2F_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::A2F_lostN,i));
+//        printf("F2A_RSMax for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSMax,i));
+//        printf("F2A_RSCur for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_RSCur,i));
+//        printf("F2A_lostN for queue %d is %d\n",i,go.pRPTY->getNum(RPTY::F2A_lostN,i));
+//    }
 
-    go.pRPTY->trig(0x3);
+//    go.pRPTY->trig(0x3);
 
+//    std::vector<uint32_t> read;
+//    read.reserve(100);
+//    go.pRPTY->F2A_read(0,read.data(),100);
+//    for(int i=0;i!=100;i++) printf("data: N=%d,  MSB=%d, LSB=%d\n",i,AQF::getChMSB(read[i]),AQF::getChLSB(read[i]));
+
+
+
+    // small calibration for some other purpose
+
+    uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,0);
     std::vector<uint32_t> read;
-    read.reserve(100);
-    go.pRPTY->F2A_read(0,read.data(),100);
-    for(int i=0;i!=100;i++) printf("data: N=%d,  MSB=%d, LSB=%d\n",i,AQF::getChMSB(read[i]),AQF::getChLSB(read[i]));
+    read.reserve(toread);
+    go.pRPTY->F2A_read(0,read.data(),toread);
+    read.clear();
+std::cerr<<"max "<<go.pRPTY->getNum(RPTY::A2F_RSMax,0)<<"\n";
+    int N=100;
+    std::vector<long long> read2;
+    int avg=4;
+    int len=500;
+    int extra=10;
+    for(int j=0;j!=N;j++){
+        std::vector<uint32_t> commands;
+                    commands.push_back(CQF::W4TRIG_INTR());
+                    commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 300, extra*(1<<avg)*len));
+                    commands.push_back(CQF::ACK(1, avg, CQF::fADC_A__fADC_B, true));      //TODO remove
+                    commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 300, extra*(1<<avg)*len));
+//                    for(int i=0;i!=11;i++){
+//                        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 300+i*70, (1<<avg)*700));
+//                    }
+//                    for(int i=0;i!=70;i++){
+//                        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 300+i*10, (1<<avg)*70));
+//                    }
+                    for(int i=0;i!=700;i++){
+                        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 300+i, (1<<avg)*7));
+                    }
+                    commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 1000, extra*(1<<avg)*len));
+                    commands.push_back(CQF::ACK(1, avg, CQF::fADC_A__fADC_B, false));
+                    go.pRPTY->A2F_write(0,commands.data(),commands.size());
+                                go.pRPTY->trig(1);
+                                commands.clear();
+
+
+                                            do std::this_thread::sleep_for (std::chrono::milliseconds(500));
+                                            while(go.pRPTY->getNum(RPTY::A2F_RSCur,0)!=0);
+
+                                            toread=go.pRPTY->getNum(RPTY::F2A_RSCur,0);
+                                            std::cerr<<"reading "<<toread<<" num "<<j<<"\n";
+                                            read.reserve(toread);
+                                            go.pRPTY->F2A_read(0,read.data(),toread);
+                                            if(read2.empty()) for(int k=0;k!=toread;k++) read2.push_back(AQF::getChMSB(read[k]));
+                                            else for(int k=0;k!=std::min(read2.size(),(unsigned long)toread);k++) read2[k]+=AQF::getChMSB(read[k]);
+                                            std::cerr<<"sizes "<<read2.size()<<" "<<toread<<"\n";
+    }
+
+    std::ofstream wfile(util::toString("meas4ben/chAcalib2^4Avg700steps.dat"));
+    for(int j=0; j!=read2.size(); j++){
+        wfile<<j*(1<<avg)*8e-9<<" "<<read2[j]/N<<"\n";
+    }
+    wfile.close();
+
 }
 
 void MainWindow::on_pushButton_13_released(){
