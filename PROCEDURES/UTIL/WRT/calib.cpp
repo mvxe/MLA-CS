@@ -169,7 +169,7 @@ void pgCalib::onWCF(){
     std::cerr<<"new focus is: "<<focus+wrFocusOffs/1000<<" mm\n";
 
     float focusRad;
-    pgBeAn->getCalibWritingBeam(&focusRad, util::toString(folder.str(),"/focus.dat"));      // recheck writing beam focus and centering
+    pgBeAn->getCalibWritingBeam(&focusRad);      // recheck writing beam focus and centering
 
     redoA:  pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
@@ -241,14 +241,22 @@ void pgCalib::onWCF(){
 
 
 typedef dlib::matrix<double,2,1> input_vector;
-typedef dlib::matrix<double,5,1> parameter_vector;
+typedef dlib::matrix<double,7,1> parameter_vector;
 double gaussResidual(const std::pair<input_vector, double>& data, const parameter_vector& params){
     double x0=params(0);  double x=data.first(0);
     double y0=params(1);  double y=data.first(1);
     double a=params(2);
-    double w=params(3);
-    double i0=params(4);
-    double model=i0+a*exp(-(pow(x-x0,2)+pow(y-y0,2))/2/pow(w,2));
+    double wx=params(3);
+    double wy=params(4);
+    double an=params(5);
+    double i0=params(6);
+    //double model=i0+a*exp(-(pow(x-x0,2)+pow(y-y0,2))/2/pow(w,2));
+    //double model=i0+a*exp(-(  pow(x-x0,2)/2*(cos(an)/pow(wx,2)+sin(an)/pow(wy,2)) +  pow(y-y0,2)/2*(cos(an)/pow(wy,2)+sin(an)/pow(wx,2)) ));  //seams to be wrong
+    double A=pow(cos(an),2)/2/pow(wx,2)+pow(sin(an),2)/2/pow(wy,2);
+    double B=sin(2*an)/2/pow(wx,2)-sin(2*an)/2/pow(wy,2);
+    double C=pow(sin(an),2)/2/pow(wx,2)+pow(cos(an),2)/2/pow(wy,2);
+    double model=i0+a*exp(-A*pow(x-x0,2)-B*(x-x0)*(y-y0)-C*pow(y-y0,2));
+    //if(i0<0 || x0<0 || y0<0 || a<0 || a>255) return 9999;
     return model-data.second;
 }
 void pgCalib::onProcessFocusMes(){
@@ -256,6 +264,7 @@ void pgCalib::onProcessFocusMes(){
     std::vector<std::string> measFolders;   //folders that contain the expected measurement files
 
     readFolders.emplace_back(QFileDialog::getExistingDirectory(this, "Select Folder Contatining Measurements. It will be Searched Recursively.").toStdString());
+    std::string saveName=readFolders.back()+"/proc.txt";
     DIR *wp;
     struct dirent *entry;
     struct stat filetype;
@@ -285,10 +294,13 @@ void pgCalib::onProcessFocusMes(){
         if(dirHasMes[0]&dirHasMes[1]&dirHasMes[2]&dirHasMes[3]) measFolders.push_back(curFolder);
     }
 
+    std::ofstream wfile(saveName);
     for(auto& fldr:measFolders){
         double FZdif;
+        double Frad;
         std::ifstream ifs(util::toString(fldr,"/settings.txt"));
         ifs>>FZdif;
+        for(int i=0;i!=5;i++)ifs>>Frad;
         ifs.close();
 
         //std::cerr<<fldr<<"\n";
@@ -298,24 +310,42 @@ void pgCalib::onProcessFocusMes(){
         pgScanGUI::scanRes scanDif=pgScanGUI::difScans(&scanBefore, &scanAfter);
         //pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
 
+        cv::Mat rescaleDepth, rescaleMask;
+        cv::resize(scanDif.depth,rescaleDepth,cv::Size(),0.2,0.2);
+        cv::resize(scanDif.mask,rescaleMask,cv::Size(),0.2,0.2);
+
+
         std::vector<std::pair<input_vector, double>> data;
 //        for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++)
 //            if(scanDif.mask.at<uchar>(j,i)==0) data.push_back(std::make_pair(input_vector{(double)i,(double)j},scanDif.depth.at<float>(j,i)));
+        for(int i=0;i!=rescaleDepth.cols;i++) for(int j=0;j!=rescaleDepth.rows;j++)
+            if(rescaleMask.at<uchar>(j,i)==0) data.push_back(std::make_pair(input_vector{(double)i,(double)j},rescaleDepth.at<float>(j,i)));
         //std::cout<<"size= "<<data.size()<<"\n";
 
-        parameter_vector res{(double)scanDif.depth.cols/2,(double)scanDif.depth.rows/2,scanDif.max,(double)scanDif.depth.rows/4, scanDif.min};
+//        parameter_vector res{(double)scanDif.depth.cols/2,(double)scanDif.depth.rows/2,scanDif.max,(double)scanDif.depth.rows/4, scanDif.min};
+        parameter_vector res{(double)rescaleDepth.cols/2,(double)rescaleDepth.rows/2,scanDif.max,(double)rescaleDepth.rows, (double)rescaleDepth.rows, 0.01, scanDif.min};
         //dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(), gaussResidual, derivative(gaussResidual), data, res);
-//        dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7), gaussResidual, derivative(gaussResidual), data, res);
+        dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7,100), gaussResidual, derivative(gaussResidual), data, res);
         //std::cout << "inferred parameters: "<< dlib::trans(res) << "\n";
 
-//       std::cout<<FZdif<<" "<<res(2)<<" "<<abs(res(3))<<"\n";
+        while(res(5)>M_PI) res(5)-=M_PI;
+        while(res(5)<0) res(5)+=M_PI;
+        if(res(5)>=M_PI/2){
+           res(5)-= M_PI/2;
+           double tmp=res(3);
+           res(3)=res(4);
+           res(4)=tmp;
+        }
 
-        double min,max;
-        cv::Point  ignore;
-        cv::minMaxLoc(scanDif.depth, &min, &max, &ignore, &ignore);
-        std::cout<<FZdif<<" "<<max-min<<"\n";
+        wfile<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<abs(res(3))<<" "<<abs(res(4))<<" "<<res(5)<<" "<<sqrt(res(3)*res(3)+res(4)*res(4))<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<"\n";
+        std::cerr<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<abs(res(3))<<" "<<abs(res(4))<<" "<<res(5)<<" "<<sqrt(res(3)*res(3)+res(4)*res(4))<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<"\n";
+
+//        double min,max;
+//        cv::Point  ignore;
+//        cv::minMaxLoc(scanDif.depth, &min, &max, &ignore, &ignore);
+//        std::cout<<Frad<<" "<<FZdif<<" "<<max-min<<"\n";
 
     }
-
+    wfile.close();
 }
 

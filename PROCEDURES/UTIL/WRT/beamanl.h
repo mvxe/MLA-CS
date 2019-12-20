@@ -10,9 +10,10 @@ class pgBeamAnalysis: public QWidget{
     Q_OBJECT
 public:
     pgBeamAnalysis(pgMoveGUI* pgMGUI);
+    ~pgBeamAnalysis();
     QWidget* gui_settings;
     QWidget* gui_activation;
-    void getCalibWritingBeam(float* r, std::string radHistSaveFName="", float* dx=nullptr, float* dy=nullptr);
+    void getCalibWritingBeam(float* r, float* dx=nullptr, float* dy=nullptr);
     const float& writeBeamCenterOfsX{_writeBeamCenterOfsX};
     const float& writeBeamCenterOfsY{_writeBeamCenterOfsY};
 private:
@@ -24,13 +25,23 @@ private:
 
     QVBoxLayout* slayout;
     QPushButton* btnReset;
-    val_selector* selMaxRoundnessDev;
-    val_selector* selCannyThreshL;
-    val_selector* selCannyThreshU;
-    val_selector* selMinPixNum;
+    twd_selector* method_selector;
+    int methodIndex;
+    cc_save<int> saveIndex{methodIndex, 0,&go.gui_config.save,"pgBeamAnalysis_methodindex"};
+        QWidget* methodSimple;
+        QVBoxLayout* methodSimpleLayout;
+            val_selector* selThresh;
+            val_selector* avgNum;
+        QWidget* methodEllipsse;
+        QVBoxLayout* methodEllipsseLayout;
+            val_selector* selMaxRoundnessDev;
+            val_selector* selCannyThreshL;
+            val_selector* selCannyThreshU;
+            val_selector* selMinPixNum;
     QPushButton* btnSaveNextDebug;
     val_selector* extraOffsX;
     val_selector* extraOffsY;
+//    val_selector* cameraExposure;
 
     QVBoxLayout* alayout;
     QPushButton* btnGetCenter;
