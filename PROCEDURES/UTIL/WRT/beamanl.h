@@ -5,19 +5,25 @@
 #include "GUI/gui_aux_objects.h"
 namespace cv{class Mat;}
 class pgMoveGUI;
+class FQ;
+class pgScanGUI;
+class mesLockProg;
 
 class pgBeamAnalysis: public QWidget{
     Q_OBJECT
 public:
-    pgBeamAnalysis(pgMoveGUI* pgMGUI);
+    pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* pgSGUI);
     ~pgBeamAnalysis();
     QWidget* gui_settings;
     QWidget* gui_activation;
-    void getCalibWritingBeam(float* r, float* dx=nullptr, float* dy=nullptr);
+    void getCalibWritingBeam(float* r, float* dx=nullptr, float* dy=nullptr, bool correct=true);
+    void getCalibWritingBeamRange(float* rMinLoc);
     const float& writeBeamCenterOfsX{_writeBeamCenterOfsX};
     const float& writeBeamCenterOfsY{_writeBeamCenterOfsY};
 private:
+    mesLockProg& MLP;
     pgMoveGUI* pgMGUI;
+    pgScanGUI* pgSGUI;
     float _writeBeamCenterOfsX;        //the center offset in pixels
     float _writeBeamCenterOfsY;
     cc_save<float> saveWBCX{_writeBeamCenterOfsX, 0,&go.pos_config.save,"pgBeamAnalysis_saveWBCX"};
@@ -45,6 +51,7 @@ private:
 
     QVBoxLayout* alayout;
     QPushButton* btnGetCenter;
+    QPushButton* btnGetCenterFocus;
 
     struct spot{
         float x,y,r;
@@ -54,8 +61,11 @@ private:
     void solveEllips(cv::Mat& src, int i,std::vector<spot>& spots,int& jobsdone);
     static bool sortSpot(spot i,spot j);
     std::string saveNext{""};
+
+    bool turnOnRedLaserAndLEDOff(FQ* framequeueDisp); //return 0 on sucess
 private Q_SLOTS:
     void getWritingBeamCenter();
+    void getWritingBeamCenterFocus();
     void onBtnSaveNextDebug();
     void onBtnReset();
 };
