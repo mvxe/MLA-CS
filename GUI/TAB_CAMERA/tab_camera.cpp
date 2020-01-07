@@ -111,6 +111,7 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuDepth->addAction("Save DepthMap (wtih border, scalebar and colorbar) to file", this, SLOT(onSaveDepthMap()));
     clickMenuDepth->addAction("Save DepthMap (raw, float) to file", this, SLOT(onSaveDepthMapRaw()));
     clickMenuDepth->addAction("Save DepthMap (txt, float) to file", this, SLOT(onSaveDepthMapTxt()));
+    clickMenuDepth->addAction("Rotate DepthMap", this, SLOT(onRotateDepthMap()));
 }
 
 tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
@@ -372,4 +373,23 @@ void tab_camera::onDiff2Raw(){
         loadedScanChanged=true;
         loadedOnDisplay=true;
     }
+}
+void tab_camera::onRotateDepthMap(){
+    double angle=QInputDialog::getDouble(this, "Rotate Depth Map", "Rotation Angle (degrees):", 0, -360, 360, 2);
+    if(!loadedScan.depth.empty() && loadedOnDisplay);
+    else if(scanRes->get()!=nullptr) loadedScan=*scanRes->get();
+    else return;
+
+    cv::Point2f center(selEndX, selEndY);
+    loadedScan.depth.setTo(loadedScan.min,loadedScan.mask);              // this is to get rid of infinite edges that are missed by the mask
+    cv::Mat TM=cv::getRotationMatrix2D(center, angle, 1.0);
+    cv::warpAffine(loadedScan.maskN, loadedScan.maskN, TM, loadedScan.maskN.size());        // this first so that the rest gets filled with zeros, ie bad pixels
+    cv::compare(loadedScan.maskN, cv::Scalar(255), loadedScan.mask, cv::CMP_LT);            // spread the nask
+    bitwise_not(loadedScan.mask, loadedScan.maskN);
+    cv::warpAffine(loadedScan.depth, loadedScan.depth, TM, loadedScan.depth.size());
+    loadedScan.depth.setTo(std::numeric_limits<float>::max(),loadedScan.mask);
+    cv::Point ignore;
+    cv::minMaxLoc(loadedScan.depth, &loadedScan.min, &loadedScan.max, &ignore, &ignore, loadedScan.maskN);
+    loadedScanChanged=true;
+    loadedOnDisplay=true;
 }

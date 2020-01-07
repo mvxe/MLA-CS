@@ -102,12 +102,13 @@ private Q_SLOTS:
     void on_tab_change(int index);
     void on_EP_sel_released();
 
-    void onSavePixData(void);
-    void onSaveCameraPicture(void);
-    void onSaveDepthMap(void);
+    void onSavePixData();
+    void onSaveCameraPicture();
+    void onSaveDepthMap();
     void onSaveDepthMapRaw(bool txt=false);
     void onSaveDepthMapTxt(){onSaveDepthMapRaw(true);}
-    void onLoadDepthMapRaw(void);
+    void onLoadDepthMapRaw();
+    void onRotateDepthMap();
     void onDiff2Raw();
 };
 
