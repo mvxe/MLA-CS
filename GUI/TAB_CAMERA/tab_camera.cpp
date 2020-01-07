@@ -269,7 +269,10 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
 }
 bool iImageDisplay::checkIfInBounds(int xcoord, int ycoord){
     if(isDepth){
-        const pgScanGUI::scanRes* res=parent->scanRes->get();
+        const pgScanGUI::scanRes* res;
+        if(parent->loadedOnDisplay) res=&parent->loadedScan;
+        else res=parent->scanRes->get();
+        if(res==nullptr) return false;
         if(xcoord<1 || xcoord>=res->depth.cols+1 || ycoord<(pixmap()->height()-res->depth.rows)/2 || ycoord>=res->depth.rows+(pixmap()->height()-res->depth.rows)/2 ) return false; //ignore events outside image;
     }else{
         if(xcoord<0 || xcoord>=pixmap()->width() || ycoord<0 || ycoord>=pixmap()->height()) return false; //ignore events outside pixmap;
@@ -313,7 +316,10 @@ void tab_camera::onSaveDepthMap(void){
     if(fileName.empty())return;
     if(fileName.find(".png")==std::string::npos) fileName+=".png";
     double min,max;
-    const pgScanGUI::scanRes* res=scanRes->get();
+    const pgScanGUI::scanRes* res;
+    if(loadedOnDisplay) res=&loadedScan;
+    else res=scanRes->get();
+    if(res==nullptr) return;
     pgHistGUI->updateImg(res, &min, &max);
     if(res!=nullptr){
         cv::Mat display;
@@ -332,9 +338,13 @@ void tab_camera::onSaveDepthMap(void){
 void tab_camera::onSaveDepthMapRaw(void){
     int width=abs(selEndX-selStartX);
     int height=abs(selEndY-selStartY);
+    const pgScanGUI::scanRes* res;
+    if(loadedOnDisplay) res=&loadedScan;
+    else res=scanRes->get();
+    if(res==nullptr) return;
     if(width>=50 && height>=50){
-           pgScanGUI::saveScan(scanRes->get(), cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
-    } else pgScanGUI::saveScan(scanRes->get());
+           pgScanGUI::saveScan(res, cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
+    } else pgScanGUI::saveScan(res);
 }
 void tab_camera::onLoadDepthMapRaw(void){
     if(pgScanGUI::loadScan(&loadedScan)){
