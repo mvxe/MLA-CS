@@ -105,7 +105,8 @@ private Q_SLOTS:
     void onSavePixData(void);
     void onSaveCameraPicture(void);
     void onSaveDepthMap(void);
-    void onSaveDepthMapRaw(void);
+    void onSaveDepthMapRaw(bool txt=false);
+    void onSaveDepthMapTxt(){onSaveDepthMapRaw(true);}
     void onLoadDepthMapRaw(void);
     void onDiff2Raw();
 };

@@ -491,6 +491,40 @@ void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string f
     wfile.write(reinterpret_cast<const char*>(&(scan->avgNum)),sizeof(scan->avgNum));
     wfile.close();
 }
+void pgScanGUI::saveScanTxt(const scanRes* scan, std::string fileName){
+    pgScanGUI::saveScanTxt(scan, {0,0,scan->depth.cols,scan->depth.rows}, fileName);
+}
+void pgScanGUI::saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::string fileName){
+    if(scan==nullptr) return;
+    if(fileName=="") fileName=QFileDialog::getSaveFileName(parent,"Select file for saving map in text.", "","Text (*.txt)").toStdString();
+    if(fileName.empty())return;
+    if(fileName.find(".txt")==std::string::npos) fileName+=".txt";
+
+    std::ofstream wfile(fileName);
+    cv::Mat display(scan->depth, roi);
+
+    wfile<<util::toString("# XY is in pixels, see below for conversion constant. Depth is in nm!\n");
+    wfile<<util::toString("# For how to plot with gnuplot see http://www.gnuplotting.org/interpolation-of-heat-maps/\n");
+    wfile<<util::toString("# Min value: ",scan->min,"\n");
+    wfile<<util::toString("# Max value: ",scan->max,"\n");
+    wfile<<util::toString("# Applied X Tilt Correction: ",scan->tiltCor[0],"\n");
+    wfile<<util::toString("# Applied Y Tilt Correction: ",scan->tiltCor[1],"\n");
+    wfile<<util::toString("# X during measurement: ",scan->pos[0]," mm\n");
+    wfile<<util::toString("# Y during measurement: ",scan->pos[1]," mm\n");
+    wfile<<util::toString("# Z during measurement: ",scan->pos[2]," mm\n");
+    wfile<<util::toString("# XY nm per px: ",scan->XYnmppx,"\n");
+    wfile<<util::toString("# Number of averaged frames: ",scan->avgNum,"\n");
+
+    for(int j=display.rows-1;j>=0;j--){
+        for(int i=0;i!=display.cols;i++){
+            if(i!=0) wfile<<" ";
+            if(display.at<float>(j,i)==std::numeric_limits<float>::max()) wfile<<"nan";
+            else wfile<<display.at<float>(j,i);
+        }
+        wfile<<"\n";
+    }
+    wfile.close();
+}
 bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
     if(scan==nullptr) scan=new scanRes;
     if(fileName=="") fileName=QFileDialog::getOpenFileName(parent,"Select file to load Depth Map (raw, float).", "","Images (*.pfm)").toStdString();

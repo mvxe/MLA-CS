@@ -110,6 +110,7 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuDepth=new QMenu;
     clickMenuDepth->addAction("Save DepthMap (wtih border, scalebar and colorbar) to file", this, SLOT(onSaveDepthMap()));
     clickMenuDepth->addAction("Save DepthMap (raw, float) to file", this, SLOT(onSaveDepthMapRaw()));
+    clickMenuDepth->addAction("Save DepthMap (txt, float) to file", this, SLOT(onSaveDepthMapTxt()));
 }
 
 tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
@@ -341,7 +342,7 @@ void tab_camera::onSaveDepthMap(void){
         imwrite(fileName, display,{cv::IMWRITE_PNG_COMPRESSION,9});
     }
 }
-void tab_camera::onSaveDepthMapRaw(void){
+void tab_camera::onSaveDepthMapRaw(bool txt){
     int width=abs(selEndX-selStartX);
     int height=abs(selEndY-selStartY);
     const pgScanGUI::scanRes* res;
@@ -349,8 +350,12 @@ void tab_camera::onSaveDepthMapRaw(void){
     else res=scanRes->get();
     if(res==nullptr) return;
     if(width>=50 && height>=50){
-           pgScanGUI::saveScan(res, cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
-    } else pgScanGUI::saveScan(res);
+           if(txt)  pgScanGUI::saveScanTxt(res, cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
+           else     pgScanGUI::saveScan(res, cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
+    }else{
+        if(txt)  pgScanGUI::saveScanTxt(res);
+        else     pgScanGUI::saveScan(res);
+    }
 }
 void tab_camera::onLoadDepthMapRaw(void){
     if(pgScanGUI::loadScan(&loadedScan)){
