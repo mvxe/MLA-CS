@@ -58,7 +58,7 @@ private:
     pgFocusGUI* pgFGUI;     unsigned index_pgFGUI;
     pgPosRepGUI* pgPRGUI;
     cameraSett* camSet;     unsigned index_camSet;
-    QLabel* tiltCor;
+    QLabel* addInfo;
 
     smp_selector* cm_sel;       //for selecting the colormap for display
     QPushButton* epc_sel;       //for selecting the excluded pixel color

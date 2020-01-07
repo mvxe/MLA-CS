@@ -43,11 +43,11 @@ tab_camera::tab_camera(QWidget* parent){
     pgDpEv=new pgDepthEval(pgBGUI);
     pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn);
 
-    tiltCor=new QLabel; tiltCor->setMargin(10);
-    tiltCor->setVisible(false);
+    addInfo=new QLabel; addInfo->setMargin(10);
+    addInfo->setVisible(false);
 
     pageMotion=new twd_selector;
-        pageMotion->addWidget(tiltCor);
+        pageMotion->addWidget(addInfo);
         pageMotion->addWidget(pgSGUI->gui_activation);
         pageMotion->addWidget(pgMGUI->gui_activation);  connect(pgPRGUI, SIGNAL(changed(double,double,double,double)), pgMGUI, SLOT(onFZdifChange(double,double,double,double)));
         pageMotion->addWidget(pgTGUI->gui_activation);
@@ -143,7 +143,7 @@ void tab_camera::work_fun(){
 //                LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_RGB888)));
             }
             else LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
-            tiltCor->setVisible(false);
+            addInfo->setVisible(false);
         }
         if(scanRes->changed() || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || loadedScanChanged){
             const pgScanGUI::scanRes* res;
@@ -170,10 +170,16 @@ void tab_camera::work_fun(){
                 cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
                 if(selectingDRB) cv::rectangle(display, {selStartX+1,selStartY+1},{selCurX+1,selCurY+1}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, (abs(selCurX-selStartX)>=50 && abs(selCurY-selStartY)>=50)?1:-1);
                 LDisplay->setPixmap(QPixmap::fromImage(QImage(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888)));
-                if(res->tiltCor[0]!=0 && res->tiltCor[1]!=0){
-                    tiltCor->setText(QString::fromStdString(util::toString("Tilt correction was: X: ",res->tiltCor[0],", Y: ",res->tiltCor[1])));
-                    tiltCor->setVisible(true);
-                } else tiltCor->setVisible(false);
+                if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0 || res->avgNum>1){
+                    std::string text;
+                    if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0) text+=util::toString("Tilt correction was: X: ",res->tiltCor[0],", Y: ",res->tiltCor[1]);
+                    if(res->avgNum>1){
+                        if(!text.empty()) text+="\n";
+                        text+=util::toString("Averaged ",res->avgNum," measurements.");
+                    }
+                    addInfo->setText(QString::fromStdString(text));
+                    addInfo->setVisible(true);
+                } else addInfo->setVisible(false);
 
             }
             oldCm=cm_sel->index;

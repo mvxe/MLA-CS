@@ -44,10 +44,10 @@ void pgScanGUI::init_gui_activation(){
     connect(bScanContinuous, SIGNAL(toggled(bool)), this, SLOT(onBScanContinuous(bool)));
     gui_activation->addWidget(bScan);
     gui_activation->addWidget(bScanContinuous);
-    cbCorrectTilt=new QCheckBox("Correct Tilt");
-    cbCorrectTilt->setChecked(correctTilt);
+    cbCorrectTilt=new checkbox_save(false,"pgScanGUI_ct","Correct Tilt");
     gui_activation->addWidget(cbCorrectTilt);
-    connect(cbCorrectTilt, SIGNAL(toggled(bool)),this, SLOT(setCorrectTilt(bool)));
+    cbAvg=new checkbox_save(false,"pgScanGUI_ctAvg","Average");
+    gui_activation->addWidget(cbAvg);
 }
 void pgScanGUI::onBScanContinuous(bool status){bScan->setCheckable(status);}
 void pgScanGUI::onBScan(){
@@ -68,6 +68,9 @@ void pgScanGUI::init_gui_settings(){
     connect(selectScanSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     debugDisplayModeSelect=new smp_selector("Display mode select (for debugging purposes): ", 0, {"Unwrapped", "Wrapped"});
     slayout->addWidget(debugDisplayModeSelect);
+    avgDiscardCriteria=new val_selector(5.0, "tab_camera_avgDiscardCriteria", "Averaging Mask% Discard Threshold:", 0.1, 100., 1, 1, {"%"});
+    avgDiscardCriteria->setToolTip("If the difference in the number of excluded element between the current measurement and the avg measurement (which combines all previous exclusions(or)) is larger than this percentage times the total num of pixels, the measurement is discarded.");
+    slayout->addWidget(avgDiscardCriteria);
     onMenuChange(0);
 }
 
@@ -357,7 +360,7 @@ void pgScanGUI::_doOneRound(){
 
     MLP.progress_comp=90;
 
-    if(correctTilt){ //autocorrect tilt
+    if(cbCorrectTilt->val){ //autocorrect tilt
         cv::UMat blured;
         double sigma=tiltCorBlur->val;
         int ksize=sigma*5;
@@ -405,6 +408,41 @@ void pgScanGUI::_doOneRound(){
 
     if(pgMGUI==nullptr) res->XYnmppx=0;
     else res->XYnmppx=pgMGUI->getNmPPx();
+    res->avgNum=1;
+    if(cbAvg->val){
+        varShareClient<pgScanGUI::scanRes>* temp=result.getClient();
+        const scanRes* oldScanRes=temp->get();
+        if(oldScanRes==nullptr) delete temp;
+        else if(oldScanRes->pos[0]!=res->pos[0] || oldScanRes->pos[1]!=res->pos[1] || oldScanRes->XYnmppx!=res->XYnmppx){ //we moved, no point to make average
+            delete temp;
+        }else{
+            const double factor =2.;    //TODO make this an parameter
+            if(cv::countNonZero(res->mask)-factor*cv::countNonZero(oldScanRes->mask) > res->mask.total()*avgDiscardCriteria->val){  //the new measurement has too many bad pixels compared to old res - we discard
+                std::cerr<<"Too many bad pixels, skipping.\n";
+                std::cerr<<"done nr "<<NA<<"\n"; NA++;
+                MLP.progress_comp=100;
+                if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();measurementInProgress=false;}
+                delete res;
+                return;
+            }
+
+            cv::Mat dif;
+            cv::subtract(oldScanRes->depth, res->depth, dif);
+            res->mask.setTo(255,oldScanRes->mask);
+            bitwise_not(res->mask, res->maskN);
+            res->depth.setTo(0,res->mask);
+            double avg=(double)cv::sum(res->depth)[0]/cv::countNonZero(res->maskN);
+            cv::add(res->depth,avg,res->depth);                                             //first we remove any offset by finding the average difference between the two depth maps and adding that to the new one
+            res->avgNum+=oldScanRes->avgNum;
+            cv::addWeighted(res->depth,1./res->avgNum,oldScanRes->depth,(double)(res->avgNum-1)/res->avgNum,0,res->depth);
+            res->depth.setTo(std::numeric_limits<float>::max(),res->mask);
+
+            cv::minMaxLoc(res->depth, &res->min, &res->max, &ignore, &ignore, res->maskN);
+            std::cerr<<"DEPTHS: "<<res->min<< " "<<res->max<<"\n";
+            std::cerr<<"AVG: done num. "<<res->avgNum<<"\n";
+            delete temp;
+        }
+    }
     result.put(res);
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
@@ -450,6 +488,7 @@ void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string f
     wfile.write(reinterpret_cast<const char*>(scan->tiltCor),sizeof(scan->tiltCor));
     wfile.write(reinterpret_cast<const char*>(scan->pos),sizeof(scan->pos));
     wfile.write(reinterpret_cast<const char*>(&(scan->XYnmppx)),sizeof(scan->XYnmppx));
+    wfile.write(reinterpret_cast<const char*>(&(scan->avgNum)),sizeof(scan->avgNum));
     wfile.close();
 }
 bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
@@ -460,13 +499,14 @@ bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
     cv::compare(scan->depth, std::numeric_limits<float>::max(), scan->mask, cv::CMP_EQ);
     cv::bitwise_not(scan->mask, scan->maskN);
     std::ifstream rfile(fileName);
-    int size=sizeof(scan->min)+sizeof(scan->max)+sizeof(scan->tiltCor)+sizeof(scan->pos)+sizeof(scan->XYnmppx);
-    rfile.seekg(-size, rfile.end);
-    rfile.read(reinterpret_cast<char*>(&(scan->min)),sizeof(scan->min));
-    rfile.read(reinterpret_cast<char*>(&(scan->max)),sizeof(scan->max));
-    rfile.read(reinterpret_cast<char*>(scan->tiltCor),sizeof(scan->tiltCor));
-    rfile.read(reinterpret_cast<char*>(scan->pos),sizeof(scan->pos));
-    rfile.read(reinterpret_cast<char*>(&(scan->XYnmppx)),sizeof(scan->XYnmppx));
+    for(int i=0;i!=3;i++) rfile.ignore(256,'\n');                   //skip the first three lines of image header
+    rfile.ignore(scan->depth.total()*scan->depth.elemSize(),EOF);   //skip image
+    rfile.read(reinterpret_cast<char*>(&(scan->min)),sizeof(scan->min));            if(!rfile) scan->min=0;     //if missing, backward compatibility
+    rfile.read(reinterpret_cast<char*>(&(scan->max)),sizeof(scan->max));            if(!rfile) scan->max=1;
+    rfile.read(reinterpret_cast<char*>(scan->tiltCor),sizeof(scan->tiltCor));       if(!rfile) for(int i=0;i!=2;i++) scan->tiltCor[i]=0;
+    rfile.read(reinterpret_cast<char*>(scan->pos),sizeof(scan->pos));               if(!rfile) for(int i=0;i!=3;i++) scan->pos[i]=0;
+    rfile.read(reinterpret_cast<char*>(&(scan->XYnmppx)),sizeof(scan->XYnmppx));    if(!rfile) scan->XYnmppx=1;
+    rfile.read(reinterpret_cast<char*>(&(scan->avgNum)),sizeof(scan->avgNum));      if(!rfile) scan->avgNum=1;
     rfile.close();
     return true;
 }
@@ -505,5 +545,6 @@ pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
     for(int i=0;i!=3;i++) ret.pos[i]=scan0->pos[i];
     ret.XYnmppx=scan0->XYnmppx;
     ret.tiltCor[0]=0; ret.tiltCor[1]=0;
+    ret.avgNum=scan0->avgNum;
     return ret;
 }
