@@ -380,7 +380,7 @@ void tab_camera::onRotateDepthMap(){
     else if(scanRes->get()!=nullptr) loadedScan=*scanRes->get();
     else return;
 
-    cv::Point2f center(selEndX, selEndY);
+    cv::Point2f center((selEndX+selStartX)/2, (selEndY+selStartY)/2);
     loadedScan.depth.setTo(loadedScan.min,loadedScan.mask);              // this is to get rid of infinite edges that are missed by the mask
     cv::Mat TM=cv::getRotationMatrix2D(center, angle, 1.0);
     cv::warpAffine(loadedScan.maskN, loadedScan.maskN, TM, loadedScan.maskN.size());        // this first so that the rest gets filled with zeros, ie bad pixels
