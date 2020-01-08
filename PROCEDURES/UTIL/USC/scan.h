@@ -45,13 +45,14 @@ public:
     struct scanRes{
         cv::Mat depth;
         cv::Mat mask;
-        cv::Mat maskN;  //for convenience, much faster to do while its already on the gpu
+        cv::Mat maskN;      //for convenience, much faster to do while its already on the gpu
         double min;
         double max;
         double tiltCor[2];  //X, and Y
-        double pos[3];  //X,Y and Z at the time of measurement, might be useful
-        double XYnmppx; //useful if we load a scan which was done at different settings, -1 means the one in settings is valid
+        double pos[3];      //X,Y and Z at the time of measurement, might be useful
+        double XYnmppx;     //useful if we load a scan which was done at different settings, -1 means the one in settings is valid
         int avgNum;
+        cv::Mat depthSS;    //this is for calculating the standard deviation: will be empty if avgNum=1
     };
     varShare<scanRes> result;
 

@@ -14,7 +14,7 @@ class colorMap: public QWidget{
     Q_OBJECT
 public:
     colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI);
-    void colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange=false, bool isForExport=false);
+    void colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange=false, bool isForExport=false, std::string label="Depth[nm]");
     const bool& changed{_changed};
     void draw_bw_target(cv::Mat* src, float dX, float dY);
     void draw_bw_scalebar(cv::Mat* src, double XYnmppx);

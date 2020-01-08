@@ -27,11 +27,21 @@ pgHistogrameGUI::pgHistogrameGUI(int Hsize, int Vsize, smp_selector* cm_sel, cv:
     layout->setMargin(0);
 }
 
-void pgHistogrameGUI::updateImg(const pgScanGUI::scanRes* res ,double *rmin, double *rmax){
+void pgHistogrameGUI::updateImg(const pgScanGUI::scanRes* res ,double *rmin, double *rmax, double altMin, double altMax, cv::Mat* altDepth){
     if(res!=nullptr){
+        float min,max;
+        if(altDepth!=nullptr){
+            min=altMin;
+            max=altMax;
+        }else{
+            min=res->min;
+            max=res->max;
+        }
+
         cv::Mat hist;
-        int histSize[]={Hsize}; float hranges[]={(float)res->min, (float)res->max}; const float* ranges[]={hranges}; int channels[]={0};
-        cv::calcHist(&res->depth, 1, channels, res->maskN, hist, 1, histSize, ranges);
+        int histSize[]={Hsize}; float hranges[]={min, max}; const float* ranges[]={hranges}; int channels[]={0};
+
+        cv::calcHist((altDepth!=nullptr)?altDepth:(&res->depth), 1, channels, res->maskN, hist, 1, histSize, ranges);
 
         //calc min,max from _lPcnt,_hPcnt
         float sum=cv::sum(hist).val[0];
@@ -45,8 +55,8 @@ void pgHistogrameGUI::updateImg(const pgScanGUI::scanRes* res ,double *rmin, dou
             sumc+=hist.at<float>(i);
             if(sumc>=(100-_hPcnt)/100*sum) {imax=i; break;}
         }
-        if(rmin!=nullptr) *rmin=res->min+imin*(res->max-res->min)/(Hsize-1);
-        if(rmax!=nullptr) *rmax=res->min+imax*(res->max-res->min)/(Hsize-1);
+        if(rmin!=nullptr) *rmin=min+imin*(max-min)/(Hsize-1);
+        if(rmax!=nullptr) *rmax=min+imax*(max-min)/(Hsize-1);
 
         cv::Mat lin(1,Hsize,CV_8U);
         for(int i=0;i!=imin;i++)      lin.at<uchar>(i)=0;

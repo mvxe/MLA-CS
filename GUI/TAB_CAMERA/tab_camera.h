@@ -116,7 +116,7 @@ private Q_SLOTS:
 class iImageDisplay : public QLabel{
     using QLabel::QLabel;
 public:
-    bool isDepth{false};
+    int isDepth{false};
     tab_camera* parent;
 private:
     void mouseMoveEvent(QMouseEvent *event);

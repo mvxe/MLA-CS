@@ -81,7 +81,7 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
     layout->addWidget(txt);
 }
 
-void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange, bool isForExport){
+void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange, bool isForExport, std::string label){
     int vsize=src->rows+2;
     int hsize=src->cols+2;
     double range=max-min;
@@ -107,9 +107,9 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
             if(done)break;
         }
         nticks=range/tick+1;  //rounds down
-        cv::Size size=cv::getTextSize(util::toString("Depth[nm]"), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
+        cv::Size size=cv::getTextSize(label, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
         cblabel=cv::Mat(size.height*2,size.width,CV_8UC4,{0,0,0,0});
-        cv::putText(cblabel,util::toString("Depth[nm]"), {0,4*size.height/3}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
+        cv::putText(cblabel,label, {0,4*size.height/3}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
         cv::rotate(cblabel,cblabel,cv::ROTATE_90_COUNTERCLOCKWISE);
     }
     int textMaxWidth=1;

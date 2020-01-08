@@ -16,7 +16,7 @@ class pgHistogrameGUI: public QWidget{
     //GUI
 public:
     pgHistogrameGUI(int Hsize, int Vsize, smp_selector* cm_sel, cv::Scalar& exclColor);        //cvms_mask is inverse mask!
-    void updateImg(const pgScanGUI::scanRes* scanres, double* rmin=nullptr, double* rmax=nullptr);
+    void updateImg(const pgScanGUI::scanRes* scanres, double* rmin=nullptr, double* rmax=nullptr, double altMin=0, double altMax=0, cv::Mat* altDepth=nullptr);       //the alt vars to override depth and minmax from res
     const double& hPcnt{_hPcnt};
     const double& lPcnt{_lPcnt};
     const bool& changed{_changed};

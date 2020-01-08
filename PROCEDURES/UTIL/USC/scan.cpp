@@ -416,8 +416,14 @@ void pgScanGUI::_doOneRound(){
         else if(oldScanRes->pos[0]!=res->pos[0] || oldScanRes->pos[1]!=res->pos[1] || oldScanRes->XYnmppx!=res->XYnmppx){ //we moved, no point to make average
             delete temp;
         }else{
-            const double factor =2.;    //TODO make this an parameter
-            if(cv::countNonZero(res->mask)-factor*cv::countNonZero(oldScanRes->mask) > res->mask.total()*avgDiscardCriteria->val){  //the new measurement has too many bad pixels compared to old res - we discard
+            //for iterative calculations we use Donald Knuth's "The Art of Computer Programming, Volume 2: Seminumerical Algorithms", section 4.2.2
+            //  M(1) = x(1), M(k) = M(k-1) + (x(k) - M(k-1)) / k
+            //  S(1) = 0, S(k) = S(k-1) + (x(k) - M(k-1)) * (x(k) - M(k))
+            //  for 2 <= k <= n, then
+            //  sigma = sqrt(S(n) / (n - 1))
+
+            //we calc the mean
+            if(cv::countNonZero(res->mask)-cv::countNonZero(oldScanRes->mask) > res->mask.total()*avgDiscardCriteria->val){  //the new measurement has too many bad pixels compared to old res - we discard
                 std::cerr<<"Too many bad pixels, skipping.\n";
                 std::cerr<<"done nr "<<NA<<"\n"; NA++;
                 MLP.progress_comp=100;
@@ -426,18 +432,35 @@ void pgScanGUI::_doOneRound(){
                 return;
             }
 
-            cv::Mat dif;
-            cv::subtract(oldScanRes->depth, res->depth, dif);
             res->mask.setTo(255,oldScanRes->mask);
             bitwise_not(res->mask, res->maskN);
             res->depth.setTo(0,res->mask);
-            double avg=(double)cv::sum(res->depth)[0]/cv::countNonZero(res->maskN);
-            cv::add(res->depth,avg,res->depth);                                             //first we remove any offset by finding the average difference between the two depth maps and adding that to the new one
+            cv::Mat tempp;
+            oldScanRes->depth.copyTo(tempp);
+            tempp.setTo(0,res->mask);
+            double avgOld=(double)cv::sum(tempp)[0]/cv::countNonZero(res->maskN);
+            double avgNew=(double)cv::sum(res->depth)[0]/cv::countNonZero(res->maskN);
+            cv::add(res->depth,avgOld-avgNew,res->depth);
+
+            cv::Mat newDepth;
+            res->depth.copyTo(newDepth);    //we need this later for SD
+
             res->avgNum+=oldScanRes->avgNum;
-            cv::addWeighted(res->depth,1./res->avgNum,oldScanRes->depth,(double)(res->avgNum-1)/res->avgNum,0,res->depth);
+            //cv::addWeighted(res->depth,1./res->avgNum,oldScanRes->depth,(double)(res->avgNum-1)/res->avgNum,0,res->depth);
+            cv::subtract(res->depth,oldScanRes->depth,res->depth);
+            cv::addWeighted(res->depth,1./res->avgNum,oldScanRes->depth,1,0,res->depth);
             res->depth.setTo(std::numeric_limits<float>::max(),res->mask);
 
             cv::minMaxLoc(res->depth, &res->min, &res->max, &ignore, &ignore, res->maskN);
+
+            //now calc the (!)SD
+            cv::subtract(newDepth,oldScanRes->depth,res->depthSS);      // (Xk - Mk-1)
+            cv::subtract(newDepth,res->depth,newDepth);                 // (Xk - Mk)
+            cv::multiply(res->depthSS,newDepth,res->depthSS);           // (Xk - Mk-1)(Xk-Mk)
+            if(oldScanRes->avgNum>2)
+                cv::add(res->depthSS,oldScanRes->depthSS,res->depthSS); // Sk-1 + (Xk - Mk-1)(Xk-Mk)
+            res->depthSS.setTo(std::numeric_limits<float>::max(),res->mask);
+
             std::cerr<<"DEPTHS: "<<res->min<< " "<<res->max<<"\n";
             std::cerr<<"AVG: done num. "<<res->avgNum<<"\n";
             delete temp;
@@ -480,8 +503,7 @@ void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string f
     if(fileName.empty())return;
     if(fileName.find(".pfm")==std::string::npos) fileName+=".pfm";
 
-    cv::Mat display(scan->depth, roi);
-    cv::imwrite(fileName, display);
+    cv::imwrite(fileName, cv::Mat(scan->depth, roi));
     std::ofstream wfile(fileName, std::ofstream::app);
     wfile.write(reinterpret_cast<const char*>(&(scan->min)),sizeof(scan->min));
     wfile.write(reinterpret_cast<const char*>(&(scan->max)),sizeof(scan->max));
@@ -490,6 +512,11 @@ void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string f
     wfile.write(reinterpret_cast<const char*>(&(scan->XYnmppx)),sizeof(scan->XYnmppx));
     wfile.write(reinterpret_cast<const char*>(&(scan->avgNum)),sizeof(scan->avgNum));
     wfile.close();
+
+    if(!scan->depthSS.empty() && scan->avgNum>1){
+        fileName.insert(fileName.length()-4,"-SD");
+        cv::imwrite(fileName, cv::Mat(scan->depthSS, roi));
+    }
 }
 void pgScanGUI::saveScanTxt(const scanRes* scan, std::string fileName){
     pgScanGUI::saveScanTxt(scan, {0,0,scan->depth.cols,scan->depth.rows}, fileName);
@@ -524,6 +551,27 @@ void pgScanGUI::saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::strin
         wfile<<"\n";
     }
     wfile.close();
+
+    if(!scan->depthSS.empty()){
+        fileName.insert(fileName.length()-4,"-SD");
+        std::ofstream wfile(fileName);
+
+        cv::Mat display2;
+        cv::divide(cv::Mat(scan->depthSS,roi),scan->avgNum-1,display2);
+        cv::sqrt(display2,display2);
+
+        wfile<<util::toString("# This file contains the SD\n");
+
+        for(int j=display2.rows-1;j>=0;j--){
+            for(int i=0;i!=display2.cols;i++){
+                if(i!=0) wfile<<" ";
+                if(display2.at<float>(j,i)==std::numeric_limits<float>::max()) wfile<<"nan";
+                else wfile<<display2.at<float>(j,i);
+            }
+            wfile<<"\n";
+        }
+        wfile.close();
+    }
 }
 bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
     if(scan==nullptr) scan=new scanRes;
@@ -542,6 +590,11 @@ bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
     rfile.read(reinterpret_cast<char*>(&(scan->XYnmppx)),sizeof(scan->XYnmppx));    if(!rfile) scan->XYnmppx=1;
     rfile.read(reinterpret_cast<char*>(&(scan->avgNum)),sizeof(scan->avgNum));      if(!rfile) scan->avgNum=1;
     rfile.close();
+
+    if(scan->avgNum>1){
+        fileName.insert(fileName.length()-4,"-SD");
+        scan->depthSS=cv::imread(fileName, cv::IMREAD_UNCHANGED);
+    }
     return true;
 }
 pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){

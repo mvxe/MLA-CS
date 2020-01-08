@@ -20,7 +20,7 @@ tab_camera::tab_camera(QWidget* parent){
     layout->addWidget(LDisplay);
     layout->addWidget(tBarW);
 
-    selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map"});
+    selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map","Depth Map SD"});
     layoutTBarW->addWidget(selDisp);
 
     TWCtrl=new QTabWidget;
@@ -155,7 +155,7 @@ void tab_camera::work_fun(){
             pgHistGUI->updateImg(res);
             oldCm=cm_sel->index;
         }
-    }else{                  // Depth map
+    }else if(selDisp->index==1 || selDisp->index==2){   // Depth map or SD
         LDisplay->isDepth=true;
         if(pgDpEv->debugChanged || scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed || selectingDRB || lastSelectingDRB || loadedScanChanged){
             const pgScanGUI::scanRes* res;
@@ -166,10 +166,19 @@ void tab_camera::work_fun(){
             if(res!=nullptr){
                 res=pgDpEv->getDebugImage(res); //if there is no debug image, it returns res so the command does nothing
                 double min,max;
-                pgHistGUI->updateImg(res, &min, &max);
-
                 cv::Mat display;
-                cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
+                if(selDisp->index==1 || res->depthSS.empty()){  //show Depth Map
+                    pgHistGUI->updateImg(res, &min, &max);
+                    cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
+                }else{                  //show SD
+                    cv::divide(res->depthSS,res->avgNum-1,display);
+                    double _min,_max; cv::Point ignore;
+                    cv::sqrt(display,display);
+                    cv::minMaxLoc(display, &_min, &_max, &ignore, &ignore, res->maskN);
+                    pgHistGUI->updateImg(res, &min, &max, 0, _max, &display);
+                    cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD[nm]");
+                }
+
                 if(selectingDRB) cv::rectangle(display, {selStartX+1,selStartY+1},{selCurX+1,selCurY+1}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, (abs(selCurX-selStartX)>=50 && abs(selCurY-selStartY)>=50)?1:-1);
                 LDisplay->setPixmap(QPixmap::fromImage(QImage(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888)));
                 if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0 || res->avgNum>1){
@@ -327,18 +336,32 @@ void tab_camera::onSaveDepthMap(void){
     const pgScanGUI::scanRes* res;
     if(loadedOnDisplay) res=&loadedScan;
     else res=scanRes->get();
-    if(res==nullptr) return;
-    pgHistGUI->updateImg(res, &min, &max);
+
     if(res!=nullptr){
         cv::Mat display;
         int width=abs(selEndX-selStartX);
         int height=abs(selEndY-selStartY);
-        if(width>=50 && height>=50){
-            cv::Mat temp0(res->depth,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
-            cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
-            cMap->colormappize(&temp0, &display, &temp1, min, max, res->XYnmppx, pgHistGUI->ExclOOR, true);
+        if(selDisp->index==1 || res->depthSS.empty()){
+            pgHistGUI->updateImg(res, &min, &max);
+            if(width>=50 && height>=50){
+                cv::Mat temp0(res->depth,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+                cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+                cMap->colormappize(&temp0, &display, &temp1, min, max, res->XYnmppx, pgHistGUI->ExclOOR, true);
+            }
+            else cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
+        }else{
+            cv::divide(res->depthSS,res->avgNum-1,display);
+            double _min,_max; cv::Point ignore;
+            cv::sqrt(display,display);
+            cv::minMaxLoc(display, &_min, &_max, &ignore, &ignore, res->maskN);
+            pgHistGUI->updateImg(res, &min, &max, 0, _max, &display);
+            if(width>=50 && height>=50){
+                cv::Mat temp0(display,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+                cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+                cMap->colormappize(&temp0, &display, &temp1, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, true, "SD[nm]");
+            }
+            else cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD[nm]");
         }
-        else cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
         cv::cvtColor(display, display, cv::COLOR_RGBA2BGRA);
         imwrite(fileName, display,{cv::IMWRITE_PNG_COMPRESSION,9});
     }
@@ -388,6 +411,10 @@ void tab_camera::onRotateDepthMap(){
     bitwise_not(loadedScan.mask, loadedScan.maskN);
     cv::warpAffine(loadedScan.depth, loadedScan.depth, TM, loadedScan.depth.size());
     loadedScan.depth.setTo(std::numeric_limits<float>::max(),loadedScan.mask);
+    if(!loadedScan.depthSS.empty()){
+        cv::warpAffine(loadedScan.depthSS, loadedScan.depthSS, TM, loadedScan.depthSS.size());
+        loadedScan.depth.setTo(std::numeric_limits<float>::max(),loadedScan.mask);
+    }
     cv::Point ignore;
     cv::minMaxLoc(loadedScan.depth, &loadedScan.min, &loadedScan.max, &ignore, &ignore, loadedScan.maskN);
     loadedScanChanged=true;
