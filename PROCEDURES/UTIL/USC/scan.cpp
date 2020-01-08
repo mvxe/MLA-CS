@@ -71,7 +71,12 @@ void pgScanGUI::init_gui_settings(){
     avgDiscardCriteria=new val_selector(5.0, "tab_camera_avgDiscardCriteria", "Averaging Mask% Discard Threshold:", 0.1, 100., 1, 1, {"%"});
     avgDiscardCriteria->setToolTip("If the difference in the number of excluded element between the current measurement and the avg measurement (which combines all previous exclusions(or)) is larger than this percentage times the total num of pixels, the measurement is discarded.");
     slayout->addWidget(avgDiscardCriteria);
+    saveAvgMess=new QPushButton("Autosave raw measurements"); saveAvgMess->setCheckable(true);
+    saveAvgMess->setToolTip("Select folder for saving all subsequent individual raw measurements. Last ROI applies (ie you must try saving something raw by selection first), else whole image is saved. Click again to disable further saving.");
+    slayout->addWidget(new twid(saveAvgMess));
+    connect(saveAvgMess, SIGNAL(released()), this, SLOT(onBSaveAvgMess()));
     onMenuChange(0);
+
 }
 
 scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
@@ -409,13 +414,19 @@ void pgScanGUI::_doOneRound(){
     if(pgMGUI==nullptr) res->XYnmppx=0;
     else res->XYnmppx=pgMGUI->getNmPPx();
     res->avgNum=1;
+
+    if(bSaveAvgMess){  // for autosaving raw data - for debug and bookeeping purposes - for saving individual measurements that are being averaged.
+        saveScan(res,util::toString(stringSaveAvgMess,'/',saveIter),true);
+        saveIter++;
+    }
+
     if(cbAvg->val){
         varShareClient<pgScanGUI::scanRes>* temp=result.getClient();
         const scanRes* oldScanRes=temp->get();
-        if(oldScanRes==nullptr) delete temp;
-        else if(oldScanRes->pos[0]!=res->pos[0] || oldScanRes->pos[1]!=res->pos[1] || oldScanRes->XYnmppx!=res->XYnmppx){ //we moved, no point to make average
-            delete temp;
-        }else{
+        if(oldScanRes==nullptr);
+        else if(oldScanRes->pos[0]!=res->pos[0] || oldScanRes->pos[1]!=res->pos[1] || oldScanRes->XYnmppx!=res->XYnmppx); //we moved, no point to make average
+        else{
+
             //for iterative calculations we use Donald Knuth's "The Art of Computer Programming, Volume 2: Seminumerical Algorithms", section 4.2.2
             //  M(1) = x(1), M(k) = M(k-1) + (x(k) - M(k-1)) / k
             //  S(1) = 0, S(k) = S(k-1) + (x(k) - M(k-1)) * (x(k) - M(k))
@@ -463,8 +474,8 @@ void pgScanGUI::_doOneRound(){
 
             std::cerr<<"DEPTHS: "<<res->min<< " "<<res->max<<"\n";
             std::cerr<<"AVG: done num. "<<res->avgNum<<"\n";
-            delete temp;
         }
+        delete temp;
     }
     result.put(res);
 
@@ -494,10 +505,13 @@ void pgScanGUI::calcExpMinMax(FQ* framequeue, cv::Mat* mask){
 // SOME STATIC FUNCTIONS
 
 QWidget* pgScanGUI::parent{nullptr};
-void pgScanGUI::saveScan(const scanRes* scan, std::string fileName){
-    pgScanGUI::saveScan(scan, {0,0,scan->depth.cols,scan->depth.rows}, fileName);
+cv::Rect pgScanGUI::lastROI{0,0,0,0};
+void pgScanGUI::saveScan(const scanRes* scan, std::string fileName, bool useLastROI){
+    if(useLastROI && lastROI!=cv::Rect(0,0,0,0)) pgScanGUI::saveScan(scan, lastROI, fileName);
+    else pgScanGUI::saveScan(scan, {0,0,scan->depth.cols,scan->depth.rows}, fileName);
 }
 void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName){
+    lastROI=roi;
     if(scan==nullptr) return;
     if(fileName=="") fileName=QFileDialog::getSaveFileName(parent,"Select file for saving Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
     if(fileName.empty())return;
@@ -634,4 +648,13 @@ pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
     ret.tiltCor[0]=0; ret.tiltCor[1]=0;
     ret.avgNum=scan0->avgNum;
     return ret;
+}
+
+void pgScanGUI::onBSaveAvgMess(){
+    if(bSaveAvgMess)
+        bSaveAvgMess=false;
+    else{
+        stringSaveAvgMess=QFileDialog::getExistingDirectory(gui_settings, "Select Folder for Saving Raw Images").toStdString();
+        if(!stringSaveAvgMess.empty()) {bSaveAvgMess=true; saveIter=0;}
+    }
 }

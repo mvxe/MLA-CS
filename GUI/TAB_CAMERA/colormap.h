@@ -38,6 +38,7 @@ private:
     val_selector* xysbar_unit;
     val_selector* xysbar_thck;
     val_selector* xysbar_txtoffset;
+    smp_selector* xysbar_corner;
     val_selector* xysbar_xoffset;
     val_selector* xysbar_yoffset;
     checkbox_save* xysbar_color_inv;

@@ -35,6 +35,8 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
     xysbar_txtoffset=new val_selector(2, "colorBar_xysbar_txtoffset", "XY Scalebar Text Offset: ", 0, 100, 0, 0, {"px"});
     connect(xysbar_txtoffset, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(xysbar_txtoffset);
+    xysbar_corner=new smp_selector("colorBar_xysbar_corner", "Select XY Scalebar reference position: ", 0, {"center","top","bottom","left","right","top-left","top-right","bottom-left","bottom-right"});
+    layout->addWidget(xysbar_corner);
     xysbar_xoffset=new val_selector(0, "colorBar_xysbar_xoffset", "Horizontal Offset for XY Scalebar: ", -10000, 10000, 0, 0, {"px"});
     connect(xysbar_xoffset, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(xysbar_xoffset);
@@ -141,13 +143,13 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
         cv::Size size=cv::getTextSize(util::toString(xysbar_unit->val," um"), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
         int xofs=temp.cols/2+(isForExport?xysbar_xoffset_Export->val:xysbar_xoffset->val);
         int yofs=temp.rows/2+(isForExport?xysbar_yoffset_Export->val:xysbar_yoffset->val);
-        if(isForExport) {
-            int in=xysbar_corner_Export->index;
-            if(in==1 || in==5 || in==6) yofs-=temp.rows/2;  //top
-            if(in==2 || in==7 || in==8) yofs+=temp.rows/2;  //bottom
-            if(in==3 || in==5 || in==7) xofs-=temp.cols/2;  //left
-            if(in==4 || in==6 || in==8) xofs+=temp.cols/2;  //right
-        }
+
+        int in=isForExport?xysbar_corner_Export->index:xysbar_corner->index;
+        if(in==1 || in==5 || in==6) yofs-=temp.rows/2;  //top
+        if(in==2 || in==7 || in==8) yofs+=temp.rows/2;  //bottom
+        if(in==3 || in==5 || in==7) xofs-=temp.cols/2;  //left
+        if(in==4 || in==6 || in==8) xofs+=temp.cols/2;  //right
+
         cv::Scalar frontC,backC;
         frontC=xysbar_color_inv->val?cv::Scalar{255,255,255}:cv::Scalar{0,0,0};
         backC=xysbar_color_inv->val?cv::Scalar{0,0,0}:cv::Scalar{255,255,255};
@@ -198,6 +200,11 @@ void colorMap::draw_bw_scalebar(cv::Mat* src, double XYnmppx){
         cv::Size size=cv::getTextSize(util::toString(xysbar_unit->val," um"), OCV_FF::ids[fontFace->index], fontSize->val, fontThickness->val, &ignore);
         int xofs=src->cols/2+xysbar_xoffset->val;
         int yofs=src->rows/2+xysbar_yoffset->val;
+        int in=xysbar_corner->index;
+        if(in==1 || in==5 || in==6) yofs-=src->rows/2;  //top
+        if(in==2 || in==7 || in==8) yofs+=src->rows/2;  //bottom
+        if(in==3 || in==5 || in==7) xofs-=src->cols/2;  //left
+        if(in==4 || in==6 || in==8) xofs+=src->cols/2;  //right
         cv::Scalar frontC,backC;
         frontC=xysbar_color_inv->val?cv::Scalar{255}:cv::Scalar{0};
         backC=xysbar_color_inv->val?cv::Scalar{0}:cv::Scalar{255};

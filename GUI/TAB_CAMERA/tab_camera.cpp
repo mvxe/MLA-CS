@@ -12,6 +12,7 @@ tab_camera::tab_camera(QWidget* parent){
     LDisplay->setMouseTracking(false);
     LDisplay->setScaledContents(false);
     LDisplay->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    LDisplay->setAlignment(Qt::AlignHCenter|Qt::AlignVCenter);
 
     tBarW=new QWidget;
     layoutTBarW= new QVBoxLayout;
@@ -178,8 +179,9 @@ void tab_camera::work_fun(){
                     pgHistGUI->updateImg(res, &min, &max, 0, _max, &display);
                     cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD[nm]");
                 }
+                dispDepthMatRows=res->depth.rows;
 
-                if(selectingDRB) cv::rectangle(display, {selStartX+1,selStartY+1},{selCurX+1,selCurY+1}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, (abs(selCurX-selStartX)>=50 && abs(selCurY-selStartY)>=50)?1:-1);
+                if(selectingDRB) cv::rectangle(display, {selStartX+1,selStartY+(display.rows-res->depth.rows)/2},{selCurX+1,selCurY+(display.rows-res->depth.rows)/2}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, (abs(selCurX-selStartX)>=50 && abs(selCurY-selStartY)>=50)?1:-1);
                 LDisplay->setPixmap(QPixmap::fromImage(QImage(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888)));
                 if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0 || res->avgNum>1){
                     std::string text;
@@ -242,7 +244,8 @@ void iImageDisplay::mouseMoveEvent(QMouseEvent *event){
     parent->selCurX=xcoord;
     parent->selCurY=ycoord;
     if(isDepth){
-
+        parent->selCurX-=1;                                 //correct for drawn margins on image
+        parent->selCurY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
     }
     else{}
 }
@@ -252,6 +255,11 @@ void iImageDisplay::mousePressEvent(QMouseEvent *event){
     parent->selStartX=xcoord; parent->selCurX=xcoord;
     parent->selStartY=ycoord; parent->selCurY=ycoord;
     if(isDepth){
+        parent->selCurX-=1;                                 //correct for drawn margins on image
+        parent->selCurY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
+        parent->selStartX-=1;
+        parent->selStartY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
+
         if(event->button()==Qt::RightButton){
             parent->selectingDRB=true;
         }
@@ -267,6 +275,9 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     if(!checkIfInBounds(parent->selStartX, parent->selStartY) || !checkIfInBounds(parent->selEndX, parent->selEndY)) {parent->selectingDRB=false; return;}
 
     if(isDepth){
+        parent->selEndX-=1;                                 //correct for drawn margins on image
+        parent->selEndY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
+
         if(event->button()==Qt::RightButton){
             parent->clickMenuDepth->popup(QCursor::pos());
             parent->selectingDRB=false;

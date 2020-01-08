@@ -59,7 +59,8 @@ public:
     mesLockProg& MLP;
     double vsConv(val_selector* vs);
 
-    static void saveScan(const scanRes* scan, std::string fileName="");
+    static cv::Rect lastROI;
+    static void saveScan(const scanRes* scan, std::string fileName="", bool useLastROI=false);
     static void saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName="");
     static void saveScanTxt(const scanRes* scan, std::string fileName="");
     static void saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::string fileName="");
@@ -111,6 +112,7 @@ private:
     val_selector* tiltCorThrs;
     smp_selector* debugDisplayModeSelect;
     val_selector* avgDiscardCriteria;
+    QPushButton* saveAvgMess;
 
     int totalFrameNum;
     int peakLoc;        //the expected peak position in the FFT spectrum
@@ -126,6 +128,10 @@ private:
 
     double total_meas_time;
 
+    std::atomic<bool> bSaveAvgMess{false};    // for autosaving raw data - for debug and bookeeping purposes - for saving individual measurements that are being averaged.
+    std::string stringSaveAvgMess;
+    int saveIter;
+
     void _doOneRound();
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
 public Q_SLOTS:
@@ -134,6 +140,7 @@ private Q_SLOTS:
     void onBScan();
     void onBScanContinuous(bool status);
     void onMenuChange(int index);
+    void onBSaveAvgMess();
 Q_SIGNALS:
     void doneExpMinmax(int min, int max);
 };

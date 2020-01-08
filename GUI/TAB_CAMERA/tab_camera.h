@@ -91,6 +91,7 @@ private:
     int selEndX, selEndY;
     bool selectingDRB{false};
     bool lastSelectingDRB{false};
+    int dispDepthMatRows;
 
     FQ* framequeueDisp;
     const cv::Mat* onDisplay;
