@@ -1,7 +1,7 @@
 #include "beamanl.h"
 #include "GUI/gui_includes.h"
 #include "includes.h"
-#include <dlib/optimization.h>
+//#include <dlib/optimization.h>
 
 pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* pgSGUI): MLP(MLP), pgMGUI(pgMGUI), pgSGUI(pgSGUI){
     gui_settings=new QWidget;
@@ -307,19 +307,17 @@ void pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
 }
 
 
-typedef dlib::matrix<double,1,1> input_vector;
-typedef dlib::matrix<double,4,1> parameter_vector;
-double gaussResidual(const std::pair<input_vector, double>& data, const parameter_vector& params){
-    double x0=params(0);  double x=data.first(0);
-    double a=params(1);
-    double w=params(2);
-    double i0=params(3);
-    double model=i0+a*exp(-(pow(x-x0,2))/2/pow(w,2));
-    return model-data.second;
-}
-void pgBeamAnalysis::getCalibWritingBeamRange(float* rMinLoc){
-    const int frames=201;
-    const double range=0.5; //so total 2*range
+//typedef dlib::matrix<double,1,1> input_vector;
+//typedef dlib::matrix<double,4,1> parameter_vector;
+//double gaussResidual(const std::pair<input_vector, double>& data, const parameter_vector& params){
+//    double x0=params(0);  double x=data.first(0);
+//    double a=params(1);
+//    double w=params(2);
+//    double i0=params(3);
+//    double model=i0+a*exp(-(pow(x-x0,2))/2/pow(w,2));
+//    return model-data.second;
+//}
+void pgBeamAnalysis::getCalibWritingBeamRange(float* rMinLoc, int frames, double range, bool flipDir){
     PVTobj* PVTScan=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, util::toString("camera_getCalibWritingBeamRange.txt").c_str());
     exec_ret PVTret;
 
@@ -334,13 +332,14 @@ void pgBeamAnalysis::getCalibWritingBeamRange(float* rMinLoc){
     double Offset=range+readAccelDis;
     double movTime=2*sqrt(2*Offset/pgSGUI->vsConv(pgSGUI->max_acc));
 
-    PVTScan->add(movTime, 0,0, 0,0, 0,0, -Offset,0);
-    PVTScan->add(readAccelTime,  0,0, 0,0, 0,0 ,readAccelDis,readVelocity);
+    int dir=flipDir?(-1):1;
+    PVTScan->add(movTime, 0,0, 0,0, 0,0, -dir*Offset,0);
+    PVTScan->add(readAccelTime,  0,0, 0,0, 0,0 ,dir*readAccelDis,dir*readVelocity);
     PVTScan->addAction(XPS::iuScopeLED,false);
-    PVTScan->add(readTime, 0,0, 0,0, 0,0, 2*range,readVelocity);
+    PVTScan->add(readTime, 0,0, 0,0, 0,0, 2*dir*range,dir*readVelocity);
     PVTScan->addAction(XPS::iuScopeLED,true);
-    PVTScan->add(readAccelTime,  0,0, 0,0, 0,0, readAccelDis,0);
-    PVTScan->add(movTime, 0,0, 0,0, 0,0, -Offset,0);
+    PVTScan->add(readAccelTime,  0,0, 0,0, 0,0, dir*readAccelDis,0);
+    PVTScan->add(movTime, 0,0, 0,0, 0,0, -dir*Offset,0);
 
     exec_dat ret;
     ret=go.pXPS->verifyPVTobj(PVTScan);
@@ -395,52 +394,51 @@ void pgBeamAnalysis::getCalibWritingBeamRange(float* rMinLoc){
 
     std::ofstream wfile(util::toString("temp.dat"));
     cv::GaussianBlur(dataR,dataR,{0,0},10);             //blur it to get 2 smooth gaussian peaks
-    for(int N=0; N!=frames; N++) wfile<<focus+(N-(frames-1)/2)*range/frames<<" "<<dataR.at<float>(N)<<" "<<dataX.at<float>(N)<<" "<<dataY.at<float>(N)<<"\n";
+    for(int N=0; N!=frames; N++) wfile<<focus+dir*(N-(frames-1)/2)*range/frames<<" "<<dataR.at<float>(N)<<" "<<dataX.at<float>(N)<<" "<<dataY.at<float>(N)<<"\n";
     wfile.close();
 
-//    float firstMinCoord{-9999};       //we fit gaussian instead, see below (its slightly more precise
-//    repeat: for(int i=0; i<(frames-1)/2; i++){          //find the negative peak (+- one pixel)
-//        for(int j=0; j!=2; j++){
-//            bool breakk{false};
-//            int coord0=(frames-1)/2+i*(2*j-1);
-//            if( coord0-1 >= 0 && coord0+1 < frames)
-//                if( dataR.at<float>(coord0) < dataR.at<float>(coord0-1) && dataR.at<float>(coord0) < dataR.at<float>(coord0+1) )
-//                    {firstMinCoord=coord0; breakk=true; break;}
-//            if(breakk) break;
-//        }
-//    }
-//    if(firstMinCoord==-9999){
-//        firstMinCoord=0;
-//        goto repeat;
-//    }
-//    std::cerr<<"center was at "<<focus+(firstMinCoord-(frames-1)/2)*range/frames<<"\n";
-
-    //get the two maxima
-    int maxCoord[2]{0,frames-1};
-    for(int i=1; i<frames-1; i++)
-        if( dataR.at<float>(i-1) < dataR.at<float>(i) && dataR.at<float>(i+1) <= dataR.at<float>(i) ){
-            if(maxCoord[0]==0){
-                maxCoord[0]=i;
-            }else{
-                maxCoord[1]=i;
-                break;
-            }
+    float firstMinCoord{-9999};
+    repeat: for(int i=0; i<(frames-1)/2; i++){          //find the negative peak (+- one pixel)
+        for(int j=0; j!=2; j++){
+            bool breakk{false};
+            int coord0=(frames-1)/2+i*(2*j-1);
+            if( coord0-1 >= 0 && coord0+1 < frames)
+                if( dataR.at<float>(coord0) < dataR.at<float>(coord0-1) && ( (firstMinCoord==-9999)?(dataR.at<float>(coord0) <= dataR.at<float>(coord0+1)):(dataR.at<float>(coord0) < dataR.at<float>(coord0+1)) ) )
+                    {firstMinCoord=coord0; breakk=true; break;}
+            if(breakk) break;
         }
-    //std::cerr<<"maxima were at "<<focus+(maxCoord[0]-(frames-1)/2)*range/frames<<" "<<focus+(maxCoord[1]-(frames-1)/2)*range/frames<<"\n";
-    cv::Mat peakData;
-    dataR.colRange(maxCoord[0],maxCoord[1]+1).copyTo(peakData);
-    cv::multiply(peakData,-1,peakData);
-    cv::normalize(peakData,peakData,0,1,cv::NORM_MINMAX);
+    }
+    if(firstMinCoord==-9999){   // apperently there is no point with k-1 < k < k+1
+        firstMinCoord=0;
+        goto repeat;            // try k-1 < k <= k+1 instead
+    }
+    *rMinLoc=focus+dir*(firstMinCoord-(frames-1)/2)*range/frames;
 
-    std::vector<std::pair<input_vector, double>> data;      //we fit gaussian
-    for(int i=0;i!=peakData.cols;i++)
-        data.push_back(std::make_pair(input_vector{(double)i},peakData.at<float>(i)));
-    parameter_vector res{peakData.cols/2.,1,peakData.cols/4.,0};
-    dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7,100), gaussResidual, derivative(gaussResidual), data, res);
-    //std::cerr<<"Fitted gaussian center was at "<<focus+(res(0)+maxCoord[0]-(frames-1)/2)*range/frames<<"\n";       //sligthly more precise than the (commented) method above
-    *rMinLoc=focus+(res(0)+maxCoord[0]-(frames-1)/2)*range/frames;
+// // This commented block contains the gaussian fit method, which doesnt help here as the +-1 pixel error in the method above is equal or smaller to the error introduced by being unable to time the camera trigger with motion start anyway
+//    //get the two maxima
+//    int maxCoord[2]{0,frames-1};
+//    for(int i=1; i<frames-1; i++)
+//        if( dataR.at<float>(i-1) < dataR.at<float>(i) && dataR.at<float>(i+1) <= dataR.at<float>(i) ){
+//            if(maxCoord[0]==0){
+//                maxCoord[0]=i;
+//            }else{
+//                maxCoord[1]=i;
+//                break;
+//            }
+//        }
+//    //std::cerr<<"maxima were at "<<focus+(maxCoord[0]-(frames-1)/2)*range/frames<<" "<<focus+(maxCoord[1]-(frames-1)/2)*range/frames<<"\n";
+//    cv::Mat peakData;
+//    dataR.colRange(maxCoord[0],maxCoord[1]+1).copyTo(peakData);
+//    cv::multiply(peakData,-1,peakData);
+//    cv::normalize(peakData,peakData,0,1,cv::NORM_MINMAX);
 
-    //now I realise: since the programs ability to detect LED off which should coincide with motion start depends on when the frame starts (ie its random withing +- one frame), fitting a gaussian vs just finding max does little if any improvement to precising, gonna leave it tho
+//    std::vector<std::pair<input_vector, double>> data;      //we fit gaussian
+//    for(int i=0;i!=peakData.cols;i++)
+//        data.push_back(std::make_pair(input_vector{(double)i},peakData.at<float>(i)));
+//    parameter_vector res{peakData.cols/2.,1,peakData.cols/4.,0};
+//    dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7,100), gaussResidual, derivative(gaussResidual), data, res);
+//    //std::cerr<<"Fitted gaussian center was at "<<focus+(res(0)+maxCoord[0]-(frames-1)/2)*range/frames<<"\n";       //sligthly more precise than the (commented) method above
+//    *rMinLoc=focus+(res(0)+maxCoord[0]-(frames-1)/2)*range/frames;
 
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
     go.pXPS->destroyPVTobj(PVTScan);
@@ -467,8 +465,14 @@ void pgBeamAnalysis::getWritingBeamCenterFocus(){
 
 //    wfile.close();
 
-    getCalibWritingBeamRange(&r);
-    std::cerr<<"Red Beam Focus is at "<<r<<"\n";
+    getCalibWritingBeamRange(&r, 101, 0.5);
+    std::cerr<<"it. 1: Red Beam Focus difference is "<<r<<"\n";
+    pgMGUI->moveZF(r);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 1000);
+    getCalibWritingBeamRange(&r, 101, 0.1);
+    std::cerr<<"it 2a: Red Beam Focus difference is "<<r<<"\n";
+    getCalibWritingBeamRange(&r, 101, 0.1,true);
+    std::cerr<<"it 2b: Red Beam Focus difference is "<<r<<"\n";
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
     std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::milliseconds>(B - A).count()<<" milliseconds\n";
