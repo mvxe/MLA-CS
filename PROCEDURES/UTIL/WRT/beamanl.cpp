@@ -26,6 +26,16 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
     selThresh=new val_selector( 128,"pgBeamAnalysis_selThresh", "Threshold:",0,255,0);
     avgNum=new val_selector( 10,"pgBeamAnalysis_avgNum", "Avg. minimum this many images:",1,1000,0);
 
+    wideFrames=new val_selector( 100,"pgBeamAnalysis_wideFrames", "Number of Frames for Wide Scan: ",10,1000,0);
+    wideRange= new val_selector( 0.5,"pgBeamAnalysis_wideRange", "Scan Range for Wide Scan: ",0.001,1,3,0,{"mm"});
+    accuFrames=new val_selector( 100,"pgBeamAnalysis_accuFrames", "Number of Frames for Accurate Scan: ",10,1000,0);
+    accuRange= new val_selector( 0.05,"pgBeamAnalysis_accuRange", "Scan Range for Accurate Scan: ",0.001,1,3,0,{"mm"});
+    btnSaveNextDebugFocus=new QPushButton("Save Next Debug Intensities");
+    btnSaveNextDebugFocus->setToolTip("Select Folder for Debug. The measured intensities will be saved for the next 'Get Writing Beam Focus'..");
+    connect(btnSaveNextDebugFocus, SIGNAL(released()), this, SLOT(onBtnSaveNextDebugFocus()));
+    extraFocusOffset=new val_selector( 0,"pgBeamAnalysis_extraFocusOffsetnew", "Extra Focus Offset (Laser Beam Foci differece):",-1,1,4);
+    extraFocusOffset->setToolTip("Set this to the value you obtain from calibration: it should be equal to the difference between the reference laser beam focus and the writing laser beam focus.");
+
     method_selector=new twd_selector("Select method:", "Simple", false, false, false);
     methodSimple=new QWidget;
     methodSimpleLayout=new QVBoxLayout;
@@ -38,7 +48,7 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
     method_selector->addWidget(methodEllipsse, "Ellipses");
     method_selector->setIndex(methodIndex);
 
-
+    slayout->addWidget(new QLabel("Get beam center:"));
     slayout->addWidget(new twid(btnReset));
     slayout->addWidget(method_selector);
         methodSimpleLayout->addWidget(selThresh);
@@ -50,6 +60,16 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
     slayout->addWidget(new twid(btnSaveNextDebug));
     slayout->addWidget(extraOffsX);
     slayout->addWidget(extraOffsY);
+
+    slayout->addWidget(new hline);
+    slayout->addWidget(new QLabel("Get beam focus:"));
+    slayout->addWidget(wideFrames);
+    slayout->addWidget(wideRange);
+    slayout->addWidget(accuFrames);
+    slayout->addWidget(accuRange);
+    slayout->addWidget(new twid(btnSaveNextDebugFocus));
+    slayout->addWidget(extraFocusOffset);
+
 //    slayout->addWidget(cameraExposure);
 
     gui_activation=new QWidget;
@@ -58,8 +78,8 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
     btnGetCenter=new QPushButton("Get Writing Beam Center");
     connect(btnGetCenter, SIGNAL(released()), this, SLOT(getWritingBeamCenter()));
     alayout->addWidget(new twid(btnGetCenter));
-    btnGetCenterFocus=new QPushButton("Get Writing Beam Center Focus");
-    connect(btnGetCenterFocus, SIGNAL(released()), this, SLOT(getWritingBeamCenterFocus()));
+    btnGetCenterFocus=new QPushButton("Get Writing Beam Focus");
+    connect(btnGetCenterFocus, SIGNAL(released()), this, SLOT(getWritingBeamFocus()));
     alayout->addWidget(new twid(btnGetCenterFocus));
 }
 pgBeamAnalysis::~pgBeamAnalysis(){
@@ -67,6 +87,10 @@ pgBeamAnalysis::~pgBeamAnalysis(){
 }
 void pgBeamAnalysis::onBtnSaveNextDebug(){
     saveNext=QFileDialog::getExistingDirectory(this, "Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.").toStdString();
+}
+void pgBeamAnalysis::onBtnSaveNextDebugFocus(){
+    saveNextFocus=QFileDialog::getExistingDirectory(this, "Select Folder for Debug. The measured intensities will be saved for the next 'Get Writing Beam Focus'..").toStdString();
+    if(!saveNextFocus.empty()) numSave=2;
 }
 void pgBeamAnalysis::onBtnReset(){
     pgMGUI->move(-_writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000,-_writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000,0,0);
@@ -91,8 +115,10 @@ void pgBeamAnalysis::getWritingBeamCenter(){
     float x,y,r,dx,dy;
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
     getCalibWritingBeam(&r, &dx, &dy);
-    std::cerr<<"X mean: "<<writeBeamCenterOfsX<<", stdDev: "<< dx<<"\n";
-    std::cerr<<"Y mean: "<<writeBeamCenterOfsY<<", stdDev: "<< dy<<"\n";
+//    std::cerr<<"X mean: "<<writeBeamCenterOfsX<<", stdDev: "<< dx<<"\n";
+//    std::cerr<<"Y mean: "<<writeBeamCenterOfsY<<", stdDev: "<< dy<<"\n";
+    std::cerr<<"X: "<<writeBeamCenterOfsX<<"\n";
+    std::cerr<<"Y: "<<writeBeamCenterOfsY<<"\n";
     std::cerr<<"Radius: "<<r<<"\n";
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
     std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
@@ -317,7 +343,7 @@ void pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
 //    double model=i0+a*exp(-(pow(x-x0,2))/2/pow(w,2));
 //    return model-data.second;
 //}
-void pgBeamAnalysis::getCalibWritingBeamRange(float* rMinLoc, int frames, double range, bool flipDir){
+void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, double range, bool flipDir){
     PVTobj* PVTScan=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, util::toString("camera_getCalibWritingBeamRange.txt").c_str());
     exec_ret PVTret;
 
@@ -352,6 +378,7 @@ void pgBeamAnalysis::getCalibWritingBeamRange(float* rMinLoc, int frames, double
     std::vector<uint32_t> commands;
     FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     std::lock_guard<std::mutex>lock(MLP._lock_meas);
+    while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait till all motion is done, else motion and camera will be way out of sync
     go.pXPS->execPVTobj(PVTScan, &PVTret);
     if(turnOnRedLaserAndLEDOff(framequeueDisp)){
         framequeueDisp->setUserFps(0,1);
@@ -392,12 +419,17 @@ void pgBeamAnalysis::getCalibWritingBeamRange(float* rMinLoc, int frames, double
         dataR.at<float>(N)=m.m00;
     }
 
-    std::ofstream wfile(util::toString("temp.dat"));
     cv::GaussianBlur(dataR,dataR,{0,0},10);             //blur it to get 2 smooth gaussian peaks
-    for(int N=0; N!=frames; N++) wfile<<focus+dir*(N-(frames-1)/2)*range/frames<<" "<<dataR.at<float>(N)<<" "<<dataX.at<float>(N)<<" "<<dataY.at<float>(N)<<"\n";
-    wfile.close();
 
-    float firstMinCoord{-9999};
+    if(!saveNextFocus.empty()){
+        std::ofstream wfile(util::toString(saveNextFocus,"/getCalibWritingBeamRange-", 2-numSave,".dat"));
+        for(int N=0; N!=frames; N++) wfile<<focus+dir*(N-(frames-1)/2.)*range/frames<<" "<<dataR.at<float>(N)<<" "<<dataX.at<float>(N)<<" "<<dataY.at<float>(N)<<"\n";
+        wfile.close();
+        numSave--;
+        if(numSave<=0) saveNextFocus.clear();
+    }
+
+    double firstMinCoord{-9999};
     repeat: for(int i=0; i<(frames-1)/2; i++){          //find the negative peak (+- one pixel)
         for(int j=0; j!=2; j++){
             bool breakk{false};
@@ -412,7 +444,7 @@ void pgBeamAnalysis::getCalibWritingBeamRange(float* rMinLoc, int frames, double
         firstMinCoord=0;
         goto repeat;            // try k-1 < k <= k+1 instead
     }
-    *rMinLoc=focus+dir*(firstMinCoord-(frames-1)/2)*range/frames;
+    *rMinLoc=focus+dir*(firstMinCoord-(frames-1)/2.)*range/frames;
 
 // // This commented block contains the gaussian fit method, which doesnt help here as the +-1 pixel error in the method above is equal or smaller to the error introduced by being unable to time the camera trigger with motion start anyway
 //    //get the two maxima
@@ -444,35 +476,17 @@ void pgBeamAnalysis::getCalibWritingBeamRange(float* rMinLoc, int frames, double
     go.pXPS->destroyPVTobj(PVTScan);
 }
 
-void pgBeamAnalysis::getWritingBeamCenterFocus(){
-    float x,y,r;
+void pgBeamAnalysis::getWritingBeamFocus(){
+    double r{-9999};
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
 
-//    std::ofstream wfile(util::toString("temp.dat"));
-
-//    const int pts=20;
-//    const double range=0.5; //so total 2*range
-//    double focus=pgMGUI->FZdifference;
-//    std::cerr<<"Focus is: "<<focus<<" mm\n";
-
-//    for(int i=-pts;i!=pts;i++){
-//        pgMGUI->moveZF(focus+i*range/pts);
-//        std::cerr<<"Focus is: "<<focus+i*range/pts<<" mm\n";
-//        getCalibWritingBeam(&r, &x, &y, false);
-//        wfile<<focus+i*range/pts<<" "<<r<<" "<<x<<" "<<y<<"\n";
-//    }
-//    pgMGUI->moveZF(focus);
-
-//    wfile.close();
-
-    getCalibWritingBeamRange(&r, 101, 0.5);
+    getCalibWritingBeamRange(&r, wideFrames->val, wideRange->val);
     std::cerr<<"it. 1: Red Beam Focus difference is "<<r<<"\n";
-    pgMGUI->moveZF(r);
-    QCoreApplication::processEvents(QEventLoop::AllEvents, 1000);
-    getCalibWritingBeamRange(&r, 101, 0.1);
-    std::cerr<<"it 2a: Red Beam Focus difference is "<<r<<"\n";
-    getCalibWritingBeamRange(&r, 101, 0.1,true);
-    std::cerr<<"it 2b: Red Beam Focus difference is "<<r<<"\n";
+    if(r!=9999) pgMGUI->moveZF(r);
+    getCalibWritingBeamRange(&r, accuFrames->val, accuRange->val);                    //changing the direction does not affect the result
+    std::cerr<<"it 2: Red Beam Focus difference is "<<r<<"\n";
+    if(r!=9999) pgMGUI->moveZF(r-extraFocusOffset->val);
+    std::cerr<<"New Focus (Corrected for Ref/Wr laser diff) "<<r-extraFocusOffset->val<<"\n";
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
     std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::milliseconds>(B - A).count()<<" milliseconds\n";

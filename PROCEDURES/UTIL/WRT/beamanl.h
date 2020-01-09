@@ -17,7 +17,7 @@ public:
     QWidget* gui_settings;
     QWidget* gui_activation;
     void getCalibWritingBeam(float* r, float* dx=nullptr, float* dy=nullptr, bool correct=true);
-    void getCalibWritingBeamRange(float* rMinLoc, int frames, double range, bool flipDir=0);      //flipDir makes the scan to scan from the other direction
+    void getCalibWritingBeamRange(double *rMinLoc, int frames, double range, bool flipDir=0);      //flipDir makes the scan to scan from the other direction
     const float& writeBeamCenterOfsX{_writeBeamCenterOfsX};
     const float& writeBeamCenterOfsY{_writeBeamCenterOfsY};
 private:
@@ -49,6 +49,15 @@ private:
     val_selector* extraOffsY;
 //    val_selector* cameraExposure;
 
+    //  Get beam focus
+    val_selector* wideFrames;
+    val_selector* wideRange;
+    val_selector* accuFrames;
+    val_selector* accuRange;
+    QPushButton* btnSaveNextDebugFocus;
+    val_selector* extraFocusOffset;
+
+
     QVBoxLayout* alayout;
     QPushButton* btnGetCenter;
     QPushButton* btnGetCenterFocus;
@@ -60,13 +69,15 @@ private:
     std::mutex spotLock;    //for multithreading solve
     void solveEllips(cv::Mat& src, int i,std::vector<spot>& spots,int& jobsdone);
     static bool sortSpot(spot i,spot j);
-    std::string saveNext{""};
+    std::string saveNext{""};                           //these arent thread safe, ikr, but unlikely to cause problems
+    std::string saveNextFocus{""}; int numSave;
 
     bool turnOnRedLaserAndLEDOff(FQ* framequeueDisp); //return 0 on sucess
 private Q_SLOTS:
     void getWritingBeamCenter();
-    void getWritingBeamCenterFocus();
+    void getWritingBeamFocus();
     void onBtnSaveNextDebug();
+    void onBtnSaveNextDebugFocus();
     void onBtnReset();
 };
 
