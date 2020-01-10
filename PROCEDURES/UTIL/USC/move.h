@@ -78,7 +78,6 @@ public Q_SLOTS:
     std::vector<dpoint> p4calib;
 
     std::atomic<double> FZdifCur{-9999};
-    bool ignoreNext=false;
 
 private Q_SLOTS:
     void onLockF(bool locked);
