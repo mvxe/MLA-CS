@@ -1,11 +1,23 @@
 #include "GUI/mainwindow.h"
-#include <QApplication>
 #include "includes.h"
 globals go;
 
 globals::globals(){}
 globals::~globals(){}
-void myterminate() {
+
+QApplicationQN::QApplicationQN(int& argc, char** argv):QApplication(argc, argv){}
+bool QApplicationQN::notify(QObject* receiver, QEvent* event) {             // when things throw exceptions in Qt threads, terminate is not called, so we redefine this to show the exeptions
+    bool done=true;
+    try{
+        done=QApplication::notify(receiver, event);
+    }catch(const std::exception& e){
+        std::cerr << "Caught exception (in a Qt thread): \n" << e.what() << "\n";
+        this->quit();
+    }
+    return done;
+}
+
+void myterminate() {                                                        // if an exception is thrown which calls terminate, output the exception here and exit peac
     go.markErrord();
     std::cerr<<">>> Terminate function called!\n";
     std::exception_ptr exc = std::current_exception();
@@ -31,7 +43,7 @@ void globals::startup(int argc, char *argv[]){
     pRPTY=newThread<RPTY>()->obj;
     pCNC=newThread<CNC>()->obj;
 
-    qapp = new QApplication(argc, argv);
+    qapp = new QApplicationQN(argc, argv);
     MainWindow w(qapp);
     w.show();
     try {

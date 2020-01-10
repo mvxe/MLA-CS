@@ -23,6 +23,14 @@ class RPTY;
 class CNC;
 class QApplication;
 
+#include <exception>
+#include <QApplication>
+class QApplicationQN:public QApplication{   //we redefine QApplication to add exception handling for things thrown withing Qt threads
+public:
+    QApplicationQN(int& argc, char** argv);
+    bool notify(QObject* receiver, QEvent* event);
+};
+
 class var_save{
 public:
     var_save(std::string filename);
@@ -106,7 +114,7 @@ private:
     std::list<base_othr*> threads;
     std::mutex tdmx;
     std::thread* cinthr;
-    QApplication* qapp;
+    QApplicationQN* qapp;
 };
 
 /*########## TEMPLATE FUNCTIONS ##########*/
