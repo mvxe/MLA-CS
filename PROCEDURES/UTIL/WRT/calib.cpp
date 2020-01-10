@@ -157,7 +157,8 @@ void pgCalib::onWCF(){
 //        QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
 //    }
 
-    std::mt19937 rnd(std::random_device{}());
+    int didF{0};
+    redoF: std::mt19937 rnd(std::random_device{}());
     std::uniform_real_distribution<>dist(-selWriteCalibFocusRange->val, selWriteCalibFocusRange->val);
     double wrFocusOffs=dist(rnd);
     wrFocusOffs=round(wrFocusOffs*1000)/1000;   //we round it up to 1 nm precision
@@ -168,8 +169,20 @@ void pgCalib::onWCF(){
     QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait a bit for movement to complete and stabilize
     std::cerr<<"new focus is: "<<focus+wrFocusOffs/1000<<" mm\n";
 
-    float focusRad;
-    pgBeAn->getCalibWritingBeam(&focusRad);      // recheck writing beam focus and centering
+    float focusRad; // in reality this is not a radius, but weight : all pixels intensities integrated
+    if(pgBeAn->getCalibWritingBeam(&focusRad)){     // recenter writing beam and get radius
+        std::cerr<<"Failed to analyse the read beam, retrying...\n";
+        if(pgBeAn->getCalibWritingBeam(&focusRad)){ // retry if failed
+            std::cerr<<"Cannot analyse the read beam at this focus, trying another...\n";
+            pgMGUI->moveZF(focus);
+            didF++;
+            if(didF<10) goto redoF;
+            else{
+                std::cerr<<"Failed"<<didF<<"times. Aborting.\n";
+                return;
+            }
+        }
+    }
 
     redoA:  pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done

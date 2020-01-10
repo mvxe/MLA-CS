@@ -16,7 +16,7 @@ public:
     ~pgBeamAnalysis();
     QWidget* gui_settings;
     QWidget* gui_activation;
-    void getCalibWritingBeam(float* r, float* dx=nullptr, float* dy=nullptr, bool correct=true);
+    bool getCalibWritingBeam(float* r, float* dx=nullptr, float* dy=nullptr, bool correct=true);   //return true on failure (also wont correct if faliure)
     void getCalibWritingBeamRange(double *rMinLoc, int frames, double range, bool flipDir=0);      //flipDir makes the scan to scan from the other direction
     const float& writeBeamCenterOfsX{_writeBeamCenterOfsX};
     const float& writeBeamCenterOfsY{_writeBeamCenterOfsY};

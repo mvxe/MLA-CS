@@ -165,10 +165,11 @@ bool pgBeamAnalysis::turnOnRedLaserAndLEDOff(FQ* framequeueDisp){
     return false;
 }
 
-void pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool correct){
+bool pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool correct){
 //    double tmpExposure=go.pGCAM->iuScope->get_dbl("ExposureTime");
 //    go.pGCAM->iuScope->set("ExposureTime",cameraExposure->val);
 //    cameraExposure->setValue(go.pGCAM->iuScope->get_dbl("ExposureTime"));
+    bool failed{true};
 
     std::vector<uint32_t> commands;
     FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
@@ -179,14 +180,14 @@ void pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
         go.pRPTY->A2F_write(1,commands.data(),commands.size());
         go.pXPS->setGPIO(XPS::iuScopeLED, true);
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
-        if(!correct){
-            *r=-1;
-            if(dx!=nullptr) *dx=0;
-            if(dy!=nullptr) *dy=0;
-        }
+        *r=-1;
+        if(dx!=nullptr) *dx=0;
+        if(dy!=nullptr) *dy=0;
+
         std::string text=util::toString("pgBeamAnalysis::getCalibWritingBeam failed.");
         QMessageBox::critical(this, "Error", QString::fromStdString(text));
         std::cerr<<text;
+        return failed;
     }
 
     if(method_selector->index==0) while(framequeueDisp->getFullNumber()<avgNum->val) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
@@ -272,8 +273,8 @@ void pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
         mean[0]-=src.cols/2;
         mean[1]-=src.rows/2;
         *r=ofs+maxp.x;
-        if(dx!=nullptr) *dx=stdDev[0];
-        if(dy!=nullptr) *dy=stdDev[1];
+//        if(dx!=nullptr) *dx=stdDev[0];
+//        if(dy!=nullptr) *dy=stdDev[1];
         if(!saveNext.empty()){
             std::ofstream wfile(util::toString(saveNext,"/","rad.dat"));
             for(int i=0;i!=pol1D.cols;i++)
@@ -287,25 +288,27 @@ void pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
         //    std::cerr<<"Second operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(C - B).count()<<" microseconds\n";
         //    std::cerr<<"Third operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(D - C).count()<<" microseconds\n";
 
-        if(correct){
+        failed=!(*r>0 && mean[0]>-src.cols/2 && mean[0]<src.cols/2 && mean[1]>-src.rows/2 && mean[1]<src.rows/2);   //coparisons with NAN are allways false!
+        if(correct && !failed){
             pgMGUI->move((mean[0]+extraOffsX->val-_writeBeamCenterOfsX)*pgMGUI->getNmPPx()/1000000,(mean[1]+extraOffsY->val-_writeBeamCenterOfsY)*pgMGUI->getNmPPx()/1000000,0,0);        //correct position
             _writeBeamCenterOfsX=mean[0]+extraOffsX->val;
             _writeBeamCenterOfsY=mean[1]+extraOffsY->val;
-        }else{
-            if(dx!=nullptr) *dx=mean[0]+extraOffsX->val;
-            if(dy!=nullptr) *dy=mean[1]+extraOffsY->val;
         }
+        if(dx!=nullptr) *dx=mean[0]+extraOffsX->val;
+        if(dy!=nullptr) *dy=mean[1]+extraOffsY->val;
 
 
     }else if(method_selector->index==0){        //Simple
         double avgOffsX{0}, avgOffsY{0}, avgCen{0};
         int N=0;
 
+        int cols{0},rows{0};
         while(framequeueDisp->getUserMat()!=nullptr){
             cv::Mat src;
             cv::threshold(*framequeueDisp->getUserMat(), src, selThresh->val, 255, cv::THRESH_TOZERO);   //we first set all that are below threshold to 0
             cv::Moments m=cv::moments(src,true);
 
+            if(cols==0){cols=src.cols; rows=src.rows;}
             framequeueDisp->freeUserMat();
             N++;
             avgOffsX+=m.m10/m.m00-src.cols/2;
@@ -318,18 +321,19 @@ void pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
 //        std::cerr<<"Num "<<N<< "\n";    //area
 //        std::cerr<< offsX<<" "<<offsY<< "\n";   //X,Y
 //        std::cerr<<avgCen/N<< "\n";    //area
-        if(correct){
+        failed=!(*r>0 && offsX>-cols/2 && offsX<cols/2 && offsY>-rows/2 && offsY<rows/2);   //coparisons with NAN are allways false!
+        if(correct && !failed){
             pgMGUI->move((offsX+extraOffsX->val-_writeBeamCenterOfsX)*pgMGUI->getNmPPx()/1000000,(offsY+extraOffsY->val-_writeBeamCenterOfsY)*pgMGUI->getNmPPx()/1000000,0,0);
             _writeBeamCenterOfsX=offsX+extraOffsX->val;
             _writeBeamCenterOfsY=offsY+extraOffsY->val;
-        }else{
-            if(dx!=nullptr) *dx=offsX+extraOffsX->val;
-            if(dy!=nullptr) *dy=offsY+extraOffsY->val;
         }
+        if(dx!=nullptr) *dx=offsX+extraOffsX->val;
+        if(dy!=nullptr) *dy=offsY+extraOffsY->val;
 
     }
 
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
+    return failed;
 }
 
 
