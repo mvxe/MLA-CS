@@ -99,7 +99,8 @@ HEADERS += \
     PROCEDURES/UTIL/WRT/bounds.h \
     PROCEDURES/UTIL/WRT/deptheval.h \
     PROCEDURES/UTIL/WRT/calib.h \
-    PROCEDURES/UTIL/WRT/beamanl.h
+    PROCEDURES/UTIL/WRT/beamanl.h \
+    GUI/TAB_CAMERA/gnuplot.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
@@ -145,7 +146,8 @@ SOURCES += \
     PROCEDURES/UTIL/WRT/bounds.cpp \
     PROCEDURES/UTIL/WRT/deptheval.cpp \
     PROCEDURES/UTIL/WRT/calib.cpp \
-    PROCEDURES/UTIL/WRT/beamanl.cpp
+    PROCEDURES/UTIL/WRT/beamanl.cpp \
+    GUI/TAB_CAMERA/gnuplot.cpp
 
 
 unix {

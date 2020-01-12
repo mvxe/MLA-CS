@@ -4,6 +4,7 @@
 #include "colormap.h"
 #include "other_settings.h"
 #include "UTIL/measurement.h"
+#include "gnuplot.h"
 class iImageDisplay;
 
     // These are from the old camera tab; TODO remove when replaced!
@@ -52,6 +53,7 @@ private:
     varShareClient<pgScanGUI::scanRes>* scanRes;
 
     colorMap* cMap;
+    tabCamGnuplot* tCG;
     pgScanGUI* pgSGUI;      unsigned index_pgSGUI;
     pgMoveGUI* pgMGUI;
     pgTiltGUI* pgTGUI;
@@ -84,13 +86,15 @@ private:
     pgBeamAnalysis* pgBeAn;
 
     QMenu* clickMenu;
-    QMenu* clickMenuDepth;
+    QMenu* clickMenuDepthRight;
+    QMenu* clickMenuDepthLeft;
 
     int selStartX, selStartY;
     int selCurX, selCurY;
     int selEndX, selEndY;
-    bool selectingDRB{false};
-    bool lastSelectingDRB{false};
+    bool selectingFlag{false};
+    bool lastSelectingFlag{false};
+    bool selectingFlagIsLine{false};
     int dispDepthMatRows;
 
     FQ* framequeueDisp;
@@ -111,6 +115,9 @@ private Q_SLOTS:
     void onLoadDepthMapRaw();
     void onRotateDepthMap();
     void onDiff2Raw();
+    void onPlotLine();
+    void onSaveLine();
+    void onPlotRect();
 };
 
 

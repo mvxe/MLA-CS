@@ -36,6 +36,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgPRGUI=new pgPosRepGUI;
     cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
     cMap=new colorMap(cm_sel, exclColor, pgSGUI, pgTGUI);
+    tCG=new tabCamGnuplot;
     pgSGUI->pgMGUI=pgMGUI;
     camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
 
@@ -79,6 +80,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageSettings->addWidget(pgDpEv,"Depth Eval");
         pageSettings->addWidget(pgCal->gui_settings,"Write Calibration");
         pageSettings->addWidget(pgBeAn->gui_settings,"Beam Centering");
+        pageSettings->addWidget(tCG,"Gnuplot");
 
     TWCtrl->addTab(pageMotion,"Motion");
     TWCtrl->addTab(pageWriting,"Writing");
@@ -108,11 +110,16 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenu->addAction("Save int. and fft. at this pixel on next measurement", this, SLOT(onSavePixData()));
     clickMenu->addAction("Save image to file", this, SLOT(onSaveCameraPicture()));
 
-    clickMenuDepth=new QMenu;
-    clickMenuDepth->addAction("Save DepthMap (wtih border, scalebar and colorbar) to file", this, SLOT(onSaveDepthMap()));
-    clickMenuDepth->addAction("Save DepthMap (raw, float) to file", this, SLOT(onSaveDepthMapRaw()));
-    clickMenuDepth->addAction("Save DepthMap (txt, float) to file", this, SLOT(onSaveDepthMapTxt()));
-    clickMenuDepth->addAction("Rotate DepthMap", this, SLOT(onRotateDepthMap()));
+    clickMenuDepthRight=new QMenu;
+    clickMenuDepthRight->addAction("Save DepthMap (wtih border, scalebar and colorbar) to file", this, SLOT(onSaveDepthMap()));
+    clickMenuDepthRight->addAction("Save DepthMap (raw, float) to file", this, SLOT(onSaveDepthMapRaw()));
+    clickMenuDepthRight->addAction("Save DepthMap (txt, float) to file", this, SLOT(onSaveDepthMapTxt()));
+    clickMenuDepthRight->addAction("Plot Rect (Gnuplot)", this, SLOT(onPlotRect()));
+    clickMenuDepthRight->addAction("Rotate DepthMap", this, SLOT(onRotateDepthMap()));
+
+    clickMenuDepthLeft=new QMenu;
+    clickMenuDepthLeft->addAction("Plot Line (Gnuplot)", this, SLOT(onPlotLine()));
+    clickMenuDepthLeft->addAction("Save Line (.txt)", this, SLOT(onSaveLine()));
 }
 
 tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
@@ -158,7 +165,7 @@ void tab_camera::work_fun(){
         }
     }else if(selDisp->index==1 || selDisp->index==2){   // Depth map or SD
         LDisplay->isDepth=true;
-        if(pgDpEv->debugChanged || scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed || selectingDRB || lastSelectingDRB || loadedScanChanged){
+        if(pgDpEv->debugChanged || scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed || selectingFlag || lastSelectingFlag || loadedScanChanged){
             const pgScanGUI::scanRes* res;
             if(scanRes->changed()) loadedOnDisplay=false;
             if(loadedOnDisplay) res=&loadedScan;
@@ -181,7 +188,11 @@ void tab_camera::work_fun(){
                 }
                 dispDepthMatRows=res->depth.rows;
 
-                if(selectingDRB) cv::rectangle(display, {selStartX+1,selStartY+(display.rows-res->depth.rows)/2},{selCurX+1,selCurY+(display.rows-res->depth.rows)/2}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, (abs(selCurX-selStartX)>=50 && abs(selCurY-selStartY)>=50)?1:-1);
+                if(selectingFlag){
+                    if(selectingFlagIsLine) cv::line(display, {selStartX+1,selStartY+(display.rows-res->depth.rows)/2},{selCurX+1,selCurY+(display.rows-res->depth.rows)/2}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, 1, cv::LINE_AA);
+                    else cv::rectangle(display, {selStartX+1,selStartY+(display.rows-res->depth.rows)/2},{selCurX+1,selCurY+(display.rows-res->depth.rows)/2}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, 1);
+                }
+
                 LDisplay->setPixmap(QPixmap::fromImage(QImage(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888)));
                 if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0 || res->avgNum>1){
                     std::string text;
@@ -200,7 +211,7 @@ void tab_camera::work_fun(){
     }
     oldIndex=selDisp->index;
     if(onDisplay!=nullptr) framequeueDisp->freeUserMat();
-    lastSelectingDRB=selectingDRB;
+    lastSelectingFlag=selectingFlag;
     exclColorChanged=false;
     loadedScanChanged=false;
 
@@ -246,6 +257,12 @@ void iImageDisplay::mouseMoveEvent(QMouseEvent *event){
     if(isDepth){
         parent->selCurX-=1;                                 //correct for drawn margins on image
         parent->selCurY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
+        if(parent->selectingFlag && parent->selectingFlagIsLine){
+            if(event->modifiers()&Qt::ControlModifier){  //ctrl is held
+                if(abs(parent->selCurX-parent->selStartX)>abs(parent->selCurY-parent->selStartY)) parent->selCurY=parent->selStartY;
+                else parent->selCurX=parent->selStartX;
+            }
+        }
     }
     else{}
 }
@@ -261,7 +278,11 @@ void iImageDisplay::mousePressEvent(QMouseEvent *event){
         parent->selStartY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
 
         if(event->button()==Qt::RightButton){
-            parent->selectingDRB=true;
+            parent->selectingFlag=true;
+            parent->selectingFlagIsLine=false;
+        }else if(event->button()==Qt::LeftButton){
+            parent->selectingFlag=true;
+            parent->selectingFlagIsLine=true;
         }
     }
     else{}
@@ -272,15 +293,22 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     parent->selEndX=xcoord;
     parent->selEndY=ycoord;
 
-    if(!checkIfInBounds(parent->selStartX, parent->selStartY) || !checkIfInBounds(parent->selEndX, parent->selEndY)) {parent->selectingDRB=false; return;}
+    if(!checkIfInBounds(parent->selStartX, parent->selStartY) || !checkIfInBounds(parent->selEndX, parent->selEndY)) {parent->selectingFlag=false; return;}
 
     if(isDepth){
         parent->selEndX-=1;                                 //correct for drawn margins on image
         parent->selEndY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
 
         if(event->button()==Qt::RightButton){
-            parent->clickMenuDepth->popup(QCursor::pos());
-            parent->selectingDRB=false;
+            parent->clickMenuDepthRight->popup(QCursor::pos());
+            parent->selectingFlag=false;
+        }else if(event->button()==Qt::LeftButton){
+            if(event->modifiers()&Qt::ControlModifier){  //ctrl is held
+                if(abs(parent->selEndX-parent->selStartX)>abs(parent->selEndY-parent->selStartY)) parent->selEndY=parent->selStartY;
+                else parent->selEndX=parent->selStartX;
+            }
+            parent->clickMenuDepthLeft->popup(QCursor::pos());
+            parent->selectingFlag=false;
         }
     }
     else{
@@ -354,7 +382,7 @@ void tab_camera::onSaveDepthMap(void){
         int height=abs(selEndY-selStartY);
         if(selDisp->index==1 || res->depthSS.empty()){
             pgHistGUI->updateImg(res, &min, &max);
-            if(width>=50 && height>=50){
+            if(width>1 && height>1){
                 cv::Mat temp0(res->depth,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cMap->colormappize(&temp0, &display, &temp1, min, max, res->XYnmppx, pgHistGUI->ExclOOR, true);
@@ -366,7 +394,7 @@ void tab_camera::onSaveDepthMap(void){
             cv::sqrt(display,display);
             cv::minMaxLoc(display, &_min, &_max, &ignore, &ignore, res->maskN);
             pgHistGUI->updateImg(res, &min, &max, 0, _max, &display);
-            if(width>=50 && height>=50){
+            if(width>1 && height>1){
                 cv::Mat temp0(display,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cMap->colormappize(&temp0, &display, &temp1, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, true, "SD[nm]");
@@ -384,7 +412,7 @@ void tab_camera::onSaveDepthMapRaw(bool txt){
     if(loadedOnDisplay) res=&loadedScan;
     else res=scanRes->get();
     if(res==nullptr) return;
-    if(width>=50 && height>=50){
+    if(width>1 && height>1){
            if(txt)  pgScanGUI::saveScanTxt(res, cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
            else     pgScanGUI::saveScan(res, cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
     }else{
@@ -430,4 +458,27 @@ void tab_camera::onRotateDepthMap(){
     cv::minMaxLoc(loadedScan.depth, &loadedScan.min, &loadedScan.max, &ignore, &ignore, loadedScan.maskN);
     loadedScanChanged=true;
     loadedOnDisplay=true;
+}
+
+void tab_camera::onPlotLine(){
+    const pgScanGUI::scanRes* res;
+    if(loadedOnDisplay) res=&loadedScan;
+    else res=scanRes->get();
+    tCG->plotLine(res,cv::Point(selStartX,selStartY),cv::Point(selEndX,selEndY),selDisp->index==2);
+}
+void tab_camera::onSaveLine(){
+    const pgScanGUI::scanRes* res;
+    if(loadedOnDisplay) res=&loadedScan;
+    else res=scanRes->get();
+    tCG->saveLine(res,cv::Point(selStartX,selStartY),cv::Point(selEndX,selEndY),selDisp->index==2);
+}
+
+void tab_camera::onPlotRect(){
+    int width=abs(selEndX-selStartX);
+    int height=abs(selEndY-selStartY);
+    const pgScanGUI::scanRes* res;
+    if(loadedOnDisplay) res=&loadedScan;
+    else res=scanRes->get();
+    if(res==nullptr) return;
+    tCG->plotRoi(res, cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height),selDisp->index==2);
 }
