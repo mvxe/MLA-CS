@@ -13,10 +13,12 @@
 #include <fstream>
 #include <ext/stdio_filebuf.h>
 #include <iostream>
+#include <unistd.h>
+#include <signal.h>
 
 class _pipe{    //do not use this, use the class 'pipe'
 public:
-    _pipe(std::string process);
+    template<typename... Args> _pipe(const char *path, const char *arg, Args... args);
     ~_pipe();
     std::ostream* _POUT;      //for sending data to the program
     std::istream* _PIN;       //for retreiving what the program sends via the normal stream
@@ -28,13 +30,14 @@ public:
     __gnu_cxx::stdio_filebuf<char>* fbERR;
 };
 
-class pipe : private _pipe{     //Use this, starts a process with the specified command, and creates ostream and isteram objects. Destroying the object also kills the process, if its not dead yet.
+
+class pipe : private _pipe{         //Use this, starts a process with the specified command, and creates ostream and isteram objects. Destroying the object also kills the process, if its not dead yet.
 public:
-    pipe(std::string process) : _pipe(process){}
+    using _pipe::_pipe;             //inherits constructor, see _pipe
     ~pipe(){}
-    std::ostream& POUT{*_POUT};      //for sending data to the program
-    std::istream& PIN {*_PIN} ;      //for retreiving what the program sends via the normal stream
-    std::istream& PERR{*_PERR};      //for retreiving what the program sends via the error stream
+    std::ostream& POUT{*_POUT};     //for sending data to the program
+    std::istream& PIN {*_PIN} ;     //for retreiving what the program sends via the normal stream
+    std::istream& PERR{*_PERR};     //for retreiving what the program sends via the error stream
 
     const pid_t& PID{_PID};
 };
@@ -48,7 +51,7 @@ public:
 
 class gnuplot : public pipe{
 public:
-    gnuplot() : pipe("/usr/bin/gnuplot"){}
+    gnuplot() : pipe("/usr/bin/gnuplot", "gnuplot", "-p", (char*)0){}
     ~gnuplot(){
         POUT<<"\nexit\n";
         POUT.flush();
@@ -57,7 +60,7 @@ public:
 
 
 
-
+#include "pipe_template.h"
 
 #endif // PIPE_H
 

@@ -59,7 +59,7 @@ tabCamGnuplot::tabCamGnuplot(){
 void tabCamGnuplot::plotLine(const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, bool useSD){
     if(scan==nullptr) return;
     gnuplot a;
-    a.POUT<<util::toString( "set terminal wxt enhanced **persist**\n",
+    a.POUT<<util::toString( "set terminal wxt enhanced\n",
                             "set tics font \"Helvetica,",ticsFontSize->val,"\"\n",
                             "set xlabel font \"Helvetica,",xyLabelFontSize->val,"\"\n",
                             "set ylabel font \"Helvetica,",xyLabelFontSize->val,"\"\n",
@@ -82,7 +82,7 @@ void tabCamGnuplot::saveLine(const pgScanGUI::scanRes* scan, const cv::Point& st
 void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi, bool useSD){
     if(scan==nullptr) return;
     gnuplot a;
-    a.POUT<<util::toString( "set terminal wxt enhanced **persist**\n",
+    a.POUT<<util::toString( "set terminal wxt enhanced\n",
                             "set tics font \"Helvetica,",d3ticsFontSize->val,"\"\n",
                             "set xlabel font \"Helvetica,",d3xyzLabelFontSize->val,"\"\n",
                             "set ylabel font \"Helvetica,",d3xyzLabelFontSize->val,"\"\n",
@@ -113,7 +113,7 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
         }
         a.POUT<<"\n";
     }
-    a.POUT<<"e\n";
+    a.POUT<<"e\ne\n";
     a.POUT.flush();
 }
 

@@ -100,7 +100,8 @@ HEADERS += \
     PROCEDURES/UTIL/WRT/deptheval.h \
     PROCEDURES/UTIL/WRT/calib.h \
     PROCEDURES/UTIL/WRT/beamanl.h \
-    GUI/TAB_CAMERA/gnuplot.h
+    GUI/TAB_CAMERA/gnuplot.h \
+    UTIL/pipe_template.h
 
 SOURCES += \
     DEV/XPS/xps.cpp \
