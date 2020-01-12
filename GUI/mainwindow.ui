@@ -1767,14 +1767,6 @@ and intensity in ms)</string>
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tab_dis">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <attribute name="title">
-        <string>Display</string>
-       </attribute>
-      </widget>
       <widget class="QWidget" name="tab_settings">
        <attribute name="title">
         <string>Settings</string>

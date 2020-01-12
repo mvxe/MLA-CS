@@ -7,7 +7,6 @@
 #include "GUI/TAB_DEVICES/tab_devices.h"
 #include "GUI/TAB_SETTINGS/tab_settings.h"
 #include "GUI/TAB_POSITIONERS/tab_positioners.h"
-#include "GUI/tab_temp_plot.h"
 #include "GUI/tab_monitor.h"
 class FQ;
 
@@ -158,7 +157,6 @@ private:
     double a{0},b{0}; //TODO remove this dirty fix
 
     tab_devices* tabDev;
-    tab_temp_plot* tabPlot;
     tab_monitor* tabMon;
     tab_camera* tabCam;
     int donth=0;

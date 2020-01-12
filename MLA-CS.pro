@@ -77,7 +77,6 @@ HEADERS += \
     DEV/GCAM/frame_queues.h \
     DEV/GCAM/gcam.h \
     UTIL/pipe.h \
-    GUI/tab_temp_plot.h \
     DEV/CNC/cnc.h \
     DEV/CNC/cnc_template.h \
     PROCEDURES/UTIL/profile_beam.h \
@@ -128,7 +127,6 @@ SOURCES += \
     DEV/GCAM/frame_queues.cpp \
     DEV/GCAM/gcam.cpp \
     UTIL/pipe.cpp \
-    GUI/tab_temp_plot.cpp \
     DEV/CNC/cnc.cpp \
     PROCEDURES/UTIL/profile_beam.cpp \
     GUI/tab_monitor.cpp \

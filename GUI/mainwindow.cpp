@@ -42,11 +42,9 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     ui->focusbtn->pmw=this;
 
     tabDev=new tab_devices(ui->tab_dev);
-    tabPlot=new tab_temp_plot(ui->tab_dis);
     tabMon=new tab_monitor(ui->tab_rpty_monitor);
     tabCam=new tab_camera(ui->tab_camera);
 
-    tabPlot->pmw=this;
     tabMon->pmw=this;
 }
 
@@ -55,7 +53,6 @@ MainWindow::~MainWindow(){
     delete onDisplay;
     if(!cleanedTabs){
         delete tabDev;
-        delete tabPlot;
         delete tabMon;
         delete tabCam;
     }
@@ -64,7 +61,6 @@ MainWindow::~MainWindow(){
 void MainWindow::program_exit(){
     timer->stop();
     delete tabDev;
-    delete tabPlot;
     delete tabMon;
     delete tabCam;
     cleanedTabs=true;
