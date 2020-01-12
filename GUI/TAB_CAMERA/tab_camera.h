@@ -118,6 +118,7 @@ private Q_SLOTS:
     void onPlotLine();
     void onSaveLine();
     void onPlotRect();
+    void on2DFFT();
 };
 
 
