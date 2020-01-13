@@ -373,6 +373,21 @@ twid::twid(QWidget* widget, bool setmargin): twid(setmargin){
     addWidget(widget, true);
 }
 
+// VERTICAL LAYOUT WIDGET FOR CONVENIENCE
+
+vtwid::vtwid(bool setmargin){
+    layout=new QVBoxLayout;
+    this->setLayout(layout);
+    if(setmargin) layout->setMargin(0);
+    layout->addStretch(0);
+}
+void vtwid::addWidget(QWidget* widget, bool front){
+    layout->insertWidget(front?0:(layout->count()-1), widget);
+}
+vtwid::vtwid(QWidget* widget, bool setmargin): vtwid(setmargin){
+    addWidget(widget, true);
+}
+
 // HIDDEN CONTAINER
 
 void hidCon::hhidCon(){

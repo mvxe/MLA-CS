@@ -9,6 +9,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <dlib/optimization.h>
+#include <algorithm>
+#include <random>
 
 pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn): pgSGUI(pgSGUI), pgBGUI(pgBGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgDpEv(pgDpEv), pgBeAn(pgBeAn){
     gui_activation=new QWidget;
@@ -31,42 +33,75 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     btnWriteCalibFocus->setEnabled(false);
     connect(btnWriteCalibFocus, SIGNAL(released()), this, SLOT(onWCF()));
     btnWriteCalibFocus->setCheckable(true);
-    cbContWriteCalibFocus=new QCheckBox;
-    cbContWriteCalibFocus->setText("Repeating scan");
-    cbContWriteCalibFocus->setChecked(true);
-    connect(cbContWriteCalibFocus, SIGNAL(toggled(bool)), this, SLOT(onWCFCont(bool)));
-    alayout->addWidget(new twid(btnWriteCalibFocus, cbContWriteCalibFocus));
+    alayout->addWidget(new twid(btnWriteCalibFocus));
 
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
-    slayout->addWidget(new QLabel("Write Focus Calibration Measurements"));
-    selWriteCalibFocusDoNMeas=new val_selector(100, "pgCalib_selWriteCalibFocusDoNMeas", "Do this many measurements: ", 1, 100000, 0);
-    slayout->addWidget(selWriteCalibFocusDoNMeas);
-    selWriteCalibFocusReFocusNth=new val_selector(5, "pgCalib_selWriteCalibFocusReFocusNth", "Refocus every this many measurements: ", 0, 1000, 0);
-    selWriteCalibFocusReFocusNth->setToolTip("Set 0 to disable refocusing.");
-    slayout->addWidget(selWriteCalibFocusReFocusNth);
-    selWriteCalibFocusRadDil=new val_selector(1, "pgCalib_selWriteCalibFocusRadDil", "Exclusion Dilation / save ROI Radius: ", 0, 100, 2, 0, {"um"});
-    selWriteCalibFocusRadDil->setToolTip("This should be >3x your beam spot size...");
-    slayout->addWidget(selWriteCalibFocusRadDil);
-    selWriteCalibFocusRadSpr=new val_selector(1, "pgCalib_selWriteCalibFocusRadSpr", "Random Selection Radius: ", 0, 100, 2, 0, {"um"});
-    slayout->addWidget(selWriteCalibFocusRadSpr);
-    selWriteCalibFocusBlur=new val_selector(2, "pgCalib_selWriteCalibFocusBlur", "Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
-    slayout->addWidget(selWriteCalibFocusBlur);
-    selWriteCalibFocusThresh=new val_selector(0.2, "pgCalib_selWriteCalibFocusThresh", "2nd Derivative Exclusion Threshold: ", 0, 1, 4);
-    selWriteCalibFocusThresh->setToolTip("Try out values in Depth Eval.");
-    slayout->addWidget(selWriteCalibFocusThresh);
-    selWriteCalibFocusRange=new val_selector(0, "pgCalib_selWriteCalibFocusRange", "Measurement range around focus: ", 0, 1000, 3, 0, {"um"});
-    selWriteCalibFocusRange->setToolTip("Each measurement will be done at a random write beam focus around the starting focus\u00B1 this parameter.");
-    slayout->addWidget(selWriteCalibFocusRange);
-//    selWriteCalibFocusMoveOOTW=new checkbox_save(false,"pgCalib_selWriteCalibFocusMoveOOTW","Take direct picture of the beam before each measurement.");
-//    slayout->addWidget(selWriteCalibFocusMoveOOTW);
-//    selWriteCalibFocusMoveOOTWDis=new val_selector(0, "pgCalib_selWriteCalibFocusMoveOOTWDis", "Move X this much to get out of the way: ", -1000, 1000, 3, 0, {"mm"});
-//    slayout->addWidget(selWriteCalibFocusMoveOOTWDis);
-    selWriteCalibFocusPulseIntensity=new val_selector(1000, "pgCalib_selWriteCalibFocusPulseIntensity", "Pulse Intensity: ", 0, 8192, 0);
-    slayout->addWidget(selWriteCalibFocusPulseIntensity);
-    selWriteCalibFocusPulseDuration=new val_selector(10, "pgCalib_selWriteCalibFocusPulseDuration", "Pulse Duration: ", 0.008, 1000000, 3, 0, {"us"});
-    slayout->addWidget(selWriteCalibFocusPulseDuration);
+
+    calibMethod=new twds_selector("pgCalib_calibMethod",0,"Select method:", "Find Nearest", false, false, false);
+    calibMethodFindNearest=new vtwid;
+        calibMethodFindNearest->addWidget(new QLabel("Write Focus Calibration Measurements"));
+        selWriteCalibFocusDoNMeas=new val_selector(100, "pgCalib_selWriteCalibFocusDoNMeas", "Do this many measurements: ", 1, 100000, 0);
+        calibMethodFindNearest->addWidget(selWriteCalibFocusDoNMeas);
+        selWriteCalibFocusReFocusNth=new val_selector(5, "pgCalib_selWriteCalibFocusReFocusNth", "Refocus every this many measurements: ", 0, 1000, 0);
+        selWriteCalibFocusReFocusNth->setToolTip("Set 0 to disable refocusing.");
+        calibMethodFindNearest->addWidget(selWriteCalibFocusReFocusNth);
+        selWriteCalibFocusRadDil=new val_selector(1, "pgCalib_selWriteCalibFocusRadDil", "Exclusion Dilation / save ROI Radius: ", 0, 100, 2, 0, {"um"});
+        selWriteCalibFocusRadDil->setToolTip("This should be >3x your beam spot size...");
+        calibMethodFindNearest->addWidget(selWriteCalibFocusRadDil);
+        selWriteCalibFocusRadSpr=new val_selector(1, "pgCalib_selWriteCalibFocusRadSpr", "Random Selection Radius: ", 0, 100, 2, 0, {"um"});
+        calibMethodFindNearest->addWidget(selWriteCalibFocusRadSpr);
+        selWriteCalibFocusBlur=new val_selector(2, "pgCalib_selWriteCalibFocusBlur", "Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
+        calibMethodFindNearest->addWidget(selWriteCalibFocusBlur);
+        selWriteCalibFocusThresh=new val_selector(0.2, "pgCalib_selWriteCalibFocusThresh", "2nd Derivative Exclusion Threshold: ", 0, 1, 4);
+        selWriteCalibFocusThresh->setToolTip("Try out values in Depth Eval.");
+        calibMethodFindNearest->addWidget(selWriteCalibFocusThresh);
+        selWriteCalibFocusRange=new val_selector(0, "pgCalib_selWriteCalibFocusRange", "Measurement range around focus: ", 0, 1000, 3, 0, {"um"});
+        selWriteCalibFocusRange->setToolTip("Each measurement will be done at a random write beam focus around the starting focus\u00B1 this parameter.");
+        calibMethodFindNearest->addWidget(selWriteCalibFocusRange);
+    //    selWriteCalibFocusMoveOOTW=new checkbox_save(false,"pgCalib_selWriteCalibFocusMoveOOTW","Take direct picture of the beam before each measurement.");
+    //    calibMethodFindNearestLayout->addWidget(selWriteCalibFocusMoveOOTW);
+    //    selWriteCalibFocusMoveOOTWDis=new val_selector(0, "pgCalib_selWriteCalibFocusMoveOOTWDis", "Move X this much to get out of the way: ", -1000, 1000, 3, 0, {"mm"});
+    //    calibMethodFindNearestLayout->addWidget(selWriteCalibFocusMoveOOTWDis);
+        selWriteCalibFocusPulseIntensity=new val_selector(1000, "pgCalib_selWriteCalibFocusPulseIntensity", "Pulse Intensity: ", 0, 8192, 0);
+        calibMethodFindNearest->addWidget(selWriteCalibFocusPulseIntensity);
+        selWriteCalibFocusPulseDuration=new val_selector(10, "pgCalib_selWriteCalibFocusPulseDuration", "Pulse Duration: ", 0.008, 1000000, 3, 0, {"us"});
+        calibMethodFindNearest->addWidget(selWriteCalibFocusPulseDuration);
+    calibMethod->addWidget(calibMethodFindNearest,"Find Nearest");
+    calibMethodArray=new vtwid;
+        selArrayXsize=new val_selector(10, "pgCalib_selArrayXsize", "Array Size X", 1, 1000, 0);
+        calibMethodArray->addWidget(selArrayXsize);
+        selArrayYsize=new val_selector(10, "pgCalib_selArrayYsize", "Array Size Y", 1, 1000, 0);
+        calibMethodArray->addWidget(selArrayYsize);
+        selArraySpacing=new val_selector(5, "pgCalib_selArraySpacing", "Array Spacing", 0.001, 100, 3, 0, {"um"});
+        calibMethodArray->addWidget(selArraySpacing);
+        selArrayType=new smp_selector("pgCalib_selArrayType", "Variable Parameters (X-Y): ", 0, {"Intensity","Duration","Focus","Intensity-Duration","Intensity-Focus","Duration-Focus"});
+        calibMethodArray->addWidget(selArrayType);
+        calibMethodArray->addWidget(new QLabel("The Variable Parameters Will be Within the Specified Range.\nIf a Parameter is not Variable, it Will be Equal to Val A!"));
+        selArrayIntA=new val_selector(1000, "pgCalib_selArrayIntA", "Intensity Value A", 1, 8192, 0);
+        calibMethodArray->addWidget(selArrayIntA);
+        selArrayIntB=new val_selector(1000, "pgCalib_selArrayIntB", "Intensity Value B", 1, 8192, 0);
+        calibMethodArray->addWidget(selArrayIntB);
+        selArrayDurA=new val_selector(1, "pgCalib_selArrayDurA", "Duration Value A", 0.001, 1000, 3, 0, {"ms"});
+        calibMethodArray->addWidget(selArrayDurA);
+        selArrayDurB=new val_selector(1, "pgCalib_selArrayDurB", "Duration Value B", 0.001, 1000, 3, 0, {"ms"});
+        calibMethodArray->addWidget(selArrayDurB);
+        selArrayFocA=new val_selector(-1, "selArrayFocA", "Focus Value A", -1000, 1000, 3, 0, {"um"});
+        calibMethodArray->addWidget(selArrayFocA);
+        selArrayFocB=new val_selector(1, "selArrayFocB", "Focus Value B", -1000, 1000, 3, 0, {"um"});
+        calibMethodArray->addWidget(selArrayFocB);
+        selArrayScanType=new smp_selector("pgCalib_selArrayScanType", "Scan Type: ", 0, {"One Scan (Average N Parameter Below Applies)","Multi Scan (One Scan Per Write)"});
+        calibMethodArray->addWidget(selArrayScanType);
+        selArrayOneScanN=new val_selector(10, "pgCalib_selArrayOneScanN", "Average This Many Scans (For One Scan Setting): ", 1, 1000, 0);
+        calibMethodArray->addWidget(selArrayOneScanN);
+        selArrayRandomize=new checkbox_save(false,"pgCalib_selArrayRandomize","Randomize Value Order");
+        calibMethodArray->addWidget(selArrayRandomize);
+        showLimits=new checkbox_save(false,"pgCalib_showLimits","Show Limits on Display");
+        calibMethodArray->addWidget(showLimits);
+    calibMethod->addWidget(calibMethodArray, "Array");
+    calibMethod->doneAddingWidgets();
+    slayout->addWidget(calibMethod);
 
     gui_processing=new QWidget;
     playout=new QVBoxLayout;
@@ -121,12 +156,20 @@ void pgCalib::onSelSaveF(){
     saveFolderName=temp;
     btnWriteCalibFocus->setEnabled(true);
 }
-void pgCalib::onWCFCont(bool state){btnWriteCalibFocus->setCheckable(state);}
-void pgCalib::onWCF(){
-    if(btnWriteCalibFocus->isCheckable() && !btnWriteCalibFocus->isChecked()) return;
-    if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
 
-    if(goToNearestFree(selWriteCalibFocusRadDil->val,selWriteCalibFocusRadSpr->val)) {QMessageBox::critical(this, "Error", "No free nearby, stopping."); return;}
+void pgCalib::onWCF(){
+    if(!btnWriteCalibFocus->isChecked()) return;
+    if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
+    switch(calibMethod->index){
+    case 0: WCFFindNearest();
+            break;
+    case 1: WCFArray();
+            break;
+    }
+}
+
+void pgCalib::WCFFindNearest(){
+    if(goToNearestFree(selWriteCalibFocusRadDil->val,selWriteCalibFocusRadSpr->val)) {QMessageBox::critical(this, "Error", "No free nearby, stopping."); btnWriteCalibFocus->setChecked(false); return;}
     QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
 
     std::time_t time=std::time(nullptr); std::tm ltime=*std::localtime(&time);
@@ -139,7 +182,7 @@ void pgCalib::onWCF(){
     cv::utils::fs::createDirectory(folder.str());
 
     if((int)(selWriteCalibFocusReFocusNth->val)!=0)
-    if(btnWriteCalibFocus->isCheckable() && !(measCounter%((int)(selWriteCalibFocusReFocusNth->val)))){
+    if(!(measCounter%((int)(selWriteCalibFocusReFocusNth->val)))){
         pgFGUI->refocus();
         while(!pgFGUI->focusingDone) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     }
@@ -179,6 +222,7 @@ void pgCalib::onWCF(){
             if(didF<10) goto redoF;
             else{
                 std::cerr<<"Failed"<<didF<<"times. Aborting.\n";
+                btnWriteCalibFocus->setChecked(false);
                 return;
             }
         }
@@ -245,14 +289,80 @@ void pgCalib::onWCF(){
     if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}
     pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder.str(),"/after"));
 
-    if(btnWriteCalibFocus->isCheckable() && btnWriteCalibFocus->isChecked()){
+    if(btnWriteCalibFocus->isChecked()){
         measCounter++;
-        if(measCounter<(int)selWriteCalibFocusDoNMeas->val) return onWCF();
+        if(measCounter<(int)selWriteCalibFocusDoNMeas->val) return WCFFindNearest();
         else {btnWriteCalibFocus->setChecked(false); measCounter=0;}
     } else measCounter=0;
 }
 
+void pgCalib::WCFArray(){
+    cv::Mat WArray(selArrayYsize->val,selArrayXsize->val,CV_64FC3,cv::Scalar(0,0,0));   //Intensity, Duration(ms), Focus(um)
+    int arraySizeInt{1}, arraySizeDur{1}, arraySizeFoc{1};
+    int index=selArrayType->index;
+    switch(index){
+    case 0: arraySizeInt=selArrayYsize->val*selArrayXsize->val;     //Intensity
+            break;
+    case 1: arraySizeDur=selArrayYsize->val*selArrayXsize->val;     //Duration
+            break;
+    case 2: arraySizeFoc=selArrayYsize->val*selArrayXsize->val;     //Focus
+            break;
+    case 3: arraySizeInt=selArrayXsize->val;                        //Intensity-Duration
+            arraySizeDur=selArrayYsize->val;
+            break;
+    case 4: arraySizeInt=selArrayXsize->val;                        //Intensity-Focus
+            arraySizeFoc=selArrayYsize->val;
+            break;
+    case 5: arraySizeDur=selArrayXsize->val;                        //Duration-Focus
+            arraySizeFoc=selArrayYsize->val;
+            break;
+    }
+    std::vector<double> arrayInt; arrayInt.reserve(arraySizeInt);
+    std::vector<double> arrayDur; arrayDur.reserve(arraySizeDur);
+    std::vector<double> arrayFoc; arrayFoc.reserve(arraySizeFoc);
+    if(arraySizeInt==1) arrayInt.push_back(selArrayIntA->val);
+    else for(int i=0;i!=arraySizeInt; i++) arrayInt.push_back(selArrayIntA->val*(1-(double)i/(arraySizeInt-1))+selArrayIntB->val*((double)i/(arraySizeInt-1)));
+    if(arraySizeDur==1) arrayDur.push_back(selArrayDurA->val);
+    else for(int i=0;i!=arraySizeDur; i++) arrayDur.push_back(selArrayDurA->val*(1-(double)i/(arraySizeDur-1))+selArrayDurB->val*((double)i/(arraySizeDur-1)));
+    if(arraySizeFoc==1) arrayFoc.push_back(selArrayFocA->val);
+    else for(int i=0;i!=arraySizeFoc; i++) arrayFoc.push_back(selArrayFocA->val*(1-(double)i/(arraySizeFoc-1))+selArrayFocB->val*((double)i/(arraySizeFoc-1)));
+    if(selArrayRandomize->val){                         //randomize if chosen
+        std::mt19937 rnd(std::random_device{}());
+        std::shuffle(arrayInt.begin(), arrayInt.end(), rnd);
+        std::shuffle(arrayDur.begin(), arrayDur.end(), rnd);
+        std::shuffle(arrayFoc.begin(), arrayFoc.end(), rnd);
+    }
+    for(int i=0;i!=WArray.cols; i++) for(int j=0;j!=WArray.rows; j++){              //populate 3D x3 array
+        if(index==0) WArray.at<cv::Vec3d>(j,i)[0]=arrayInt[i+j*WArray.cols];
+        else if(index==3 || index==4) WArray.at<cv::Vec3d>(j,i)[0]=arrayInt[i];
+        else WArray.at<cv::Vec3d>(j,i)[0]=arrayInt[0];
+        if(index==1) WArray.at<cv::Vec3d>(j,i)[1]=arrayDur[i+j*WArray.cols];
+        else if(index==3)  WArray.at<cv::Vec3d>(j,i)[1]=arrayDur[j];
+        else if(index==5) WArray.at<cv::Vec3d>(j,i)[1]=arrayDur[i];
+        else WArray.at<cv::Vec3d>(j,i)[1]=arrayDur[0];
+        if(index==2) WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[i+j*WArray.cols];
+        else if(index==4 || index==5)  WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[j];
+        else WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[0];
+    }
 
+    std::ofstream wfile0("WCFarrayTestInt.txt");
+    std::ofstream wfile1("WCFarrayTestDur.txt");
+    std::ofstream wfile2("WCFarrayTestFoc.txt");
+    for(int i=0;i!=WArray.cols; i++){
+        for(int j=0;j!=WArray.rows; j++){
+            wfile0<<WArray.at<cv::Vec3d>(j,i)[0]<<" ";
+            wfile1<<WArray.at<cv::Vec3d>(j,i)[1]<<" ";
+            wfile2<<WArray.at<cv::Vec3d>(j,i)[2]<<" ";
+        }
+        wfile0<<"\n";
+        wfile1<<"\n";
+        wfile2<<"\n";
+    }
+    wfile0.close(); wfile1.close(); wfile2.close();
+
+
+    btnWriteCalibFocus->setChecked(false);
+}
 typedef dlib::matrix<double,2,1> input_vector;
 typedef dlib::matrix<double,7,1> parameter_vector;
 double gaussResidual(const std::pair<input_vector, double>& data, const parameter_vector& params){

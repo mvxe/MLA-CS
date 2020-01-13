@@ -36,7 +36,7 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
     extraFocusOffset=new val_selector( 0,"pgBeamAnalysis_extraFocusOffsetnew", "Extra Focus Offset (Laser Beam Foci differece):",-1,1,4);
     extraFocusOffset->setToolTip("Set this to the value you obtain from calibration: it should be equal to the difference between the reference laser beam focus and the writing laser beam focus.");
 
-    method_selector=new twds_selector("pgBeamAnalysis_methodindex",-1,"Select method:", "Simple", false, false, false);
+    method_selector=new twds_selector("pgBeamAnalysis_methodindex",0,"Select method:", "Simple", false, false, false);
     methodSimple=new QWidget;
     methodSimpleLayout=new QVBoxLayout;
     methodSimple->setLayout(methodSimpleLayout);

@@ -38,33 +38,49 @@ private:
     QPushButton* btnSelectSaveFolder;
     std::string saveFolderName{""};
     QPushButton* btnWriteCalibFocus;
-    QCheckBox* cbContWriteCalibFocus;
 
     //settings
     QVBoxLayout* slayout;
-    val_selector* selWriteCalibFocusDoNMeas;
-    val_selector* selWriteCalibFocusReFocusNth;
-    val_selector* selWriteCalibFocusRadDil;
-    val_selector* selWriteCalibFocusRadSpr;
-    val_selector* selWriteCalibFocusBlur;
-    val_selector* selWriteCalibFocusThresh;
-    val_selector* selWriteCalibFocusRange;
-//    checkbox_save* selWriteCalibFocusMoveOOTW;
-//    val_selector* selWriteCalibFocusMoveOOTWDis;
-    val_selector* selWriteCalibFocusPulseIntensity;
-    val_selector* selWriteCalibFocusPulseDuration;
+    twds_selector* calibMethod;
+    vtwid* calibMethodFindNearest;
+        val_selector* selWriteCalibFocusDoNMeas;
+        val_selector* selWriteCalibFocusReFocusNth;
+        val_selector* selWriteCalibFocusRadDil;
+        val_selector* selWriteCalibFocusRadSpr;
+        val_selector* selWriteCalibFocusBlur;
+        val_selector* selWriteCalibFocusThresh;
+        val_selector* selWriteCalibFocusRange;
+    //    checkbox_save* selWriteCalibFocusMoveOOTW;
+    //    val_selector* selWriteCalibFocusMoveOOTWDis;
+        val_selector* selWriteCalibFocusPulseIntensity;
+        val_selector* selWriteCalibFocusPulseDuration;
+    vtwid* calibMethodArray;
+        val_selector* selArrayXsize;
+        val_selector* selArrayYsize;
+        val_selector* selArraySpacing;
+        smp_selector* selArrayType;
+        val_selector* selArrayIntA;
+        val_selector* selArrayIntB;
+        val_selector* selArrayDurA;
+        val_selector* selArrayDurB;
+        val_selector* selArrayFocA;
+        val_selector* selArrayFocB;
+        smp_selector* selArrayScanType;     //one scan, multi scan
+        val_selector* selArrayOneScanN;
+        checkbox_save* selArrayRandomize;
+        checkbox_save* showLimits;
     int measCounter{0};
-
 
     //processing
     QVBoxLayout* playout;
     QPushButton* btnProcessFocusMes;
 
+    void WCFFindNearest();
+    void WCFArray();
 private Q_SLOTS:
     void onGoToNearestFree();
     void onSelSaveF();
     void onWCF();
-    void onWCFCont(bool state);
     void onProcessFocusMes();
 
 };

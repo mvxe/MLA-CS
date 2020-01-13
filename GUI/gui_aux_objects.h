@@ -223,6 +223,22 @@ template<typename... Args> twid::twid(QWidget* widget, Args... args): twid(args.
     addWidget(widget, true);
 }
 
+// VERTICAL LAYOUT WIDGET FOR CONVENIENCE (HAS NO MARGIN, AND STRETCH)
+
+class vtwid  : public QWidget{
+    Q_OBJECT
+public:
+    vtwid(bool setmargin=true);
+    vtwid(QWidget* widget, bool setmargin=true);
+    template<typename... Args> vtwid(QWidget* widget, Args... args);
+    void addWidget(QWidget* widget, bool front=false);
+private:
+    QVBoxLayout* layout{nullptr};
+};
+template<typename... Args> vtwid::vtwid(QWidget* widget, Args... args): twid(args...){
+    addWidget(widget, true);
+}
+
 // HORIZONTAL LINE
 
 class hline : public QLabel{
