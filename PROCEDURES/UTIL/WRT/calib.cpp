@@ -99,6 +99,8 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         calibMethodArray->addWidget(selArrayRandomize);
         showLimits=new checkbox_save(false,"pgCalib_showLimits","Show Limits on Display");
         calibMethodArray->addWidget(showLimits);
+        saveMats=new checkbox_save(true,"pgCalib_saveMats","Extra Save Mats Containing I,D,F for Convenience.");
+        calibMethodArray->addWidget(saveMats);
     calibMethod->addWidget(calibMethodArray, "Array");
     calibMethod->doneAddingWidgets();
     slayout->addWidget(calibMethod);
@@ -160,6 +162,7 @@ void pgCalib::onSelSaveF(){
 void pgCalib::onWCF(){
     if(!btnWriteCalibFocus->isChecked()) return;
     if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
+    if(!go.pXPS->connected) {QMessageBox::critical(this, "Error", "Error: XPS not Connected"); return;}
     switch(calibMethod->index){
     case 0: WCFFindNearest();
             break;
@@ -168,18 +171,73 @@ void pgCalib::onWCF(){
     }
 }
 
+void pgCalib::writePulse(int intensity, double duration, const std::string filename, uchar* usedAvg, const int cmdQueue, const int recQueue){
+    uchar selectedavg=0;
+    int domax=go.pRPTY->getNum(RPTY::A2F_RSMax,recQueue)*0.99;  //we make it a bit smaller to make sure all fits in
+    double pulsedur=duration*1.1;                               //we make it longer in order to catch the last part of the waveform too
+    while(domax*(8e-3)*(1<<selectedavg)<pulsedur) selectedavg++;
+    std::vector<uint32_t> commands;    //do actual writing
+    commands.push_back(CQF::W4TRIG_INTR());
+    commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //RPTY_A2F_queue for debugging purposes
+    if(!filename.empty()) commands.push_back(CQF::ACK(1<<recQueue, selectedavg, CQF::fADC_A__fADC_B, true));
+    else commands.push_back(CQF::WAIT(1));
+    commands.push_back(CQF::SG_SAMPLE(CQF::O0td, intensity, 0));
+    commands.push_back(CQF::WAIT(duration/8e-3 - 1));
+    commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
+    commands.push_back(CQF::WAIT(0.1*duration/8e-3 - 1));
+    if(!filename.empty()) commands.push_back(CQF::ACK(1<<recQueue, selectedavg, CQF::fADC_A__fADC_B, false));
+    go.pRPTY->A2F_write(cmdQueue,commands.data(),commands.size());
+    go.pRPTY->trig(1<<cmdQueue);
+    commands.clear();
+
+    if(usedAvg!=nullptr) *usedAvg=selectedavg;
+    if(!filename.empty()){  //save writing beam waveform
+        while(go.pRPTY->getNum(RPTY::A2F_RSCur,cmdQueue)!=0)  QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,recQueue);
+        std::vector<uint32_t> read;
+        read.reserve(toread);
+        go.pRPTY->F2A_read(recQueue,read.data(),toread);
+        std::ofstream wfile(util::toString(filename));
+        //gnuplot: plot "laser.dat" binary format='%int16%int16' using 0:1 with lines, "laser.dat" binary format='%int16%int16' using 0:2 with lines
+        int16_t tmp;
+        for(int i=0; i!=toread; i++){
+            tmp=AQF::getChMSB(read[i]);
+            wfile.write(reinterpret_cast<const char*>(&(tmp)),sizeof(tmp));
+            tmp=AQF::getChLSB(read[i]);
+            wfile.write(reinterpret_cast<const char*>(&(tmp)),sizeof(tmp));
+        }
+        wfile.close();
+    }
+}
+
+std::string pgCalib::makeDateTimeFolder(const std::string folder){
+    std::time_t time=std::time(nullptr); std::tm ltime=*std::localtime(&time);
+    std::stringstream ssfolder; ssfolder<<folder;
+    ssfolder<<std::put_time(&ltime, "/%Y-%m-%d/");
+    cv::utils::fs::createDirectory(ssfolder.str());
+    ssfolder<<std::put_time(&ltime, "%H/");
+    cv::utils::fs::createDirectory(ssfolder.str());
+    ssfolder<<std::put_time(&ltime, "%M-%S/");
+    cv::utils::fs::createDirectory(ssfolder.str());
+    return ssfolder.str();
+}
+
+void pgCalib::saveConf(std::string filename, double focus, double exclusionOrSpacing, int intensity, double duration, uchar averaging, double focusBeamRad){
+    std::ofstream setFile(filename);            //this file contains some settings:
+    setFile <<focus<<"\n"                       // line0:   the focus in mm (stage)
+            <<exclusionOrSpacing<<"\n"          // line1:   Exclusion radius / ROI radius in um
+            <<intensity<<"\n"                   // line2:   Pulse Intensity
+            <<duration<<"\n"                    // line3:   Pulse Duration in ms
+            <<(int)averaging<<"\n"              // line4:   Averaging Used in Pulse Raw Data (ie. the time difference between datapoints will be selectedavg*8e-9 sec)
+            <<focusBeamRad<<"\n";               // line5:   The Somewhat Arbitrary but Self Consistent Measured Focus Beam Radius
+    setFile.close();
+}
+
 void pgCalib::WCFFindNearest(){
     if(goToNearestFree(selWriteCalibFocusRadDil->val,selWriteCalibFocusRadSpr->val)) {QMessageBox::critical(this, "Error", "No free nearby, stopping."); btnWriteCalibFocus->setChecked(false); return;}
     QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
 
-    std::time_t time=std::time(nullptr); std::tm ltime=*std::localtime(&time);
-    std::stringstream folder; folder<<saveFolderName;
-    folder<<std::put_time(&ltime, "/%Y-%m-%d/");
-    cv::utils::fs::createDirectory(folder.str());
-    folder<<std::put_time(&ltime, "%H/");
-    cv::utils::fs::createDirectory(folder.str());
-    folder<<std::put_time(&ltime, "%M-%S/");
-    cv::utils::fs::createDirectory(folder.str());
+    std::string folder=makeDateTimeFolder(saveFolderName);
 
     if((int)(selWriteCalibFocusReFocusNth->val)!=0)
     if(!(measCounter%((int)(selWriteCalibFocusReFocusNth->val)))){
@@ -233,61 +291,20 @@ void pgCalib::WCFFindNearest(){
     const pgScanGUI::scanRes* res=scanRes->get();
     int roiD=2*selWriteCalibFocusRadDil->val*1000/pgMGUI->getNmPPx();
     if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
-    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder.str(),"/before"));
+    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/before"));
 
-
-
-    const int cmdQueue=0;
-    const int recQueue=1;
-    uchar selectedavg=0;
-    int domax=go.pRPTY->getNum(RPTY::A2F_RSMax,recQueue)*0.99;   //we make it a bit smaller to make sure all fits in
-    double pulsedur=selWriteCalibFocusPulseDuration->val*1.1;    //we make it longer in order to catch the last part of the waveform too
-    while(domax*(8e-3)*(1<<selectedavg)<pulsedur) selectedavg++;
-    std::vector<uint32_t> commands;    //do actual writing
-    commands.push_back(CQF::W4TRIG_INTR());
-    commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //RPTY_A2F_queue for debugging purposes
-    commands.push_back(CQF::ACK(1<<recQueue, selectedavg, CQF::fADC_A__fADC_B, true));
-    commands.push_back(CQF::SG_SAMPLE(CQF::O0td, selWriteCalibFocusPulseIntensity->val, 0));
-    commands.push_back(CQF::WAIT(selWriteCalibFocusPulseDuration->val/8e-3 - 1));
-    commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
-    commands.push_back(CQF::WAIT(0.1*selWriteCalibFocusPulseDuration->val/8e-3 - 1));
-    commands.push_back(CQF::ACK(1<<recQueue, selectedavg, CQF::fADC_A__fADC_B, false));
-    go.pRPTY->A2F_write(cmdQueue,commands.data(),commands.size());
-    go.pRPTY->trig(1<<cmdQueue);
-    commands.clear();
-
-    //save writing beam waveform
-    while(go.pRPTY->getNum(RPTY::A2F_RSCur,cmdQueue)!=0)  QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-    uint32_t toread=go.pRPTY->getNum(RPTY::F2A_RSCur,recQueue);
-    std::vector<uint32_t> read;
-    read.reserve(toread);
-    go.pRPTY->F2A_read(recQueue,read.data(),toread);
-    std::ofstream wfile(util::toString(folder.str(),"/laser.dat"));
-    //gnuplot: plot "laser.dat" binary format='%int16%int16' using 0:1 with lines, "laser.dat" binary format='%int16%int16' using 0:2 with lines
-    int16_t tmp;
-    for(int i=0; i!=toread; i++){
-        tmp=AQF::getChMSB(read[i]);
-        wfile.write(reinterpret_cast<const char*>(&(tmp)),sizeof(tmp));
-        tmp=AQF::getChLSB(read[i]);
-        wfile.write(reinterpret_cast<const char*>(&(tmp)),sizeof(tmp));
-    }
-    wfile.close();
+    uchar selectedavg;
+    writePulse(selWriteCalibFocusPulseIntensity->val, selWriteCalibFocusPulseDuration->val, util::toString(folder,"/laser.dat"), &selectedavg);
 
     pgMGUI->moveZF(focus);
 
-    std::ofstream setFile(util::toString(folder.str(),"/settings.txt"));        //this file contains some settings:
-    setFile <<focus+wrFocusOffs/1000<<"\n"                                      // line0:   the focus in mm (stage)
-            <<selWriteCalibFocusRadDil->val<<"\n"                               // line1:   Exclusion radius / ROI radius
-            <<selWriteCalibFocusPulseIntensity->val<<"\n"                       // line2:   Pulse Intensity
-            <<selWriteCalibFocusPulseDuration->val<<"\n"                        // line3:   Pulse Duration
-            <<(int)selectedavg<<"\n"                                            // line4:   Averaging Used in Pulse Raw Data (ie. the time difference between datapoints will be selectedavg*8e-9 sec)
-            <<focusRad<<"\n";                                                   // line5:   The Somewhat Arbitrary but Self Consistent Measured Focus Beam Radius
-    setFile.close();
+    saveConf(util::toString(folder,"/settings.txt"), focus+wrFocusOffs/1000, selWriteCalibFocusRadDil->val, selWriteCalibFocusPulseIntensity->val, selWriteCalibFocusPulseDuration->val, selectedavg, focusRad);
+
     redoB:  pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
     res=scanRes->get();
     if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}
-    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder.str(),"/after"));
+    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/after"));
 
     if(btnWriteCalibFocus->isChecked()){
         measCounter++;
@@ -297,7 +314,7 @@ void pgCalib::WCFFindNearest(){
 }
 
 void pgCalib::WCFArray(){
-    cv::Mat WArray(selArrayYsize->val,selArrayXsize->val,CV_64FC3,cv::Scalar(0,0,0));   //Intensity, Duration(ms), Focus(um)
+    cv::Mat WArray(selArrayYsize->val,selArrayXsize->val,CV_64FC4,cv::Scalar(0,0,0,0));   //Intensity, Duration(ms), Focus(um)
     int arraySizeInt{1}, arraySizeDur{1}, arraySizeFoc{1};
     int index=selArrayType->index;
     switch(index){
@@ -345,21 +362,64 @@ void pgCalib::WCFArray(){
         else WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[0];
     }
 
-    std::ofstream wfile0("WCFarrayTestInt.txt");
-    std::ofstream wfile1("WCFarrayTestDur.txt");
-    std::ofstream wfile2("WCFarrayTestFoc.txt");
-    for(int i=0;i!=WArray.cols; i++){
-        for(int j=0;j!=WArray.rows; j++){
-            wfile0<<WArray.at<cv::Vec3d>(j,i)[0]<<" ";
-            wfile1<<WArray.at<cv::Vec3d>(j,i)[1]<<" ";
-            wfile2<<WArray.at<cv::Vec3d>(j,i)[2]<<" ";
+    std::string folder=makeDateTimeFolder(saveFolderName);
+    if(saveMats->val){      //export values as matrices, for convinience
+        std::string names[3]={"Intensity","Duration","Focus"};
+        for(int k=0;k!=3;k++){
+            std::ofstream wfile(util::toString(folder,"/", names[k],".txt"));
+            for(int i=0;i!=WArray.cols; i++){
+                for(int j=0;j!=WArray.rows; j++)
+                    wfile<<WArray.at<cv::Vec3d>(j,i)[k]<<" ";
+                wfile<<"\n";
+            }
+            wfile.close();
         }
-        wfile0<<"\n";
-        wfile1<<"\n";
-        wfile2<<"\n";
     }
-    wfile0.close(); wfile1.close(); wfile2.close();
+    //TODO save total focus, also red green ofset
 
+    double xSize=WArray.cols*selArraySpacing->val/1000;         //in mm
+    double ySize=WArray.rows*selArraySpacing->val/1000;
+    double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;
+    double yOfs=((WArray.rows-1)*selArraySpacing->val)/2000;
+
+    //TODO refocus red
+    //TODO recentre red spot
+
+    double focus=pgMGUI->FZdifference;
+    float focusRad;
+
+    //TODOmeasure if single/avg
+    pgMGUI->move(xOfs,yOfs,0,0);
+
+    for(int j=0;j!=WArray.rows; j++){
+        for(int i=0;i!=WArray.cols; i++){
+            pgMGUI->moveZF(focus+WArray.at<cv::Vec3d>(j,i)[2]/1000);
+            while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
+
+            if(pgBeAn->getCalibWritingBeam(&focusRad)) if(pgBeAn->getCalibWritingBeam(&focusRad)){      // recenter writing beam and get radius
+                std::cerr<<"Failed to analyse the read beam after two tries.\n";
+                pgMGUI->moveZF(focus);
+                btnWriteCalibFocus->setChecked(false);
+                return;
+            }
+
+            uchar selectedavg;
+            cv::utils::fs::createDirectory(util::toString(folder,"/",i+j*WArray.cols));
+            writePulse(WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1], util::toString(folder,"/",i+j*WArray.cols,"/laser.dat"), &selectedavg);
+
+            //TODO do measurement if multiple
+            saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), focus+WArray.at<cv::Vec3d>(j,i)[2]/1000, selArraySpacing->val, WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1], selectedavg, focusRad);
+
+            //TODO implement break on unchecked, implement show progress
+
+            if(j!=WArray.cols-1) pgMGUI->move(-selArraySpacing->val/1000,0,0,0);
+        }
+        if(j!=WArray.rows-1) pgMGUI->move(2*xOfs,-selArraySpacing->val/1000,0,0);
+    }
+    pgMGUI->move(xOfs,yOfs,0,0);
+    pgMGUI->moveZF(focus);
+    while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
+    //TODO measure if single/avg
 
     btnWriteCalibFocus->setChecked(false);
 }

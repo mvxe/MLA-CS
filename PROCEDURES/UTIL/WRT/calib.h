@@ -69,6 +69,7 @@ private:
         val_selector* selArrayOneScanN;
         checkbox_save* selArrayRandomize;
         checkbox_save* showLimits;
+        checkbox_save* saveMats;
     int measCounter{0};
 
     //processing
@@ -77,6 +78,9 @@ private:
 
     void WCFFindNearest();
     void WCFArray();
+    void writePulse(int intensity, double duration, const std::string filename="", uchar* usedAvg=nullptr, const int cmdQueue=0, const int recQueue=1);       //duration in ms
+    std::string makeDateTimeFolder(const std::string folder);
+    void saveConf(std::string filename, double focus, double exclusionOrSpacing, int intensity, double duration, uchar averaging, double focusBeamRad);       //focus in mm, duration in ms, exclusionOrSpacing in um
 private Q_SLOTS:
     void onGoToNearestFree();
     void onSelSaveF();
