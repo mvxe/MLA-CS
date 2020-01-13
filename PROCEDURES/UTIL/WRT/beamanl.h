@@ -13,7 +13,6 @@ class pgBeamAnalysis: public QWidget{
     Q_OBJECT
 public:
     pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* pgSGUI);
-    ~pgBeamAnalysis();
     QWidget* gui_settings;
     QWidget* gui_activation;
     bool getCalibWritingBeam(float* r, float* dx=nullptr, float* dy=nullptr, bool correct=true);   //return true on failure (also wont correct if faliure)
@@ -31,9 +30,7 @@ private:
 
     QVBoxLayout* slayout;
     QPushButton* btnReset;
-    twd_selector* method_selector;
-    int methodIndex;
-    cc_save<int> saveIndex{methodIndex, 0,&go.gui_config.save,"pgBeamAnalysis_methodindex"};
+    twds_selector* method_selector;
         QWidget* methodSimple;
         QVBoxLayout* methodSimpleLayout;
             val_selector* selThresh;

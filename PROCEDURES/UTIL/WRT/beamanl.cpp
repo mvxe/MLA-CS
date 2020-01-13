@@ -36,7 +36,7 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
     extraFocusOffset=new val_selector( 0,"pgBeamAnalysis_extraFocusOffsetnew", "Extra Focus Offset (Laser Beam Foci differece):",-1,1,4);
     extraFocusOffset->setToolTip("Set this to the value you obtain from calibration: it should be equal to the difference between the reference laser beam focus and the writing laser beam focus.");
 
-    method_selector=new twd_selector("Select method:", "Simple", false, false, false);
+    method_selector=new twds_selector("pgBeamAnalysis_methodindex",-1,"Select method:", "Simple", false, false, false);
     methodSimple=new QWidget;
     methodSimpleLayout=new QVBoxLayout;
     methodSimple->setLayout(methodSimpleLayout);
@@ -46,7 +46,7 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
 
     method_selector->addWidget(methodSimple, "Simple");
     method_selector->addWidget(methodEllipsse, "Ellipses");
-    method_selector->setIndex(methodIndex);
+    method_selector->doneAddingWidgets();
 
     slayout->addWidget(new QLabel("Get beam center:"));
     slayout->addWidget(new twid(btnReset));
@@ -81,9 +81,6 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
     btnGetCenterFocus=new QPushButton("Get Writing Beam Focus");
     connect(btnGetCenterFocus, SIGNAL(released()), this, SLOT(getWritingBeamFocus()));
     alayout->addWidget(new twid(btnGetCenterFocus));
-}
-pgBeamAnalysis::~pgBeamAnalysis(){
-    methodIndex=method_selector->index;
 }
 void pgBeamAnalysis::onBtnSaveNextDebug(){
     saveNext=QFileDialog::getExistingDirectory(this, "Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.").toStdString();

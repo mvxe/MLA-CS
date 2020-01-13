@@ -216,6 +216,16 @@ void twd_selector::onClicked(){
     showBtn->setText((wI->isVisible())?"< hide >":"< show >");
 }
 
+twds_selector::twds_selector(std::string varSaveName, int initialIndex, std::string menu, std::string init, bool twidSetMargin, bool addStretch, bool addShown):
+    twd_selector(menu, init, twidSetMargin, addStretch, addShown),
+    indexSave(_index, initialIndex, &go.gui_config.save,varSaveName){}
+twds_selector::~twds_selector(){
+    _index=this->index;
+}
+void twds_selector::doneAddingWidgets(){
+    this->setIndex(_index);
+}
+
 // GUI adaptiveScrollBar
 
 adScrlBar::adScrlBar(int Hsize, int Vsize): Hsize(Hsize){

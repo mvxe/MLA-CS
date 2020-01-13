@@ -81,7 +81,7 @@ Q_SIGNALS:
 
 // TAB WIDGET DISPLAY SELECTOR
 
-class twd_selector : public QWidget{       //template for devices
+class twd_selector : public QWidget{
     Q_OBJECT
 public:
     twd_selector(std::string menu="", std::string init="", bool twidSetMargin=true, bool addStretch=true, bool addShown=false); //if menu=="" it wont show the selector
@@ -106,6 +106,19 @@ Q_SIGNALS:
 private Q_SLOTS:
     void on_menu_change();
     void onClicked();   //for addShown
+};
+
+// TAB WIDGET DISPLAY SELECTOR WITH INDEX SAVE
+
+class twds_selector : public twd_selector{
+    Q_OBJECT
+public:
+    twds_selector(std::string varSaveName, int initialIndex=-1, std::string menu="", std::string init="", bool twidSetMargin=true, bool addStretch=true, bool addShown=false);
+    ~twds_selector();
+    void doneAddingWidgets();   //call this after youve added all widgets with addWidget
+private:
+    bool _index;
+    cc_save<bool> indexSave;
 };
 
 // GUI adaptiveScrollBar
