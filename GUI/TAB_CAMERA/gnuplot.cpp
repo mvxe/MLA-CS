@@ -87,12 +87,12 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
                             "set xlabel font \"Helvetica,",d3xyzLabelFontSize->val,"\"\n",
                             "set ylabel font \"Helvetica,",d3xyzLabelFontSize->val,"\"\n",
                             "set cblabel font \"Helvetica,",d3xyzLabelFontSize->val,"\"\n",
-                            "set xlabel \"XPosition/ um\"\n",
-                            "set ylabel \"YPosition/ um\"\n");
-    if(equalizeXYZ->val) a.POUT<<util::toString("set cblabel \"Height / um\"\n",
+                            "set xlabel \"XPosition [um]\"\n",
+                            "set ylabel \"YPosition [um]\"\n");
+    if(equalizeXYZ->val) a.POUT<<util::toString("set cblabel \"Height [um]\"\n",
                                                 "set view equal xyz\n",
                                                 "unset ztics\n");
-    else a.POUT<<util::toString("set cblabel \"Height / nm\"\n",
+    else a.POUT<<util::toString("set cblabel \"Height [nm]\"\n",
                                 "set view equal xy\n");
     a.POUT<<util::toString( "set xyplane 0\n",
                             "set hidden3d\n",
