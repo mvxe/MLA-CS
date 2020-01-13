@@ -544,9 +544,7 @@ void tab_camera::on2DFFT(){
     loadedScan.depth=magI;
     loadedScan.mask=cv::Mat(magI.rows,magI.cols,CV_8U,cv::Scalar(0));
     loadedScan.maskN=cv::Mat(magI.rows,magI.cols,CV_8U,cv::Scalar(255));
-    cv::multiply(magP,magP,magP);
-    cv::multiply(magP,loadedScan.avgNum-1,magP);    //these make it display properly as SD gets additional operations performed on it
-    loadedScan.depthSS=magP;
+    cv::multiply(magP,magP,loadedScan.depthSS); loadedScan.avgNum=2;    //these make it display properly as SD gets additional operations performed on it
     cv::minMaxLoc(magI,&loadedScan.min,&loadedScan.max);
 
     loadedScanChanged=true;
