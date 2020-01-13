@@ -507,35 +507,46 @@ void tab_camera::on2DFFT(){
     cv::Mat complexI;
     cv::merge(planes, 2, complexI);
     cv::dft(complexI, complexI);
-    cv::split(complexI, planes);                   // planes[0] = Re(DFT(I), planes[1] = Im(DFT(I))
-    cv::magnitude(planes[0], planes[1], planes[0]);// planes[0] = magnitude
-    //cv::phase(planes[0], planes[1], planes[0]);// planes[0] = phase
-    cv::Mat magI = planes[0];
-    magI += cv::Scalar::all(1);                    // switch to logarithmic scale
+    cv::split(complexI, planes);
+    cv::Mat magI, magP;
+    cv::magnitude(planes[0], planes[1], magI);
+    cv::phase(planes[0], planes[1], magP);
+    magI += cv::Scalar::all(1);
     cv::log(magI, magI);
-    // crop the spectrum, if it has an odd number of rows or columns
-    magI = magI(cv::Rect(0, 0, magI.cols & -2, magI.rows & -2));
-    // rearrange the quadrants of Fourier image  so that the origin is at the image center
-    int cx = magI.cols/2;
-    int cy = magI.rows/2;
+    magI=magI(cv::Rect(0, 0, magI.cols & -2, magI.rows & -2));  // crop
+    magP=magP(cv::Rect(0, 0, magP.cols & -2, magP.rows & -2));
+    int cx=magI.cols/2;
+    int cy=magI.rows/2;
 
-    cv::Mat q0(magI, cv::Rect(0, 0, cx, cy));   // Top-Left - Create a ROI per quadrant
-    cv::Mat q1(magI, cv::Rect(cx, 0, cx, cy));  // Top-Right
-    cv::Mat q2(magI, cv::Rect(0, cy, cx, cy));  // Bottom-Left
-    cv::Mat q3(magI, cv::Rect(cx, cy, cx, cy)); // Bottom-Right
+    cv::Mat q0I(magI, cv::Rect(0, 0, cx, cy));   // Top-Left - Create a ROI per quadrant
+    cv::Mat q1I(magI, cv::Rect(cx, 0, cx, cy));  // Top-Right
+    cv::Mat q2I(magI, cv::Rect(0, cy, cx, cy));  // Bottom-Left
+    cv::Mat q3I(magI, cv::Rect(cx, cy, cx, cy)); // Bottom-Right
+    cv::Mat q0P(magP, cv::Rect(0, 0, cx, cy));
+    cv::Mat q1P(magP, cv::Rect(cx, 0, cx, cy));
+    cv::Mat q2P(magP, cv::Rect(0, cy, cx, cy));
+    cv::Mat q3P(magP, cv::Rect(cx, cy, cx, cy));
 
     cv::Mat tmp;
-    q0.copyTo(tmp);
-    q3.copyTo(q0);
-    tmp.copyTo(q3);
-    q1.copyTo(tmp);
-    q2.copyTo(q1);
-    tmp.copyTo(q2);
+    q0I.copyTo(tmp);
+    q3I.copyTo(q0I);
+    tmp.copyTo(q3I);
+    q1I.copyTo(tmp);
+    q2I.copyTo(q1I);
+    tmp.copyTo(q2I);
+    q0P.copyTo(tmp);
+    q3P.copyTo(q0P);
+    tmp.copyTo(q3P);
+    q1P.copyTo(tmp);
+    q2P.copyTo(q1P);
+    tmp.copyTo(q2P);
 
     loadedScan.depth=magI;
     loadedScan.mask=cv::Mat(magI.rows,magI.cols,CV_8U,cv::Scalar(0));
     loadedScan.maskN=cv::Mat(magI.rows,magI.cols,CV_8U,cv::Scalar(255));
-    loadedScan.depthSS.release();
+    cv::multiply(magP,magP,magP);
+    cv::multiply(magP,loadedScan.avgNum-1,magP);    //these make it display properly as SD gets additional operations performed on it
+    loadedScan.depthSS=magP;
     cv::minMaxLoc(magI,&loadedScan.min,&loadedScan.max);
 
     loadedScanChanged=true;

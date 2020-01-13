@@ -100,7 +100,10 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
                             "set palette rgb ",d3paletteR->val,",",d3paletteG->val,",",d3paletteB->val,"\n",
                             "splot \"-\" matrix w pm3d pt 6 notitle\n");
     cv::Mat data;
-    if(useSD && !scan->depthSS.empty()) data=cv::Mat(scan->depthSS, roi);
+    if(useSD && !scan->depthSS.empty()){
+        cv::divide(cv::Mat(scan->depthSS, roi),scan->avgNum-1,data);
+        cv::sqrt(data,data);
+    }
     else data=cv::Mat(scan->depth, roi);
     cv::Mat mask(scan->mask, roi);
     double min;
@@ -119,9 +122,11 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
 
 void tabCamGnuplot::streamLine(std::ostream *stream, const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, bool useSD){
     if(scan==nullptr) return;
-    const cv::Mat* data;
-    if(useSD && !scan->depthSS.empty()) data=&scan->depthSS;
-    else data=&scan->depth;
+    cv::Mat data;
+    if(useSD && !scan->depthSS.empty()){
+        cv::divide(scan->depthSS,scan->avgNum-1,data);
+        cv::sqrt(data,data);
+    }else data=scan->depth;
 
     float len;
     len=sqrt(pow(end.x-start.x,2)+pow(end.y-start.y,2));
@@ -134,10 +139,10 @@ void tabCamGnuplot::streamLine(std::ostream *stream, const pgScanGUI::scanRes* s
         float _X=end.x+(start.x-end.x)*(len-i+0.01)/len;  //the 0.01 fixes a weird floor/ceil bug
         float _Y=end.y+(start.y-end.y)*(len-i+0.01)/len;
         lineData.emplace_back(
-            (1-(_X-floor(_X)))*(1-(_Y-floor(_Y)))*(data->at<float>(floor(_Y),floor(_X)))+
-            (1-(ceil(_X) -_X))*(1-(ceil(_Y) -_Y))*(data->at<float>( ceil(_Y), ceil(_X)))+
-            (1-(_X-floor(_X)))*(1-(ceil(_Y) -_Y))*(data->at<float>( ceil(_Y),floor(_X)))+
-            (1-(ceil(_X) -_X))*(1-(_Y-floor(_Y)))*(data->at<float>(floor(_Y), ceil(_X))) );
+            (1-(_X-floor(_X)))*(1-(_Y-floor(_Y)))*(data.at<float>(floor(_Y),floor(_X)))+
+            (1-(ceil(_X) -_X))*(1-(ceil(_Y) -_Y))*(data.at<float>( ceil(_Y), ceil(_X)))+
+            (1-(_X-floor(_X)))*(1-(ceil(_Y) -_Y))*(data.at<float>( ceil(_Y),floor(_X)))+
+            (1-(ceil(_X) -_X))*(1-(_Y-floor(_Y)))*(data.at<float>(floor(_Y), ceil(_X))) );
         lineMask.emplace_back(scan->mask.at<uchar>(floor(_Y),floor(_X))||
                               scan->mask.at<uchar>( ceil(_Y), ceil(_X))||
                               scan->mask.at<uchar>( ceil(_Y),floor(_X))||
