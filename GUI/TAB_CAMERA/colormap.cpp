@@ -110,7 +110,7 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
         }
         nticks=range/tick+1;  //rounds down
         cv::Size size=cv::getTextSize(label, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
-        cblabel=cv::Mat(size.height*2,size.width,CV_8UC4,{0,0,0,0});
+        cblabel=cv::Mat(size.height*2,size.width+2,CV_8UC4,{0,0,0,0});
         cv::putText(cblabel,label, {0,4*size.height/3}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
         cv::rotate(cblabel,cblabel,cv::ROTATE_90_COUNTERCLOCKWISE);
     }

@@ -63,8 +63,8 @@ void tabCamGnuplot::plotLine(const pgScanGUI::scanRes* scan, const cv::Point& st
                             "set tics font \"Helvetica,",ticsFontSize->val,"\"\n",
                             "set xlabel font \"Helvetica,",xyLabelFontSize->val,"\"\n",
                             "set ylabel font \"Helvetica,",xyLabelFontSize->val,"\"\n",
-                            "set xlabel \"Position [um]\"\n",
-                            "set ylabel \"Height [nm]\"\n",
+                            "set xlabel \"Position (um)\"\n",
+                            "set ylabel \"Height (nm)\"\n",
                             "plot \"-\" using 1:2 w lp lc ",lpColor->val," pt ",pointType->val," ps ",pointSize->val," lw ",lineWidth->val," notitle\n");
     streamLine(&a.POUT, scan, start, end, useSD);
     a.POUT<<"e\n";
@@ -75,7 +75,7 @@ void tabCamGnuplot::saveLine(const pgScanGUI::scanRes* scan, const cv::Point& st
     if(scan==nullptr || fileName.empty()) return;
     if(fileName.find(".txt")==std::string::npos) fileName+=".txt";
     std::ofstream wfile(fileName);
-    wfile<<"# [um] [nm]\n";
+    wfile<<"# (um) (nm)\n";
     streamLine(&wfile, scan, start, end, useSD);
     wfile.close();
 }
@@ -87,12 +87,12 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
                             "set xlabel font \"Helvetica,",d3xyzLabelFontSize->val,"\"\n",
                             "set ylabel font \"Helvetica,",d3xyzLabelFontSize->val,"\"\n",
                             "set cblabel font \"Helvetica,",d3xyzLabelFontSize->val,"\"\n",
-                            "set xlabel \"XPosition [um]\"\n",
-                            "set ylabel \"YPosition [um]\"\n");
-    if(equalizeXYZ->val) a.POUT<<util::toString("set cblabel \"Height [um]\"\n",
+                            "set xlabel \"XPosition (um)\"\n",
+                            "set ylabel \"YPosition (um)\"\n");
+    if(equalizeXYZ->val) a.POUT<<util::toString("set cblabel \"Height (um)\"\n",
                                                 "set view equal xyz\n",
                                                 "unset ztics\n");
-    else a.POUT<<util::toString("set cblabel \"Height [nm]\"\n",
+    else a.POUT<<util::toString("set cblabel \"Height (nm)\"\n",
                                 "set view equal xy\n");
     a.POUT<<util::toString( "set xyplane 0\n",
                             "set hidden3d\n",

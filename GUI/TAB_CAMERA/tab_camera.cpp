@@ -185,7 +185,7 @@ void tab_camera::work_fun(){
                     cv::sqrt(display,display);
                     cv::minMaxLoc(display, &_min, &_max, &ignore, &ignore, res->maskN);
                     pgHistGUI->updateImg(res, &min, &max, 0, _max, &display);
-                    cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD[nm]");
+                    cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD (nm)");
                 }
                 dispDepthMatRows=res->depth.rows;
 
@@ -398,9 +398,9 @@ void tab_camera::onSaveDepthMap(void){
             if(width>1 && height>1){
                 cv::Mat temp0(display,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
-                cMap->colormappize(&temp0, &display, &temp1, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, true, "SD[nm]");
+                cMap->colormappize(&temp0, &display, &temp1, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, true, "SD (nm)");
             }
-            else cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD[nm]");
+            else cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD (nm)");
         }
         cv::cvtColor(display, display, cv::COLOR_RGBA2BGRA);
         imwrite(fileName, display,{cv::IMWRITE_PNG_COMPRESSION,9});
