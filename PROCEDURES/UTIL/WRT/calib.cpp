@@ -384,6 +384,7 @@ void pgCalib::WCFArray(){
 
     //TODO refocus red
     //TODO recentre red spot
+    //TODO save res in main folder
 
     double focus=pgMGUI->FZdifference;
     float focusRad;
