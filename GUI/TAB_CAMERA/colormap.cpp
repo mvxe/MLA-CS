@@ -48,7 +48,9 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGU
     layout->addWidget(xysbar_color_inv);
 
     layout->addWidget(new hline);
-    layout->addWidget(new QLabel("For whole image export settings above apply. For selection export:"));
+    exportSet4Whole=new checkbox_save(false,"colorBar_exportSet4Whole","Use Setting Above When Exporting Whole Image");
+    exportSet4WholeVal=&exportSet4Whole->val;
+    layout->addWidget(exportSet4Whole);
     fontSizeExport=new val_selector(1., "colorBar_fontSiz_exporte", "Font Size for Export: ", 0, 10., 2);
     layout->addWidget(fontSizeExport);
     exportANTicks=new val_selector(10, "colorBar_exportANTicks", "Approximate Number of Ticks for Export: ", 0, 100, 0);

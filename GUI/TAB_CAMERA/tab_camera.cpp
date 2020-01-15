@@ -388,7 +388,7 @@ void tab_camera::onSaveDepthMap(void){
                 cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cMap->colormappize(&temp0, &display, &temp1, min, max, res->XYnmppx, pgHistGUI->ExclOOR, true);
             }
-            else cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
+            else cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR, !*cMap->exportSet4WholeVal);
         }else{
             cv::divide(res->depthSS,res->avgNum-1,display);
             double _min,_max; cv::Point ignore;
@@ -400,7 +400,7 @@ void tab_camera::onSaveDepthMap(void){
                 cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cMap->colormappize(&temp0, &display, &temp1, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, true, "SD (nm)");
             }
-            else cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD (nm)");
+            else cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, !*cMap->exportSet4WholeVal, "SD (nm)");
         }
         cv::cvtColor(display, display, cv::COLOR_RGBA2BGRA);
         imwrite(fileName, display,{cv::IMWRITE_PNG_COMPRESSION,9});

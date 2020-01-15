@@ -19,6 +19,7 @@ public:
     void draw_bw_target(cv::Mat* src, float dX, float dY);
     void draw_bw_scalebar(cv::Mat* src, double XYnmppx);
     void draw_color_box(cv::Mat* src, int x0, int x1, int y0, int y1);
+    const bool* exportSet4WholeVal;
 private:
     QVBoxLayout* layout;
     smp_selector* fontFace;
@@ -43,6 +44,7 @@ private:
     val_selector* xysbar_yoffset;
     checkbox_save* xysbar_color_inv;
 
+    checkbox_save* exportSet4Whole;
     val_selector* xysbar_unit_Export;
     smp_selector* xysbar_corner_Export;
     val_selector* xysbar_xoffset_Export;
