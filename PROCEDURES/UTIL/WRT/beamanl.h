@@ -19,6 +19,9 @@ public:
     void getCalibWritingBeamRange(double *rMinLoc, int frames, double range, bool flipDir=0);      //flipDir makes the scan to scan from the other direction
     const float& writeBeamCenterOfsX{_writeBeamCenterOfsX};
     const float& writeBeamCenterOfsY{_writeBeamCenterOfsY};
+    const double* extraFocusOffsetVal;
+public Q_SLOTS:
+    void getWritingBeamFocus();     //does getCalibWritingBeamRange twice, using the parameters in settings
 private:
     mesLockProg& MLP;
     pgMoveGUI* pgMGUI;
@@ -72,7 +75,6 @@ private:
     bool turnOnRedLaserAndLEDOff(FQ* framequeueDisp); //return 0 on sucess
 private Q_SLOTS:
     void getWritingBeamCenter();
-    void getWritingBeamFocus();
     void onBtnSaveNextDebug();
     void onBtnSaveNextDebugFocus();
     void onBtnReset();

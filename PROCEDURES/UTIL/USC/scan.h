@@ -40,7 +40,7 @@ public:
     constexpr static unsigned timerCM_delay=100;
 
     std::atomic<bool> measurementInProgress{false}; //for outside calling functions
-    void doOneRound();
+    void doOneRound(char cbAvg_override=0);         // for cbAvg_override==0, cbAvg setting is used, if cbAvg_override=1 avearage, if cbAvg_override=-1 do not average
 
     struct scanRes{
         cv::Mat depth;
@@ -132,7 +132,7 @@ private:
     std::string stringSaveAvgMess;
     int saveIter;
 
-    void _doOneRound();
+    void _doOneRound(char cbAvg_override=0);
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
 public Q_SLOTS:
     void recalculate();

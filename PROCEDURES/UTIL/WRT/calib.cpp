@@ -134,8 +134,8 @@ bool pgCalib::goToNearestFree(double radDilat, double radRandSpread){
         while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
         res=scanRes->get();
     }
-    int dil=(radDilat*1000/pgMGUI->getNmPPx()-0.5); if(dil<0) dil=0;
-    cv::Mat mask=pgDpEv->getMaskFlatness(res, pgMGUI->getNmPPx(), dil, selWriteCalibFocusThresh->val, selWriteCalibFocusBlur->val);
+    int dil=(radDilat*1000/res->XYnmppx-0.5); if(dil<0) dil=0;
+    cv::Mat mask=pgDpEv->getMaskFlatness(res, res->XYnmppx, dil, selWriteCalibFocusThresh->val, selWriteCalibFocusBlur->val);
     int ptX,ptY;
     imgAux::getNearestFreePointToCenter(&mask, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY, ptX, ptY, radRandSpread);
     if(ptX==-1){
@@ -144,8 +144,8 @@ bool pgCalib::goToNearestFree(double radDilat, double radRandSpread){
     }
 
     double dXumm, dYumm, dXmm, dYmm;
-    dXumm=(ptX-res->depth.cols/2)*pgMGUI->getNmPPx()/1000000;
-    dYumm=(ptY-res->depth.rows/2)*pgMGUI->getNmPPx()/1000000;
+    dXumm=(ptX-res->depth.cols/2)*res->XYnmppx/1000000;
+    dYumm=(ptY-res->depth.rows/2)*res->XYnmppx/1000000;
     dXmm=dXumm*cos(pgMGUI->getAngCamToXMot())+dYumm*sin(pgMGUI->getAngCamToXMot()+pgMGUI->getYMotToXMot());
     dYmm=dXumm*sin(pgMGUI->getAngCamToXMot())+dYumm*cos(pgMGUI->getAngCamToXMot()+pgMGUI->getYMotToXMot());
 
@@ -233,6 +233,14 @@ void pgCalib::saveConf(std::string filename, double focus, double exclusionOrSpa
     setFile.close();
 }
 
+void pgCalib::saveConfMain(std::string filename, double focus, double extraFocusOffset, double focusBeamRad){
+    std::ofstream setFile(filename);            //this file contains some settings:
+    setFile <<focus<<"\n"                       // line0:   the focus in mm (stage)
+            <<extraFocusOffset<<"\n"            // line1:   Extra focus offset - the difference between the calibration(red) beam focus and the writing(green) beam focus
+            <<focusBeamRad<<"\n";               // line2:   The Somewhat Arbitrary but Self Consistent Measured Focus Beam Radius
+    setFile.close();
+}
+
 void pgCalib::WCFFindNearest(){
     if(goToNearestFree(selWriteCalibFocusRadDil->val,selWriteCalibFocusRadSpr->val)) {QMessageBox::critical(this, "Error", "No free nearby, stopping."); btnWriteCalibFocus->setChecked(false); return;}
     QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
@@ -289,7 +297,7 @@ void pgCalib::WCFFindNearest(){
     redoA:  pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
     const pgScanGUI::scanRes* res=scanRes->get();
-    int roiD=2*selWriteCalibFocusRadDil->val*1000/pgMGUI->getNmPPx();
+    int roiD=2*selWriteCalibFocusRadDil->val*1000/res->XYnmppx;
     if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
     pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/before"));
 
@@ -375,21 +383,40 @@ void pgCalib::WCFArray(){
             wfile.close();
         }
     }
-    //TODO save total focus, also red green ofset
+
+    float focusRad;
+    if(pgBeAn->getCalibWritingBeam(&focusRad)) if(pgBeAn->getCalibWritingBeam(&focusRad)){      // recenter writing beam and get radius
+        std::cerr<<"Failed to analyse/center the read beam after two tries.\n";
+        btnWriteCalibFocus->setChecked(false);
+        return;
+    }
+    pgBeAn->getWritingBeamFocus();
+    double focus=pgMGUI->FZdifference;
+
+    saveConfMain(util::toString(folder,"/main-settings.txt"), focus, *pgBeAn->extraFocusOffsetVal, focusRad);
 
     double xSize=WArray.cols*selArraySpacing->val/1000;         //in mm
     double ySize=WArray.rows*selArraySpacing->val/1000;
     double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;
     double yOfs=((WArray.rows-1)*selArraySpacing->val)/2000;
 
-    //TODO refocus red
-    //TODO recentre red spot
-    //TODO save res in main folder
+//    if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement
+//        redoA:  pgSGUI->doOneRound(-1);
+//        while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
+//        const pgScanGUI::scanRes* res=scanRes->get();
+//        if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize)))>xSize*ySize*0.0001){std::cerr<<"To much non zero mask in ROI (>0.1%); redoing measurement.\n";goto redoA;}
 
-    double focus=pgMGUI->FZdifference;
-    float focusRad;
+//        while(res->avgNum!=(int)selArrayOneScanN->val){
+//            pgSGUI->doOneRound(1);
 
-    //TODOmeasure if single/avg
+//            while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+//            res=scanRes->get();
+//        }
+//        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/before"));
+//    }
+
+    //PROBLEM HERE WAS xOfs are in mm, and ySize needs to be in px
+
     pgMGUI->move(xOfs,yOfs,0,0);
 
     for(int j=0;j!=WArray.rows; j++){
@@ -397,30 +424,60 @@ void pgCalib::WCFArray(){
             pgMGUI->moveZF(focus+WArray.at<cv::Vec3d>(j,i)[2]/1000);
             while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
 
-            if(pgBeAn->getCalibWritingBeam(&focusRad)) if(pgBeAn->getCalibWritingBeam(&focusRad)){      // recenter writing beam and get radius
-                std::cerr<<"Failed to analyse the read beam after two tries.\n";
-                pgMGUI->moveZF(focus);
-                btnWriteCalibFocus->setChecked(false);
-                return;
+            if(pgBeAn->getCalibWritingBeam(&focusRad,nullptr,nullptr,false)) if(pgBeAn->getCalibWritingBeam(&focusRad,nullptr,nullptr,false)){      // recenter writing beam and get radius
+                focusRad=-1;
             }
 
             uchar selectedavg;
             cv::utils::fs::createDirectory(util::toString(folder,"/",i+j*WArray.cols));
-            writePulse(WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1], util::toString(folder,"/",i+j*WArray.cols,"/laser.dat"), &selectedavg);
 
-            //TODO do measurement if multiple
+            if(selArrayScanType->index==1){ //multiple mesurement
+                redoA:  pgSGUI->doOneRound(-1);
+                while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
+                const pgScanGUI::scanRes* res=scanRes->get();
+                int roiD=selArraySpacing->val*1000/res->XYnmppx;
+                if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
+                pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/before"));
+            }
+
+            //todo abort when overflow
+            //todo abort midway
+            writePulse(WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1]*1000, util::toString(folder,"/",i+j*WArray.cols,"/laser.dat"), &selectedavg);
+
+            if(selArrayScanType->index==1){ //multiple mesurement
+                redoB:  pgSGUI->doOneRound(-1);
+                while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
+                const pgScanGUI::scanRes* res=scanRes->get();
+                int roiD=selArraySpacing->val*1000/res->XYnmppx;
+                if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}      //this is (square-circle)/4
+                pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/after"));
+            }
+
             saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), focus+WArray.at<cv::Vec3d>(j,i)[2]/1000, selArraySpacing->val, WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1], selectedavg, focusRad);
 
-            //TODO implement break on unchecked, implement show progress
-
-            if(j!=WArray.cols-1) pgMGUI->move(-selArraySpacing->val/1000,0,0,0);
+            if(i!=WArray.cols-1) pgMGUI->move(-selArraySpacing->val/1000,0,0,0);
         }
         if(j!=WArray.rows-1) pgMGUI->move(2*xOfs,-selArraySpacing->val/1000,0,0);
     }
     pgMGUI->move(xOfs,yOfs,0,0);
     pgMGUI->moveZF(focus);
     while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
-    //TODO measure if single/avg
+
+//    if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement
+//        redoB:  pgSGUI->doOneRound(-1);
+//        while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
+//        const pgScanGUI::scanRes* res=scanRes->get();
+//        if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-xSize/2, res->depth.rows/2-ySize/2, xSize, ySize)))>xSize*ySize*0.0001){std::cerr<<"To much non zero mask in ROI (>0.1%); redoing measurement.\n";goto redoB;}
+
+//        while(res->avgNum!=(int)selArrayOneScanN->val){
+//            pgSGUI->doOneRound(1);
+//            while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+//            res=scanRes->get();
+//        }
+//        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/after"));
+//    }
+
+    //TODO separate if single/avg
 
     btnWriteCalibFocus->setChecked(false);
 }
@@ -494,24 +551,22 @@ void pgCalib::onProcessFocusMes(){
         pgScanGUI::scanRes scanDif=pgScanGUI::difScans(&scanBefore, &scanAfter);
         //pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
 
-        cv::Mat rescaleDepth, rescaleMask;
-        cv::resize(scanDif.depth,rescaleDepth,cv::Size(),0.2,0.2);
-        cv::resize(scanDif.mask,rescaleMask,cv::Size(),0.2,0.2);
-
+//        cv::Mat rescaleDepth, rescaleMask;
+//        cv::resize(scanDif.depth,rescaleDepth,cv::Size(),0.2,0.2);            //dont forget to rescale the measured widths
+//        cv::resize(scanDif.mask,rescaleMask,cv::Size(),0.2,0.2);
 
         std::vector<std::pair<input_vector, double>> data;
 //        for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++)
 //            if(scanDif.mask.at<uchar>(j,i)==0) data.push_back(std::make_pair(input_vector{(double)i,(double)j},scanDif.depth.at<float>(j,i)));
-        for(int i=0;i!=rescaleDepth.cols;i++) for(int j=0;j!=rescaleDepth.rows;j++)
-            if(rescaleMask.at<uchar>(j,i)==0) data.push_back(std::make_pair(input_vector{(double)i,(double)j},rescaleDepth.at<float>(j,i)));
+        for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++)
+            if(scanDif.mask.at<uchar>(j,i)==0) data.push_back(std::make_pair(input_vector{(double)i,(double)j},scanDif.depth.at<float>(j,i)));
         //std::cout<<"size= "<<data.size()<<"\n";
 
-//        parameter_vector res{(double)scanDif.depth.cols/2,(double)scanDif.depth.rows/2,scanDif.max,(double)scanDif.depth.rows/4, scanDif.min};
-        parameter_vector res{(double)rescaleDepth.cols/2,(double)rescaleDepth.rows/2,scanDif.max,(double)rescaleDepth.rows, (double)rescaleDepth.rows, 0.01, scanDif.min};
+        parameter_vector res{(double)scanDif.depth.cols/2,(double)scanDif.depth.rows/2,scanDif.max-scanDif.min,(double)scanDif.depth.rows, (double)scanDif.depth.rows, 0.01, scanDif.min};
         //dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(), gaussResidual, derivative(gaussResidual), data, res);
+
         dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7,100), gaussResidual, derivative(gaussResidual), data, res);
         //std::cout << "inferred parameters: "<< dlib::trans(res) << "\n";
-
         while(res(5)>M_PI) res(5)-=M_PI;
         while(res(5)<0) res(5)+=M_PI;
         if(res(5)>=M_PI/2){

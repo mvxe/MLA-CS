@@ -199,10 +199,10 @@ void pgScanGUI::updatePVTs(std::string &report){
     PVTsRdy=true;
 }
 int NA=0;
-void pgScanGUI::doOneRound(){
+void pgScanGUI::doOneRound(char cbAvg_override){
     if(!PVTsRdy) recalculate();
     measurementInProgress=true;
-    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this));
+    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,cbAvg_override));
 }
 
 double pgScanGUI::vsConv(val_selector* vs){
@@ -214,7 +214,7 @@ double pgScanGUI::vsConv(val_selector* vs){
     }
 }
 
-void pgScanGUI::_doOneRound(){
+void pgScanGUI::_doOneRound(char cbAvg_override){
     if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     if(!PVTsRdy) return;
     scanRes* res=new scanRes;
@@ -420,7 +420,7 @@ void pgScanGUI::_doOneRound(){
         saveIter++;
     }
 
-    if(cbAvg->val){
+    if((cbAvg->val && cbAvg_override==0) || cbAvg_override==1){
         varShareClient<pgScanGUI::scanRes>* temp=result.getClient();
         const scanRes* oldScanRes=temp->get();
         if(oldScanRes==nullptr);
