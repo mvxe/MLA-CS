@@ -111,7 +111,6 @@ void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov){
 void pgMoveGUI::onFZdifChange(double X, double Y, double Z, double F){
     if(FZdifCur==F+Z) return;
     FZdif->setValue(F+Z);
-    FZdifCur=F+Z;
 }
 
 void pgMoveGUI::moveZF(double difference){
