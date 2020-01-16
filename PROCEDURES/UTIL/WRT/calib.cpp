@@ -539,9 +539,13 @@ void pgCalib::onProcessFocusMes(){
     for(auto& fldr:measFolders){
         double FZdif;
         double Frad;
+        double intensity;
+        double duration;
         std::ifstream ifs(util::toString(fldr,"/settings.txt"));
         ifs>>FZdif;
-        for(int i=0;i!=5;i++)ifs>>Frad;
+        for(int i=0;i!=2;i++) ifs>>intensity;
+        ifs>>duration;
+        for(int i=0;i!=2;i++)ifs>>Frad;
         ifs.close();
 
         //std::cerr<<fldr<<"\n";
@@ -576,8 +580,8 @@ void pgCalib::onProcessFocusMes(){
            res(4)=tmp;
         }
 
-        wfile<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<abs(res(3))<<" "<<abs(res(4))<<" "<<res(5)<<" "<<sqrt(res(3)*res(3)+res(4)*res(4))<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<"\n";
-        std::cerr<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<abs(res(3))<<" "<<abs(res(4))<<" "<<res(5)<<" "<<sqrt(res(3)*res(3)+res(4)*res(4))<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<"\n";
+        wfile<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<abs(res(3))<<" "<<abs(res(4))<<" "<<res(5)<<" "<<(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
+        std::cerr<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<abs(res(3))<<" "<<abs(res(4))<<" "<<res(5)<<" "<<(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
 
 //        double min,max;
 //        cv::Point  ignore;
