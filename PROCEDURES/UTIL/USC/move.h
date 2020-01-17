@@ -35,7 +35,8 @@ public Q_SLOTS:
     void scaledMoveY(double magnitude);
     void scaledMoveZ(double magnitude);
     void scaledMoveF(double magnitude);
- private:
+private:
+
     void init_gui_activation();
     void init_gui_settings();
 

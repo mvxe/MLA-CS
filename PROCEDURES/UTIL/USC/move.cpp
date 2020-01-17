@@ -110,6 +110,7 @@ void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov){
 
 void pgMoveGUI::onFZdifChange(double X, double Y, double Z, double F){
     if(FZdifCur==F+Z) return;
+    FZdifCur=F+Z;
     FZdif->setValue(F+Z);
 }
 
@@ -117,6 +118,7 @@ void pgMoveGUI::moveZF(double difference){
     if(!go.pXPS->connected) return;
     if(difference==FZdifCur || FZdifCur==-9999) return;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,0,difference-FZdifCur);
+    while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //This fixes some sync issues
     FZdifCur=difference;
     FZdif->setValue(FZdifCur);
 }
