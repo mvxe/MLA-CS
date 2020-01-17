@@ -461,6 +461,7 @@ void pgCalib::WCFArray(){
 
             saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), focus+WArray.at<cv::Vec3d>(j,i)[2]/1000, selArraySpacing->val, WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1], selectedavg, focusRad);
 
+            std::cerr<<"\nDone "<<1+i+j*WArray.cols<<"/"<<WArray.rows*WArray.cols<<"\n\n";
             if(i!=WArray.cols-1) pgMGUI->move(-selArraySpacing->val/1000,0,0,0);
         }
         if(j!=WArray.rows-1) pgMGUI->move(2*xOfs,-selArraySpacing->val/1000,0,0);
