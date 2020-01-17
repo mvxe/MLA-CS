@@ -76,6 +76,9 @@ private:
     QVBoxLayout* playout;
     QPushButton* btnProcessFocusMes;
 
+    constexpr static int maxRedoScanTries=3;
+    constexpr static double discardMaskRoiThresh=0.001;     //if more than 0.1% of the pixels in the roi are bad, discard and try again, up to maxRedoScanTries. If it still fails accept it anyway
+
     void WCFFindNearest();
     void WCFArray();
     void writePulse(int intensity, double duration, const std::string filename="", uchar* usedAvg=nullptr, const int cmdQueue=0, const int recQueue=1);       //duration in us

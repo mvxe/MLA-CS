@@ -432,11 +432,12 @@ void pgCalib::WCFArray(){
             cv::utils::fs::createDirectory(util::toString(folder,"/",i+j*WArray.cols));
 
             if(selArrayScanType->index==1){ //multiple mesurement
-                redoA:  pgSGUI->doOneRound(-1);
+                int tryA{0};
+                redoA:  tryA++; pgSGUI->doOneRound(-1);
                 while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
                 const pgScanGUI::scanRes* res=scanRes->get();
                 int roiD=selArraySpacing->val*1000/res->XYnmppx;
-                if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
+                if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*discardMaskRoiThresh && tryA<maxRedoScanTries){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
                 pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/before"));
             }
 
@@ -445,11 +446,12 @@ void pgCalib::WCFArray(){
             writePulse(WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1]*1000, util::toString(folder,"/",i+j*WArray.cols,"/laser.dat"), &selectedavg);
 
             if(selArrayScanType->index==1){ //multiple mesurement
-                redoB:  pgSGUI->doOneRound(-1);
+                int tryB{0};
+                redoB:  tryB++; pgSGUI->doOneRound(-1);
                 while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
                 const pgScanGUI::scanRes* res=scanRes->get();
                 int roiD=selArraySpacing->val*1000/res->XYnmppx;
-                if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}      //this is (square-circle)/4
+                if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*discardMaskRoiThresh && tryB<maxRedoScanTries){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}      //this is (square-circle)/4
                 pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/after"));
             }
 
