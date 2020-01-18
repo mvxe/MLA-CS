@@ -11,6 +11,7 @@ class QPushButton;
 class moveDial;
 class QLabel;
 class checkbox_save;
+class PVTobj;
 
 class pgMoveGUI: public QObject{
     Q_OBJECT
@@ -36,6 +37,9 @@ public Q_SLOTS:
     void scaledMoveY(double magnitude);
     void scaledMoveZ(double magnitude);
     void scaledMoveF(double magnitude);
+
+    void corPvt(PVTobj* po, double time, double Xmov, double Xspd, double Ymov, double Yspd, double Zmov=0, double Zspd=0, double Fmov=0, double Fspd=0, bool forceSkewCorrection=false);
+                                // for adding corrected pvt segments. NOTE: this corrects ZF on X and Y move, and moving Z also moves F, i.e. the Fmov, Fspd are actually (F-Z) movements
 private:
 
     void init_gui_activation();

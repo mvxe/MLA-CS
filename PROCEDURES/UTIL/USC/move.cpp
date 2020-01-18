@@ -110,9 +110,29 @@ void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov, bool fo
         _Ymov=Xmov*sin(calibAngCamToXMot->val)+Ymov*cos(calibAngCamToXMot->val+calibAngYMotToXMot->val);
     }
 
-    double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;
+    double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;    //this correction should change with skewCorrection, but implementing that would be annoying (dont want to add more configuration) and its negligible anyway, just recalibrate autoadjXZ,YZ with skewCorrection if its a problem
     double _Fmov=Fmov-_Zmov;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,_Xmov,_Ymov,_Zmov,_Fmov);
+}
+
+void pgMoveGUI::corPvt(PVTobj* po, double time, double Xmov, double Xspd, double Ymov, double Yspd, double Zmov, double Zspd, double Fmov, double Fspd, bool forceSkewCorrection){
+    if(po==nullptr) return;
+    double _Xmov=Xmov;
+    double _Ymov=Ymov;
+    double _Xspd=Xspd;
+    double _Yspd=Yspd;
+    if(skewCorrection->val || forceSkewCorrection){
+        _Xmov=Xmov*cos(calibAngCamToXMot->val)+Ymov*sin(calibAngCamToXMot->val+calibAngYMotToXMot->val);
+        _Ymov=Xmov*sin(calibAngCamToXMot->val)+Ymov*cos(calibAngCamToXMot->val+calibAngYMotToXMot->val);
+        _Xspd=Xspd*cos(calibAngCamToXMot->val)+Yspd*sin(calibAngCamToXMot->val+calibAngYMotToXMot->val);
+        _Yspd=Xspd*sin(calibAngCamToXMot->val)+Yspd*cos(calibAngCamToXMot->val+calibAngYMotToXMot->val);
+    }
+    double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;
+    double _Zspd=Zspd+_Xspd*autoadjXZ->val+_Yspd*autoadjYZ->val;
+    double _Fmov=Fmov-_Zmov;
+    double _Fspd=Fspd-_Zspd;
+
+    po->add(time, _Xmov, _Xspd, _Ymov, _Yspd, _Zmov,_Zspd,_Fmov,_Fspd);
 }
 
 void pgMoveGUI::onFZdifChange(double X, double Y, double Z, double F){
