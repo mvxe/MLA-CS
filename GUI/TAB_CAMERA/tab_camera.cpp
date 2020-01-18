@@ -317,7 +317,7 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
             double DX, DY;
             DX=(pixmap()->width()/2+parent->pgBeAn->writeBeamCenterOfsX-xcoord)*parent->pgMGUI->getNmPPx()/1000000;     //we also correct for real writing beam offset from center
             DY=(pixmap()->height()/2+parent->pgBeAn->writeBeamCenterOfsY-ycoord)*parent->pgMGUI->getNmPPx()/1000000;
-            parent->pgMGUI->move(DX*cos(parent->pgMGUI->getAngCamToXMot())+DY*sin(parent->pgMGUI->getAngCamToXMot()+parent->pgMGUI->getYMotToXMot()),DX*sin(parent->pgMGUI->getAngCamToXMot())+DY*cos(parent->pgMGUI->getAngCamToXMot()+parent->pgMGUI->getYMotToXMot()),0,0);
+            parent->pgMGUI->move(DX,DY,0,0,true);
             if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(pixmap()->width()/2-xcoord, pixmap()->height()/2-ycoord);
         }else if(event->button()==Qt::RightButton){
             parent->clickMenu->popup(QCursor::pos());

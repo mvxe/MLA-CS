@@ -10,6 +10,7 @@ class eadScrlBar;
 class QPushButton;
 class moveDial;
 class QLabel;
+class checkbox_save;
 
 class pgMoveGUI: public QObject{
     Q_OBJECT
@@ -28,8 +29,8 @@ public:
     std::atomic<double>& FZdifference{FZdifCur};
 
 public Q_SLOTS:
-    void moveZF(double difference);                                 //in mm
-    void move(double Xmov, double Ymov, double Zmov, double Fmov);  //in mm, corrects ZF on X and Y move
+    void moveZF(double difference);                                                                 //in mm
+    void move(double Xmov, double Ymov, double Zmov, double Fmov, bool forceSkewCorrection=false);  //in mm, corrects ZF on X and Y move
 
     void scaledMoveX(double magnitude);
     void scaledMoveY(double magnitude);
@@ -77,6 +78,7 @@ private:
     };
     dpoint curP4calib;
     std::vector<dpoint> p4calib;
+    checkbox_save* skewCorrection;
 
     std::atomic<double> FZdifCur{-9999};
 

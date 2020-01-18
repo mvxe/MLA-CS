@@ -93,16 +93,23 @@ void pgMoveGUI::init_gui_settings(){
     slayout->addWidget(calibAngCamToXMot);
     calibAngYMotToXMot=new val_selector(0, "pgMoveGUI_calibAngYMotToXMot", "Xmot/Ymot angle ofs: ", -M_PI/2, M_PI/2, 6, 0, {"rad"});
     slayout->addWidget(calibAngYMotToXMot);
+    skewCorrection=new checkbox_save(false,"pgMoveGUI_skewCorrection","Correct XY skew and camera angle for all move commands through this function.");
+    slayout->addWidget(skewCorrection);
 }
 
 void pgMoveGUI::scaledMoveX(double magnitude){move(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0,0);}
 void pgMoveGUI::scaledMoveY(double magnitude){move(0,magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0);}
 void pgMoveGUI::scaledMoveZ(double magnitude){move(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val),0);}
 void pgMoveGUI::scaledMoveF(double magnitude){move(0,0,0,magnitude*fMoveScale->val/1000*pow(10,mpow->val));}
-void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov){
+void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov, bool forceSkewCorrection){
     if(!go.pXPS->connected) return;
     double _Xmov=Xmov;
     double _Ymov=Ymov;
+    if(skewCorrection->val || forceSkewCorrection){
+        _Xmov=Xmov*cos(calibAngCamToXMot->val)+Ymov*sin(calibAngCamToXMot->val+calibAngYMotToXMot->val);
+        _Ymov=Xmov*sin(calibAngCamToXMot->val)+Ymov*cos(calibAngCamToXMot->val+calibAngYMotToXMot->val);
+    }
+
     double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;
     double _Fmov=Fmov-_Zmov;
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,_Xmov,_Ymov,_Zmov,_Fmov);
