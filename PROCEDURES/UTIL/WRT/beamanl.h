@@ -54,6 +54,7 @@ private:
     val_selector* wideRange;
     val_selector* accuFrames;
     val_selector* accuRange;
+    checkbox_save* doExtraFocusMesDifDir;
     QPushButton* btnSaveNextDebugFocus;
     val_selector* extraFocusOffset;
 

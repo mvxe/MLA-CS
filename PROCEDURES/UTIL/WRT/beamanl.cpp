@@ -30,6 +30,7 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
     wideRange= new val_selector( 0.5,"pgBeamAnalysis_wideRange", "Scan Range for Wide Scan: ",0.001,1,3,0,{"mm"});
     accuFrames=new val_selector( 100,"pgBeamAnalysis_accuFrames", "Number of Frames for Accurate Scan: ",10,1000,0);
     accuRange= new val_selector( 0.05,"pgBeamAnalysis_accuRange", "Scan Range for Accurate Scan: ",0.001,1,3,0,{"mm"});
+    doExtraFocusMesDifDir=new checkbox_save(false,"pgBeamAnalysis_doExtraFocusMesDifDir","Do extra focus measurement from opposite side.");
     btnSaveNextDebugFocus=new QPushButton("Save Next Debug Intensities");
     btnSaveNextDebugFocus->setToolTip("Select Folder for Debug. The measured intensities will be saved for the next 'Get Writing Beam Focus'..");
     connect(btnSaveNextDebugFocus, SIGNAL(released()), this, SLOT(onBtnSaveNextDebugFocus()));
@@ -68,6 +69,7 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
     slayout->addWidget(wideRange);
     slayout->addWidget(accuFrames);
     slayout->addWidget(accuRange);
+    slayout->addWidget(doExtraFocusMesDifDir);
     slayout->addWidget(new twid(btnSaveNextDebugFocus));
     slayout->addWidget(extraFocusOffset);
 
@@ -485,10 +487,17 @@ void pgBeamAnalysis::getWritingBeamFocus(){
     getCalibWritingBeamRange(&r, wideFrames->val, wideRange->val);
     std::cerr<<"it. 1: Red Beam Focus difference is "<<r<<"\n";
     if(r!=9999) pgMGUI->moveZF(r);
-    getCalibWritingBeamRange(&r, accuFrames->val, accuRange->val);                    //changing the direction does not affect the result
-    std::cerr<<"it 2: Red Beam Focus difference is "<<r<<"\n";
-    if(r!=9999) pgMGUI->moveZF(r-extraFocusOffset->val);
-    std::cerr<<"New Focus (Corrected for Ref/Wr laser diff) "<<r-extraFocusOffset->val<<"\n";
+    getCalibWritingBeamRange(&r, accuFrames->val, accuRange->val);                    //changing the direction does not affect the result much
+    std::cerr<<"it. 2: Red Beam Focus difference is "<<r<<"\n";
+    double ro=r;
+    if(doExtraFocusMesDifDir->val){
+        getCalibWritingBeamRange(&ro, accuFrames->val, accuRange->val,true);
+        std::cerr<<"it. 3 (op.dir.): Red Beam Focus difference is "<<ro<<"\n";
+
+    }
+
+    if(r!=9999) pgMGUI->moveZF((r+ro)/2-extraFocusOffset->val);
+    std::cerr<<"New Focus (Corrected for Ref/Wr laser diff) "<<(r+ro)/2-extraFocusOffset->val<<"\n";
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
     std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::milliseconds>(B - A).count()<<" milliseconds\n";
