@@ -148,6 +148,7 @@ void tab_camera::work_fun(){
                 if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY);
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
+                pgCal->drawWriteArea(&temp);
                 LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_Indexed8)));
 //                cv::applyColorMap(temp, temp, OCV_CM::ids[cm_sel->index]);
 //                cv::cvtColor(temp, temp, cv::COLOR_BGR2RGB);

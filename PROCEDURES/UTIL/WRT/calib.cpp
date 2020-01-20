@@ -29,11 +29,12 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     connect(btnSelectSaveFolder, SIGNAL(released()), this, SLOT(onSelSaveF()));
     alayout->addWidget(new twid(btnSelectSaveFolder));
 
-    btnWriteCalibFocus=new QPushButton("Calibrate Write Focus");
-    btnWriteCalibFocus->setEnabled(false);
-    connect(btnWriteCalibFocus, SIGNAL(released()), this, SLOT(onWCF()));
-    btnWriteCalibFocus->setCheckable(true);
-    alayout->addWidget(new twid(btnWriteCalibFocus));
+    btnWriteCalib=new HQPushButton("Calibrate Write Focus");
+    btnWriteCalib->setEnabled(false);
+    connect(btnWriteCalib, SIGNAL(released()), this, SLOT(onWCF()));
+    connect(btnWriteCalib, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
+    btnWriteCalib->setCheckable(true);
+    alayout->addWidget(new twid(btnWriteCalib));
 
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
@@ -156,11 +157,11 @@ void pgCalib::onSelSaveF(){
     std::string temp=QFileDialog::getExistingDirectory(this, "Select Folder for Saving Calibration Data").toStdString();
     if(temp.empty()) return;
     saveFolderName=temp;
-    btnWriteCalibFocus->setEnabled(true);
+    btnWriteCalib->setEnabled(true);
 }
 
 void pgCalib::onWCF(){
-    if(!btnWriteCalibFocus->isChecked()) return;
+    if(!btnWriteCalib->isChecked()) return;
     if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
     if(!go.pXPS->connected) {QMessageBox::critical(this, "Error", "Error: XPS not Connected"); return;}
     switch(calibMethod->index){
@@ -242,7 +243,7 @@ void pgCalib::saveConfMain(std::string filename, double focus, double extraFocus
 }
 
 void pgCalib::WCFFindNearest(){
-    if(goToNearestFree(selWriteCalibFocusRadDil->val,selWriteCalibFocusRadSpr->val)) {QMessageBox::critical(this, "Error", "No free nearby, stopping."); btnWriteCalibFocus->setChecked(false); return;}
+    if(goToNearestFree(selWriteCalibFocusRadDil->val,selWriteCalibFocusRadSpr->val)) {QMessageBox::critical(this, "Error", "No free nearby, stopping."); btnWriteCalib->setChecked(false); return;}
     QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
 
     std::string folder=makeDateTimeFolder(saveFolderName);
@@ -288,7 +289,7 @@ void pgCalib::WCFFindNearest(){
             if(didF<10) goto redoF;
             else{
                 std::cerr<<"Failed"<<didF<<"times. Aborting.\n";
-                btnWriteCalibFocus->setChecked(false);
+                btnWriteCalib->setChecked(false);
                 return;
             }
         }
@@ -314,10 +315,10 @@ void pgCalib::WCFFindNearest(){
     if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}
     pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/after"));
 
-    if(btnWriteCalibFocus->isChecked()){
+    if(btnWriteCalib->isChecked()){
         measCounter++;
         if(measCounter<(int)selWriteCalibFocusDoNMeas->val) return WCFFindNearest();
-        else {btnWriteCalibFocus->setChecked(false); measCounter=0;}
+        else {btnWriteCalib->setChecked(false); measCounter=0;}
     } else measCounter=0;
 }
 
@@ -387,7 +388,7 @@ void pgCalib::WCFArray(){
     float focusRad;
     if(pgBeAn->getCalibWritingBeam(&focusRad)) if(pgBeAn->getCalibWritingBeam(&focusRad)){      // recenter writing beam and get radius
         std::cerr<<"Failed to analyse/center the read beam after two tries.\n";
-        btnWriteCalibFocus->setChecked(false);
+        btnWriteCalib->setChecked(false);
         return;
     }
     pgBeAn->getWritingBeamFocus();
@@ -424,7 +425,7 @@ void pgCalib::WCFArray(){
 
     for(int j=0;j!=WArray.rows; j++){
         for(int i=0;i!=WArray.cols; i++){
-            if(!btnWriteCalibFocus->isChecked()){   //abort
+            if(!btnWriteCalib->isChecked()){   //abort
                 std::cerr<<"Aborting calibration.\n";
                 pgMGUI->moveZF(focus);
                 return;
@@ -483,7 +484,7 @@ void pgCalib::WCFArray(){
                                                   selArraySpacing->val*1000/pgMGUI->getNmPPx(), selArraySpacing->val*1000/pgMGUI->getNmPPx()), util::toString(folder,"/",i+j*WArray.cols,"/after"));
     }
 
-    btnWriteCalibFocus->setChecked(false);
+    btnWriteCalib->setChecked(false);
 }
 typedef dlib::matrix<double,2,1> input_vector;
 typedef dlib::matrix<double,7,1> parameter_vector;
@@ -598,3 +599,14 @@ void pgCalib::onProcessFocusMes(){
     wfile.close();
 }
 
+void pgCalib::onChangeDrawWriteAreaOn(bool status){
+    drawWriteAreaOn=status;
+}
+void pgCalib::drawWriteArea(cv::Mat* img){
+    if(!drawWriteAreaOn) return;
+    double xSize=selArrayXsize->val*selArraySpacing->val*1000/pgMGUI->getNmPPx();
+    double ySize=selArrayYsize->val*selArraySpacing->val*1000/pgMGUI->getNmPPx();
+    double clr[2]={0,255}; int thck[2]={3,1};
+    for(int i=0;i!=2;i++)
+    cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, img->rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
+}

@@ -20,6 +20,7 @@ public:
     QWidget* gui_settings;
     QWidget* gui_processing;
     bool goToNearestFree(double radDilat, double radRandSpread); //returns true if failed (no free point nearby)
+    void drawWriteArea(cv::Mat* img);
 private:
     pgFocusGUI* pgFGUI;
     pgMoveGUI* pgMGUI;
@@ -37,7 +38,7 @@ private:
     val_selector* selRadSprGoToNearestFree;
     QPushButton* btnSelectSaveFolder;
     std::string saveFolderName{""};
-    QPushButton* btnWriteCalibFocus;
+    HQPushButton* btnWriteCalib;
 
     //settings
     QVBoxLayout* slayout;
@@ -71,6 +72,7 @@ private:
         checkbox_save* showLimits;
         checkbox_save* saveMats;
     int measCounter{0};
+    bool drawWriteAreaOn{false};
 
     //processing
     QVBoxLayout* playout;
@@ -90,6 +92,7 @@ private Q_SLOTS:
     void onSelSaveF();
     void onWCF();
     void onProcessFocusMes();
+    void onChangeDrawWriteAreaOn(bool status);
 
 };
 

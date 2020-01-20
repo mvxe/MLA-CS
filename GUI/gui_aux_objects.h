@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QToolButton>
 #include <QCheckBox>
+#include <QPushButton>
 #include "UTIL/containers.h"
 
 class QHBoxLayout;
@@ -13,7 +14,6 @@ class QVBoxLayout;
 class QString;
 class QDoubleSpinBox;
 class QTimer;
-class QPushButton;
 class QScrollToolButton;
 class QDial;
 
@@ -270,5 +270,17 @@ template<typename... Args> hidCon::hidCon(Args... args): mainTwid(new twid(args.
     hhidCon();
 }
 
+// GUI HOVER QPushButton
+
+class HQPushButton : public QPushButton{
+    Q_OBJECT
+public:
+    using QPushButton::QPushButton;
+private:
+    void enterEvent(QEvent *event);
+    void leaveEvent(QEvent *event);
+Q_SIGNALS:
+    void changed(bool hovering);
+};
 
 #endif // GUI_AUX_OBJECTS_H

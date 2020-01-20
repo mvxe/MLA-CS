@@ -413,3 +413,12 @@ void hidCon::onClicked(){
     wI->setVisible(!wI->isVisible());
     showBtn->setText((wI->isVisible())?"< hide >":"< show >");
 }
+
+// GUI HOVER QPushButton
+
+void HQPushButton::enterEvent(QEvent *event){
+    Q_EMIT changed(true);
+}
+void HQPushButton::leaveEvent(QEvent *event){
+    Q_EMIT changed(false);
+}
