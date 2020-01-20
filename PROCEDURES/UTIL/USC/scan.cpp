@@ -226,7 +226,7 @@ void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect r
             go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,1));
             MLP._lock_meas.unlock();
         }
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 100);    // WaitForMoreEvents ensures it waits at least that ammount of time
         res=scanRes->get();
     }
     delete scanRes;
