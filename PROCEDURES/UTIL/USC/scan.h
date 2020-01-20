@@ -41,6 +41,10 @@ public:
 
     std::atomic<bool> measurementInProgress{false}; //for outside calling functions
     void doOneRound(char cbAvg_override=0);         // for cbAvg_override==0, cbAvg setting is used, if cbAvg_override=1 avearage, if cbAvg_override=-1 do not average
+                                                    // this function is non blocking, check measurementInProgress to see if done
+    void doNRounds(int N, double redoIfMaskHasMore=0.01, int redoN=3, cv::Rect roi={0,0,0,0});
+                                                    // does at least N measurements (and most N+1) with avg (cbAvg_override==1), if mask is more than redoIfMaskHasMore fraction of total(ROID) pixels, redo mesurements, up to redoN times
+                                                    // this funtion is blocking, but processes qt events
 
     struct scanRes{
         cv::Mat depth;

@@ -205,6 +205,38 @@ void pgScanGUI::doOneRound(char cbAvg_override){
     go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,cbAvg_override));
 }
 
+void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect roi){
+    if(!PVTsRdy) recalculate();
+    varShareClient<pgScanGUI::scanRes>* scanRes=result.getClient();
+
+    int doneN=0;
+    const pgScanGUI::scanRes* res;
+    cv::Mat roiMask;
+    do{
+        measurementInProgress=true;
+        go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,-1));
+        while(measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
+        res=scanRes->get();
+        doneN++;
+        if(roi.width!=0 && roi.height!=0) roiMask=cv::Mat(res->mask,roi);
+    }while(cv::countNonZero(roiMask)>roiMask.cols*roiMask.rows*redoIfMaskHasMore && doneN<=redoN);
+
+    while(res->avgNum<N){
+        if(MLP._lock_meas.try_lock()){
+            go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,1));
+            MLP._lock_meas.unlock();
+        }
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        res=scanRes->get();
+    }
+    delete scanRes;
+    while(!MLP._lock_meas.try_lock()) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+    MLP._lock_meas.unlock();
+    while(!MLP._lock_comp.try_lock()) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+    MLP._lock_comp.unlock();
+}
+
+
 double pgScanGUI::vsConv(val_selector* vs){
     switch(vs->index){
     case 0: return vs->val;
@@ -365,49 +397,6 @@ void pgScanGUI::_doOneRound(char cbAvg_override){
 
     MLP.progress_comp=90;
 
-    if(cbCorrectTilt->val){ //autocorrect tilt
-        cv::UMat blured;
-        double sigma=tiltCorBlur->val;
-        int ksize=sigma*5;
-        if(!(ksize%2)) ksize++;
-        cv::GaussianBlur(resultFinalPhase, blured, cv::Size(ksize, ksize), sigma, sigma);
-        double derDbound=tiltCorThrs->val;
-        cv::UMat firstD, secondD, mask, maskT;
-        cv::Sobel(blured, firstD, CV_32F,1,0); //X
-        cv::Sobel(blured, secondD, CV_32F,2,0); //X
-        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
-        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
-        mask.setTo(cv::Scalar::all(0), maskT);
-        mask.setTo(cv::Scalar::all(0), maskUMat);
-        res->tiltCor[0]=-cv::mean(firstD,mask)[0]/8;
-        cv::Sobel(blured, firstD, CV_32F,0,1); //Y
-        cv::Sobel(blured, secondD, CV_32F,2,0); //X
-        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
-        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
-        mask.setTo(cv::Scalar::all(0), maskT);
-        mask.setTo(cv::Scalar::all(0), maskUMat);
-        res->tiltCor[1]=-cv::mean(firstD,mask)[0]/8;
-        std::cout<<"CPhases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
-
-
-        cv::Mat slopeX1(1, nCols, CV_32F);
-        cv::UMat slopeUX1(1, nCols, CV_32F);
-        cv::UMat slopeUX(nRows, nCols, CV_32F);
-        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=i*res->tiltCor[0];
-        slopeX1.copyTo(slopeUX1);
-        cv::repeat(slopeUX1, nRows, 1, slopeUX);
-        cv::add(slopeUX,resultFinalPhase,resultFinalPhase);
-
-        cv::Mat slopeY1(nRows, 1, CV_32F);
-        cv::UMat slopeUY1(nRows, 1, CV_32F);
-        cv::UMat slopeUY(nRows, nCols, CV_32F);
-        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*res->tiltCor[1];
-        slopeY1.copyTo(slopeUY1);
-        cv::repeat(slopeUY1, 1, nCols, slopeUY);
-        cv::add(slopeUY,resultFinalPhase,resultFinalPhase);
-    } else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
-
-    cv::minMaxLoc(resultFinalPhase, &res->min, &res->max, &ignore, &ignore, maskUMatNot);  //the ignored mask values will be <min , everything is in nm
     resultFinalPhase.setTo(std::numeric_limits<float>::max() , maskUMat);
     resultFinalPhase.copyTo(res->depth);
 
@@ -424,8 +413,25 @@ void pgScanGUI::_doOneRound(char cbAvg_override){
         varShareClient<pgScanGUI::scanRes>* temp=result.getClient();
         const scanRes* oldScanRes=temp->get();
         if(oldScanRes==nullptr);
-        else if(oldScanRes->pos[0]!=res->pos[0] || oldScanRes->pos[1]!=res->pos[1] || oldScanRes->XYnmppx!=res->XYnmppx); //we moved, no point to make average
+        else if(oldScanRes->pos[0]!=res->pos[0] || oldScanRes->pos[1]!=res->pos[1] || oldScanRes->XYnmppx!=res->XYnmppx || oldScanRes->depth.cols!=nCols || oldScanRes->depth.rows!=nRows); //we moved, no point to make average
         else{
+            // first we decorrect tilt on old mes
+            cv::Mat corDepth;
+            oldScanRes->depth.copyTo(corDepth);
+            if(oldScanRes->tiltCor[0]!=0){
+                cv::Mat slopeX1(1, nCols, CV_32F);
+                cv::Mat slopeX(nRows, nCols, CV_32F);
+                for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=-i*(oldScanRes->tiltCor[0]);
+                cv::repeat(slopeX1, nRows, 1, slopeX);
+                cv::add(slopeX,corDepth,corDepth);
+            }
+            if(oldScanRes->tiltCor[1]!=0){
+                cv::Mat slopeY1(nRows, 1, CV_32F);
+                cv::Mat slopeY(nRows, nCols, CV_32F);
+                for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=-i*(oldScanRes->tiltCor[1]);
+                cv::repeat(slopeY1, 1, nCols, slopeY);
+                cv::add(slopeY,corDepth,corDepth);
+            }
 
             //for iterative calculations we use Donald Knuth's "The Art of Computer Programming, Volume 2: Seminumerical Algorithms", section 4.2.2
             //  M(1) = x(1), M(k) = M(k-1) + (x(k) - M(k-1)) / k
@@ -447,7 +453,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override){
             bitwise_not(res->mask, res->maskN);
             res->depth.setTo(0,res->mask);
             cv::Mat tempp;
-            oldScanRes->depth.copyTo(tempp);
+            corDepth.copyTo(tempp);
             tempp.setTo(0,res->mask);
             double avgOld=(double)cv::sum(tempp)[0]/cv::countNonZero(res->maskN);
             double avgNew=(double)cv::sum(res->depth)[0]/cv::countNonZero(res->maskN);
@@ -457,26 +463,63 @@ void pgScanGUI::_doOneRound(char cbAvg_override){
             res->depth.copyTo(newDepth);    //we need this later for SD
 
             res->avgNum+=oldScanRes->avgNum;
-            //cv::addWeighted(res->depth,1./res->avgNum,oldScanRes->depth,(double)(res->avgNum-1)/res->avgNum,0,res->depth);
-            cv::subtract(res->depth,oldScanRes->depth,res->depth);
-            cv::addWeighted(res->depth,1./res->avgNum,oldScanRes->depth,1,0,res->depth);
+            cv::subtract(res->depth,corDepth,res->depth);
+            cv::addWeighted(res->depth,1./res->avgNum,corDepth,1,0,res->depth);
             res->depth.setTo(std::numeric_limits<float>::max(),res->mask);
 
-            cv::minMaxLoc(res->depth, &res->min, &res->max, &ignore, &ignore, res->maskN);
 
             //now calc the (!)SD
-            cv::subtract(newDepth,oldScanRes->depth,res->depthSS);      // (Xk - Mk-1)
+            cv::subtract(newDepth,corDepth,res->depthSS);      // (Xk - Mk-1)
             cv::subtract(newDepth,res->depth,newDepth);                 // (Xk - Mk)
             cv::multiply(res->depthSS,newDepth,res->depthSS);           // (Xk - Mk-1)(Xk-Mk)
             if(oldScanRes->avgNum>2)
                 cv::add(res->depthSS,oldScanRes->depthSS,res->depthSS); // Sk-1 + (Xk - Mk-1)(Xk-Mk)
             res->depthSS.setTo(std::numeric_limits<float>::max(),res->mask);
 
-            std::cerr<<"DEPTHS: "<<res->min<< " "<<res->max<<"\n";
             std::cerr<<"AVG: done num. "<<res->avgNum<<"\n";
         }
         delete temp;
     }
+
+    if(cbCorrectTilt->val){ //autocorrect tilt
+        cv::Mat blured;
+        double sigma=tiltCorBlur->val;
+        int ksize=sigma*5;
+        if(!(ksize%2)) ksize++;
+        cv::GaussianBlur(res->depth, blured, cv::Size(ksize, ksize), sigma, sigma);
+        double derDbound=tiltCorThrs->val;
+        cv::Mat firstD, secondD, mask, maskT;
+        cv::Sobel(blured, firstD, CV_32F,1,0); //X
+        cv::Sobel(blured, secondD, CV_32F,2,0); //X
+        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
+        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
+        mask.setTo(cv::Scalar::all(0), maskT);
+        mask.setTo(cv::Scalar::all(0), res->mask);
+        res->tiltCor[0]=-cv::mean(firstD,mask)[0]/8;
+        cv::Sobel(blured, firstD, CV_32F,0,1); //Y
+        cv::Sobel(blured, secondD, CV_32F,0,2); //Y
+        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
+        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
+        mask.setTo(cv::Scalar::all(0), maskT);
+        mask.setTo(cv::Scalar::all(0), res->mask);
+        res->tiltCor[1]=-cv::mean(firstD,mask)[0]/8;
+        std::cout<<"CPhases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
+
+        cv::Mat slopeX1(1, nCols, CV_32F);
+        cv::Mat slopeX(nRows, nCols, CV_32F);
+        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=i*res->tiltCor[0];
+        cv::repeat(slopeX1, nRows, 1, slopeX);
+        cv::add(slopeX,res->depth,res->depth);
+
+        cv::Mat slopeY1(nRows, 1, CV_32F);
+        cv::Mat slopeY(nRows, nCols, CV_32F);
+        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*res->tiltCor[1];
+        cv::repeat(slopeY1, 1, nCols, slopeY);
+        cv::add(slopeY,res->depth,res->depth);
+    } else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
+
+    cv::minMaxLoc(res->depth, &res->min, &res->max, &ignore, &ignore, res->maskN);  //the ignored mask values will be <min , everything is in nm
+
     result.put(res);
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
@@ -621,21 +664,17 @@ pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
     int nRows=scan0->depth.rows;
     if(scan1->tiltCor[0]-scan0->tiltCor[0]!=0){
         cv::Mat slopeX1(1, nCols, CV_32F);
-        cv::Mat slopeUX1(1, nCols, CV_32F);
-        cv::Mat slopeUX(nRows, nCols, CV_32F);
+        cv::Mat slopeX(nRows, nCols, CV_32F);
         for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=-i*(scan1->tiltCor[0]-scan0->tiltCor[0]);
-        slopeX1.copyTo(slopeUX1);
-        cv::repeat(slopeUX1, nRows, 1, slopeUX);
-        cv::add(slopeUX,ret.depth,ret.depth);
+        cv::repeat(slopeX1, nRows, 1, slopeX);
+        cv::add(slopeX,ret.depth,ret.depth);
     }
     if(scan1->tiltCor[1]-scan0->tiltCor[1]!=0){
         cv::Mat slopeY1(nRows, 1, CV_32F);
-        cv::Mat slopeUY1(nRows, 1, CV_32F);
-        cv::Mat slopeUY(nRows, nCols, CV_32F);
+        cv::Mat slopeY(nRows, nCols, CV_32F);
         for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=-i*(scan1->tiltCor[1]-scan0->tiltCor[1]);
-        slopeY1.copyTo(slopeUY1);
-        cv::repeat(slopeUY1, 1, nCols, slopeUY);
-        cv::add(slopeUY,ret.depth,ret.depth);
+        cv::repeat(slopeY1, 1, nCols, slopeY);
+        cv::add(slopeY,ret.depth,ret.depth);
     }
     scan0->mask.copyTo(ret.mask);
     ret.mask.setTo(255, scan1->mask);

@@ -41,6 +41,9 @@ public:
         camobj *cam;
         int buffer_count;
     } ApplicationData;
+
+    const int& camCols{Xsize};
+    const int& camRows{Ysize};
 private:
     std::atomic<bool> _connected{false};
     camobj(std::string strID);

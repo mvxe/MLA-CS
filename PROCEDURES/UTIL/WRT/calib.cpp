@@ -395,27 +395,24 @@ void pgCalib::WCFArray(){
 
     saveConfMain(util::toString(folder,"/main-settings.txt"), focus, *pgBeAn->extraFocusOffsetVal, focusRad);
 
-    double xSize=WArray.cols*selArraySpacing->val/1000;         //in mm
-    double ySize=WArray.rows*selArraySpacing->val/1000;
-    double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;
+    double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;         //in mm
     double yOfs=((WArray.rows-1)*selArraySpacing->val)/2000;
+    double xSize=WArray.cols*selArraySpacing->val*1000/pgMGUI->getNmPPx();
+    double ySize=WArray.rows*selArraySpacing->val*1000/pgMGUI->getNmPPx();
+    const pgScanGUI::scanRes* res;
+    if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement
+            //first we check if ROI is fine
+        if(go.pGCAM->iuScope->camCols/2-xSize/2+pgBeAn->writeBeamCenterOfsX<0                                 || go.pGCAM->iuScope->camRows/2-ySize/2+pgBeAn->writeBeamCenterOfsY<0 ||          //we do not use res here because it may not be initialized, if the user has made no scans prior to this
+           go.pGCAM->iuScope->camCols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+xSize>=go.pGCAM->iuScope->camCols || go.pGCAM->iuScope->camRows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+ySize>=go.pGCAM->iuScope->camRows){
+            std::cerr<<"The calibration ROI does not fit the viewport, aborting.\n";
+            return;
+        }
 
-//    if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement
-//        redoA:  pgSGUI->doOneRound(-1);
-//        while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
-//        const pgScanGUI::scanRes* res=scanRes->get();
-//        if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize)))>xSize*ySize*0.0001){std::cerr<<"To much non zero mask in ROI (>0.1%); redoing measurement.\n";goto redoA;}
+        pgSGUI->doNRounds((int)selArrayOneScanN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(go.pGCAM->iuScope->camCols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, go.pGCAM->iuScope->camRows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize));
 
-//        while(res->avgNum!=(int)selArrayOneScanN->val){
-//            pgSGUI->doOneRound(1);
-
-//            while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-//            res=scanRes->get();
-//        }
-//        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/before"));
-//    }
-
-    //PROBLEM HERE WAS xOfs are in mm, and ySize needs to be in px
+        res=scanRes->get();
+        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/before"));
+    }
 
     pgMGUI->move(xOfs,yOfs,0,0);
 
@@ -470,19 +467,11 @@ void pgCalib::WCFArray(){
     pgMGUI->moveZF(focus);
     while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
 
-//    if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement
-//        redoB:  pgSGUI->doOneRound(-1);
-//        while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
-//        const pgScanGUI::scanRes* res=scanRes->get();
-//        if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-xSize/2, res->depth.rows/2-ySize/2, xSize, ySize)))>xSize*ySize*0.0001){std::cerr<<"To much non zero mask in ROI (>0.1%); redoing measurement.\n";goto redoB;}
-
-//        while(res->avgNum!=(int)selArrayOneScanN->val){
-//            pgSGUI->doOneRound(1);
-//            while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-//            res=scanRes->get();
-//        }
-//        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/after"));
-//    }
+    if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement
+        pgSGUI->doNRounds((int)selArrayOneScanN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize));
+        res=scanRes->get();
+        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/after"));
+    }
 
     //TODO separate if single/avg
 
