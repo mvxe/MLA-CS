@@ -105,13 +105,14 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
         cv::sqrt(data,data);
     }
     else data=cv::Mat(scan->depth, roi);
-    cv::Mat mask(scan->mask, roi);
-    double min;
-    cv::minMaxLoc(data, &min);
+    cv::Mat maskN(scan->maskN, roi);
+    double min, max;
+    cv::Point ignore;
+    cv::minMaxLoc(data, &min, &max, &ignore, &ignore, maskN);
     for(int j=data.rows-1;j>=0;j--){
         for(int i=0;i!=data.cols;i++){
             if(i!=0) a.POUT<<" ";
-            if(mask.at<uchar>(j,i)) a.POUT<<"nan";
+            if(!maskN.at<uchar>(j,i)) a.POUT<<"nan";
             else a.POUT<<(data.at<float>(j,i)-min)*(equalizeXYZ->val?0.001:1);
         }
         a.POUT<<"\n";

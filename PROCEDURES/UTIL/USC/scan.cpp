@@ -561,9 +561,11 @@ void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string f
     if(fileName.find(".pfm")==std::string::npos) fileName+=".pfm";
 
     cv::imwrite(fileName, cv::Mat(scan->depth, roi));
+    double min, max; cv::Point ignore;
+    cv::minMaxLoc(cv::Mat(scan->depth, roi), &min, &max, &ignore, &ignore, cv::Mat(scan->maskN, roi));
     std::ofstream wfile(fileName, std::ofstream::app);
-    wfile.write(reinterpret_cast<const char*>(&(scan->min)),sizeof(scan->min));
-    wfile.write(reinterpret_cast<const char*>(&(scan->max)),sizeof(scan->max));
+    wfile.write(reinterpret_cast<const char*>(&min),sizeof(min));
+    wfile.write(reinterpret_cast<const char*>(&max),sizeof(max));
     wfile.write(reinterpret_cast<const char*>(scan->tiltCor),sizeof(scan->tiltCor));
     wfile.write(reinterpret_cast<const char*>(scan->pos),sizeof(scan->pos));
     wfile.write(reinterpret_cast<const char*>(&(scan->XYnmppx)),sizeof(scan->XYnmppx));
@@ -586,11 +588,11 @@ void pgScanGUI::saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::strin
 
     std::ofstream wfile(fileName);
     cv::Mat display(scan->depth, roi);
-
+    double min, max; cv::Point ignore;
+    cv::minMaxLoc(cv::Mat(scan->depth, roi), &min, &max, &ignore, &ignore, cv::Mat(scan->maskN, roi));
     wfile<<util::toString("# XY is in pixels, see below for conversion constant. Depth is in nm!\n");
     wfile<<util::toString("# For how to plot with gnuplot see http://www.gnuplotting.org/interpolation-of-heat-maps/\n");
-    wfile<<util::toString("# Min value: ",scan->min,"\n");
-    wfile<<util::toString("# Max value: ",scan->max,"\n");
+    wfile<<util::toString("# Max value: ",max-min,"\n");
     wfile<<util::toString("# Applied X Tilt Correction: ",scan->tiltCor[0],"\n");
     wfile<<util::toString("# Applied Y Tilt Correction: ",scan->tiltCor[1],"\n");
     wfile<<util::toString("# X during measurement: ",scan->pos[0]," mm\n");
@@ -603,7 +605,7 @@ void pgScanGUI::saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::strin
         for(int i=0;i!=display.cols;i++){
             if(i!=0) wfile<<" ";
             if(display.at<float>(j,i)==std::numeric_limits<float>::max()) wfile<<"nan";
-            else wfile<<display.at<float>(j,i);
+            else wfile<<display.at<float>(j,i)-min;
         }
         wfile<<"\n";
     }

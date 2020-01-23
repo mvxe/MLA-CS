@@ -387,7 +387,11 @@ void tab_camera::onSaveDepthMap(void){
             if(width>1 && height>1){
                 cv::Mat temp0(res->depth,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
-                cMap->colormappize(&temp0, &display, &temp1, min, max, res->XYnmppx, pgHistGUI->ExclOOR, true);
+                cv::Mat temp2; bitwise_not(temp1, temp2);
+                double minr, maxr;
+                cv::Point ignore;
+                cv::minMaxLoc(temp0, &minr, &maxr, &ignore, &ignore, temp2);
+                cMap->colormappize(&temp0, &display, &temp1, std::min(std::max(min,minr), std::min(max,maxr)), std::max(std::min(max,maxr),std::max(min,minr)), res->XYnmppx, pgHistGUI->ExclOOR, true);
             }
             else cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR, !*cMap->exportSet4WholeVal);
         }else{
@@ -399,7 +403,11 @@ void tab_camera::onSaveDepthMap(void){
             if(width>1 && height>1){
                 cv::Mat temp0(display,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
-                cMap->colormappize(&temp0, &display, &temp1, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, true, "SD (nm)");
+                cv::Mat temp2; bitwise_not(temp1, temp2);
+                double minr, maxr;
+                cv::Point ignore;
+                cv::minMaxLoc(temp0, &minr, &maxr, &ignore, &ignore, temp2);
+                cMap->colormappize(&temp0, &display, &temp1, 0, maxr, res->XYnmppx, pgHistGUI->ExclOOR, true, "SD (nm)");
             }
             else cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, !*cMap->exportSet4WholeVal, "SD (nm)");
         }
