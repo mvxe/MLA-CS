@@ -85,6 +85,9 @@ private:
     pgCalib* pgCal;
     pgBeamAnalysis* pgBeAn;
 
+    QCheckBox* redLaserOn;
+    QCheckBox* greenLaserOn;
+
     QMenu* clickMenu;
     QMenu* clickMenuDepthRight;
     QMenu* clickMenuDepthLeft;
@@ -119,6 +122,9 @@ private Q_SLOTS:
     void onSaveLine();
     void onPlotRect();
     void on2DFFT();
+
+    void onRedLaserToggle(bool state);
+    void onGreenLaserToggle(bool state);
 };
 
 

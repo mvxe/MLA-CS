@@ -18,10 +18,12 @@ private:
     QLabel* report1;
     std::atomic<bool>& getExpMinMax;
     int expMin{-1}, expMax{-1};
+    QCheckBox* LEDon;
 public Q_SLOTS:
     void genReport();
     void onToggled(bool state);
     void doneExpMinmax(int min, int max);
+    void onLEDToggle(bool state);
 };
 
 

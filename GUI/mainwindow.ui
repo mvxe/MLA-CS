@@ -404,20 +404,6 @@
         <item row="3" column="4">
          <layout class="QHBoxLayout" name="horizontalLayout_22">
           <item>
-           <widget class="QPushButton" name="pushButton_14">
-            <property name="text">
-             <string>Green Laser Toggle</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="pushButton_15">
-            <property name="text">
-             <string>Red Laser Toggle</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <spacer name="horizontalSpacer_9">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -434,13 +420,6 @@
         </item>
         <item row="0" column="4">
          <layout class="QHBoxLayout" name="horizontalLayout_23">
-          <item>
-           <widget class="QPushButton" name="pushButton_16">
-            <property name="text">
-             <string>LED Toggle</string>
-            </property>
-           </widget>
-          </item>
           <item>
            <spacer name="horizontalSpacer_2">
             <property name="orientation">

@@ -720,28 +720,3 @@ void MainWindow::on_pushButton_13_released(){
     }
     else printf("failed to connect\n");
 }
-
-bool greenState=false;
-void MainWindow::on_pushButton_14_released(){   //green laser toggle
-   std::vector<uint32_t> commands;
-   commands.push_back(CQF::GPIO_MASK(0x20,0,0x00));
-   commands.push_back(CQF::GPIO_DIR (0x00,0,0x00));
-   commands.push_back(CQF::GPIO_VAL (greenState?0x00:0x20,0,0x00));
-   greenState=!greenState;
-   go.pRPTY->A2F_write(1,commands.data(),commands.size());
-}
-bool redState=false;
-void MainWindow::on_pushButton_15_released(){   //red laser toggle
-    std::vector<uint32_t> commands;
-    commands.push_back(CQF::GPIO_MASK(0x80,0,0x00));
-    commands.push_back(CQF::GPIO_DIR (0x00,0,0x00));
-    commands.push_back(CQF::GPIO_VAL (redState?0x00:0x80,0,0x00));
-    redState=!redState;
-    go.pRPTY->A2F_write(1,commands.data(),commands.size());
-}
-bool LEDState=false;
-void MainWindow::on_pushButton_16_released(){
-    if(!go.pRPTY->connected) return;
-    go.pXPS->setGPIO(XPS::iuScopeLED,!LEDState);
-    LEDState=!LEDState;
-}

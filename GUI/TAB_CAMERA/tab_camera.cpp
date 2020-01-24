@@ -45,6 +45,13 @@ tab_camera::tab_camera(QWidget* parent){
     pgDpEv=new pgDepthEval(pgBGUI);
     pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn);
 
+    redLaserOn=new QCheckBox("Red Laser");
+    redLaserOn->setToolTip("This laser is turned on automatically when autocalibrating. You can hovewer turn it on for some manual operations.");
+    connect(redLaserOn, SIGNAL(toggled(bool)), this, SLOT(onRedLaserToggle(bool)));
+    greenLaserOn=new QCheckBox("Green Laser");
+    greenLaserOn->setToolTip("You have to activate this to turn on the writing laser before any writing can be done. Turned off automatically when closed.");
+    connect(greenLaserOn, SIGNAL(toggled(bool)), this, SLOT(onGreenLaserToggle(bool)));
+
     addInfo=new QLabel; addInfo->setMargin(10);
     addInfo->setVisible(false);
 
@@ -57,6 +64,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageMotion->addWidget(pgPRGUI);
 
     pageWriting=new twd_selector;
+        pageWriting->addWidget(new twid(greenLaserOn,redLaserOn, false));
         pageWriting->addWidget(pgBeAn->gui_activation);
         pageWriting->addWidget(pgCal->gui_activation);
         pageWriting->addWidget(pgBGUI);
@@ -133,6 +141,8 @@ tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables
     delete pgTGUI;
     delete pgFGUI;
     delete pgPRGUI;
+    onRedLaserToggle(false);
+    onGreenLaserToggle(false);
 }
 
 void tab_camera::work_fun(){
@@ -216,6 +226,9 @@ void tab_camera::work_fun(){
     lastSelectingFlag=selectingFlag;
     exclColorChanged=false;
     loadedScanChanged=false;
+
+    redLaserOn->setEnabled(go.pRPTY->connected);
+    greenLaserOn->setEnabled(go.pRPTY->connected);
 
     measPB->setValue(MLP.progress_meas);
     compPB->setValue(MLP.progress_comp);
@@ -558,4 +571,22 @@ void tab_camera::on2DFFT(){
 
     loadedScanChanged=true;
     loadedOnDisplay=true;
+}
+
+
+void tab_camera::onRedLaserToggle(bool state){
+    if(!go.pRPTY->connected) return;
+    std::vector<uint32_t> commands;
+    commands.push_back(CQF::GPIO_MASK(0x80,0,0x00));
+    commands.push_back(CQF::GPIO_DIR (0x00,0,0x00));
+    commands.push_back(CQF::GPIO_VAL (state?0x80:0x0,0,0x00));
+    go.pRPTY->A2F_write(1,commands.data(),commands.size());
+}
+void tab_camera::onGreenLaserToggle(bool state){
+    if(!go.pRPTY->connected) return;
+    std::vector<uint32_t> commands;
+    commands.push_back(CQF::GPIO_MASK(0x20,0,0x00));
+    commands.push_back(CQF::GPIO_DIR (0x00,0,0x00));
+    commands.push_back(CQF::GPIO_VAL (state?0x20:0x0,0,0x00));
+    go.pRPTY->A2F_write(1,commands.data(),commands.size());
 }

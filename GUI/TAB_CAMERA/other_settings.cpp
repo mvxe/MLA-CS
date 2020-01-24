@@ -16,6 +16,13 @@ cameraSett::cameraSett(std::atomic<bool>& getExpMinMax): getExpMinMax(getExpMinM
     layout->addWidget(expSel);
     report1=new QLabel();
     layout->addWidget(report1);
+    layout->addWidget(new hline);
+    LEDon=new QCheckBox("LED toggle");
+    LEDon->setToolTip("Just for testing, does not save/persist.");
+    connect(LEDon, SIGNAL(toggled(bool)), this, SLOT(onLEDToggle(bool)));
+    LEDon->setChecked(true);
+    layout->addWidget(LEDon);
+
     genReport();
     connect(expSel, SIGNAL(changed()), this, SLOT(genReport()));
     connect(measureFlag, SIGNAL(toggled(bool)), this, SLOT(onToggled(bool)));
@@ -41,4 +48,8 @@ void cameraSett::doneExpMinmax(int min, int max){
     expMin=min;
     expMax=max;
     genReport();
+}
+void cameraSett::onLEDToggle(bool state){
+    if(!go.pXPS->connected) return;
+    go.pXPS->setGPIO(XPS::iuScopeLED,state);
 }
