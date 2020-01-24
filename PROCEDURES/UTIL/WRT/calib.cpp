@@ -104,6 +104,8 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         calibMethodArray->addWidget(showLimits);
         saveMats=new checkbox_save(true,"pgCalib_saveMats","Extra Save Mats Containing I,D,F for Convenience.");
         calibMethodArray->addWidget(saveMats);
+        savePic=new checkbox_save(true,"pgCalib_savePic","Also save direct pictures of measurements.");
+        calibMethodArray->addWidget(savePic);
     calibMethod->addWidget(calibMethodArray, "Array");
     calibMethod->doneAddingWidgets();
     slayout->addWidget(calibMethod);
@@ -464,6 +466,14 @@ void pgCalib::WCFArray(){
                 int roiD=selArraySpacing->val*1000/res->XYnmppx;
                 if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*discardMaskRoiThresh && tryB<maxRedoScanTries){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}      //this is (square-circle)/4
                 pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/after"));
+
+                if(savePic->val){
+                    FQ* fq=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
+                    fq->setUserFps(999,1);
+                    while(fq->getUserMat()==nullptr)QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+                    imwrite(util::toString(folder,"/",i+j*WArray.cols,"/pic.png"), cv::Mat(*fq->getUserMat(),cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD)),{cv::IMWRITE_PNG_COMPRESSION,9});
+                    go.pGCAM->iuScope->FQsPCcam.deleteFQ(fq);
+                }
             }
 
             saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), focus+WArray.at<cv::Vec3d>(j,i)[2]/1000, selArraySpacing->val, WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1], selectedavg, focusRad);
@@ -485,6 +495,16 @@ void pgCalib::WCFArray(){
         for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++)   // separate them into individual scans
             pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(),
                                                   selArraySpacing->val*1000/pgMGUI->getNmPPx(), selArraySpacing->val*1000/pgMGUI->getNmPPx()), util::toString(folder,"/",i+j*WArray.cols,"/after"));
+        if(savePic->val){
+            FQ* fq=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
+            fq->setUserFps(999,1);
+            while(fq->getUserMat()==nullptr)QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+            for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++)
+                imwrite(util::toString(folder,"/",i+j*WArray.cols,"/pic.png"), cv::Mat(*fq->getUserMat(),
+                                       cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(),
+                                       selArraySpacing->val*1000/pgMGUI->getNmPPx(), selArraySpacing->val*1000/pgMGUI->getNmPPx())),{cv::IMWRITE_PNG_COMPRESSION,9});
+            go.pGCAM->iuScope->FQsPCcam.deleteFQ(fq);
+        }
     }
 
     btnWriteCalib->setChecked(false);
