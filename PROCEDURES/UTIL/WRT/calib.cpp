@@ -77,8 +77,10 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         calibMethodArray->addWidget(selArrayYsize);
         selArraySpacing=new val_selector(5, "pgCalib_selArraySpacing", "Array Spacing", 0.001, 100, 3, 0, {"um"});
         calibMethodArray->addWidget(selArraySpacing);
-        selArrayType=new smp_selector("pgCalib_selArrayType", "Variable Parameters (X-Y): ", 0, {"Intensity","Duration","Focus","Intensity-Duration","Intensity-Focus","Duration-Focus"});
+        selArrayType=new smp_selector("pgCalib_selArrayType", "Variable Parameters (X-Y): ", 0, {"Intensity(X)","Duration(X)","Focus(X)","Intensity(X)-Duration(Y)","Intensity(X)-Focus(Y)","Duration(X)-Focus(Y)"});
         calibMethodArray->addWidget(selArrayType);
+        transposeMat=new checkbox_save(false,"pgCalib_transposeMat","Transpose matrix.");
+        calibMethodArray->addWidget(transposeMat);
         calibMethodArray->addWidget(new QLabel("The Variable Parameters Will be Within the Specified Range.\nIf a Parameter is not Variable, it Will be Equal to Val A!"));
         selArrayIntA=new val_selector(1000, "pgCalib_selArrayIntA", "Intensity Value A", 1, 8192, 0);
         calibMethodArray->addWidget(selArrayIntA);
@@ -370,6 +372,7 @@ void pgCalib::WCFArray(){
         else if(index==4 || index==5)  WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[j];
         else WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[0];
     }
+    if(transposeMat->val) cv::transpose(WArray,WArray);
 
     std::string folder=makeDateTimeFolder(saveFolderName);
     if(saveMats->val){      //export values as matrices, for convinience
@@ -606,6 +609,7 @@ void pgCalib::drawWriteArea(cv::Mat* img){
     if(!drawWriteAreaOn) return;
     double xSize=selArrayXsize->val*selArraySpacing->val*1000/pgMGUI->getNmPPx();
     double ySize=selArrayYsize->val*selArraySpacing->val*1000/pgMGUI->getNmPPx();
+    if(transposeMat->val) std::swap(xSize,ySize);
     double clr[2]={0,255}; int thck[2]={3,1};
     for(int i=0;i!=2;i++)
     cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, img->rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);

@@ -60,6 +60,7 @@ private:
         val_selector* selArrayYsize;
         val_selector* selArraySpacing;
         smp_selector* selArrayType;
+        checkbox_save* transposeMat;
         val_selector* selArrayIntA;
         val_selector* selArrayIntB;
         val_selector* selArrayDurA;
