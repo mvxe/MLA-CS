@@ -77,7 +77,7 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         calibMethodArray->addWidget(selArrayYsize);
         selArraySpacing=new val_selector(5, "pgCalib_selArraySpacing", "Array Spacing", 0.001, 100, 3, 0, {"um"});
         calibMethodArray->addWidget(selArraySpacing);
-        selArrayType=new smp_selector("pgCalib_selArrayType", "Variable Parameters (X-Y): ", 0, {"Intensity(X)","Duration(X)","Focus(X)","Intensity(X)-Duration(Y)","Intensity(X)-Focus(Y)","Duration(X)-Focus(Y)"});
+        selArrayType=new smp_selector("pgCalib_selArrayType", "Variable Parameters (X-Y): ", 0, {"Intensity(XY)","Duration(XY)","Focus(XY)","Intensity(X)-Duration(Y)","Intensity(X)-Focus(Y)","Duration(X)-Focus(Y)", "Intensity(X)","Duration(X)","Focus(X)"});
         calibMethodArray->addWidget(selArrayType);
         transposeMat=new checkbox_save(false,"pgCalib_transposeMat","Transpose matrix.");
         calibMethodArray->addWidget(transposeMat);
@@ -331,20 +331,26 @@ void pgCalib::WCFArray(){
     int arraySizeInt{1}, arraySizeDur{1}, arraySizeFoc{1};
     int index=selArrayType->index;
     switch(index){
-    case 0: arraySizeInt=selArrayYsize->val*selArrayXsize->val;     //Intensity
+    case 0: arraySizeInt=selArrayYsize->val*selArrayXsize->val;     //Intensity (XY)
             break;
-    case 1: arraySizeDur=selArrayYsize->val*selArrayXsize->val;     //Duration
+    case 1: arraySizeDur=selArrayYsize->val*selArrayXsize->val;     //Duration (XY)
             break;
-    case 2: arraySizeFoc=selArrayYsize->val*selArrayXsize->val;     //Focus
+    case 2: arraySizeFoc=selArrayYsize->val*selArrayXsize->val;     //Focus (XY)
             break;
-    case 3: arraySizeInt=selArrayXsize->val;                        //Intensity-Duration
+    case 3: arraySizeInt=selArrayXsize->val;                        //Intensity-Duration (X,Y)
             arraySizeDur=selArrayYsize->val;
             break;
-    case 4: arraySizeInt=selArrayXsize->val;                        //Intensity-Focus
+    case 4: arraySizeInt=selArrayXsize->val;                        //Intensity-Focus (X,Y)
             arraySizeFoc=selArrayYsize->val;
             break;
-    case 5: arraySizeDur=selArrayXsize->val;                        //Duration-Focus
+    case 5: arraySizeDur=selArrayXsize->val;                        //Duration-Focus (X,Y)
             arraySizeFoc=selArrayYsize->val;
+            break;
+    case 6: arraySizeInt=selArrayYsize->val;                        //Intensity (X)
+            break;
+    case 7: arraySizeDur=selArrayYsize->val;                        //Duration (X)
+            break;
+    case 8: arraySizeFoc=selArrayYsize->val;                        //Focus (X)
             break;
     }
     std::vector<double> arrayInt; arrayInt.reserve(arraySizeInt);
@@ -364,13 +370,14 @@ void pgCalib::WCFArray(){
     }
     for(int i=0;i!=WArray.cols; i++) for(int j=0;j!=WArray.rows; j++){              //populate 3D x3 array
         if(index==0) WArray.at<cv::Vec3d>(j,i)[0]=arrayInt[i+j*WArray.cols];
-        else if(index==3 || index==4) WArray.at<cv::Vec3d>(j,i)[0]=arrayInt[i];
+        else if(index==3 || index==4 || index==6) WArray.at<cv::Vec3d>(j,i)[0]=arrayInt[i];
         else WArray.at<cv::Vec3d>(j,i)[0]=arrayInt[0];
         if(index==1) WArray.at<cv::Vec3d>(j,i)[1]=arrayDur[i+j*WArray.cols];
         else if(index==3)  WArray.at<cv::Vec3d>(j,i)[1]=arrayDur[j];
-        else if(index==5) WArray.at<cv::Vec3d>(j,i)[1]=arrayDur[i];
+        else if(index==5 || index==7) WArray.at<cv::Vec3d>(j,i)[1]=arrayDur[i];
         else WArray.at<cv::Vec3d>(j,i)[1]=arrayDur[0];
         if(index==2) WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[i+j*WArray.cols];
+        else if(index==8)  WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[i];
         else if(index==4 || index==5)  WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[j];
         else WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[0];
     }
