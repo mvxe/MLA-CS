@@ -17,6 +17,7 @@
 #include "PROCEDURES/UTIL/WRT/deptheval.h"
 #include "PROCEDURES/UTIL/WRT/calib.h"
 #include "PROCEDURES/UTIL/WRT/beamanl.h"
+#include "PROCEDURES/UTIL/WRT/write.h"
 
 
 #endif // _INCL_PROCEDURES_H

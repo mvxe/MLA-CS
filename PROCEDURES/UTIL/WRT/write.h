@@ -15,9 +15,15 @@ public:
 private:
     //activation
     QVBoxLayout* alayout;
+    QPushButton* pulse;
+    val_selector* pulseInt;
+    val_selector* pulseDur;
+
 
     //settings
     QVBoxLayout* slayout;
+private Q_SLOTS:
+    void onPulse();
 };
 
 #endif // PGWRITE_H

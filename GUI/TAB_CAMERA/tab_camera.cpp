@@ -44,6 +44,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgBGUI=new pgBoundsGUI(pgMGUI,pgBeAn);
     pgDpEv=new pgDepthEval(pgBGUI);
     pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn);
+    pgWrt=new pgWrite;
 
     redLaserOn=new QCheckBox("Red Laser");
     redLaserOn->setToolTip("This laser is turned on automatically when autocalibrating. You can hovewer turn it on for some manual operations.");
@@ -67,6 +68,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageWriting->addWidget(new twid(greenLaserOn,redLaserOn, false));
         pageWriting->addWidget(pgBeAn->gui_activation);
         pageWriting->addWidget(pgCal->gui_activation);
+        pageWriting->addWidget(pgWrt->gui_activation);
         pageWriting->addWidget(pgBGUI);
 
     pageProcessing=new twd_selector;
@@ -75,7 +77,6 @@ tab_camera::tab_camera(QWidget* parent){
         diff2RawBtn=new QPushButton("Load 2 measurements and dif them"); connect(diff2RawBtn, SIGNAL(released()), this, SLOT(onDiff2Raw()));
         pageProcessing->addWidget(new twid(diff2RawBtn, false));
         pageProcessing->addWidget(pgCal->gui_processing);
-
 
     pageSettings=new twd_selector("","Select");
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));
@@ -89,6 +90,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageSettings->addWidget(pgCal->gui_settings,"Write Calibration");
         pageSettings->addWidget(pgBeAn->gui_settings,"Beam Centering");
         pageSettings->addWidget(tCG,"Gnuplot");
+        pageSettings->addWidget(pgWrt->gui_settings, "Writing");
 
     TWCtrl->addTab(pageMotion,"Motion");
     TWCtrl->addTab(pageWriting,"Writing");

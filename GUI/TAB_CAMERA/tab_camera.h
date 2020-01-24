@@ -84,6 +84,7 @@ private:
     pgDepthEval* pgDpEv;
     pgCalib* pgCal;
     pgBeamAnalysis* pgBeAn;
+    pgWrite* pgWrt;
 
     QCheckBox* redLaserOn;
     QCheckBox* greenLaserOn;

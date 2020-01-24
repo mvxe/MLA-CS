@@ -98,7 +98,7 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
                             "set hidden3d\n",
                             "set view ,,",viewZoom->val,",",scaleZ->val,"\n",
                             "set palette rgb ",d3paletteR->val,",",d3paletteG->val,",",d3paletteB->val,"\n",
-                            "splot \"-\" matrix w pm3d pt 6 notitle\n");
+                            "splot \"-\" matrix using ($1*",scan->XYnmppx/1000,"):($2*",scan->XYnmppx/1000,"):3 w pm3d pt 6 notitle\n");
     cv::Mat data;
     if(useSD && !scan->depthSS.empty()){
         cv::divide(cv::Mat(scan->depthSS, roi),scan->avgNum-1,data);
