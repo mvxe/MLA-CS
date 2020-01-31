@@ -272,7 +272,7 @@ bool pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
 
         mean[0]-=src.cols/2;
         mean[1]-=src.rows/2;
-        *r=ofs+maxp.x;
+        if(r!=nullptr) *r=ofs+maxp.x;
 //        if(dx!=nullptr) *dx=stdDev[0];
 //        if(dy!=nullptr) *dy=stdDev[1];
         if(!saveNext.empty()){
@@ -288,7 +288,7 @@ bool pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
         //    std::cerr<<"Second operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(C - B).count()<<" microseconds\n";
         //    std::cerr<<"Third operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(D - C).count()<<" microseconds\n";
 
-        failed=!(*r>0 && mean[0]>-src.cols/2 && mean[0]<src.cols/2 && mean[1]>-src.rows/2 && mean[1]<src.rows/2);   //coparisons with NAN are allways false!
+        failed=!((ofs+maxp.x)>0 && mean[0]>-src.cols/2 && mean[0]<src.cols/2 && mean[1]>-src.rows/2 && mean[1]<src.rows/2);   //coparisons with NAN are allways false!
         if(correct && !failed){
             pgMGUI->move((mean[0]+extraOffsX->val-_writeBeamCenterOfsX)*pgMGUI->getNmPPx()/1000000,(mean[1]+extraOffsY->val-_writeBeamCenterOfsY)*pgMGUI->getNmPPx()/1000000,0,0);        //correct position
             _writeBeamCenterOfsX=mean[0]+extraOffsX->val;
@@ -317,11 +317,11 @@ bool pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
         }
         double offsX=avgOffsX/N;
         double offsY=avgOffsY/N;
-        *r=avgCen/N;
+        if(r!=nullptr) *r=avgCen/N;
 //        std::cerr<<"Num "<<N<< "\n";    //area
 //        std::cerr<< offsX<<" "<<offsY<< "\n";   //X,Y
 //        std::cerr<<avgCen/N<< "\n";    //area
-        failed=!(*r>0 && offsX>-cols/2 && offsX<cols/2 && offsY>-rows/2 && offsY<rows/2);   //coparisons with NAN are allways false!
+        failed=!(avgCen/N>0 && offsX>-cols/2 && offsX<cols/2 && offsY>-rows/2 && offsY<rows/2);   //coparisons with NAN are allways false!
         if(correct && !failed){
             pgMGUI->move((offsX+extraOffsX->val-_writeBeamCenterOfsX)*pgMGUI->getNmPPx()/1000000,(offsY+extraOffsY->val-_writeBeamCenterOfsY)*pgMGUI->getNmPPx()/1000000,0,0);
             _writeBeamCenterOfsX=offsX+extraOffsX->val;
@@ -436,14 +436,14 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
 
     double firstMinCoord{-9999};
     repeat: for(int i=0; i<(frames-1)/2; i++){          //find the negative peak (+- one pixel)
+        bool breakk{false};
         for(int j=0; j!=2; j++){
-            bool breakk{false};
             int coord0=(frames-1)/2+i*(2*j-1);
             if( coord0-1 >= 0 && coord0+1 < frames)
                 if( dataR.at<float>(coord0) < dataR.at<float>(coord0-1) && ( (firstMinCoord==-9999)?(dataR.at<float>(coord0) <= dataR.at<float>(coord0+1)):(dataR.at<float>(coord0) < dataR.at<float>(coord0+1)) ) )
                     {firstMinCoord=coord0; breakk=true; break;}
-            if(breakk) break;
         }
+        if(breakk) break;
     }
     if(firstMinCoord==-9999){   // apperently there is no point with k-1 < k < k+1
         firstMinCoord=0;

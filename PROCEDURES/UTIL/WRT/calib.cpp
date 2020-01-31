@@ -395,13 +395,14 @@ void pgCalib::WCFArray(){
         }
     }
 
+    pgBeAn->getWritingBeamFocus();
     float focusRad;
     if(pgBeAn->getCalibWritingBeam(&focusRad)) if(pgBeAn->getCalibWritingBeam(&focusRad)){      // recenter writing beam and get radius
         std::cerr<<"Failed to analyse/center the read beam after two tries.\n";
         btnWriteCalib->setChecked(false);
         return;
     }
-    pgBeAn->getWritingBeamFocus();
+
     double focus=pgMGUI->FZdifference;
 
     saveConfMain(util::toString(folder,"/main-settings.txt"), focus, *pgBeAn->extraFocusOffsetVal, focusRad);

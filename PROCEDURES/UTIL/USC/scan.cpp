@@ -219,6 +219,7 @@ void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect r
         res=scanRes->get();
         doneN++;
         if(roi.width!=0 && roi.height!=0) roiMask=cv::Mat(res->mask,roi);
+        else roiMask=cv::Mat(res->mask);
     }while(cv::countNonZero(roiMask)>roiMask.cols*roiMask.rows*redoIfMaskHasMore && doneN<=redoN);
 
     while(res->avgNum<N){
@@ -226,14 +227,16 @@ void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect r
             go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,1));
             MLP._lock_meas.unlock();
         }
-        QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 100);    // WaitForMoreEvents ensures it waits at least that ammount of time
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         res=scanRes->get();
     }
     delete scanRes;
-    while(!MLP._lock_meas.try_lock()) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+    while(!MLP._lock_meas.try_lock()) {QCoreApplication::processEvents(QEventLoop::AllEvents, 10); std::this_thread::sleep_for(std::chrono::milliseconds(100));}
     MLP._lock_meas.unlock();
-    while(!MLP._lock_comp.try_lock()) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+    while(!MLP._lock_comp.try_lock()) {QCoreApplication::processEvents(QEventLoop::AllEvents, 10); std::this_thread::sleep_for(std::chrono::milliseconds(100));}
     MLP._lock_comp.unlock();
+
 }
 
 
@@ -247,10 +250,10 @@ double pgScanGUI::vsConv(val_selector* vs){
 }
 
 void pgScanGUI::_doOneRound(char cbAvg_override){
+    MLP._lock_meas.lock();                       //wait for other measurements to complete
     if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     if(!PVTsRdy) return;
     scanRes* res=new scanRes;
-    MLP._lock_meas.lock();                       //wait for other measurements to complete
 
     int nFrames=totalFrameNum;
     FQ* framequeue;
