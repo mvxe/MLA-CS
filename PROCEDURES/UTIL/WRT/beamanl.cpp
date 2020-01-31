@@ -124,20 +124,21 @@ void pgBeamAnalysis::getWritingBeamCenter(){
     std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
 }
 
-bool pgBeamAnalysis::turnOnRedLaserAndLEDOff(FQ* framequeueDisp){
+
+void pgBeamAnalysis::turnOnRedLaser(){
     std::vector<uint32_t> commands;
     commands.push_back(CQF::GPIO_MASK(0x80,0,0x00));
     commands.push_back(CQF::GPIO_DIR (0x00,0,0x00));
     commands.push_back(CQF::GPIO_VAL (0x80,0,0x00));
     go.pRPTY->A2F_write(1,commands.data(),commands.size());
     commands.clear();
+}
 
-    // first we take frames until we hit the first one that has the LED turned off and the laser turned on. This is recognized using criteria below:
+bool pgBeamAnalysis::waitTillLEDIsOn(FQ* framequeueDisp){
+    // first we take frames until we hit the first one that has the LED turned off This is recognized using criteria below:
     const int borderWidth=10;
     const uchar lIntThresh=25;      // 1/10 of max int
     const float lOuterRatio=0.75;   // at least lOuterRatio of the pixels within the borderWidth pixel width border must be smaller than lIntThresh
-    const uchar uIntTHresh=50;     // 1/2 of max int
-    const float uInnerRatio=0.002;   // at least uInnerRatio of all the other pixels must be larger than uIntTHresh
     const int maxTriesFrames=1000;   // give up after checking this many frames
 
     framequeueDisp->setUserFps(9999,maxTriesFrames);
@@ -154,12 +155,6 @@ bool pgBeamAnalysis::turnOnRedLaserAndLEDOff(FQ* framequeueDisp){
         int lNum=cv::countNonZero(temp);
         //std::cerr<<"i= "<<i<<", lNum= "<<lNum<<", tot= "<<(mask.cols*mask.rows-(mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<<", ratio: "<<(float)lNum/(mask.cols*mask.rows-(mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<<"\n";
         if((float)lNum/(mask.cols*mask.rows-(mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<lOuterRatio) {framequeueDisp->freeUserMat(); continue;}
-        cv::compare(*framequeueDisp->getUserMat(),uIntTHresh,temp,cv::CMP_GT);
-        cv::bitwise_not(mask,mask);
-        temp.setTo(0,mask);
-        int uNum=cv::countNonZero(temp);
-        //std::cerr<<"i= "<<i<<", uNum= "<<uNum<<", tot= "<<((mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<<", ratio: "<<(float)uNum/((mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<<"\n";
-        if((float)uNum/((mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<uInnerRatio) {framequeueDisp->freeUserMat(); continue;}
         break;
     }
     return false;
@@ -173,8 +168,9 @@ bool pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
 
     std::vector<uint32_t> commands;
     FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
+    turnOnRedLaser();
     go.pXPS->setGPIO(XPS::iuScopeLED, false);
-    if(turnOnRedLaserAndLEDOff(framequeueDisp)){
+    if(waitTillLEDIsOn(framequeueDisp)){
         framequeueDisp->setUserFps(0,1);
         commands.push_back(CQF::GPIO_VAL (0x00,0,0x00));
         go.pRPTY->A2F_write(1,commands.data(),commands.size());
@@ -383,8 +379,9 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
     FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     std::lock_guard<std::mutex>lock(MLP._lock_meas);
     while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait till all motion is done, else motion and camera will be way out of sync
+    turnOnRedLaser();
     go.pXPS->execPVTobj(PVTScan, &PVTret);
-    if(turnOnRedLaserAndLEDOff(framequeueDisp)){
+    if(waitTillLEDIsOn(framequeueDisp)){
         framequeueDisp->setUserFps(0,1);
         commands.push_back(CQF::GPIO_VAL (0x00,0,0x00));
         go.pRPTY->A2F_write(1,commands.data(),commands.size());
@@ -415,7 +412,7 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
         cv::Mat src;
         cv::threshold(*framequeueDisp->getUserMat(), src, selThresh->val, 255, cv::THRESH_TOZERO);   //we first set all that are below threshold to 0
         cv::Moments m=cv::moments(src,true);
-
+        //if(!saveNextFocus.empty()) imwrite(util::toString(saveNextFocus,"/", 2-numSave,"-",N,".png"), *framequeueDisp->getUserMat(),{cv::IMWRITE_PNG_COMPRESSION,9});
         framequeueDisp->freeUserMat();
         double x,y,r;
         dataX.at<float>(N)=m.m10/m.m00-src.cols/2;
@@ -434,22 +431,36 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
         if(numSave<=0) saveNextFocus.clear();
     }
 
-    double firstMinCoord{-9999};
-    repeat: for(int i=0; i<(frames-1)/2; i++){          //find the negative peak (+- one pixel)
-        bool breakk{false};
-        for(int j=0; j!=2; j++){
-            int coord0=(frames-1)/2+i*(2*j-1);
-            if( coord0-1 >= 0 && coord0+1 < frames)
-                if( dataR.at<float>(coord0) < dataR.at<float>(coord0-1) && ( (firstMinCoord==-9999)?(dataR.at<float>(coord0) <= dataR.at<float>(coord0+1)):(dataR.at<float>(coord0) < dataR.at<float>(coord0+1)) ) )
-                    {firstMinCoord=coord0; breakk=true; break;}
+//    double firstMinCoord{-9999};
+//    repeat: for(int i=0; i<(frames-1)/2; i++){          //find the negative peak (+- one pixel)
+//        bool breakk{false};
+//        for(int j=0; j!=2; j++){
+//            int coord0=(frames-1)/2+i*(2*j-1);
+//            if( coord0-1 >= 0 && coord0+1 < frames)
+//                if( dataR.at<float>(coord0) < dataR.at<float>(coord0-1) && ( (firstMinCoord==-9999)?(dataR.at<float>(coord0) <= dataR.at<float>(coord0+1)):(dataR.at<float>(coord0) < dataR.at<float>(coord0+1)) ) )
+//                    {firstMinCoord=coord0; breakk=true; break;}
+//        }
+//        if(breakk) break;
+//    }
+//    if(firstMinCoord==-9999){   // apperently there is no point with k-1 < k < k+1
+//        firstMinCoord=0;
+//        goto repeat;            // try k-1 < k <= k+1 instead
+//    }
+//    *rMinLoc=focus+dir*(firstMinCoord-(frames-1)/2.)*range/frames;
+
+    std::vector<int> minVec;          //find the negative peak (+- one pixel)
+    for(int i=1; i!=frames-1; i++){
+        if( dataR.at<float>(i) < dataR.at<float>(i-1) && dataR.at<float>(i) <= dataR.at<float>(i+1) )
+            minVec.push_back(i);
+    }
+    float max{std::numeric_limits<float>::min()}; int it{(frames-1)/2};
+    for(int i=0;i!=minVec.size();i++){
+        if(max<dataR.at<float>(minVec[i])){
+            max=dataR.at<float>(minVec[i]);
+            it=minVec[i];
         }
-        if(breakk) break;
     }
-    if(firstMinCoord==-9999){   // apperently there is no point with k-1 < k < k+1
-        firstMinCoord=0;
-        goto repeat;            // try k-1 < k <= k+1 instead
-    }
-    *rMinLoc=focus+dir*(firstMinCoord-(frames-1)/2.)*range/frames;
+    *rMinLoc=focus+dir*(it-(frames-1)/2.)*range/frames;
 
 
 // // This commented block contains the gaussian fit method, which doesnt help here as the +-1 pixel error in the method above is equal or smaller to the error introduced by being unable to time the camera trigger with motion start anyway

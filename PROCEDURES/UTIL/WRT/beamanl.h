@@ -73,7 +73,8 @@ private:
     std::string saveNext{""};                           //these arent thread safe, ikr, but unlikely to cause problems
     std::string saveNextFocus{""}; int numSave;
 
-    bool turnOnRedLaserAndLEDOff(FQ* framequeueDisp); //return 0 on sucess
+    void turnOnRedLaser();
+    bool waitTillLEDIsOn(FQ* framequeueDisp); //return 0 on sucess
 private Q_SLOTS:
     void getWritingBeamCenter();
     void onBtnSaveNextDebug();
