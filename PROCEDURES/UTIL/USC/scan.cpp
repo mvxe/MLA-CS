@@ -489,7 +489,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override){
         double sigma=tiltCorBlur->val;
         int ksize=sigma*5;
         if(!(ksize%2)) ksize++;
-        cv::GaussianBlur(res->depth, blured, cv::Size(ksize, ksize), sigma, sigma);
+        //cv::GaussianBlur(res->depth, blured, cv::Size(ksize, ksize), sigma, sigma);   //using just gaussian blur also blurs out the inf edges maksed over, which sometimes causes tilt to fail
+        cv::bilateralFilter(res->depth, blured, ksize, sigma, sigma);                   //this does not blur over obvious sharp edges (but is a bit slower)
         double derDbound=tiltCorThrs->val;
         cv::Mat firstD, secondD, mask, maskT;
         cv::Sobel(blured, firstD, CV_32F,1,0); //X
