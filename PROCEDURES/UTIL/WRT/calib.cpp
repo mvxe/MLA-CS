@@ -100,8 +100,6 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         calibMethodArray->addWidget(selArrayOneScanN);
         selArrayRandomize=new checkbox_save(false,"pgCalib_selArrayRandomize","Randomize Value Order");
         calibMethodArray->addWidget(selArrayRandomize);
-        showLimits=new checkbox_save(false,"pgCalib_showLimits","Show Limits on Display");
-        calibMethodArray->addWidget(showLimits);
         saveMats=new checkbox_save(true,"pgCalib_saveMats","Extra Save Mats Containing I,D,F for Convenience.");
         calibMethodArray->addWidget(saveMats);
         savePic=new checkbox_save(true,"pgCalib_savePic","Also save direct pictures of measurements.");

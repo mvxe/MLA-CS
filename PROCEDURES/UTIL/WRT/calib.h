@@ -70,7 +70,6 @@ private:
         smp_selector* selArrayScanType;     //one scan, multi scan
         val_selector* selArrayOneScanN;
         checkbox_save* selArrayRandomize;
-        checkbox_save* showLimits;
         checkbox_save* saveMats;
         checkbox_save* savePic;
     int measCounter{0};
