@@ -16,7 +16,7 @@ public:
     QWidget* gui_settings;
     QWidget* gui_activation;
     bool getCalibWritingBeam(float* r=nullptr, float* dx=nullptr, float* dy=nullptr, bool correct=true);    //return true on failure (also wont correct if faliure)
-    void getCalibWritingBeamRange(double *rMinLoc, int frames, double range, bool flipDir=0);               //flipDir makes the scan to scan from the other direction
+    void getCalibWritingBeamRange(double *rMinLoc, int frames, double range, bool flipDir=false);           //flipDir makes the scan to scan from the other direction
     const float& writeBeamCenterOfsX{_writeBeamCenterOfsX};
     const float& writeBeamCenterOfsY{_writeBeamCenterOfsY};
     const double* extraFocusOffsetVal;

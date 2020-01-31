@@ -425,7 +425,7 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
 
     if(!saveNextFocus.empty()){
         std::ofstream wfile(util::toString(saveNextFocus,"/getCalibWritingBeamRange-", 2-numSave,".dat"));
-        for(int N=0; N!=frames; N++) wfile<<focus+dir*(N-(frames-1)/2.)*range/frames<<" "<<dataR.at<float>(N)<<" "<<dataX.at<float>(N)<<" "<<dataY.at<float>(N)<<"\n";
+        for(int N=0; N!=frames; N++) wfile<<focus+dir*(N-(frames-1)/2.)*2*range/frames<<" "<<dataR.at<float>(N)<<" "<<dataX.at<float>(N)<<" "<<dataY.at<float>(N)<<"\n";
         wfile.close();
         numSave--;
         if(numSave<=0) saveNextFocus.clear();
@@ -446,7 +446,7 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
 //        firstMinCoord=0;
 //        goto repeat;            // try k-1 < k <= k+1 instead
 //    }
-//    *rMinLoc=focus+dir*(firstMinCoord-(frames-1)/2.)*range/frames;
+//    *rMinLoc=focus+dir*(firstMinCoord-(frames-1)/2.)*2*range/frames;
 
     std::vector<int> minVec;          //find the negative peak (+- one pixel)
     for(int i=1; i!=frames-1; i++){
@@ -460,7 +460,7 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
             it=minVec[i];
         }
     }
-    *rMinLoc=focus+dir*(it-(frames-1)/2.)*range/frames;
+    *rMinLoc=focus+dir*(it-(frames-1)/2.)*2*range/frames;
 
 
 // // This commented block contains the gaussian fit method, which doesnt help here as the +-1 pixel error in the method above is equal or smaller to the error introduced by being unable to time the camera trigger with motion start anyway
