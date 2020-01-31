@@ -421,9 +421,10 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
         dataX.at<float>(N)=m.m10/m.m00-src.cols/2;
         dataY.at<float>(N)=m.m01/m.m00-src.rows/2;
         dataR.at<float>(N)=m.m00;
+        //dataR.at<float>(N)=m.m11;
     }
 
-    cv::GaussianBlur(dataR,dataR,{0,0},10);             //blur it to get 2 smooth gaussian peaks
+    cv::GaussianBlur(dataR,dataR,{0,0},2);             //blur it to get 2 smooth gaussian peaks
 
     if(!saveNextFocus.empty()){
         std::ofstream wfile(util::toString(saveNextFocus,"/getCalibWritingBeamRange-", 2-numSave,".dat"));
@@ -449,6 +450,7 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
         goto repeat;            // try k-1 < k <= k+1 instead
     }
     *rMinLoc=focus+dir*(firstMinCoord-(frames-1)/2.)*range/frames;
+
 
 // // This commented block contains the gaussian fit method, which doesnt help here as the +-1 pixel error in the method above is equal or smaller to the error introduced by being unable to time the camera trigger with motion start anyway
 //    //get the two maxima
