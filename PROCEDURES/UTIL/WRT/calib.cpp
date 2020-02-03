@@ -571,6 +571,8 @@ void pgCalib::onProcessFocusMes(){
 
     std::ofstream wfile(saveName);
     int n=0;
+    wfile<<"# <1: fitted radius(a.u)> <2: focus distance(mm)> <3: peak height(nm)> <4: X width (1/e^2)(um)> <5: Y width (1/e^2)(um)> <6: ellipse angle(rad)>\n";
+    wfile<<"# <7: XY width (1/e^2)(um)> <8: X offset(um)> <9: Y offset(um)> <10: XY offset(um)> <11: Intensity (a.u.)> <12: duration(ms)>\n";
     for(auto& fldr:measFolders){ n++;
         double FZdif;
         double Frad;
@@ -615,9 +617,9 @@ void pgCalib::onProcessFocusMes(){
            res(4)=tmp;
         }
 
-        wfile<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<abs(res(3))<<" "<<abs(res(4))<<" "<<res(5)<<" "<<(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
+        wfile<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
         std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
-             <<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<abs(res(3))<<" "<<abs(res(4))<<" "<<res(5)<<" "<<(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
+             <<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
 
 //        double min,max;
 //        cv::Point  ignore;
