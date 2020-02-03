@@ -617,9 +617,17 @@ void pgCalib::onProcessFocusMes(){
            res(4)=tmp;
         }
 
-        wfile<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
-        std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
-             <<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
+        if(res(0)<0 || res(0)>scanDif.depth.cols || res(1)<0 || res(1)>scanDif.depth.rows || res(2)<=0){   //center of the fit is out of frame or other things that indicate fit faliure
+            wfile<<Frad<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<"\n";
+            std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
+                 <<Frad<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<"\n";
+        }else{
+            wfile<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
+            std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
+                 <<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
+        }
+
+
 
 //        double min,max;
 //        cv::Point  ignore;
