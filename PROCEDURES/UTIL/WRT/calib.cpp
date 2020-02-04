@@ -544,6 +544,11 @@ double gaussResidual(const std::pair<input_vector, double>& data, const paramete
     //if(i0<0 || x0<0 || y0<0 || a<0 || a>255) return 9999;
     return model-data.second;
 }
+bool folderSort(std::string i,std::string j){
+    size_t posi=i.find_last_of("/");
+    size_t posj=i.find_last_of("/");
+    return (std::stoi(i.substr(posi+1,9))<std::stoi(j.substr(posj+1,9)));
+}
 void pgCalib::onProcessFocusMes(){
     std::vector<std::string> readFolders;   //folders still yet to be checked
     std::vector<std::string> measFolders;   //folders that contain the expected measurement files
@@ -578,6 +583,9 @@ void pgCalib::onProcessFocusMes(){
         closedir(wp);
         if(dirHasMes[0]&dirHasMes[1]&dirHasMes[2]&dirHasMes[3]) measFolders.push_back(curFolder);
     }
+
+    //sort folders by number
+    std::sort(measFolders.begin(), measFolders.end(), folderSort);
 
     std::ofstream wfile(saveName);
     int n=0;
