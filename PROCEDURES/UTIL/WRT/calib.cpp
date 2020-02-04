@@ -382,7 +382,10 @@ void pgCalib::WCFArray(){
         else WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[0];
     }
     if(transposeMat->val){
-        WArray.t();
+        cv::Mat temp=WArray.clone();
+        WArray=cv::Mat(selArrayXsize->val,selArrayYsize->val,CV_64FC4,cv::Scalar(0,0,0,0));
+        for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++) for(int k=0;k!=4; k++)        // I do this manually because for some reason cv::transpose and mat.t() and even if I separate channels it does not work
+            WArray.at<cv::Vec3d>(j,i)[k]=temp.at<cv::Vec3d>(i,j)[k];
     }
 
     std::string folder=makeDateTimeFolder(saveFolderName);
