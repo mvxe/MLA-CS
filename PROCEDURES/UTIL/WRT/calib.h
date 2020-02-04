@@ -72,6 +72,7 @@ private:
         checkbox_save* selArrayRandomize;
         checkbox_save* saveMats;
         checkbox_save* savePic;
+        checkbox_save* doRedFocusCenter;
     int measCounter{0};
     bool drawWriteAreaOn{false};
 

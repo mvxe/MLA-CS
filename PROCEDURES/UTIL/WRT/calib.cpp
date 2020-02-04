@@ -104,6 +104,8 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         calibMethodArray->addWidget(saveMats);
         savePic=new checkbox_save(true,"pgCalib_savePic","Also save direct pictures of measurements.");
         calibMethodArray->addWidget(savePic);
+        doRedFocusCenter=new checkbox_save(true,"pgCalib_doRedFocusCenter","Automatically recenter and refocus reference beam.");
+        calibMethodArray->addWidget(doRedFocusCenter);
     calibMethod->addWidget(calibMethodArray, "Array");
     calibMethod->doneAddingWidgets();
     slayout->addWidget(calibMethod);
@@ -379,7 +381,9 @@ void pgCalib::WCFArray(){
         else if(index==4 || index==5)  WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[j];
         else WArray.at<cv::Vec3d>(j,i)[2]=arrayFoc[0];
     }
-    if(transposeMat->val) cv::transpose(WArray,WArray);
+    if(transposeMat->val){
+        WArray.t();
+    }
 
     std::string folder=makeDateTimeFolder(saveFolderName);
     if(saveMats->val){      //export values as matrices, for convinience
@@ -395,12 +399,18 @@ void pgCalib::WCFArray(){
         }
     }
 
-    pgBeAn->getWritingBeamFocus();
     float focusRad;
-    if(pgBeAn->getCalibWritingBeam(&focusRad)) if(pgBeAn->getCalibWritingBeam(&focusRad)){      // recenter writing beam and get radius
-        std::cerr<<"Failed to analyse/center the read beam after two tries.\n";
-        btnWriteCalib->setChecked(false);
-        return;
+    if(doRedFocusCenter->val){
+        pgBeAn->getWritingBeamFocus();
+        if(pgBeAn->getCalibWritingBeam(&focusRad)) if(pgBeAn->getCalibWritingBeam(&focusRad)){      // recenter writing beam and get radius
+            std::cerr<<"Failed to analyse/center the read beam after two tries.\n";
+            btnWriteCalib->setChecked(false);
+            return;
+        }
+    }else{
+        if(pgBeAn->getCalibWritingBeam(&focusRad,nullptr,nullptr,false)) if(pgBeAn->getCalibWritingBeam(&focusRad,nullptr,nullptr,false)){      // recenter writing beam and get radius
+            focusRad=-1;
+        }
     }
 
     double focus=pgMGUI->FZdifference;
