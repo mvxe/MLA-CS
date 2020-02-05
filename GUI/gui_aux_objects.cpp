@@ -360,31 +360,31 @@ void moveDial::onAngChanged(double val){
 
 // HORIZONTAL LAYOUT WIDGET FOR CONVENIENCE
 
-twid::twid(bool setmargin){
+twid::twid(bool setmargin, bool setstretch){
     layout=new QHBoxLayout;
     this->setLayout(layout);
     if(setmargin) layout->setMargin(0);
-    layout->addStretch(0);
+    if(setstretch) layout->addStretch(0);
 }
 void twid::addWidget(QWidget* widget, bool front){
     layout->insertWidget(front?0:(layout->count()-1), widget);
 }
-twid::twid(QWidget* widget, bool setmargin): twid(setmargin){
+twid::twid(QWidget* widget, bool setmargin, bool setstretch): twid(setmargin, setstretch){
     addWidget(widget, true);
 }
 
 // VERTICAL LAYOUT WIDGET FOR CONVENIENCE
 
-vtwid::vtwid(bool setmargin){
+vtwid::vtwid(bool setmargin, bool setstretch){
     layout=new QVBoxLayout;
     this->setLayout(layout);
     if(setmargin) layout->setMargin(0);
-    layout->addStretch(0);
+    if(setstretch) layout->addStretch(0);
 }
 void vtwid::addWidget(QWidget* widget, bool front){
     layout->insertWidget(front?0:(layout->count()-1), widget);
 }
-vtwid::vtwid(QWidget* widget, bool setmargin): vtwid(setmargin){
+vtwid::vtwid(QWidget* widget, bool setmargin, bool setstretch): vtwid(setmargin, setstretch){
     addWidget(widget, true);
 }
 

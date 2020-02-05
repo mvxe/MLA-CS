@@ -212,8 +212,8 @@ Q_SIGNALS:
 class twid  : public QWidget{
     Q_OBJECT
 public:
-    twid(bool setmargin=true);
-    twid(QWidget* widget, bool setmargin=true);
+    twid(bool setmargin=true, bool setstretch=true);
+    twid(QWidget* widget, bool setmargin=true, bool setstretch=true);
     template<typename... Args> twid(QWidget* widget, Args... args);
     void addWidget(QWidget* widget, bool front=false);
 private:
@@ -228,14 +228,14 @@ template<typename... Args> twid::twid(QWidget* widget, Args... args): twid(args.
 class vtwid  : public QWidget{
     Q_OBJECT
 public:
-    vtwid(bool setmargin=true);
-    vtwid(QWidget* widget, bool setmargin=true);
+    vtwid(bool setmargin=true, bool setstretch=true);
+    vtwid(QWidget* widget, bool setmargin=true, bool setstretch=true);
     template<typename... Args> vtwid(QWidget* widget, Args... args);
     void addWidget(QWidget* widget, bool front=false);
 private:
     QVBoxLayout* layout{nullptr};
 };
-template<typename... Args> vtwid::vtwid(QWidget* widget, Args... args): twid(args...){
+template<typename... Args> vtwid::vtwid(QWidget* widget, Args... args): vtwid(args...){
     addWidget(widget, true);
 }
 

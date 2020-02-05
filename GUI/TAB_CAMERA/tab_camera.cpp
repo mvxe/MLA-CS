@@ -73,9 +73,8 @@ tab_camera::tab_camera(QWidget* parent){
 
     pageProcessing=new twd_selector;
         loadRawBtn=new QPushButton("Load measurement"); connect(loadRawBtn, SIGNAL(released()), this, SLOT(onLoadDepthMapRaw()));
-        pageProcessing->addWidget(new twid(loadRawBtn, false));
         diff2RawBtn=new QPushButton("Load 2 measurements and dif them"); connect(diff2RawBtn, SIGNAL(released()), this, SLOT(onDiff2Raw()));
-        pageProcessing->addWidget(new twid(diff2RawBtn, false));
+        pageProcessing->addWidget(new vtwid(new twid(loadRawBtn),new twid(diff2RawBtn),false, false));
         pageProcessing->addWidget(pgCal->gui_processing);
 
     pageSettings=new twd_selector("","Select");
