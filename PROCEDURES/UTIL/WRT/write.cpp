@@ -15,7 +15,7 @@ pgWrite::pgWrite(){
     pulse=new QPushButton("Pulse");
     connect(pulse, SIGNAL(released()), this, SLOT(onPulse()));
     pulseInt=new val_selector(1000, "pgWrite_pulseInt", "Int:", 1, 8192, 0);
-    pulseDur=new val_selector(1, "pgWrite_pulseDur", "Dur", 0.001, 1000, 3, 0, {"ms"});
+    pulseDur=new val_selector(1, "pgWrite_pulseDur", "Dur", 0.001, 10000, 3, 0, {"ms"});
     alayout->addWidget(new twid(pulse, pulseInt, pulseDur));
 
 }
@@ -26,7 +26,9 @@ void pgWrite::onPulse(){
     commands.push_back(CQF::W4TRIG_INTR());
     commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));
     commands.push_back(CQF::SG_SAMPLE(CQF::O0td, pulseInt->val, 0));
-    commands.push_back(CQF::WAIT(pulseDur->val/8e-6-1));
+    long int dur=pulseDur->val/8e-6-1;
+    while(dur>100000000) {commands.push_back(CQF::WAIT(100000000)); dur-=100000000;}
+    commands.push_back(CQF::WAIT(dur));
     commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
     go.pRPTY->A2F_write(0,commands.data(),commands.size());
     go.pRPTY->trig(1<<0);
