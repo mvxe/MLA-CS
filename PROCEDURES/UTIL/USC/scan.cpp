@@ -48,6 +48,11 @@ void pgScanGUI::init_gui_activation(){
     gui_activation->addWidget(cbCorrectTilt);
     cbAvg=new checkbox_save(false,"pgScanGUI_ctAvg","Average");
     gui_activation->addWidget(cbAvg);
+
+    xDifShift=new QDoubleSpinBox(); xDifShift->setRange(-100,100); xDifShift->setSuffix(" px"); xDifShift->setDecimals(2);
+    yDifShift=new QDoubleSpinBox(); yDifShift->setRange(-100,100); yDifShift->setSuffix(" px"); xDifShift->setDecimals(2);
+    gui_processing=new twid(new QLabel("dif. Shift (x,y): "),xDifShift,yDifShift);
+    gui_processing->setToolTip("This applies to all functions that used dif. scans!");
 }
 void pgScanGUI::onBScanContinuous(bool status){bScan->setCheckable(status);}
 void pgScanGUI::onBScan(){
@@ -76,7 +81,6 @@ void pgScanGUI::init_gui_settings(){
     slayout->addWidget(new twid(saveAvgMess));
     connect(saveAvgMess, SIGNAL(released()), this, SLOT(onBSaveAvgMess()));
     onMenuChange(0);
-
 }
 
 scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
@@ -665,9 +669,34 @@ pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
     if(scan0==nullptr || scan1==nullptr) {std::cerr<<"difScans got nullptr input\n"; return ret;}
     if(scan0->depth.cols!=scan1->depth.cols || scan0->depth.rows!=scan1->depth.rows) {std::cerr<<"difScans got matrices with nonequal dimensions\n"; return ret;}
 
-    cv::subtract(scan1->depth, scan0->depth, ret.depth);
-    int nCols=scan0->depth.cols;
-    int nRows=scan0->depth.rows;
+    cv::Mat depth0, depth1, mask0, mask1;
+    if(xDifShift->value()!=0 || yDifShift->value()!=0){
+        float xShft, yShft;
+        int nCols=scan0->depth.cols;    float xShiftFrac=modf(xDifShift->value(), &xShft);
+        int nRows=scan0->depth.rows;    float yShiftFrac=modf(yDifShift->value(), &yShft);
+
+        if(abs(xShft)>=nCols || abs(yShft)>=nRows) {std::cerr<<"difScans specified shift larger than mat dimensions\n"; return ret;}
+        depth0=scan0->depth(cv::Rect(xShft>0?0:abs(xShft), yShft>0?0:abs(yShft), nCols-abs(xShft), nRows-abs(yShft)));
+        mask0 =scan0->mask (cv::Rect(xShft>0?0:abs(xShft), yShft>0?0:abs(yShft), nCols-abs(xShft), nRows-abs(yShft)));
+        depth1=scan1->depth(cv::Rect(xShft>0?abs(xShft):0, yShft>0?abs(yShft):0, nCols-abs(xShft), nRows-abs(yShft)));
+        mask1 =scan1->mask (cv::Rect(xShft>0?abs(xShft):0, yShft>0?abs(yShft):0, nCols-abs(xShft), nRows-abs(yShft)));
+
+        if(xShiftFrac!=0 || yShiftFrac!=0){
+            cv::Mat trans=(cv::Mat_<double>(2,3) << 1, 0, xShiftFrac, 0, 1, yShiftFrac);
+            cv::warpAffine(depth0, depth0, trans, depth0.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+            cv::dilate(mask0,mask0,cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3,3), cv::Point(1,1)));
+            cv::Rect cut(cv::Rect(xShiftFrac>0?1:0, yShiftFrac>0?1:0, nCols-abs(xShft)-1, nRows-abs(yShft)-1));
+            depth0=depth0(cut); mask0 =mask0 (cut);
+            depth1=depth1(cut); mask1 =mask1 (cut);
+        }
+    }else{
+        depth0=scan0->depth; mask0=scan0->mask;
+        depth1=scan1->depth; mask1=scan1->mask;
+    }
+
+    cv::subtract(depth1, depth0, ret.depth);
+    int nCols=depth0.cols;
+    int nRows=depth0.rows;
     if(scan1->tiltCor[0]-scan0->tiltCor[0]!=0){
         cv::Mat slopeX1(1, nCols, CV_32F);
         cv::Mat slopeX(nRows, nCols, CV_32F);
@@ -682,8 +711,8 @@ pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
         cv::repeat(slopeY1, 1, nCols, slopeY);
         cv::add(slopeY,ret.depth,ret.depth);
     }
-    scan0->mask.copyTo(ret.mask);
-    ret.mask.setTo(255, scan1->mask);
+    mask0.copyTo(ret.mask);
+    ret.mask.setTo(255, mask1);
     bitwise_not(ret.mask, ret.maskN);
     ret.depth.setTo(std::numeric_limits<float>::max(), ret.mask);
     cv::Point ignore;

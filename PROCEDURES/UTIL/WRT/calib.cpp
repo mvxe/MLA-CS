@@ -610,7 +610,7 @@ void pgCalib::onProcessFocusMes(){
         pgScanGUI::scanRes scanBefore, scanAfter;
         if(!pgScanGUI::loadScan(&scanBefore, util::toString(fldr,"/before.pfm"))) continue;
         if(!pgScanGUI::loadScan(&scanAfter, util::toString(fldr,"/after.pfm"))) continue;
-        pgScanGUI::scanRes scanDif=pgScanGUI::difScans(&scanBefore, &scanAfter);
+        pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
         //pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
 
 //        cv::Mat rescaleDepth, rescaleMask;

@@ -74,7 +74,8 @@ tab_camera::tab_camera(QWidget* parent){
     pageProcessing=new twd_selector;
         loadRawBtn=new QPushButton("Load measurement"); connect(loadRawBtn, SIGNAL(released()), this, SLOT(onLoadDepthMapRaw()));
         diff2RawBtn=new QPushButton("Load 2 measurements and dif them"); connect(diff2RawBtn, SIGNAL(released()), this, SLOT(onDiff2Raw()));
-        pageProcessing->addWidget(new vtwid(new twid(loadRawBtn),new twid(diff2RawBtn),false, false));
+
+        pageProcessing->addWidget(new vtwid(new twid(loadRawBtn),new twid(diff2RawBtn),pgSGUI->gui_processing,false, false));
         pageProcessing->addWidget(pgCal->gui_processing);
 
     pageSettings=new twd_selector("","Select");
@@ -453,7 +454,7 @@ void tab_camera::onLoadDepthMapRaw(void){
 void tab_camera::onDiff2Raw(){
     pgScanGUI::scanRes scanBefore, scanAfter;
     if(pgScanGUI::loadScan(&scanBefore) && pgScanGUI::loadScan(&scanAfter)){
-        pgScanGUI::scanRes scanDif=pgScanGUI::difScans(&scanBefore, &scanAfter);
+        pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
         if(scanDif.depth.empty()) return;
         loadedScan=scanDif;
         loadedScanChanged=true;

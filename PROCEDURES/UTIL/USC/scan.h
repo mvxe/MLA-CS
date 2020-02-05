@@ -18,6 +18,7 @@ class pgMoveGUI;
 class twid;
 class scanRes;
 class checkbox_save;
+class QDoubleSpinBox;
 
 class pScan: public sproc{
 public:
@@ -35,6 +36,7 @@ public:
     pgScanGUI(mesLockProg& MLP);
     twid* gui_activation;
     QWidget* gui_settings;
+    twid* gui_processing;
     QTimer* timer;
     QTimer* timerCM;  // we use this timer to maintain continuous measurments
     constexpr static unsigned timerCM_delay=100;
@@ -69,7 +71,7 @@ public:
     static void saveScanTxt(const scanRes* scan, std::string fileName="");
     static void saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::string fileName="");
     static bool loadScan(scanRes* scan, std::string fileName="");                       //return true if success
-    static scanRes difScans(scanRes* scan0, scanRes* scan1);
+    scanRes difScans(scanRes* scan0, scanRes* scan1);
     static QWidget* parent; //for dialogs
 private:
     void init_gui_activation();
@@ -135,6 +137,9 @@ private:
     std::atomic<bool> bSaveAvgMess{false};    // for autosaving raw data - for debug and bookeeping purposes - for saving individual measurements that are being averaged.
     std::string stringSaveAvgMess;
     int saveIter;
+
+    QDoubleSpinBox* xDifShift;
+    QDoubleSpinBox* yDifShift;
 
     void _doOneRound(char cbAvg_override=0);
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
