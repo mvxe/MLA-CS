@@ -9,6 +9,7 @@ class pgMoveGUI;
 class pgBoundsGUI;
 class pgDepthEval;
 class pgBeamAnalysis;
+class QSpinBox;
 
 class pgCalib: public QWidget{
     Q_OBJECT
@@ -75,6 +76,11 @@ private:
         checkbox_save* doRedFocusCenter;
     int measCounter{0};
     bool drawWriteAreaOn{false};
+
+    QSpinBox* cropTop;
+    QSpinBox* cropBttm;
+    QSpinBox* cropLeft;
+    QSpinBox* cropRght;
 
     //processing
     QVBoxLayout* playout;

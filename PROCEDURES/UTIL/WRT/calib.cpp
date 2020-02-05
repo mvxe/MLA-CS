@@ -109,6 +109,16 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     calibMethod->addWidget(calibMethodArray, "Array");
     calibMethod->doneAddingWidgets();
     slayout->addWidget(calibMethod);
+    slayout->addWidget(new hline);
+    slayout->addWidget(new QLabel("PROCESSING:"));
+    slayout->addWidget(new QLabel("Crop individual points (for shifted beams)(setting not saved):"));
+    cropTop =new QSpinBox;  cropTop->setRange(0,100);  cropTop->setPrefix("Top: ");  cropTop->setSuffix(" px");
+    cropBttm=new QSpinBox; cropBttm->setRange(0,100); cropBttm->setPrefix("Bottom: "); cropBttm->setSuffix(" px");
+    cropLeft=new QSpinBox; cropLeft->setRange(0,100); cropLeft->setPrefix("Left: "); cropLeft->setSuffix(" px");
+    cropRght=new QSpinBox; cropRght->setRange(0,100); cropRght->setPrefix("Right: "); cropRght->setSuffix(" px");
+    slayout->addWidget(new twid(cropTop,cropBttm));
+    slayout->addWidget(new twid(cropLeft,cropRght));
+
 
     gui_processing=new QWidget;
     playout=new QVBoxLayout;
@@ -611,9 +621,16 @@ void pgCalib::onProcessFocusMes(){
         if(!pgScanGUI::loadScan(&scanBefore, util::toString(fldr,"/before.pfm"))) continue;
         if(!pgScanGUI::loadScan(&scanAfter, util::toString(fldr,"/after.pfm"))) continue;
         pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
-        //pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
+        if(cropTop->value()!=0 || cropBttm->value()!=0 || cropLeft->value()!=0 || cropRght->value()!=0){
+            if(cropTop->value()+cropBttm->value()>=scanDif.depth.rows || cropRght->value()+cropLeft->value()>=scanDif.depth.cols) {std::cerr<<"Cropped dimensions are larger than scan sizes. Aborting processing.\n"; return;}
+            scanDif.mask =scanDif.mask (cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
+            scanDif.depth=scanDif.depth(cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
+            //scanDif.maskN=scanDif.maskN(cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
+            // WARNING: if this function is modified to use scanDif.maskN, uncomment the line above!!! (disabled for (albeit tiny) performance reasons)
+        }
+//        pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
 
-//        cv::Mat rescaleDepth, rescaleMask;
+//        cv::Mat rescaleDepth, rescaleMask;                                    //this can be done to increase performance
 //        cv::resize(scanDif.depth,rescaleDepth,cv::Size(),0.2,0.2);            //dont forget to rescale the measured widths
 //        cv::resize(scanDif.mask,rescaleMask,cv::Size(),0.2,0.2);
 
@@ -625,7 +642,6 @@ void pgCalib::onProcessFocusMes(){
         //std::cout<<"size= "<<data.size()<<"\n";
 
         parameter_vector res{(double)scanDif.depth.cols/2,(double)scanDif.depth.rows/2,scanDif.max-scanDif.min,(double)scanDif.depth.rows, (double)scanDif.depth.rows, 0.01, scanDif.min};
-        //dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(), gaussResidual, derivative(gaussResidual), data, res);
 
         dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7,100), gaussResidual, derivative(gaussResidual), data, res);
         //std::cout << "inferred parameters: "<< dlib::trans(res) << "\n";
@@ -647,14 +663,6 @@ void pgCalib::onProcessFocusMes(){
             std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
                  <<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
         }
-
-
-
-//        double min,max;
-//        cv::Point  ignore;
-//        cv::minMaxLoc(scanDif.depth, &min, &max, &ignore, &ignore);
-//        std::cout<<Frad<<" "<<FZdif<<" "<<max-min<<"\n";
-
     }
     wfile.close();
 }
