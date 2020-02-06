@@ -573,11 +573,11 @@ void pgCalib::onProcessFocusMes(){
     struct stat filetype;
     std::string curFile;
     std::string curFolder;
+    bool dirHasMes[5]{false,false,false,false,false};
     while(!readFolders.empty()){
         curFolder=readFolders.back();
         readFolders.pop_back();
         wp=opendir(curFolder.c_str());
-        bool dirHasMes[4]{false,false,false,false};
         if(wp!=nullptr) while(entry=readdir(wp)){
             curFile=entry->d_name;
             if (curFile!="." && curFile!=".."){
@@ -590,6 +590,7 @@ void pgCalib::onProcessFocusMes(){
                     else if(strcmp(entry->d_name,"before.pfm")==0) dirHasMes[1]=true;
                     else if(strcmp(entry->d_name,"after.pfm")==0) dirHasMes[2]=true;
                     else if(strcmp(entry->d_name,"laser.dat")==0) dirHasMes[3]=true;
+                    else if(strcmp(entry->d_name,"pic.png")==0) dirHasMes[4]=true;      //nonessential for backward compatibility
                 }
             }
         }
@@ -603,7 +604,7 @@ void pgCalib::onProcessFocusMes(){
     std::ofstream wfile(saveName);
     int n=0;
     wfile<<"# <1: fitted radius(a.u)> <2: focus distance(mm)> <3: peak height(nm)> <4: X width (1/e^2)(um)> <5: Y width (1/e^2)(um)> <6: ellipse angle(rad)>\n";
-    wfile<<"# <7: XY width (1/e^2)(um)> <8: X offset(um)> <9: Y offset(um)> <10: XY offset(um)> <11: Intensity (a.u.)> <12: duration(ms)>\n";
+    wfile<<"# <7: XY width (1/e^2)(um)> <8: X offset(um)> <9: Y offset(um)> <10: XY offset(um)> <11: Intensity (a.u.)> <12: duration(ms)> <13: MeanAbs.ReflectivityDeriv.(a.u.)>\n";
     for(auto& fldr:measFolders){ n++;
         double FZdif;
         double Frad;
@@ -654,14 +655,25 @@ void pgCalib::onProcessFocusMes(){
            res(4)=tmp;
         }
 
+        double intReflDeriv{-1};
+        if(dirHasMes[4]){
+            cv::Mat refl=imread(util::toString(fldr,"/pic.png"), cv::IMREAD_GRAYSCALE);
+            cv::Mat reflS;
+            cv::Mat derv;
+            cv::bilateralFilter(refl, reflS, -1, 4, 4);  //smooth it a bit
+            cv::Sobel(reflS, derv, CV_32F,1,1);          //first derivative
+            intReflDeriv=cv::mean(cv::abs(derv))[0];
+        }
+
+
         if(res(0)<0 || res(0)>scanDif.depth.cols || res(1)<0 || res(1)>scanDif.depth.rows || res(2)<=0){   //center of the fit is out of frame or other things that indicate fit faliure
-            wfile<<Frad<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<"\n";
+            wfile<<Frad<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
             std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
-                 <<Frad<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<"\n";
+                 <<Frad<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
         }else{
-            wfile<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
+            wfile<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
             std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
-                 <<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<"\n";
+                 <<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
         }
     }
     wfile.close();
