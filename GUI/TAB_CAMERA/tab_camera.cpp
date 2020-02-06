@@ -201,6 +201,7 @@ void tab_camera::work_fun(){
                     cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD (nm)");
                 }
                 dispDepthMatRows=res->depth.rows;
+                dispDepthMatCols=res->depth.cols;
 
                 if(selectingFlag){
                     if(selectingFlagIsLine) cv::line(display, {selStartX+1,selStartY+(display.rows-res->depth.rows)/2},{selCurX+1,selCurY+(display.rows-res->depth.rows)/2}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, 1, cv::LINE_AA);
@@ -310,11 +311,20 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     parent->selEndX=xcoord;
     parent->selEndY=ycoord;
 
-    if(!checkIfInBounds(parent->selStartX, parent->selStartY) || !checkIfInBounds(parent->selEndX, parent->selEndY)) {parent->selectingFlag=false; return;}
-
     if(isDepth){
         parent->selEndX-=1;                                 //correct for drawn margins on image
         parent->selEndY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
+
+        if((parent->selStartX<0 && parent->selEndX<0) || (parent->selStartX>=parent->dispDepthMatCols && parent->selEndX>=parent->dispDepthMatCols) || (parent->selStartY<0 && parent->selEndY<0) || (parent->selStartY>=parent->dispDepthMatRows && parent->selEndY>=parent->dispDepthMatRows))
+            {parent->selectingFlag=false; return;}
+        if(parent->selStartX<0) parent->selStartX=0;
+        if(parent->selEndX<0) parent->selEndX=0;
+        if(parent->selStartX>=parent->dispDepthMatCols) parent->selStartX=parent->dispDepthMatCols-1;
+        if(parent->selEndX>=parent->dispDepthMatCols) parent->selEndX=parent->dispDepthMatCols-1;
+        if(parent->selStartY<0) parent->selStartY=0;
+        if(parent->selEndY<0) parent->selEndY=0;
+        if(parent->selStartY>=parent->dispDepthMatRows) parent->selStartY=parent->dispDepthMatRows-1;
+        if(parent->selEndY>=parent->dispDepthMatRows) parent->selEndY=parent->dispDepthMatRows-1;
 
         if(event->button()==Qt::RightButton){
             parent->clickMenuDepthRight->popup(QCursor::pos());
@@ -329,6 +339,7 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
         }
     }
     else{
+        if(xcoord<0 || xcoord>=pixmap()->width() || ycoord<0 || ycoord>=pixmap()->height()) return; //ignore events outside pixmap;
         if(event->button()==Qt::LeftButton){
             double DX, DY;
             DX=(pixmap()->width()/2+parent->pgBeAn->writeBeamCenterOfsX-xcoord)*parent->pgMGUI->getNmPPx()/1000000;     //we also correct for real writing beam offset from center
@@ -339,18 +350,6 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
             parent->clickMenu->popup(QCursor::pos());
         }
     }
-}
-bool iImageDisplay::checkIfInBounds(int xcoord, int ycoord){
-    if(isDepth){
-        const pgScanGUI::scanRes* res;
-        if(parent->loadedOnDisplay) res=&parent->loadedScan;
-        else res=parent->scanRes->get();
-        if(res==nullptr) return false;
-        if(xcoord<1 || xcoord>=res->depth.cols+1 || ycoord<(pixmap()->height()-res->depth.rows)/2 || ycoord>=res->depth.rows+(pixmap()->height()-res->depth.rows)/2 ) return false; //ignore events outside image;
-    }else{
-        if(xcoord<0 || xcoord>=pixmap()->width() || ycoord<0 || ycoord>=pixmap()->height()) return false; //ignore events outside pixmap;
-    }
-    return true;
 }
 void iImageDisplay::wheelEvent(QWheelEvent *event){
     if(isDepth){}
