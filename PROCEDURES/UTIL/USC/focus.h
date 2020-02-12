@@ -47,6 +47,8 @@ public:
     val_selector* ppwl;         //points per wavelength
     QLabel* calcL;
     double mmPerFrame;
+    val_selector* gaussianBlur;
+    QPushButton* btnSaveNextDebugFocus;
 
     int totalFrameNum;
     constexpr static unsigned timer_delay=500;
@@ -56,6 +58,7 @@ public:
     void updatePVT(std::string &report);
 
     double total_meas_time;
+    std::string saveNextFocus{""};
 
     void _refocus();
     std::atomic<bool> _focusingDone{false};
@@ -65,6 +68,7 @@ public Q_SLOTS:
 private Q_SLOTS:
     void onRefocus();
     void onMenuChange(int index);
+    void onBtnSaveNextDebugFocus();
 };
 
 class focusSettings: public QWidget{

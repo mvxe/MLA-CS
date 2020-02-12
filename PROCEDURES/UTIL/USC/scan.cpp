@@ -531,7 +531,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override){
     result.put(res);
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
-    std::cerr<<"operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
+    std::cerr<<"Calculation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
     std::cerr<<"done nr "<<NA<<"\n"; NA++;
     std::cerr<<"Free: "<<go.pGCAM->iuScope->FQsPCcam.getFreeNumber()<<"\n";
     std::cerr<<"Full: "<<go.pGCAM->iuScope->FQsPCcam.getFullNumber()<<"\n";

@@ -47,7 +47,16 @@ void pgFocusGUI::init_gui_settings(){
     connect(selectFocusSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     calcL=new QLabel;
     slayout->addWidget(calcL);
+    gaussianBlur=new val_selector(21, util::toString("pgFocusGUI_gaussianBlur"), "Gaussian Blur Sigma: ", 1, 100, 1, 0, {"px"});
+    slayout->addWidget(gaussianBlur);
+    btnSaveNextDebugFocus=new QPushButton("Save Next Debug Values");
+    btnSaveNextDebugFocus->setToolTip("Select Folder for Debug. The measured values will be saved for the next 'ReFocus'..");
+    connect(btnSaveNextDebugFocus, SIGNAL(released()), this, SLOT(onBtnSaveNextDebugFocus()));
+    slayout->addWidget(new twid(btnSaveNextDebugFocus));
     onMenuChange(0);
+}
+void pgFocusGUI::onBtnSaveNextDebugFocus(){
+    saveNextFocus=QFileDialog::getExistingDirectory(gui_settings, "Select Folder for Debug. The measured values will be saved for the next 'ReFocus'..").toStdString();
 }
 
 focusSettings::focusSettings(uint num, pgFocusGUI* parent): parent(parent){
@@ -136,7 +145,16 @@ void pgFocusGUI::_refocus(){
     FQ* framequeue;
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeue->setUserFps(99999);
-    go.pXPS->execPVTobjB(PVTScan);
+
+    go.pXPS->execPVTobj(PVTScan, &PVTret);
+    for(int i=0;i!=95;i++){
+        std::this_thread::sleep_for(std::chrono::milliseconds((int)(total_meas_time*1000/100)));
+        MLP.progress_meas=i+1;
+        if(PVTret.check_if_done()) break;
+    }
+    PVTret.block_till_done();
+    MLP.progress_meas=100;
+
     framequeue->setUserFps(0);
 
     std::lock_guard<std::mutex>lock2(MLP._lock_comp);    //wait till other processing is done
@@ -161,24 +179,49 @@ void pgFocusGUI::_refocus(){
     int nRows=framequeue->getUserMat(0)->rows;
     int nCols=framequeue->getUserMat(0)->cols;
 
-    cv::UMat calcMat(nRows, nCols, CV_8U);
-    cv::UMat calcMatRed(nRows, 1, CV_32F);
-    cv::Mat result(nFrames, 1, CV_32F);
-    double min,max;
-    for(int i=0;i!=nFrames;i++){
-        framequeue->getUserMat(i)->copyTo(calcMat);
-        cv::reduce(calcMat, calcMatRed, 0, cv::REDUCE_AVG, CV_32F);
-        cv::minMaxLoc(calcMatRed, &min, &max);
-        result.at<float>(i)=max-min;
+    cv::UMat pixSum(1, nFrames, CV_64F, cv::Scalar(0));
+    cv::Mat mat2D(nFrames, nCols, CV_64F);
+
+    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
+    MLP.progress_comp=0;
+    for(int k=0;k!=nRows;k++){      //Processing row by row
+        for(int i=0;i!=nFrames;i++)
+            framequeue->getUserMat(i)->row(k).copyTo(mat2D.row(i));
+        cv::UMat Umat2D;                    //row - frameN, col - FrameCol
+        cv::UMat temp0, temp1;
+        mat2D.copyTo(Umat2D);
+
+        if(k==nRows/2 && !saveNextFocus.empty()) {std::ofstream wfile(util::toString(saveNextFocus,"/","stage0-barePix.dat")); for(int j=0;j!=mat2D.rows;j++) wfile<<mat2D.at<double>(j, nCols/2)<<"\n"; wfile.close();}
+        cv::reduce(mat2D, temp0, 0, cv::REDUCE_AVG);
+        cv::repeat(temp0, nFrames, 1, temp1);
+
+        cv::subtract(Umat2D,temp1,Umat2D);                      // removed the average
+        if(k==nRows/2 && !saveNextFocus.empty()) {Umat2D.copyTo(mat2D); std::ofstream wfile(util::toString(saveNextFocus,"/","stage1-avgRmv.dat")); for(int j=0;j!=mat2D.rows;j++) wfile<<mat2D.at<double>(j, nCols/2)<<"\n"; wfile.close();}
+        cv::absdiff(Umat2D, cv::Scalar::all(0), Umat2D);        // get abs
+        if(k==nRows/2 && !saveNextFocus.empty()) {Umat2D.copyTo(mat2D); std::ofstream wfile(util::toString(saveNextFocus,"/","stage2-abs.dat")); for(int j=0;j!=mat2D.rows;j++) wfile<<mat2D.at<double>(j, nCols/2)<<"\n"; wfile.close();}
+
+        cv::transpose(Umat2D,Umat2D);       //row - FrameCol, col - frameN
+        cv::reduce(Umat2D, temp0, 0, cv::REDUCE_AVG);           //avg pixels
+        cv::add(pixSum,temp0,pixSum);
+        MLP.progress_comp=99*(k+1)/nRows;
     }
+    if(!saveNextFocus.empty()) {pixSum.copyTo(mat2D); std::ofstream wfile(util::toString(saveNextFocus,"/","stage3-avgAll.dat")); for(int j=0;j!=mat2D.cols;j++) wfile<<mat2D.at<double>(0, j)<<"\n"; wfile.close();}
+    double sigma=gaussianBlur->val;
+    int ksize=sigma*5;
+    if(!(ksize%2)) ksize++;
+    cv::GaussianBlur(pixSum, pixSum, cv::Size(ksize, 1), sigma, 0);
+    if(!saveNextFocus.empty()) {pixSum.copyTo(mat2D); std::ofstream wfile(util::toString(saveNextFocus,"/","stage4-blur.dat")); for(int j=0;j!=mat2D.cols;j++) wfile<<mat2D.at<double>(0, j)<<"\n"; wfile.close();saveNextFocus.clear();}
+    cv::Point maxLoc;
+    cv::minMaxLoc(pixSum, nullptr, nullptr, nullptr, &maxLoc);
+    MLP.progress_comp=100;
+    std::cerr<<"res: "<<maxLoc.x<<" "<<nFrames<<"\n";
+    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
+    std::cerr<<"Calculation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
+
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
-//    std::ofstream wfile ("focus.txt");
-//    for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<result.at<float>(i)<<"\n";
-//    wfile.close();
-    cv::Point minLoc,maxLoc;
-    cv::minMaxLoc(result, &min, &max, &minLoc, &maxLoc);
-    double focus=(maxLoc.y-nFrames/2.)*mmPerFrame;
+    double focus=(maxLoc.x-nFrames/2.)*mmPerFrame;
+    std::cerr<<"Corrected focus by "<<focus<<" mm\n";
     go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,focus,-focus);
     _focusingDone=true;
 }
