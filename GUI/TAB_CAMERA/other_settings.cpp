@@ -15,8 +15,6 @@ cameraSett::cameraSett(std::atomic<bool>& getExpMinMax): getExpMinMax(getExpMinM
     layout->addWidget(expSel);
     report1=new QLabel();
     layout->addWidget(report1);
-    calibExpSel=new val_selector(1000, "cameraSett_calibexp", "Set Calibration Beam Exposure: ", 0, 9999999, 3, 0, {"us"});
-    layout->addWidget(calibExpSel);
     layout->addWidget(new hline);
     LEDon=new QCheckBox("LED toggle");
     LEDon->setToolTip("Just for testing, does not save/persist.");
@@ -25,9 +23,7 @@ cameraSett::cameraSett(std::atomic<bool>& getExpMinMax): getExpMinMax(getExpMinM
     layout->addWidget(LEDon);
 
     genReport();
-    calibExpSet();
     connect(expSel, SIGNAL(changed()), this, SLOT(genReport()));
-    connect(calibExpSel, SIGNAL(changed()), this, SLOT(calibExpSet()));
     connect(measureFlag, SIGNAL(toggled(bool)), this, SLOT(onToggled(bool)));
 }
 
@@ -45,13 +41,6 @@ void cameraSett::genReport(){
     std::string rpt1=util::toString("Max FPS for selected exposure: ",FPSMax,"\n");
     report1->setText(QString::fromStdString(rpt1));
 }
-void cameraSett::calibExpSet(){
-    if(go.pGCAM->iuScope->connected){
-        go.pGCAM->iuScope->set("ExposureTime",calibExpSel->val);
-        calibExpSel->setValue(go.pGCAM->iuScope->get_dbl("ExposureTime"));
-        go.pGCAM->iuScope->expo.set(expSel->val);
-    }
-}
 void cameraSett::onToggled(bool state){getExpMinMax=state;}
 void cameraSett::doneExpMinmax(int min, int max){
     expMin=min;
@@ -66,8 +55,5 @@ double cameraSett::setExposurePreset(int N){
     if(N==0){
         go.pGCAM->iuScope->set("ExposureTime",expSel->val);
         return expSel->val;
-    }else if(N==1){
-        go.pGCAM->iuScope->set("ExposureTime",calibExpSel->val);
-        return calibExpSel->val;
     }else return -1;
 }

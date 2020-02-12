@@ -13,7 +13,7 @@ class cameraSett;
 class pgBeamAnalysis: public QWidget{
     Q_OBJECT
 public:
-    pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* pgSGUI, cameraSett* camSet);
+    pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* pgSGUI);
     QWidget* gui_settings;
     QWidget* gui_activation;
     bool getCalibWritingBeam(float* r=nullptr, float* dx=nullptr, float* dy=nullptr, bool correct=true);    //return true on failure (also wont correct if faliure)
@@ -27,7 +27,6 @@ private:
     mesLockProg& MLP;
     pgMoveGUI* pgMGUI;
     pgScanGUI* pgSGUI;
-    cameraSett* camSet;
     float _writeBeamCenterOfsX;        //the center offset in pixels
     float _writeBeamCenterOfsY;
     cc_save<float> saveWBCX{_writeBeamCenterOfsX, 0,&go.pos_config.save,"pgBeamAnalysis_saveWBCX"};
@@ -75,9 +74,9 @@ private:
     std::string saveNext{""};                           //these arent thread safe, ikr, but unlikely to cause problems
     std::string saveNextFocus{""}; int numSave;
 
-    void turnOnRedLaser();
-    void armRedLaser();
-    bool waitTillCalibLaserIsOn(FQ* framequeueDisp); //return 0 on sucess
+    void ctrlRedLaser(bool state);
+//    void armRedLaser();
+    bool waitTillLEDIsOff(FQ* framequeueDisp); //return 0 on sucess
 private Q_SLOTS:
     void getWritingBeamCenter();
     void onBtnSaveNextDebug();

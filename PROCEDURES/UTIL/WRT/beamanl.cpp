@@ -4,7 +4,7 @@
 #include "GUI/TAB_CAMERA/other_settings.h"
 //#include <dlib/optimization.h>
 
-pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* pgSGUI, cameraSett* camSet): MLP(MLP), pgMGUI(pgMGUI), pgSGUI(pgSGUI), camSet(camSet){
+pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* pgSGUI): MLP(MLP), pgMGUI(pgMGUI), pgSGUI(pgSGUI){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
@@ -126,33 +126,33 @@ void pgBeamAnalysis::getWritingBeamCenter(){
 }
 
 
-void pgBeamAnalysis::turnOnRedLaser(){
+void pgBeamAnalysis::ctrlRedLaser(bool state){
     std::vector<uint32_t> commands;
     commands.push_back(CQF::GPIO_MASK(0x80,0,0x00));
     commands.push_back(CQF::GPIO_DIR (0x00,0,0x00));
-    commands.push_back(CQF::GPIO_VAL (0x80,0,0x00));
+    commands.push_back(CQF::GPIO_VAL (state?0x80:0x00,0,0x00));
     go.pRPTY->A2F_write(1,commands.data(),commands.size());
     commands.clear();
 }
-void pgBeamAnalysis::armRedLaser(){
-    std::vector<uint32_t> commands;
-    commands.push_back(CQF::GPIO_MASK(0x40,0,0));
-    commands.push_back(CQF::GPIO_DIR (0x40,0,0));
-    commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
-    commands.push_back(CQF::GPIO_MASK(0x80,0,0x00));
-    commands.push_back(CQF::GPIO_DIR (0x00,0,0x00));
-    commands.push_back(CQF::GPIO_VAL (0x80,0,0x00));
-    go.pRPTY->A2F_write(1,commands.data(),commands.size());
-    commands.clear();
-}
+//void pgBeamAnalysis::armRedLaser(){
+//    std::vector<uint32_t> commands;
+//    commands.push_back(CQF::GPIO_MASK(0x40,0,0));
+//    commands.push_back(CQF::GPIO_DIR (0x40,0,0));
+//    commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
+//    commands.push_back(CQF::GPIO_MASK(0x80,0,0x00));
+//    commands.push_back(CQF::GPIO_DIR (0x00,0,0x00));
+//    commands.push_back(CQF::GPIO_VAL (0x80,0,0x00));
+//    go.pRPTY->A2F_write(1,commands.data(),commands.size());
+//    commands.clear();
+//}
 
-bool pgBeamAnalysis::waitTillCalibLaserIsOn(FQ* framequeueDisp){
+bool pgBeamAnalysis::waitTillLEDIsOff(FQ* framequeueDisp){
     // first we take frames until we hit the first one that has the LED turned off This is recognized using criteria below:
     const int borderWidth=10;
     const uchar lIntThresh=10;      // 1/25 of max int
     const float lOuterRatio=0.75;   // at least lOuterRatio of the pixels within the borderWidth pixel width border must be smaller than lIntThresh
-    const uchar uIntThresh=50;      // 1/5 of max int
-    const float uInnerRatio=0.000001; // at least uInnerRatio of the pixels within the borderWidth pixel width border must be larger than uIntThresh
+//    const uchar uIntThresh=50;      // 1/5 of max int
+//    const float uInnerRatio=0.000001; // at least uInnerRatio of the pixels within the borderWidth pixel width border must be larger than uIntThresh
     const int maxTriesFrames=100;  // give up after checking this many frames
 
     framequeueDisp->setUserFps(9999,maxTriesFrames);
@@ -168,31 +168,26 @@ bool pgBeamAnalysis::waitTillCalibLaserIsOn(FQ* framequeueDisp){
         temp.setTo(0,mask);
         int lNum=cv::countNonZero(temp);
         if((float)lNum/(mask.cols*mask.rows-(mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<lOuterRatio) {framequeueDisp->freeUserMat(); continue;}
-        cv::compare(*framequeueDisp->getUserMat(),uIntThresh,temp,cv::CMP_GE);
-        cv::bitwise_not(mask,mask);
-        temp.setTo(0,mask);
-        int uNum=cv::countNonZero(temp);
-        if((float)uNum/(mask.cols*mask.rows-(mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<uInnerRatio) {framequeueDisp->freeUserMat(); continue;}
+//        cv::compare(*framequeueDisp->getUserMat(),uIntThresh,temp,cv::CMP_GE);
+//        cv::bitwise_not(mask,mask);
+//        temp.setTo(0,mask);
+//        int uNum=cv::countNonZero(temp);
+//        if((float)uNum/(mask.cols*mask.rows-(mask.cols-2*borderWidth)*(mask.rows-2*borderWidth))<uInnerRatio) {framequeueDisp->freeUserMat(); continue;}
         break;
     }
     return false;
 }
 
 bool pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool correct){
-//    double tmpExposure=go.pGCAM->iuScope->get_dbl("ExposureTime");
-//    go.pGCAM->iuScope->set("ExposureTime",cameraExposure->val);
-//    cameraExposure->setValue(go.pGCAM->iuScope->get_dbl("ExposureTime"));
     bool failed{true};
 
-    std::vector<uint32_t> commands;
-    camSet->setExposurePreset(1);
-    turnOnRedLaser();
+    go.pXPS->setGPIO(XPS::iuScopeLED,false);
+    ctrlRedLaser(true);
     FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-    if(waitTillCalibLaserIsOn(framequeueDisp)){
+    if(waitTillLEDIsOff(framequeueDisp)){
         framequeueDisp->setUserFps(0,1);
-        commands.push_back(CQF::GPIO_VAL (0x00,0,0x00));
-        go.pRPTY->A2F_write(1,commands.data(),commands.size());
-        camSet->setExposurePreset(0);
+        ctrlRedLaser(false);
+        go.pXPS->setGPIO(XPS::iuScopeLED,true);
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
         *r=-1;
         if(dx!=nullptr) *dx=0;
@@ -208,12 +203,8 @@ bool pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
 
     if(method_selector->index==0) while(framequeueDisp->getFullNumber()<avgNum->val) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
     framequeueDisp->setUserFps(0,1);
-    commands.push_back(CQF::GPIO_VAL (0x00,0,0x00));
-    go.pRPTY->A2F_write(1,commands.data(),commands.size());
-    camSet->setExposurePreset(0);
-//    go.pGCAM->iuScope->set("ExposureTime",tmpExposure);
-
-
+    ctrlRedLaser(false);
+    go.pXPS->setGPIO(XPS::iuScopeLED,true);
 
     //do proc
 
@@ -379,13 +370,13 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
     double movTime=2*sqrt(2*Offset/pgSGUI->vsConv(pgSGUI->max_acc));
 
     int dir=flipDir?(-1):1;
-    PVTScan->addAction(XPS::writingLaser,true);
     PVTScan->add(movTime, 0,0, 0,0, 0,0, -dir*Offset,0);
     PVTScan->add(readAccelTime,  0,0, 0,0, 0,0 ,dir*readAccelDis,dir*readVelocity);
+    PVTScan->addAction(XPS::iuScopeLED,false);
     PVTScan->add(readTime, 0,0, 0,0, 0,0, 2*dir*range,dir*readVelocity);
-    PVTScan->addAction(XPS::writingLaser,false);
     PVTScan->add(readAccelTime,  0,0, 0,0, 0,0, dir*readAccelDis,0);
     PVTScan->add(movTime, 0,0, 0,0, 0,0, -dir*Offset,0);
+    PVTScan->addAction(XPS::iuScopeLED,true);
 
     exec_dat ret;
     ret=go.pXPS->verifyPVTobj(PVTScan);
@@ -395,39 +386,30 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
         return;
     }
 
-    std::vector<uint32_t> commands;
+    ctrlRedLaser(true);
     FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     std::lock_guard<std::mutex>lock(MLP._lock_meas);
-    camSet->setExposurePreset(1);
-    armRedLaser();
     while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait till all motion is done, else motion and camera will be way out of sync
     go.pXPS->execPVTobj(PVTScan, &PVTret);
-    if(waitTillCalibLaserIsOn(framequeueDisp)){
+    if(waitTillLEDIsOff(framequeueDisp)){
         framequeueDisp->setUserFps(0,1);
-        commands.push_back(CQF::GPIO_VAL (0x00,0,0x00));
-        go.pRPTY->A2F_write(1,commands.data(),commands.size());
+        ctrlRedLaser(false);
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
         while(!PVTret.check_if_done()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
         std::string text=util::toString("pgBeamAnalysis::getCalibWritingBeamRange failed.");
         QMessageBox::critical(this, "Error", QString::fromStdString(text));
         std::cerr<<text;
-        camSet->setExposurePreset(0);
         return;
     }
-    int discardFrames=(movTime+readAccelTime)*maxFPS;
-    int totalFrames=frames+discardFrames;
-    framequeueDisp->setUserFps(9999,totalFrames);
-    while(!PVTret.check_if_done() || framequeueDisp->getFullNumber()<totalFrames) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
-    framequeueDisp->setUserFps(0,totalFrames);
+    framequeueDisp->setUserFps(9999,frames);
+    while(!PVTret.check_if_done() || framequeueDisp->getFullNumber()<frames) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+    framequeueDisp->setUserFps(0,frames);
     while(framequeueDisp->getFullNumber()>frames) framequeueDisp->freeUserMat(); //get rid of exra frames
-    commands.push_back(CQF::GPIO_VAL (0x00,0,0x00));
-    go.pRPTY->A2F_write(1,commands.data(),commands.size());
-    camSet->setExposurePreset(0);
+    ctrlRedLaser(false);
 
     //if(method_selector->index==0){        //only simple method is used here
 
     double focus=pgMGUI->FZdifference;
-
 
     cv::Mat dataX(1,frames,CV_32F, cv::Scalar{0});
     cv::Mat dataY(1,frames,CV_32F, cv::Scalar{0});
