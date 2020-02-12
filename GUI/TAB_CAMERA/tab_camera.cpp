@@ -40,7 +40,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgSGUI->pgMGUI=pgMGUI;
     camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
 
-    pgBeAn=new pgBeamAnalysis(MLP, pgMGUI, pgSGUI);
+    pgBeAn=new pgBeamAnalysis(MLP, pgMGUI, pgSGUI, camSet);
     pgBGUI=new pgBoundsGUI(pgMGUI,pgBeAn);
     pgDpEv=new pgDepthEval(pgBGUI);
     pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn);

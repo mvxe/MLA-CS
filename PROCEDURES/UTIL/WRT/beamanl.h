@@ -8,11 +8,12 @@ class pgMoveGUI;
 class FQ;
 class pgScanGUI;
 class mesLockProg;
+class cameraSett;
 
 class pgBeamAnalysis: public QWidget{
     Q_OBJECT
 public:
-    pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* pgSGUI);
+    pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* pgSGUI, cameraSett* camSet);
     QWidget* gui_settings;
     QWidget* gui_activation;
     bool getCalibWritingBeam(float* r=nullptr, float* dx=nullptr, float* dy=nullptr, bool correct=true);    //return true on failure (also wont correct if faliure)
@@ -26,6 +27,7 @@ private:
     mesLockProg& MLP;
     pgMoveGUI* pgMGUI;
     pgScanGUI* pgSGUI;
+    cameraSett* camSet;
     float _writeBeamCenterOfsX;        //the center offset in pixels
     float _writeBeamCenterOfsY;
     cc_save<float> saveWBCX{_writeBeamCenterOfsX, 0,&go.pos_config.save,"pgBeamAnalysis_saveWBCX"};
@@ -74,7 +76,8 @@ private:
     std::string saveNextFocus{""}; int numSave;
 
     void turnOnRedLaser();
-    bool waitTillLEDIsOn(FQ* framequeueDisp); //return 0 on sucess
+    void armRedLaser();
+    bool waitTillCalibLaserIsOn(FQ* framequeueDisp); //return 0 on sucess
 private Q_SLOTS:
     void getWritingBeamCenter();
     void onBtnSaveNextDebug();
