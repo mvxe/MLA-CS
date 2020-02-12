@@ -200,9 +200,8 @@ void pgFocusGUI::_refocus(){
         cv::absdiff(Umat2D, cv::Scalar::all(0), Umat2D);        // get abs
         if(k==nRows/2 && !saveNextFocus.empty()) {Umat2D.copyTo(mat2D); std::ofstream wfile(util::toString(saveNextFocus,"/","stage2-abs.dat")); for(int j=0;j!=mat2D.rows;j++) wfile<<mat2D.at<double>(j, nCols/2)<<"\n"; wfile.close();}
 
-        cv::transpose(Umat2D,Umat2D);       //row - FrameCol, col - frameN
-        cv::reduce(Umat2D, temp0, 0, cv::REDUCE_AVG);           //avg pixels
-        cv::add(pixSum,temp0,pixSum);
+        cv::reduce(Umat2D, temp0, 1, cv::REDUCE_AVG);           //avg pixels
+        cv::add(pixSum,temp0.t(),pixSum);
         MLP.progress_comp=99*(k+1)/nRows;
     }
     if(!saveNextFocus.empty()) {pixSum.copyTo(mat2D); std::ofstream wfile(util::toString(saveNextFocus,"/","stage3-avgAll.dat")); for(int j=0;j!=mat2D.cols;j++) wfile<<mat2D.at<double>(0, j)<<"\n"; wfile.close();}

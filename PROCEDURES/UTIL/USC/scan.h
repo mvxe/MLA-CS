@@ -90,7 +90,7 @@ public:
     val_selector* led_wl;       //LED wavelength
     val_selector* max_vel;      //maximum microscope axis velocity
     val_selector* max_acc;      //maximum microscope axis acceleration
-    constexpr static int darkFrameNum=4;
+    constexpr static int darkFrameNum=10;
 
     //save pixel to file
     std::mutex clickDataLock;
