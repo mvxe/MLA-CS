@@ -104,6 +104,8 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         calibMethodArray->addWidget(saveMats);
         savePic=new checkbox_save(true,"pgCalib_savePic","Also save direct pictures of measurements.");
         calibMethodArray->addWidget(savePic);
+        doRefocusUScope=new checkbox_save(true,"pgCalib_doRefocusUScope","Automatically refocus microscope (needed for good ref. beam refocus).");
+        calibMethodArray->addWidget(doRefocusUScope);
         doRedFocusCenter=new checkbox_save(true,"pgCalib_doRedFocusCenter","Automatically recenter and refocus reference beam.");
         calibMethodArray->addWidget(doRedFocusCenter);
     calibMethod->addWidget(calibMethodArray, "Array");
@@ -237,22 +239,21 @@ std::string pgCalib::makeDateTimeFolder(const std::string folder){
     return ssfolder.str();
 }
 
-void pgCalib::saveConf(std::string filename, double focus, double exclusionOrSpacing, int intensity, double duration, uchar averaging, double focusBeamRad){
+void pgCalib::saveConf(std::string filename, double focus, double exclusionOrSpacing, int intensity, double duration, uchar averaging){
     std::ofstream setFile(filename);            //this file contains some settings:
     setFile <<focus<<"\n"                       // line0:   the focus in mm (stage)
             <<exclusionOrSpacing<<"\n"          // line1:   Exclusion radius / ROI radius in um
             <<intensity<<"\n"                   // line2:   Pulse Intensity
             <<duration<<"\n"                    // line3:   Pulse Duration in ms
             <<(int)averaging<<"\n"              // line4:   Averaging Used in Pulse Raw Data (ie. the time difference between datapoints will be selectedavg*8e-9 sec)
-            <<focusBeamRad<<"\n";               // line5:   The Somewhat Arbitrary but Self Consistent Measured Focus Beam Radius
+            <<-1<<"\n";                         // line5:   Empty for now (backward compatibility)
     setFile.close();
 }
 
-void pgCalib::saveConfMain(std::string filename, double focus, double extraFocusOffset, double focusBeamRad){
+void pgCalib::saveConfMain(std::string filename, double focus, double extraFocusOffset){
     std::ofstream setFile(filename);            //this file contains some settings:
     setFile <<focus<<"\n"                       // line0:   the focus in mm (stage)
-            <<extraFocusOffset<<"\n"            // line1:   Extra focus offset - the difference between the calibration(red) beam focus and the writing(green) beam focus
-            <<focusBeamRad<<"\n";               // line2:   The Somewhat Arbitrary but Self Consistent Measured Focus Beam Radius
+            <<extraFocusOffset<<"\n";           // line1:   Extra focus offset - the difference between the calibration(red) beam focus and the writing(green) beam focus
     setFile.close();
 }
 
@@ -281,8 +282,7 @@ void pgCalib::WCFFindNearest(){
 //        QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
 //    }
 
-    int didF{0};
-    redoF: std::mt19937 rnd(std::random_device{}());
+    std::mt19937 rnd(std::random_device{}());
     std::uniform_real_distribution<>dist(-selWriteCalibFocusRange->val, selWriteCalibFocusRange->val);
     double wrFocusOffs=dist(rnd);
     wrFocusOffs=round(wrFocusOffs*1000)/1000;   //we round it up to 1 nm precision
@@ -292,22 +292,6 @@ void pgCalib::WCFFindNearest(){
     pgMGUI->moveZF(focus+wrFocusOffs/1000);
     QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait a bit for movement to complete and stabilize
     std::cerr<<"new focus is: "<<focus+wrFocusOffs/1000<<" mm\n";
-
-    float focusRad; // in reality this is not a radius, but weight : all pixels intensities integrated
-    if(pgBeAn->getCalibWritingBeam(&focusRad)){     // recenter writing beam and get radius
-        std::cerr<<"Failed to analyse the read beam, retrying...\n";
-        if(pgBeAn->getCalibWritingBeam(&focusRad)){ // retry if failed
-            std::cerr<<"Cannot analyse the read beam at this focus, trying another...\n";
-            pgMGUI->moveZF(focus);
-            didF++;
-            if(didF<10) goto redoF;
-            else{
-                std::cerr<<"Failed"<<didF<<"times. Aborting.\n";
-                btnWriteCalib->setChecked(false);
-                return;
-            }
-        }
-    }
 
     redoA:  pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
@@ -321,7 +305,7 @@ void pgCalib::WCFFindNearest(){
 
     pgMGUI->moveZF(focus);
 
-    saveConf(util::toString(folder,"/settings.txt"), focus+wrFocusOffs/1000, selWriteCalibFocusRadDil->val, selWriteCalibFocusPulseIntensity->val, selWriteCalibFocusPulseDuration->val, selectedavg, focusRad);
+    saveConf(util::toString(folder,"/settings.txt"), focus+wrFocusOffs/1000, selWriteCalibFocusRadDil->val, selWriteCalibFocusPulseIntensity->val, selWriteCalibFocusPulseDuration->val, selectedavg);
 
     redoB:  pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
@@ -412,23 +396,14 @@ void pgCalib::WCFArray(){
         }
     }
 
-    float focusRad;
-    if(doRedFocusCenter->val){
-        pgBeAn->getWritingBeamFocus();
-        if(pgBeAn->getCalibWritingBeam(&focusRad)) if(pgBeAn->getCalibWritingBeam(&focusRad)){      // recenter writing beam and get radius
-            std::cerr<<"Failed to analyse/center the read beam after two tries.\n";
-            btnWriteCalib->setChecked(false);
-            return;
-        }
-    }else{
-        if(pgBeAn->getCalibWritingBeam(&focusRad,nullptr,nullptr,false)) if(pgBeAn->getCalibWritingBeam(&focusRad,nullptr,nullptr,false)){      // recenter writing beam and get radius
-            focusRad=-1;
-        }
-    }
+    if(doRefocusUScope)
+        pgFGUI->refocus();
+    if(doRedFocusCenter->val)
+        pgBeAn->correctWritingBeamFocus();
 
     double focus=pgMGUI->FZdifference;
 
-    saveConfMain(util::toString(folder,"/main-settings.txt"), focus, *pgBeAn->extraFocusOffsetVal, focusRad);
+    saveConfMain(util::toString(folder,"/main-settings.txt"), focus, *pgBeAn->extraFocusOffsetVal);
 
     double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;         //in mm
     double yOfs=((WArray.rows-1)*selArraySpacing->val)/2000;
@@ -468,10 +443,6 @@ void pgCalib::WCFArray(){
             pgMGUI->moveZF(focus+WArray.at<cv::Vec3d>(j,i)[2]/1000);
             while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
 
-            if(pgBeAn->getCalibWritingBeam(&focusRad,nullptr,nullptr,false)) if(pgBeAn->getCalibWritingBeam(&focusRad,nullptr,nullptr,false)){      // recenter writing beam and get radius
-                focusRad=-1;
-            }
-
             uchar selectedavg;
             cv::utils::fs::createDirectory(util::toString(folder,"/",i+j*WArray.cols));
 
@@ -505,7 +476,7 @@ void pgCalib::WCFArray(){
                 }
             }
 
-            saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), focus+WArray.at<cv::Vec3d>(j,i)[2]/1000, selArraySpacing->val, WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1], selectedavg, focusRad);
+            saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), focus+WArray.at<cv::Vec3d>(j,i)[2]/1000, selArraySpacing->val, WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1], selectedavg);
 
             std::cerr<<"\nDone "<<1+i+j*WArray.cols<<"/"<<WArray.rows*WArray.cols<<"\n\n";
             if(i!=WArray.cols-1) pgMGUI->move(-selArraySpacing->val/1000,0,0,0);
@@ -603,18 +574,18 @@ void pgCalib::onProcessFocusMes(){
 
     std::ofstream wfile(saveName);
     int n=0;
-    wfile<<"# <1: fitted radius(a.u)> <2: focus distance(mm)> <3: peak height(nm)> <4: X width (1/e^2)(um)> <5: Y width (1/e^2)(um)> <6: ellipse angle(rad)>\n";
+    wfile<<"# <1: not used> <2: focus distance(mm)> <3: peak height(nm)> <4: X width (1/e^2)(um)> <5: Y width (1/e^2)(um)> <6: ellipse angle(rad)>\n";
     wfile<<"# <7: XY width (1/e^2)(um)> <8: X offset(um)> <9: Y offset(um)> <10: XY offset(um)> <11: Intensity (a.u.)> <12: duration(ms)> <13: MeanAbs.ReflectivityDeriv.(a.u.)>\n";
     for(auto& fldr:measFolders){ n++;
         double FZdif;
-        double Frad;
+        double none;        //for backward compat., not used for now
         double intensity;
         double duration;
         std::ifstream ifs(util::toString(fldr,"/settings.txt"));
         ifs>>FZdif;
         for(int i=0;i!=2;i++) ifs>>intensity;
         ifs>>duration;
-        for(int i=0;i!=2;i++)ifs>>Frad;
+        for(int i=0;i!=2;i++)ifs>>none;
         ifs.close();
 
         //std::cerr<<fldr<<"\n";
@@ -667,13 +638,13 @@ void pgCalib::onProcessFocusMes(){
 
 
         if(res(0)<0 || res(0)>scanDif.depth.cols || res(1)<0 || res(1)>scanDif.depth.rows || res(2)<=0){   //center of the fit is out of frame or other things that indicate fit faliure
-            wfile<<Frad<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
+            wfile<<none<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
             std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
-                 <<Frad<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
+                 <<none<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
         }else{
-            wfile<<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
+            wfile<<none<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
             std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
-                 <<Frad<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
+                 <<none<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<"\n";
         }
     }
     wfile.close();

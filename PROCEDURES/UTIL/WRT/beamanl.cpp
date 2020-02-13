@@ -10,22 +10,22 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
     gui_settings->setLayout(slayout);
     btnReset=new QPushButton("Reset Center");
     connect(btnReset, SIGNAL(released()), this, SLOT(onBtnReset()));
-    selMaxRoundnessDev=new val_selector(0.1,"pgBeamAnalysis_selMaxRoundnessDev", "Maximum Roundness Deviation:",0.001,1,3);
-    selMaxRoundnessDev->setToolTip("Will exclude all Elipses that are too elliptical: where one arm is this factor larger than the other.");
-    selCannyThreshL=new val_selector( 50,"pgBeamAnalysis_selCannyThreshL", "Canny Lower Threshold:",0,255,0);
-    selCannyThreshU=new val_selector(100,"pgBeamAnalysis_selCannyThreshU", "Canny Upper Threshold:",0,255,0);
-    selMinPixNum=new val_selector(10,"pgBeamAnalysis_selMinPixNum", "Min Ellipse Pixel Number:",1,10000,0);
-    selMinPixNum->setToolTip("Only Connected Pixel Groups (after Canny) With This Many Pixels or More Will be Considered for Ellipse Fitting.");
-    btnSaveNextDebug=new QPushButton("Save Next Debug images");
-    btnSaveNextDebug->setToolTip("Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.");
-    connect(btnSaveNextDebug, SIGNAL(released()), this, SLOT(onBtnSaveNextDebug()));
-    extraOffsX=new val_selector( 0,"pgBeamAnalysis_extraOffsX", "X Extra Offset:",-100,100,2);
-    extraOffsY=new val_selector( 0,"pgBeamAnalysis_extraOffsY", "Y Extra Offset:",-100,100,2);
+//    selMaxRoundnessDev=new val_selector(0.1,"pgBeamAnalysis_selMaxRoundnessDev", "Maximum Roundness Deviation:",0.001,1,3);
+//    selMaxRoundnessDev->setToolTip("Will exclude all Elipses that are too elliptical: where one arm is this factor larger than the other.");
+//    selCannyThreshL=new val_selector( 50,"pgBeamAnalysis_selCannyThreshL", "Canny Lower Threshold:",0,255,0);
+//    selCannyThreshU=new val_selector(100,"pgBeamAnalysis_selCannyThreshU", "Canny Upper Threshold:",0,255,0);
+//    selMinPixNum=new val_selector(10,"pgBeamAnalysis_selMinPixNum", "Min Ellipse Pixel Number:",1,10000,0);
+//    selMinPixNum->setToolTip("Only Connected Pixel Groups (after Canny) With This Many Pixels or More Will be Considered for Ellipse Fitting.");
+//    btnSaveNextDebug=new QPushButton("Save Next Debug images");
+//    btnSaveNextDebug->setToolTip("Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.");
+//    connect(btnSaveNextDebug, SIGNAL(released()), this, SLOT(onBtnSaveNextDebug()));
+    extraOffsX=new val_selector( 0,"pgBeamAnalysis_extraOffsX", "X Extra Offset:",-100,100,2,0,{"um"});
+    extraOffsY=new val_selector( 0,"pgBeamAnalysis_extraOffsY", "Y Extra Offset:",-100,100,2,0,{"um"});
     extraOffsX->setToolTip("In case the two beams do not overlap perfectly, this can be used to correct this. Redo beam centering after changing this value.");
     extraOffsY->setToolTip(extraOffsX->toolTip());
 //    cameraExposure=new val_selector(1, "pgBeamAnalysis_cameraExposure", "Camera Exposure: ", 0, 9999999, 3, 0, {"us"});
     selThresh=new val_selector( 128,"pgBeamAnalysis_selThresh", "Threshold:",0,255,0);
-    avgNum=new val_selector( 10,"pgBeamAnalysis_avgNum", "Avg. minimum this many images:",1,1000,0);
+//    avgNum=new val_selector( 10,"pgBeamAnalysis_avgNum", "Avg. minimum this many images:",1,1000,0);
 
     wideFrames=new val_selector( 100,"pgBeamAnalysis_wideFrames", "Number of Frames for Wide Scan: ",10,1000,0);
     wideRange= new val_selector( 0.5,"pgBeamAnalysis_wideRange", "Scan Range for Wide Scan: ",0.001,1,3,0,{"mm"});
@@ -35,60 +35,69 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
     btnSaveNextDebugFocus=new QPushButton("Save Next Debug Intensities");
     btnSaveNextDebugFocus->setToolTip("Select Folder for Debug. The measured intensities will be saved for the next 'Get Writing Beam Focus'..");
     connect(btnSaveNextDebugFocus, SIGNAL(released()), this, SLOT(onBtnSaveNextDebugFocus()));
-    extraFocusOffset=new val_selector( 0,"pgBeamAnalysis_extraFocusOffsetnew", "Extra Focus Offset (Laser Beam Foci differece):",-1,1,4);
+    extraFocusOffset=new val_selector( 0,"pgBeamAnalysis_extraFocusOffsetnew", "Extra Focus Offset (Laser Beam Foci differece):",-1,1,4,0,{"mm"});
     extraFocusOffset->setToolTip("Set this to the value you obtain from calibration: it should be equal to the difference between the reference laser beam focus and the writing laser beam focus.");
     extraFocusOffsetVal=&extraFocusOffset->val;
 
-    method_selector=new twds_selector("pgBeamAnalysis_methodindex",0,"Select method:", "Simple", false, false, false);
-    methodSimple=new QWidget;
-    methodSimpleLayout=new QVBoxLayout;
-    methodSimple->setLayout(methodSimpleLayout);
-    methodEllipsse=new QWidget;
-    methodEllipsseLayout=new QVBoxLayout;
-    methodEllipsse->setLayout(methodEllipsseLayout);
+//    method_selector=new twds_selector("pgBeamAnalysis_methodindex",0,"Select method:", "Simple", false, false, false);
+//    methodSimple=new QWidget;
+//    methodSimpleLayout=new QVBoxLayout;
+//    methodSimple->setLayout(methodSimpleLayout);
+//    methodEllipsse=new QWidget;
+//    methodEllipsseLayout=new QVBoxLayout;
+//    methodEllipsse->setLayout(methodEllipsseLayout);
 
-    method_selector->addWidget(methodSimple, "Simple");
-    method_selector->addWidget(methodEllipsse, "Ellipses");
-    method_selector->doneAddingWidgets();
+//    method_selector->addWidget(methodSimple, "Simple");
+//    method_selector->addWidget(methodEllipsse, "Ellipses");
+//    method_selector->doneAddingWidgets();
 
-    slayout->addWidget(new QLabel("Get beam center:"));
-    slayout->addWidget(new twid(btnReset));
-    slayout->addWidget(method_selector);
-        methodSimpleLayout->addWidget(selThresh);
-        methodSimpleLayout->addWidget(avgNum);
-        methodEllipsseLayout->addWidget(selCannyThreshL);
-        methodEllipsseLayout->addWidget(selCannyThreshU);
-        methodEllipsseLayout->addWidget(selMinPixNum);
-        methodEllipsseLayout->addWidget(selMaxRoundnessDev);
-    slayout->addWidget(new twid(btnSaveNextDebug));
-    slayout->addWidget(extraOffsX);
-    slayout->addWidget(extraOffsY);
+//    slayout->addWidget(new QLabel("Get beam center:"));
+//    slayout->addWidget(method_selector);
+//        methodSimpleLayout->addWidget(selThresh);
+//        methodSimpleLayout->addWidget(avgNum);
+//        methodEllipsseLayout->addWidget(selCannyThreshL);
+//        methodEllipsseLayout->addWidget(selCannyThreshU);
+//        methodEllipsseLayout->addWidget(selMinPixNum);
+//        methodEllipsseLayout->addWidget(selMaxRoundnessDev);
+//    slayout->addWidget(new twid(btnSaveNextDebug));
 
-    slayout->addWidget(new hline);
-    slayout->addWidget(new QLabel("Get beam focus:"));
+
     slayout->addWidget(wideFrames);
     slayout->addWidget(wideRange);
     slayout->addWidget(accuFrames);
     slayout->addWidget(accuRange);
+    slayout->addWidget(selThresh);
     slayout->addWidget(doExtraFocusMesDifDir);
     slayout->addWidget(new twid(btnSaveNextDebugFocus));
+    slayout->addWidget(new hline);
+    slayout->addWidget(new twid(btnReset));
+    slayout->addWidget(extraOffsX);
+    slayout->addWidget(extraOffsY);
     slayout->addWidget(extraFocusOffset);
+
+    QLabel *lbl0=new QLabel("Extra Offset calib: ( Set X,Y ex.of. to 0 -> Get Writing Beam Focus -> Write Pulse -> Click Get Offset (below) -> move cursor to written spot -> Click Get Offset (below) again -> Get Writing Beam Focus )"); lbl0->setWordWrap(true);
+    slayout->addWidget(lbl0);
+    exOfsCalibBtn=new QPushButton;
+    exOfsCalibBtn->setText("Get Offset");
+    exOfsCalibBtn->setCheckable(true);
+    connect(exOfsCalibBtn, SIGNAL(toggled(bool)), this, SLOT(onExOfsCalibBtn(bool)));
+    slayout->addWidget(new twid(exOfsCalibBtn));
 
 //    slayout->addWidget(cameraExposure);
 
     gui_activation=new QWidget;
     alayout=new QVBoxLayout;
     gui_activation->setLayout(alayout);
-    btnGetCenter=new QPushButton("Get Writing Beam Center");
-    connect(btnGetCenter, SIGNAL(released()), this, SLOT(getWritingBeamCenter()));
-    alayout->addWidget(new twid(btnGetCenter));
+//    btnGetCenter=new QPushButton("Get Writing Beam Center");
+//    connect(btnGetCenter, SIGNAL(released()), this, SLOT(getWritingBeamCenter()));
+//    alayout->addWidget(new twid(btnGetCenter));
     btnGetCenterFocus=new QPushButton("Get Writing Beam Focus");
-    connect(btnGetCenterFocus, SIGNAL(released()), this, SLOT(getWritingBeamFocus()));
+    connect(btnGetCenterFocus, SIGNAL(released()), this, SLOT(correctWritingBeamFocus()));
     alayout->addWidget(new twid(btnGetCenterFocus));
 }
-void pgBeamAnalysis::onBtnSaveNextDebug(){
-    saveNext=QFileDialog::getExistingDirectory(this, "Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.").toStdString();
-}
+//void pgBeamAnalysis::onBtnSaveNextDebug(){
+//    saveNext=QFileDialog::getExistingDirectory(this, "Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.").toStdString();
+//}
 void pgBeamAnalysis::onBtnSaveNextDebugFocus(){
     saveNextFocus=QFileDialog::getExistingDirectory(this, "Select Folder for Debug. The measured intensities will be saved for the next 'Get Writing Beam Focus'..").toStdString();
     if(!saveNextFocus.empty()) numSave=2;
@@ -99,30 +108,41 @@ void pgBeamAnalysis::onBtnReset(){
     _writeBeamCenterOfsY=0;
 }
 
-bool pgBeamAnalysis::sortSpot(spot i,spot j) {return (i.dd<j.dd);}
-void pgBeamAnalysis::solveEllips(cv::Mat& src, int i,std::vector<spot>& spots,int& jobsdone){
-    cv::Mat cmpMat;
-    cv::compare(src, i, cmpMat, cv::CMP_EQ);
-    std::vector<cv::Point> locations;   // output, locations of non-zero pixels
-    cv::findNonZero(cmpMat, locations);
-    if(locations.size()<selMinPixNum->val) {std::lock_guard<std::mutex>lock(spotLock);jobsdone++;return;}
-    cv::RotatedRect tmp=fitEllipse(locations);
-    std::lock_guard<std::mutex>lock(spotLock);
-    if(std::abs(tmp.size.width-tmp.size.height)<=std::min(tmp.size.width,tmp.size.height)*selMaxRoundnessDev->val && std::min(tmp.size.width,tmp.size.height)>=1 && std::max(tmp.size.width,tmp.size.height)<=std::min(cmpMat.cols,cmpMat.rows))
-        spots.push_back({tmp.center.x,tmp.center.y,(tmp.size.width+tmp.size.height)/4,0,0});
-    jobsdone++;
-}
-void pgBeamAnalysis::getWritingBeamCenter(){
-    float x,y,r,dx,dy;
-    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
-    getCalibWritingBeam(&r, &dx, &dy);
-//    std::cerr<<"X mean: "<<writeBeamCenterOfsX<<", stdDev: "<< dx<<"\n";
-//    std::cerr<<"Y mean: "<<writeBeamCenterOfsY<<", stdDev: "<< dy<<"\n";
-    std::cerr<<"X: "<<writeBeamCenterOfsX<<"\n";
-    std::cerr<<"Y: "<<writeBeamCenterOfsY<<"\n";
-    std::cerr<<"Radius: "<<r<<"\n";
-    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
-    std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
+//bool pgBeamAnalysis::sortSpot(spot i,spot j) {return (i.dd<j.dd);}
+//void pgBeamAnalysis::solveEllips(cv::Mat& src, int i,std::vector<spot>& spots,int& jobsdone){
+//    cv::Mat cmpMat;
+//    cv::compare(src, i, cmpMat, cv::CMP_EQ);
+//    std::vector<cv::Point> locations;   // output, locations of non-zero pixels
+//    cv::findNonZero(cmpMat, locations);
+//    if(locations.size()<selMinPixNum->val) {std::lock_guard<std::mutex>lock(spotLock);jobsdone++;return;}
+//    cv::RotatedRect tmp=fitEllipse(locations);
+//    std::lock_guard<std::mutex>lock(spotLock);
+//    if(std::abs(tmp.size.width-tmp.size.height)<=std::min(tmp.size.width,tmp.size.height)*selMaxRoundnessDev->val && std::min(tmp.size.width,tmp.size.height)>=1 && std::max(tmp.size.width,tmp.size.height)<=std::min(cmpMat.cols,cmpMat.rows))
+//        spots.push_back({tmp.center.x,tmp.center.y,(tmp.size.width+tmp.size.height)/4,0,0});
+//    jobsdone++;
+//}
+//void pgBeamAnalysis::getWritingBeamCenter(){
+//    float x,y,r,dx,dy;
+//    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
+//    getCalibWritingBeam(&r, &dx, &dy);
+////    std::cerr<<"X mean: "<<writeBeamCenterOfsX<<", stdDev: "<< dx<<"\n";
+////    std::cerr<<"Y mean: "<<writeBeamCenterOfsY<<", stdDev: "<< dy<<"\n";
+//    std::cerr<<"X: "<<writeBeamCenterOfsX<<"\n";
+//    std::cerr<<"Y: "<<writeBeamCenterOfsY<<"\n";
+//    std::cerr<<"Radius: "<<r<<"\n";
+//    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
+//    std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
+//}
+
+void pgBeamAnalysis::onExOfsCalibBtn(bool state){
+    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
+    if(state){
+        X_start=tmp.pos[0];
+        Y_start=tmp.pos[1];
+    }else{
+        extraOffsX->setValue((X_start-tmp.pos[0])*1000);
+        extraOffsY->setValue((Y_start-tmp.pos[1])*1000);
+    }
 }
 
 
@@ -178,170 +198,171 @@ bool pgBeamAnalysis::waitTillLEDIsOff(FQ* framequeueDisp){
     return false;
 }
 
-bool pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool correct){
-    bool failed{true};
+    // replaced by getCalibWritingBeamRange:
+//bool pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool correct){
+//    bool failed{true};
 
-    go.pXPS->setGPIO(XPS::iuScopeLED,false);
-    ctrlRedLaser(true);
-    FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-    if(waitTillLEDIsOff(framequeueDisp)){
-        framequeueDisp->setUserFps(0,1);
-        ctrlRedLaser(false);
-        go.pXPS->setGPIO(XPS::iuScopeLED,true);
-        go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
-        *r=-1;
-        if(dx!=nullptr) *dx=0;
-        if(dy!=nullptr) *dy=0;
+//    go.pXPS->setGPIO(XPS::iuScopeLED,false);
+//    ctrlRedLaser(true);
+//    FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
+//    if(waitTillLEDIsOff(framequeueDisp)){
+//        framequeueDisp->setUserFps(0,1);
+//        ctrlRedLaser(false);
+//        go.pXPS->setGPIO(XPS::iuScopeLED,true);
+//        go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
+//        *r=-1;
+//        if(dx!=nullptr) *dx=0;
+//        if(dy!=nullptr) *dy=0;
 
-        if(correct==false)
-            return failed;  //no complain if no correct
-        std::string text=util::toString("pgBeamAnalysis::getCalibWritingBeam failed.\n");
-        QMessageBox::critical(this, "Error", QString::fromStdString(text));
-        std::cerr<<text;
-        return failed;
-    }
+//        if(correct==false)
+//            return failed;  //no complain if no correct
+//        std::string text=util::toString("pgBeamAnalysis::getCalibWritingBeam failed.\n");
+//        QMessageBox::critical(this, "Error", QString::fromStdString(text));
+//        std::cerr<<text;
+//        return failed;
+//    }
 
-    if(method_selector->index==0) while(framequeueDisp->getFullNumber()<avgNum->val) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
-    framequeueDisp->setUserFps(0,1);
-    ctrlRedLaser(false);
-    go.pXPS->setGPIO(XPS::iuScopeLED,true);
+//    if(method_selector->index==0) while(framequeueDisp->getFullNumber()<avgNum->val) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+//    framequeueDisp->setUserFps(0,1);
+//    ctrlRedLaser(false);
+//    go.pXPS->setGPIO(XPS::iuScopeLED,true);
 
-    //do proc
+//    //do proc
 
-    if(method_selector->index==1){      //Ellipses
-        std::vector<cv::Vec3f> circles;
-        cv::Mat src;
-        if(!saveNext.empty()) cv::imwrite(util::toString(saveNext,"/","0_src.png"), *framequeueDisp->getUserMat());
-        cv::Canny(*framequeueDisp->getUserMat(),src, selCannyThreshL->val, selCannyThreshU->val);
-        if(!saveNext.empty()) cv::imwrite(util::toString(saveNext,"/","1_canny.png"), src);
-        int N=cv::connectedComponents(src,src,8,CV_16U);
+//    if(method_selector->index==1){      //Ellipses
+//        std::vector<cv::Vec3f> circles;
+//        cv::Mat src;
+//        if(!saveNext.empty()) cv::imwrite(util::toString(saveNext,"/","0_src.png"), *framequeueDisp->getUserMat());
+//        cv::Canny(*framequeueDisp->getUserMat(),src, selCannyThreshL->val, selCannyThreshU->val);
+//        if(!saveNext.empty()) cv::imwrite(util::toString(saveNext,"/","1_canny.png"), src);
+//        int N=cv::connectedComponents(src,src,8,CV_16U);
 
-        std::vector<spot> spots;
-        int jobsdone=0;
-        for(int i=1;i!=N;i++){  //we skip background 0
-            go.OCL_threadpool.doJob(std::bind(&pgBeamAnalysis::solveEllips,this,src,i,std::ref(spots),std::ref(jobsdone)));
-        }
-        for(;;){
-            QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
-            std::lock_guard<std::mutex>lock(spotLock);
-            if(jobsdone==N-1) break;
-        }
+//        std::vector<spot> spots;
+//        int jobsdone=0;
+//        for(int i=1;i!=N;i++){  //we skip background 0
+//            go.OCL_threadpool.doJob(std::bind(&pgBeamAnalysis::solveEllips,this,src,i,std::ref(spots),std::ref(jobsdone)));
+//        }
+//        for(;;){
+//            QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+//            std::lock_guard<std::mutex>lock(spotLock);
+//            if(jobsdone==N-1) break;
+//        }
 
-        bool once{false};
-    start: once=!once;
-        float mean[3]{0,0,0};
-        float stdDev[3]{0,0,0};
-        for(int i=0;i!=spots.size();i++){
-            mean[0]+=spots[i].x;
-            mean[1]+=spots[i].y;
-            mean[2]+=spots[i].r;
-        }
-        mean[0]/=spots.size();
-        mean[1]/=spots.size();
-        mean[2]/=spots.size();
-        for(int i=0;i!=spots.size();i++){
-            spots[i].dx=abs(spots[i].x-mean[0]);
-            spots[i].dy=abs(spots[i].y-mean[1]);
-            spots[i].dd=sqrtf(powf(spots[i].dx,2)+powf(spots[i].dy,2));
-            stdDev[0]+=powf(spots[i].dx,2);
-            stdDev[1]+=powf(spots[i].dy,2);
-        }
-        stdDev[0]=sqrt(stdDev[0]/(spots.size()-1));
-        stdDev[1]=sqrt(stdDev[1]/(spots.size()-1));
-        stdDev[2]=sqrtf(powf(stdDev[0],2)+powf(stdDev[1],2));
-        std::sort(spots.begin(), spots.end(), &pgBeamAnalysis::sortSpot);
+//        bool once{false};
+//    start: once=!once;
+//        float mean[3]{0,0,0};
+//        float stdDev[3]{0,0,0};
+//        for(int i=0;i!=spots.size();i++){
+//            mean[0]+=spots[i].x;
+//            mean[1]+=spots[i].y;
+//            mean[2]+=spots[i].r;
+//        }
+//        mean[0]/=spots.size();
+//        mean[1]/=spots.size();
+//        mean[2]/=spots.size();
+//        for(int i=0;i!=spots.size();i++){
+//            spots[i].dx=abs(spots[i].x-mean[0]);
+//            spots[i].dy=abs(spots[i].y-mean[1]);
+//            spots[i].dd=sqrtf(powf(spots[i].dx,2)+powf(spots[i].dy,2));
+//            stdDev[0]+=powf(spots[i].dx,2);
+//            stdDev[1]+=powf(spots[i].dy,2);
+//        }
+//        stdDev[0]=sqrt(stdDev[0]/(spots.size()-1));
+//        stdDev[1]=sqrt(stdDev[1]/(spots.size()-1));
+//        stdDev[2]=sqrtf(powf(stdDev[0],2)+powf(stdDev[1],2));
+//        std::sort(spots.begin(), spots.end(), &pgBeamAnalysis::sortSpot);
 
-        const float SDR=1;    //within 2SD is fine
-        while(!spots.empty()) if(spots.back().dd>SDR*stdDev[2]) spots.pop_back(); else break;
-        if(!spots.empty() && once) goto start;
+//        const float SDR=1;    //within 2SD is fine
+//        while(!spots.empty()) if(spots.back().dd>SDR*stdDev[2]) spots.pop_back(); else break;
+//        if(!spots.empty() && once) goto start;
 
-    //    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
+//    //    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
 
-        cv::Mat pol, pol1D;
-        cv::linearPolar(*framequeueDisp->getUserMat(), pol, cv::Point(mean[0],mean[1]), framequeueDisp->getUserMat()->rows, cv::INTER_AREA + cv::WARP_FILL_OUTLIERS);
-        cv::reduce(pol, pol1D, 0, cv::REDUCE_AVG, CV_32F);
-        cv::Point maxp; double ignore; cv::Point ignore2;
-        int ofs=((int)mean[2]<pol1D.cols-1)?((int)mean[2]):(pol1D.cols-1);
-        cv::minMaxLoc(pol1D.colRange(ofs,pol1D.cols-1),&ignore,&ignore,&ignore2,&maxp);     //we ignore the peaks near the center, we want the outer bright ring as the reference
+//        cv::Mat pol, pol1D;
+//        cv::linearPolar(*framequeueDisp->getUserMat(), pol, cv::Point(mean[0],mean[1]), framequeueDisp->getUserMat()->rows, cv::INTER_AREA + cv::WARP_FILL_OUTLIERS);
+//        cv::reduce(pol, pol1D, 0, cv::REDUCE_AVG, CV_32F);
+//        cv::Point maxp; double ignore; cv::Point ignore2;
+//        int ofs=((int)mean[2]<pol1D.cols-1)?((int)mean[2]):(pol1D.cols-1);
+//        cv::minMaxLoc(pol1D.colRange(ofs,pol1D.cols-1),&ignore,&ignore,&ignore2,&maxp);     //we ignore the peaks near the center, we want the outer bright ring as the reference
 
-    //    std::chrono::time_point<std::chrono::system_clock> C=std::chrono::system_clock::now();
+//    //    std::chrono::time_point<std::chrono::system_clock> C=std::chrono::system_clock::now();
 
-        if(!saveNext.empty()){
-            cv::Mat img;
-            cv::cvtColor(*framequeueDisp->getUserMat(), img, cv::COLOR_GRAY2BGR);
-            for(int i=0;i!=spots.size();i++){
-                cv::circle( img, cv::Point(spots[i].x,spots[i].y), 3, cv::Scalar(0,255,0), -1, 8, 0 );
-                cv::circle( img, cv::Point(spots[i].x,spots[i].y), spots[i].r, cv::Scalar(0,0,255), 1, 8, 0 );
-            }
-            cv::imwrite(util::toString(saveNext,"/","2_final.png"), img);
-            saveNext.clear();
-        }
+//        if(!saveNext.empty()){
+//            cv::Mat img;
+//            cv::cvtColor(*framequeueDisp->getUserMat(), img, cv::COLOR_GRAY2BGR);
+//            for(int i=0;i!=spots.size();i++){
+//                cv::circle( img, cv::Point(spots[i].x,spots[i].y), 3, cv::Scalar(0,255,0), -1, 8, 0 );
+//                cv::circle( img, cv::Point(spots[i].x,spots[i].y), spots[i].r, cv::Scalar(0,0,255), 1, 8, 0 );
+//            }
+//            cv::imwrite(util::toString(saveNext,"/","2_final.png"), img);
+//            saveNext.clear();
+//        }
 
-        mean[0]-=src.cols/2;
-        mean[1]-=src.rows/2;
-        if(r!=nullptr) *r=ofs+maxp.x;
-//        if(dx!=nullptr) *dx=stdDev[0];
-//        if(dy!=nullptr) *dy=stdDev[1];
-        if(!saveNext.empty()){
-            std::ofstream wfile(util::toString(saveNext,"/","rad.dat"));
-            for(int i=0;i!=pol1D.cols;i++)
-                wfile.write(reinterpret_cast<char*>(&(pol1D.at<float>(i))),sizeof(float));
-            wfile.close();
-        }
+//        mean[0]-=src.cols/2;
+//        mean[1]-=src.rows/2;
+//        if(r!=nullptr) *r=ofs+maxp.x;
+////        if(dx!=nullptr) *dx=stdDev[0];
+////        if(dy!=nullptr) *dy=stdDev[1];
+//        if(!saveNext.empty()){
+//            std::ofstream wfile(util::toString(saveNext,"/","rad.dat"));
+//            for(int i=0;i!=pol1D.cols;i++)
+//                wfile.write(reinterpret_cast<char*>(&(pol1D.at<float>(i))),sizeof(float));
+//            wfile.close();
+//        }
 
-        //    std::chrono::time_point<std::chrono::system_clock> D=std::chrono::system_clock::now();
-        //    std::cerr<<"Total operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(D - A).count()<<" microseconds\n";
-        //    std::cerr<<"First operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
-        //    std::cerr<<"Second operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(C - B).count()<<" microseconds\n";
-        //    std::cerr<<"Third operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(D - C).count()<<" microseconds\n";
+//        //    std::chrono::time_point<std::chrono::system_clock> D=std::chrono::system_clock::now();
+//        //    std::cerr<<"Total operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(D - A).count()<<" microseconds\n";
+//        //    std::cerr<<"First operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
+//        //    std::cerr<<"Second operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(C - B).count()<<" microseconds\n";
+//        //    std::cerr<<"Third operation took "<<std::chrono::duration_cast<std::chrono::microseconds>(D - C).count()<<" microseconds\n";
 
-        failed=!((ofs+maxp.x)>0 && mean[0]>-src.cols/2 && mean[0]<src.cols/2 && mean[1]>-src.rows/2 && mean[1]<src.rows/2);   //coparisons with NAN are allways false!
-        if(correct && !failed){
-            pgMGUI->move((mean[0]+extraOffsX->val-_writeBeamCenterOfsX)*pgMGUI->getNmPPx()/1000000,(mean[1]+extraOffsY->val-_writeBeamCenterOfsY)*pgMGUI->getNmPPx()/1000000,0,0);        //correct position
-            _writeBeamCenterOfsX=mean[0]+extraOffsX->val;
-            _writeBeamCenterOfsY=mean[1]+extraOffsY->val;
-        }
-        if(dx!=nullptr) *dx=mean[0]+extraOffsX->val;
-        if(dy!=nullptr) *dy=mean[1]+extraOffsY->val;
+//        failed=!((ofs+maxp.x)>0 && mean[0]>-src.cols/2 && mean[0]<src.cols/2 && mean[1]>-src.rows/2 && mean[1]<src.rows/2);   //coparisons with NAN are allways false!
+//        if(correct && !failed){
+//            pgMGUI->move((mean[0]+extraOffsX->val-_writeBeamCenterOfsX)*pgMGUI->getNmPPx()/1000000,(mean[1]+extraOffsY->val-_writeBeamCenterOfsY)*pgMGUI->getNmPPx()/1000000,0,0);        //correct position
+//            _writeBeamCenterOfsX=mean[0]+extraOffsX->val;
+//            _writeBeamCenterOfsY=mean[1]+extraOffsY->val;
+//        }
+//        if(dx!=nullptr) *dx=mean[0]+extraOffsX->val;
+//        if(dy!=nullptr) *dy=mean[1]+extraOffsY->val;
 
 
-    }else if(method_selector->index==0){        //Simple
-        double avgOffsX{0}, avgOffsY{0}, avgCen{0};
-        int N=0;
+//    }else if(method_selector->index==0){        //Simple
+//        double avgOffsX{0}, avgOffsY{0}, avgCen{0};
+//        int N=0;
 
-        int cols{0},rows{0};
-        while(framequeueDisp->getUserMat()!=nullptr){
-            cv::Mat src;
-            cv::threshold(*framequeueDisp->getUserMat(), src, selThresh->val, 255, cv::THRESH_TOZERO);   //we first set all that are below threshold to 0
-            cv::Moments m=cv::moments(src,true);
+//        int cols{0},rows{0};
+//        while(framequeueDisp->getUserMat()!=nullptr){
+//            cv::Mat src;
+//            cv::threshold(*framequeueDisp->getUserMat(), src, selThresh->val, 255, cv::THRESH_TOZERO);   //we first set all that are below threshold to 0
+//            cv::Moments m=cv::moments(src,true);
 
-            if(cols==0){cols=src.cols; rows=src.rows;}
-            framequeueDisp->freeUserMat();
-            N++;
-            avgOffsX+=m.m10/m.m00-src.cols/2;
-            avgOffsY+=m.m01/m.m00-src.rows/2;
-            avgCen+=m.m00;
-        }
-        double offsX=avgOffsX/N;
-        double offsY=avgOffsY/N;
-        if(r!=nullptr) *r=avgCen/N;
-//        std::cerr<<"Num "<<N<< "\n";    //area
-//        std::cerr<< offsX<<" "<<offsY<< "\n";   //X,Y
-//        std::cerr<<avgCen/N<< "\n";    //area
-        failed=!(avgCen/N>0 && offsX>-cols/2 && offsX<cols/2 && offsY>-rows/2 && offsY<rows/2);   //coparisons with NAN are allways false!
-        if(correct && !failed){
-            pgMGUI->move((offsX+extraOffsX->val-_writeBeamCenterOfsX)*pgMGUI->getNmPPx()/1000000,(offsY+extraOffsY->val-_writeBeamCenterOfsY)*pgMGUI->getNmPPx()/1000000,0,0);
-            _writeBeamCenterOfsX=offsX+extraOffsX->val;
-            _writeBeamCenterOfsY=offsY+extraOffsY->val;
-        }
-        if(dx!=nullptr) *dx=offsX+extraOffsX->val;
-        if(dy!=nullptr) *dy=offsY+extraOffsY->val;
+//            if(cols==0){cols=src.cols; rows=src.rows;}
+//            framequeueDisp->freeUserMat();
+//            N++;
+//            avgOffsX+=m.m10/m.m00-src.cols/2;
+//            avgOffsY+=m.m01/m.m00-src.rows/2;
+//            avgCen+=m.m00;
+//        }
+//        double offsX=avgOffsX/N;
+//        double offsY=avgOffsY/N;
+//        if(r!=nullptr) *r=avgCen/N;
+////        std::cerr<<"Num "<<N<< "\n";    //area
+////        std::cerr<< offsX<<" "<<offsY<< "\n";   //X,Y
+////        std::cerr<<avgCen/N<< "\n";    //area
+//        failed=!(avgCen/N>0 && offsX>-cols/2 && offsX<cols/2 && offsY>-rows/2 && offsY<rows/2);   //coparisons with NAN are allways false!
+//        if(correct && !failed){
+//            pgMGUI->move((offsX+extraOffsX->val-_writeBeamCenterOfsX)*pgMGUI->getNmPPx()/1000000,(offsY+extraOffsY->val-_writeBeamCenterOfsY)*pgMGUI->getNmPPx()/1000000,0,0);
+//            _writeBeamCenterOfsX=offsX+extraOffsX->val;
+//            _writeBeamCenterOfsY=offsY+extraOffsY->val;
+//        }
+//        if(dx!=nullptr) *dx=offsX+extraOffsX->val;
+//        if(dy!=nullptr) *dy=offsY+extraOffsY->val;
 
-    }
+//    }
 
-    go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
-    return failed;
-}
+//    go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
+//    return failed;
+//}
 
 
 //typedef dlib::matrix<double,1,1> input_vector;
@@ -354,7 +375,7 @@ bool pgBeamAnalysis::getCalibWritingBeam(float* r, float* dx, float* dy, bool co
 //    double model=i0+a*exp(-(pow(x-x0,2))/2/pow(w,2));
 //    return model-data.second;
 //}
-void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, double range, bool flipDir){
+void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, double *xMin, double *yMin, int frames, double range, bool flipDir){
     PVTobj* PVTScan=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, util::toString("camera_getCalibWritingBeamRange.txt").c_str());
     exec_ret PVTret;
 
@@ -386,9 +407,10 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
         return;
     }
 
+    std::lock_guard<std::mutex>lock(MLP._lock_meas);
     ctrlRedLaser(true);
     FQ* framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-    std::lock_guard<std::mutex>lock(MLP._lock_meas);
+
     while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait till all motion is done, else motion and camera will be way out of sync
     go.pXPS->execPVTobj(PVTScan, &PVTret);
     if(waitTillLEDIsOff(framequeueDisp)){
@@ -438,31 +460,16 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
         if(numSave<=0) saveNextFocus.clear();
     }
 
-
-
-//    std::vector<int> minVec;          //find the negative peak (+- one pixel)
-//    for(int i=1; i!=frames-1; i++){
-//        if( dataR.at<float>(i) < dataR.at<float>(i-1) && dataR.at<float>(i) <= dataR.at<float>(i+1) )
-//            minVec.push_back(i);
-//    }
-//    float max{std::numeric_limits<float>::min()}; int it{(frames-1)/2};
-//    for(int i=0;i!=minVec.size();i++){
-//        if(max<dataR.at<float>(minVec[i])){
-//            max=dataR.at<float>(minVec[i]);
-//            it=minVec[i];
-//        }
-//    }
-//     *rMinLoc=focus+dir*(it-(frames-1)/2.)*2*range/frames;
-
-    float max{0};       //just find max
+    float max{0};       //find max
     int loc{0};
     for(int i=0; i!=frames; i++)
             if(dataR.at<float>(i)>max){
                 max=dataR.at<float>(i);
                 loc=i;
             }
-    *rMinLoc=focus+dir*(loc-(frames-1)/2.)*2*range/frames;
-
+    if(rMinLoc!=nullptr) *rMinLoc=focus+dir*(loc-(frames-1)/2.)*2*range/frames;
+    if(xMin!=nullptr) *xMin=dataX.at<float>(loc);
+    if(yMin!=nullptr) *yMin=dataY.at<float>(loc);
 
 // // This commented block contains the gaussian fit method, which doesnt help here as the +-1 pixel error in the method above is equal or smaller to the error introduced by being unable to time the camera trigger with motion start anyway
 //    //get the two maxima
@@ -479,7 +486,7 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
 //    //std::cerr<<"maxima were at "<<focus+(maxCoord[0]-(frames-1)/2)*range/frames<<" "<<focus+(maxCoord[1]-(frames-1)/2)*range/frames<<"\n";
 //    cv::Mat peakData;
 //    dataR.colRange(maxCoord[0],maxCoord[1]+1).copyTo(peakData);
-//    cv::multiply(peakData,-1,peakData);
+// //    cv::multiply(peakData,-1,peakData);
 //    cv::normalize(peakData,peakData,0,1,cv::NORM_MINMAX);
 
 //    std::vector<std::pair<input_vector, double>> data;      //we fit gaussian
@@ -494,27 +501,39 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, int frames, doubl
     go.pXPS->destroyPVTobj(PVTScan);
 }
 
-void pgBeamAnalysis::getWritingBeamFocus(){
-    double r{9999};
+bool pgBeamAnalysis::correctWritingBeamFocus(bool reCenter){
+    double r{9999},x,y;
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
-    getCalibWritingBeamRange(&r, wideFrames->val, wideRange->val);
+    getCalibWritingBeamRange(&r, &x, &y, wideFrames->val, wideRange->val);
     std::cerr<<"it. 1: Red Beam Focus difference is "<<r<<"\n";
     if(r!=9999) pgMGUI->moveZF(r);
-    else return;
-    getCalibWritingBeamRange(&r, accuFrames->val, accuRange->val);                    //changing the direction does not affect the result much
+    else return true;
+    getCalibWritingBeamRange(&r, &x, &y, accuFrames->val, accuRange->val);                    //changing the direction does not affect the result much
     std::cerr<<"it. 2: Red Beam Focus difference is "<<r<<"\n";
-    if(r==9999) return;
-    double ro=r;
+    if(r==9999) return true;
+    double ro=r, xo=x, yo=y;
     if(doExtraFocusMesDifDir->val){
-        getCalibWritingBeamRange(&ro, accuFrames->val, accuRange->val,true);
-        std::cerr<<"it. 3 (op.dir.): Red Beam Focus difference is "<<ro<<"\n";
-        if(ro==9999) return;
+        getCalibWritingBeamRange(&ro, &xo, &yo, accuFrames->val, accuRange->val,true);
+        std::cerr<<"it. 3: Red Beam Focus difference is "<<ro<<"\n";
+        if(ro==9999) return true;
     }
 
-    if(r!=9999) pgMGUI->moveZF((r+ro)/2-extraFocusOffset->val);
-    else return;
-    std::cerr<<"New Focus (Corrected for Ref/Wr laser diff) "<<(r+ro)/2-extraFocusOffset->val<<"\n";
+    if(r!=9999){
+        pgMGUI->moveZF((r+ro)/2-extraFocusOffset->val);
+        if(reCenter){
+            double ol[2]{_writeBeamCenterOfsX,_writeBeamCenterOfsY};
+            _writeBeamCenterOfsX=(x+xo)/2+extraOffsX->val*1000/pgMGUI->getNmPPx();
+            _writeBeamCenterOfsY=(y+yo)/2+extraOffsY->val*1000/pgMGUI->getNmPPx();
+            pgMGUI->move((_writeBeamCenterOfsX-ol[0])*pgMGUI->getNmPPx()/1000000,(_writeBeamCenterOfsY-ol[1])*pgMGUI->getNmPPx()/1000000,0,0);
+        }
+    }
+    else return true;
+    std::cerr<<"Calibration Beam Focus: "<<(r+ro)/2<<" mm\nX offset: "<<(x+xo)/2*pgMGUI->getNmPPx()/1000<<" um\nY offset: "<<(y+yo)/2*pgMGUI->getNmPPx()/1000<<" um\n";
+    std::cerr<<"New Focus (Corrected for Ref/Wr laser offset) "<<(r+ro)/2-extraFocusOffset->val<<" mm\n";
+    std::cerr<<"New X offset (Corrected for Ref/Wr laser offset) "<<_writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000<<" um\n";
+    std::cerr<<"New Y offset (Corrected for Ref/Wr laser offset) "<<_writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000<<" um\n";
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
     std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::milliseconds>(B - A).count()<<" milliseconds\n";
+    return false;
 }

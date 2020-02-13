@@ -73,6 +73,7 @@ private:
         checkbox_save* selArrayRandomize;
         checkbox_save* saveMats;
         checkbox_save* savePic;
+        checkbox_save* doRefocusUScope;
         checkbox_save* doRedFocusCenter;
     int measCounter{0};
     bool drawWriteAreaOn{false};
@@ -93,8 +94,8 @@ private:
     void WCFArray();
     void writePulse(int intensity, double duration, const std::string filename="", uchar* usedAvg=nullptr, const int cmdQueue=0, const int recQueue=1);       //duration in us
     std::string makeDateTimeFolder(const std::string folder);
-    void saveConf(std::string filename, double focus, double exclusionOrSpacing, int intensity, double duration, uchar averaging, double focusBeamRad);       //focus in mm, duration in ms, exclusionOrSpacing in um, focusBeamRad in a.u.
-    void saveConfMain(std::string filename, double focus, double extraFocusOffset, double focusBeamRad);    //focus, extraFocusOffset in mm
+    void saveConf(std::string filename, double focus, double exclusionOrSpacing, int intensity, double duration, uchar averaging);       //focus in mm, duration in ms, exclusionOrSpacing in um
+    void saveConfMain(std::string filename, double focus, double extraFocusOffset);    //focus, extraFocusOffset in mm
 private Q_SLOTS:
     void onGoToNearestFree();
     void onSelSaveF();
