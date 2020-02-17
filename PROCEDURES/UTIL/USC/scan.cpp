@@ -92,7 +92,7 @@ scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
     coh_len=new val_selector(20., util::toString("tab_camera_coh_len",num), "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)});
     connect(coh_len, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(coh_len);
-    range=new val_selector(10., util::toString("tab_camera_range",num), "Scan Range:", 1., 2000., 3, 3 , {"nm","um",QChar(0x03BB),"L"});
+    range=new val_selector(10., util::toString("tab_camera_range",num), "Scan Range:", 0.01, 2000., 5, 3 , {"nm","um",QChar(0x03BB),"L"});
     connect(range, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(range);
     ppwl=new val_selector(20., util::toString("tab_camera_ppwl",num), "Points Per Wavelength: ", 6, 2000., 2);
