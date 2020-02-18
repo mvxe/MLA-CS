@@ -27,6 +27,7 @@ public:
         const int AxisNum;
         std::string groupname;
         const std::string description;
+        const std::string positionerNames[8];
     };
     enum GPIOID: int;
     struct GPIO{
@@ -49,7 +50,7 @@ public:
 protected:
     const static int _GROUP_NUM=1;
     group groups[_GROUP_NUM]={   // <-- <-- <--  put the new groups here
-      {mgroup_XYZF, 4, "mgroup_XYZF", "Group containing 4 stages: the X(sample), Y(sample) and Z(objective), F(focus)."}    //max 8 axis per group (as limited by XPS)
+    {mgroup_XYZF, 4, "mgroup_XYZF", "Group containing 4 stages: the X(sample), Y(sample) and Z(objective), F(focus).",{"X","Y","Z","F","","","",""}}    //max 8 axis per group (as limited by XPS)
 //   ,{mgroup_GR1, 2, "GR1", "some group with 2 stages"}
 //   ,{mgroup_GR2, 1, "GR2", "some group with 1 stage"}
     };

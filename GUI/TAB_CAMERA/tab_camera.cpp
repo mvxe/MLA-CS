@@ -262,6 +262,7 @@ void tab_camera::tab_entered(){
     framequeueDisp->setUserFps(30,5);
 
     timer->start(work_call_time);
+    Q_EMIT pgMGUI->updateXPSVelAcc();
 }
 void tab_camera::tab_exited(){
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);

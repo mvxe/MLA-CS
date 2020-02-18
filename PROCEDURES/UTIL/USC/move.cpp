@@ -95,6 +95,34 @@ void pgMoveGUI::init_gui_settings(){
     slayout->addWidget(calibAngYMotToXMot);
     skewCorrection=new checkbox_save(false,"pgMoveGUI_skewCorrection","Correct XY skew and camera angle for all move commands through this function.");
     slayout->addWidget(skewCorrection);
+
+    slayout->addWidget(new hline);
+
+    slayout->addWidget(new QLabel("Non PVT move velocities and accelerations (valid only for this tab):"));
+
+    for (int i=0;i!=4;i++){
+        selVeloc[i]=new val_selector(maxVel[i]/10, util::toString("pgMoveGUI_selVeloc",coords[i]), util::toString(coords[i]," stage max move velocity: ").c_str(), 1e-9, maxVel[i], 3, 0, {"mm/s"});
+        selAccel[i]=new val_selector(maxAcl[i]/10, util::toString("pgMoveGUI_selAccel",coords[i]), util::toString(coords[i]," stage max move acceleration: ").c_str(), 1e-9, maxAcl[i], 3, 0, {"mm/s^2"});
+        slayout->addWidget(selVeloc[i]);
+        slayout->addWidget(selAccel[i]);
+        connect(selVeloc[i], qOverload<>(&val_selector::changed), [=]{this->updateXPSVelAcc(i);});
+        connect(selAccel[i], qOverload<>(&val_selector::changed), [=]{this->updateXPSVelAcc(i);});
+    }
+}
+constexpr char pgMoveGUI::coords[4];
+constexpr double pgMoveGUI::maxVel[4];
+constexpr double pgMoveGUI::maxAcl[4];
+constexpr double pgMoveGUI::minTJerk[4];
+constexpr double pgMoveGUI::maxTJerk[4];
+
+void pgMoveGUI::updateXPSVelAcc(){
+    for (int i=0;i!=4;i++){
+        updateXPSVelAcc(i);
+    }
+}
+void pgMoveGUI::updateXPSVelAcc(int N){
+    if(!go.pXPS->connected) return;
+    go.pXPS->execCommand("PositionerSGammaParametersSet",util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZF),'.',coords[N]),selVeloc[N]->val,selAccel[N]->val,minTJerk[N],maxTJerk[N]);
 }
 
 void pgMoveGUI::scaledMoveX(double magnitude){move(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0,0);}

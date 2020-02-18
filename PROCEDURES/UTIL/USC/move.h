@@ -84,7 +84,16 @@ private:
     std::vector<dpoint> p4calib;
     checkbox_save* skewCorrection;
 
+    val_selector* selVeloc[4];
+    val_selector* selAccel[4];
+
     std::atomic<double> FZdifCur{-9999};
+
+    static constexpr char coords[4]={'X','Y','Z','F'};
+    static constexpr double maxVel[4]={300,25,300,300};
+    static constexpr double maxAcl[4]={2500,100,2500,2500};
+    static constexpr double minTJerk[4]={0.2,0.005,0.2,0.2};
+    static constexpr double maxTJerk[4]={0.2,0.05,0.2,0.2};
 
 private Q_SLOTS:
     void onLockF(bool locked);
@@ -97,6 +106,9 @@ private Q_SLOTS:
     void onDialMove(double x,double y);
     void onMarkPointForCalib(bool state);
     void onCalculateCalib();
+public Q_SLOTS:
+    void updateXPSVelAcc();
+    void updateXPSVelAcc(int N);
 };
 
 #endif // MOVE_H

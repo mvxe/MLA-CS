@@ -34,10 +34,16 @@ void XPS::run(){    //this is the XPS thread loop
                 resname = "cannot resolve this hostname";
                 std::this_thread::sleep_for (std::chrono::milliseconds(keepalive.get()));
             }
-            else{
-                    //connecting...
+            else{   //connecting...
                 connect(keepalive.get());
-                if (connected) {go.pXPS->setGPIO(XPS::iuScopeLED,true);go.pXPS->setGPIO(XPS::writingLaser,false); initGroups();homeGroups();flushQueue();}     //TODO put into same function
+                if (connected) {
+                    go.pXPS->execCommand("Login","Administrator","Administrator");
+                    go.pXPS->setGPIO(XPS::iuScopeLED,true);
+                    go.pXPS->setGPIO(XPS::writingLaser,false);
+                    initGroups();
+                    homeGroups();
+                    flushQueue();
+                }
             }
             IP.resolved.set(resname);
         }
@@ -49,8 +55,9 @@ void XPS::run(){    //this is the XPS thread loop
 
         if(end){
             if (connected){
-                go.pXPS->setGPIO(XPS::iuScopeLED,false);     //TODO put into same function and call here and above
+                go.pXPS->setGPIO(XPS::iuScopeLED,false);
                 go.pXPS->setGPIO(XPS::writingLaser,false);
+                resetStagePars();
                 homeGroups(true);
                 flushQueue();
                 killGroups();
@@ -63,6 +70,29 @@ void XPS::run(){    //this is the XPS thread loop
         }
     }
 }
+
+void XPS::resetStagePars(){
+    exec_ret ret;
+    for (int i=0;i!=_GROUP_NUM;i++){
+        for(int j=0;j!=groups[i].AxisNum;j++){
+            double par[4];
+            std::string parName[4]={"MaximumVelocity","MaximumAcceleration","MinimumJerkTime","MaximumJerkTime"};
+            for (int k=0;k!=4;k++){
+                execCommand(&ret, "PositionerStageParameterGet",util::toString(groupGetName(groups[i].ID),'.',groups[i].positionerNames[j]),parName[k],"char *");
+                flushQueue();
+                if(ret.v.retval<0) goto skip;
+                par[k]=std::stod(ret.v.retstr.substr(ret.v.retstr.find(',')+1));
+            }
+            execCommand("PositionerSGammaParametersSet",util::toString(groupGetName(groups[i].ID),'.',groups[i].positionerNames[j]),par[0],par[1],par[2],par[3]);
+            skip: flushQueue();
+        }
+
+    }
+}
+//go.pXPS->execCommand("PositionerSGammaParametersSet",util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZF),'.',coords[N]),selVeloc[N]->val,selAccel[N]->val,minTJerk[N],maxTJerk[N]);
+//}
+//go.pXPS->execCommand("PositionerStageParameterSet",util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZF),'.',coords[N]),"MaximumVelocity",selVeloc[N]->val);
+
 
 
 void XPS::initGroup(GroupID ID){                 //add a queue containing groups, add command initGroups that inits them all, do this for commands below too

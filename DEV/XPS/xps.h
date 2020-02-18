@@ -72,6 +72,7 @@ public:
     void homeGroups(bool inited=false);
     void killGroup(GroupID ID);
     void killGroups();
+    void resetStagePars();      //resets velocities, accelerations and tjerk of all stages to the settings defined in stages.ini     (use PositionerSGammaParametersSet to change them temporarily, ie. not in the .ini)
 
     std::string listPVTfiles();
 
