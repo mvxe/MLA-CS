@@ -39,6 +39,7 @@ void pgHistogrameGUI::updateImg(const pgScanGUI::scanRes* res ,double *rmin, dou
         }
 
         cv::Mat hist;
+        if(max<=min) max=min+1;
         int histSize[]={Hsize}; float hranges[]={min, max}; const float* ranges[]={hranges}; int channels[]={0};
 
         cv::calcHist((altDepth!=nullptr)?altDepth:(&res->depth), 1, channels, res->maskN, hist, 1, histSize, ranges);

@@ -18,6 +18,7 @@
 #include "PROCEDURES/UTIL/WRT/calib.h"
 #include "PROCEDURES/UTIL/WRT/beamanl.h"
 #include "PROCEDURES/UTIL/WRT/write.h"
+#include "PROCEDURES/UTIL/USC/correction.h"
 
 
 #endif // _INCL_PROCEDURES_H

@@ -38,6 +38,10 @@ tab_camera::tab_camera(QWidget* parent){
     cMap=new colorMap(cm_sel, exclColor, pgSGUI, pgTGUI);
     tCG=new tabCamGnuplot;
     pgSGUI->pgMGUI=pgMGUI;
+    pgCor=new pgCorrection(pgSGUI, pgMGUI);
+    pgSGUI->useCorr=&pgCor->useCorr;
+    pgSGUI->cor=&pgCor->cor;
+    connect(pgCor, SIGNAL(sendToDisplay(pgScanGUI::scanRes)), this, SLOT(showScan(pgScanGUI::scanRes)));
     camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
 
     pgBeAn=new pgBeamAnalysis(MLP, pgMGUI, pgSGUI);
@@ -84,8 +88,9 @@ tab_camera::tab_camera(QWidget* parent){
         pageSettings->addWidget(pgMGUI->gui_settings,"Move");
         pageSettings->addWidget(pgTGUI->gui_settings,"Tilt");
         pageSettings->addWidget(pgFGUI->gui_settings,"Focus");  index_pgFGUI=3;
+        pageSettings->addWidget(pgCor->gui_settings,"Scan Correction");
         pageSettings->addWidget(cMap,"ColorMap");
-        pageSettings->addWidget(camSet,"Camera");               index_camSet=5;
+        pageSettings->addWidget(camSet,"Camera");               index_camSet=6;
         pageSettings->addWidget(pgDpEv,"Depth Eval");
         pageSettings->addWidget(pgCal->gui_settings,"Write Calibration");
         pageSettings->addWidget(pgBeAn->gui_settings,"Beam Centering");
@@ -449,6 +454,12 @@ void tab_camera::onLoadDepthMapRaw(void){
         loadedScanChanged=true;
         loadedOnDisplay=true;
     }
+}
+void tab_camera::showScan(pgScanGUI::scanRes scan){
+    QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 100);    //wait for tab_camera to detect new scan, and then send signal
+    loadedScan=scan;
+    loadedScanChanged=true;
+    loadedOnDisplay=true;
 }
 void tab_camera::onDiff2Raw(){
     pgScanGUI::scanRes scanBefore, scanAfter;

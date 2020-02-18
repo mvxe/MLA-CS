@@ -42,9 +42,11 @@ public:
     constexpr static unsigned timerCM_delay=100;
 
     std::atomic<bool> measurementInProgress{false}; //for outside calling functions
-    void doOneRound(char cbAvg_override=0);         // for cbAvg_override==0, cbAvg setting is used, if cbAvg_override=1 avearage, if cbAvg_override=-1 do not average
+    void doOneRound(char cbAvg_override=0, char cbTilt_override=0);
+                                                    // for cbAvg_override==0, cbAvg setting is used, if cbAvg_override=1 avearage, if cbAvg_override=-1 do not average
+                                                    // for cbTilt_override==0, cbTilt setting is used, if cbTilt_override=1 correct tilt, if cbTilt_override=-1 do not correct
                                                     // this function is non blocking, check measurementInProgress to see if done
-    void doNRounds(int N, double redoIfMaskHasMore=0.01, int redoN=3, cv::Rect roi={0,0,0,0});
+    void doNRounds(int N, double redoIfMaskHasMore=0.01, int redoN=3, cv::Rect roi={0,0,0,0}, char cbTilt_override=0);
                                                     // does at least N measurements (and most N+1) with avg (cbAvg_override==1), if mask is more than redoIfMaskHasMore fraction of total(ROID) pixels, redo mesurements, up to redoN times
                                                     // this funtion is blocking, but processes qt events
 
@@ -72,7 +74,12 @@ public:
     static void saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::string fileName="");
     static bool loadScan(scanRes* scan, std::string fileName="");                       //return true if success
     scanRes difScans(scanRes* scan0, scanRes* scan1);
+    scanRes avgScans(std::vector<scanRes>* scans, double excludeSDfactor=-1, int maxNofCorrections=10);       //does not decorrect tilt, excludeSDfactor: exclude measurements that are this many times farther from avg than SD (for example 3), negative number or 0 means no excluding
+                                                                                                                    //using excludeSDfactor>0 makes the program modify scans
     static QWidget* parent; //for dialogs
+
+    std::mutex* useCorr;                //from correction
+    pgScanGUI::scanRes** cor{nullptr};
 private:
     void init_gui_activation();
     void init_gui_settings();
@@ -141,8 +148,9 @@ private:
     QDoubleSpinBox* xDifShift;
     QDoubleSpinBox* yDifShift;
 
-    void _doOneRound(char cbAvg_override=0);
+    void _doOneRound(char cbAvg_override=0, char cbTilt_override=0);
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
+    void _correctTilt(scanRes* res);
 public Q_SLOTS:
     void recalculate();
 private Q_SLOTS:

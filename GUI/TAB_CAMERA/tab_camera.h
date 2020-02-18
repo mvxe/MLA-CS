@@ -60,6 +60,7 @@ private:
     pgFocusGUI* pgFGUI;     unsigned index_pgFGUI;
     pgPosRepGUI* pgPRGUI;
     cameraSett* camSet;     unsigned index_camSet;
+    pgCorrection* pgCor;
     QLabel* addInfo;
 
     smp_selector* cm_sel;       //for selecting the colormap for display
@@ -127,6 +128,8 @@ private Q_SLOTS:
 
     void onRedLaserToggle(bool state);
     void onGreenLaserToggle(bool state);
+
+    void showScan(pgScanGUI::scanRes scan);
 };
 
 

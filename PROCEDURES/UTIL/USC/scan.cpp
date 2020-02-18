@@ -203,13 +203,13 @@ void pgScanGUI::updatePVTs(std::string &report){
     PVTsRdy=true;
 }
 int NA=0;
-void pgScanGUI::doOneRound(char cbAvg_override){
+void pgScanGUI::doOneRound(char cbAvg_override, char cbTilt_override){
     if(!PVTsRdy) recalculate();
     measurementInProgress=true;
-    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,cbAvg_override));
+    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,cbAvg_override, cbTilt_override));
 }
 
-void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect roi){
+void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect roi, char cbTilt_override){
     if(!PVTsRdy) recalculate();
     varShareClient<pgScanGUI::scanRes>* scanRes=result.getClient();
 
@@ -218,7 +218,7 @@ void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect r
     cv::Mat roiMask;
     do{
         measurementInProgress=true;
-        go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,-1));
+        go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,-1,cbTilt_override));
         while(measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
         res=scanRes->get();
         doneN++;
@@ -228,7 +228,7 @@ void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect r
 
     while(res->avgNum<N){
         if(MLP._lock_meas.try_lock()){
-            go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,1));
+            go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,1,cbTilt_override));
             MLP._lock_meas.unlock();
         }
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
@@ -253,7 +253,47 @@ double pgScanGUI::vsConv(val_selector* vs){
     }
 }
 
-void pgScanGUI::_doOneRound(char cbAvg_override){
+void pgScanGUI::_correctTilt(scanRes* res){
+    int nRows=res->depth.rows;
+    int nCols=res->depth.cols;
+    cv::Mat blured;
+    double sigma=tiltCorBlur->val;
+    int ksize=sigma*5;
+    if(!(ksize%2)) ksize++;
+    //cv::GaussianBlur(res->depth, blured, cv::Size(ksize, ksize), sigma, sigma);   //using just gaussian blur also blurs out the inf edges maksed over, which sometimes causes tilt to fail
+    cv::bilateralFilter(res->depth, blured, ksize, sigma, sigma);                   //this does not blur over obvious sharp edges (but is a bit slower)
+    double derDbound=tiltCorThrs->val;
+    cv::Mat firstD, secondD, mask, maskT;
+    cv::Sobel(blured, firstD, CV_32F,1,0); //X
+    cv::Sobel(blured, secondD, CV_32F,2,0); //X
+    cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
+    cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
+    mask.setTo(cv::Scalar::all(0), maskT);
+    mask.setTo(cv::Scalar::all(0), res->mask);
+    res->tiltCor[0]=-cv::mean(firstD,mask)[0]/8;
+    cv::Sobel(blured, firstD, CV_32F,0,1); //Y
+    cv::Sobel(blured, secondD, CV_32F,0,2); //Y
+    cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
+    cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
+    mask.setTo(cv::Scalar::all(0), maskT);
+    mask.setTo(cv::Scalar::all(0), res->mask);
+    res->tiltCor[1]=-cv::mean(firstD,mask)[0]/8;
+    std::cout<<"CPhases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
+
+    cv::Mat slopeX1(1, nCols, CV_32F);
+    cv::Mat slopeX(nRows, nCols, CV_32F);
+    for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=i*res->tiltCor[0];
+    cv::repeat(slopeX1, nRows, 1, slopeX);
+    cv::add(slopeX,res->depth,res->depth);
+
+    cv::Mat slopeY1(nRows, 1, CV_32F);
+    cv::Mat slopeY(nRows, nCols, CV_32F);
+    for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*res->tiltCor[1];
+    cv::repeat(slopeY1, 1, nCols, slopeY);
+    cv::add(slopeY,res->depth,res->depth);
+}
+
+void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override){
     MLP._lock_meas.lock();                       //wait for other measurements to complete
     if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     if(!PVTsRdy) return;
@@ -406,6 +446,13 @@ void pgScanGUI::_doOneRound(char cbAvg_override){
 
     resultFinalPhase.setTo(std::numeric_limits<float>::max() , maskUMat);
     resultFinalPhase.copyTo(res->depth);
+    if(useCorr->try_lock()){
+        if(*cor==nullptr)std::cerr<<"Correction was nullptr!\n";
+        else if((*cor)->depth.empty())std::cerr<<"Correction depthmap was empty!\n";
+        else if(res->depth.cols==(*cor)->depth.cols && res->depth.rows==(*cor)->depth.rows) cv::subtract(res->depth,(*cor)->depth,res->depth,res->maskN);
+        else std::cerr<<"Cannot do correction: the measured and correction depthmaps are of different dimensions!\n";
+        useCorr->unlock();
+    }
 
     if(pgMGUI==nullptr) res->XYnmppx=0;
     else res->XYnmppx=pgMGUI->getNmPPx();
@@ -488,43 +535,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override){
         delete temp;
     }
 
-    if(cbCorrectTilt->val){ //autocorrect tilt
-        cv::Mat blured;
-        double sigma=tiltCorBlur->val;
-        int ksize=sigma*5;
-        if(!(ksize%2)) ksize++;
-        //cv::GaussianBlur(res->depth, blured, cv::Size(ksize, ksize), sigma, sigma);   //using just gaussian blur also blurs out the inf edges maksed over, which sometimes causes tilt to fail
-        cv::bilateralFilter(res->depth, blured, ksize, sigma, sigma);                   //this does not blur over obvious sharp edges (but is a bit slower)
-        double derDbound=tiltCorThrs->val;
-        cv::Mat firstD, secondD, mask, maskT;
-        cv::Sobel(blured, firstD, CV_32F,1,0); //X
-        cv::Sobel(blured, secondD, CV_32F,2,0); //X
-        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
-        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
-        mask.setTo(cv::Scalar::all(0), maskT);
-        mask.setTo(cv::Scalar::all(0), res->mask);
-        res->tiltCor[0]=-cv::mean(firstD,mask)[0]/8;
-        cv::Sobel(blured, firstD, CV_32F,0,1); //Y
-        cv::Sobel(blured, secondD, CV_32F,0,2); //Y
-        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
-        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
-        mask.setTo(cv::Scalar::all(0), maskT);
-        mask.setTo(cv::Scalar::all(0), res->mask);
-        res->tiltCor[1]=-cv::mean(firstD,mask)[0]/8;
-        std::cout<<"CPhases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
-
-        cv::Mat slopeX1(1, nCols, CV_32F);
-        cv::Mat slopeX(nRows, nCols, CV_32F);
-        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=i*res->tiltCor[0];
-        cv::repeat(slopeX1, nRows, 1, slopeX);
-        cv::add(slopeX,res->depth,res->depth);
-
-        cv::Mat slopeY1(nRows, 1, CV_32F);
-        cv::Mat slopeY(nRows, nCols, CV_32F);
-        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*res->tiltCor[1];
-        cv::repeat(slopeY1, 1, nCols, slopeY);
-        cv::add(slopeY,res->depth,res->depth);
-    } else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
+    if((cbCorrectTilt->val && cbTilt_override==0) || cbTilt_override==1) _correctTilt(res);     //autocorrect tilt
+     else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
 
     cv::minMaxLoc(res->depth, &res->min, &res->max, &ignore, &ignore, res->maskN);  //the ignored mask values will be <min , everything is in nm
 
@@ -641,10 +653,11 @@ void pgScanGUI::saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::strin
     }
 }
 bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
-    if(scan==nullptr) scan=new scanRes;
     if(fileName=="") fileName=QFileDialog::getOpenFileName(parent,"Select file to load Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
     if(fileName.empty())return false;
+    if(scan==nullptr) scan=new scanRes;
     scan->depth=cv::imread(fileName, cv::IMREAD_UNCHANGED);
+    if(scan->depth.empty()){delete scan; scan=nullptr; return false;}
     cv::compare(scan->depth, std::numeric_limits<float>::max(), scan->mask, cv::CMP_EQ);
     cv::bitwise_not(scan->mask, scan->maskN);
     std::ifstream rfile(fileName);
@@ -721,6 +734,85 @@ pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
     ret.XYnmppx=scan0->XYnmppx;
     ret.tiltCor[0]=0; ret.tiltCor[1]=0;
     ret.avgNum=scan0->avgNum;
+    return ret;
+}
+
+pgScanGUI::scanRes pgScanGUI::avgScans(std::vector<scanRes>* scans, double excludeSDfactor, int maxNofCorrections){
+    std::cerr<<"Averaging scans...\n";
+    scanRes ret;
+    int corDone{0};
+    if(scans==nullptr) {std::cerr<<"avgScans got nullptr vector input\n"; return ret;}
+    for(auto& scan0:*scans) for(auto& scan1:*scans)
+        if(scan0.depth.cols!=scan1.depth.cols || scan0.depth.rows!=scan1.depth.rows) {std::cerr<<"avgScans got matrices with nonequal dimensions\n"; return ret;}
+    cv::Mat counts;
+
+    ret.mask =cv::Mat(scans->at(0).depth.rows,scans->at(0).depth.cols,CV_8U,cv::Scalar(0));
+    ret.maskN=cv::Mat(scans->at(0).depth.rows,scans->at(0).depth.cols,CV_8U,cv::Scalar(255));
+
+    std::vector<cv::Mat> localMasks;    //to return the same scans
+    for(int i=0;i!=scans->size();i++) localMasks.emplace_back(scans->at(i).mask.clone());
+
+redo: ret.depth=cv::Mat(scans->at(0).depth.rows,scans->at(0).depth.cols,CV_32F,cv::Scalar(0));
+    ret.depthSS=cv::Mat(scans->at(0).depth.rows,scans->at(0).depth.cols,CV_32F,cv::Scalar(0));      //we'll put SD in here
+    counts=cv::Mat(scans->at(0).depth.rows,scans->at(0).depth.cols,CV_32F,cv::Scalar(0));
+    for(auto& scan:*scans){         //we get the first avg
+        cv::add(ret.depth, scan.depth, ret.depth, scan.maskN);
+        cv::add(counts, cv::Scalar(1), counts, scan.maskN);
+    }
+    cv::divide(ret.depth,counts,ret.depth);
+
+    cv::Mat makeZero;
+    cv::compare(counts, cv::Scalar(0), makeZero, cv::CMP_EQ);   //we make sure that pixels that have no elements are set to 0, to prevent crashes
+    ret.depth.setTo(cv::Scalar(0), makeZero);
+    ret.depthSS.setTo(cv::Scalar(0), makeZero);
+
+    counts=cv::Mat(scans->at(0).depth.rows,scans->at(0).depth.cols,CV_32F,cv::Scalar(0));
+    for(auto& scan:*scans){         //first make them have the same background level
+        cv::Mat temp;
+        cv::subtract(scan.depth, ret.depth, temp, scan.maskN);
+        cv::Scalar mean=cv::mean(temp, scan.maskN);
+        cv::subtract(scan.depth, mean, scan.depth, scan.maskN);
+    }
+    for(auto& scan:*scans){         //calc SD
+        cv::Mat temp;
+        cv::subtract(scan.depth, ret.depth, temp, scan.maskN);
+        cv::pow(temp,2,temp);
+        cv::add(ret.depthSS, temp, ret.depthSS, scan.maskN);
+        cv::add(counts, cv::Scalar(1), counts, scan.maskN);
+    }
+    cv::divide(ret.depthSS,counts,ret.depthSS);
+    cv::sqrt(ret.depthSS,ret.depthSS);
+
+    if(excludeSDfactor>0 && corDone<maxNofCorrections){     //now we should do some corrections: remove the measurements that are too far from the avg
+        int rmd{0};
+        for(auto& scan:*scans){         //now we disable pixels that are excludeSDfactor times farther from mean than SD
+            cv::Mat temp, mask;
+            cv::absdiff(scan.depth, ret.depth, temp);
+            cv::multiply(temp,1/excludeSDfactor,temp);
+            cv::compare(temp, ret.depthSS, mask, cv::CMP_GT);
+            mask.setTo(cv::Scalar(0),scan.mask);
+            scan.maskN.setTo(cv::Scalar(0),mask);
+            cv::bitwise_not(scan.maskN,scan.mask);
+            rmd+=cv::countNonZero(mask);
+        }
+        if(rmd!=0){      //we excluded at least one pixel
+            std::cerr<<"Found "<<rmd<<" pixels too far from mean, removing and correcting (cor #"<<corDone<<")...\n";
+            corDone++;
+            goto redo;
+        }
+    }
+
+    cv::minMaxLoc(ret.depth, &ret.min, &ret.max, nullptr, nullptr);
+    for(int i=0;i!=3;i++) ret.pos[i]=scans->at(0).pos[i];
+    ret.XYnmppx=scans->at(0).XYnmppx;
+    ret.tiltCor[0]=0; ret.tiltCor[1]=0;
+    ret.avgNum=scans->size();
+
+    for(int i=0;i!=scans->size();i++){      //since we modify the masks in this function while correcting, we turn them back here
+        localMasks[i].copyTo(scans->at(i).mask);
+        cv::bitwise_not(scans->at(i).mask,scans->at(i).maskN);
+    }
+    _correctTilt(&ret);
     return ret;
 }
 
