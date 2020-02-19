@@ -88,9 +88,7 @@ void pgCorrection::onStartCalib(bool state){
             std::cerr<<"\nDone "<<1+i+j*selArrayXsize->val<<"/"<<selArrayYsize->val*selArrayXsize->val<<"\n\n";
             if(i<selArrayXsize->val-1) pgMGUI->move(-selArraySpacing->val/1000,0,0,0);
         }
-        if(j<selArrayYsize->val-1) {pgMGUI->move(2*xOfs,-selArraySpacing->val/1000,0,0);
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));     //for stability
-        }
+        if(j<selArrayYsize->val-1) pgMGUI->move(2*xOfs,-selArraySpacing->val/1000,0,0);
     }
     pgMGUI->move(xOfs,yOfs,0,0);
     onStartRecalc();

@@ -101,8 +101,8 @@ void pgMoveGUI::init_gui_settings(){
     slayout->addWidget(new QLabel("Non PVT move velocities and accelerations (valid only for this tab):"));
 
     for (int i=0;i!=4;i++){
-        selVeloc[i]=new val_selector(maxVel[i]/10, util::toString("pgMoveGUI_selVeloc",coords[i]), util::toString(coords[i]," stage max move velocity: ").c_str(), 1e-9, maxVel[i], 3, 0, {"mm/s"});
-        selAccel[i]=new val_selector(maxAcl[i]/10, util::toString("pgMoveGUI_selAccel",coords[i]), util::toString(coords[i]," stage max move acceleration: ").c_str(), 1e-9, maxAcl[i], 3, 0, {"mm/s^2"});
+        selVeloc[i]=new val_selector(maxVel[i]/10, util::toString("pgMoveGUI_selVeloc",coords[i]), util::toString(coords[i]," stage max move velocity: ").c_str(), 1e-3, maxVel[i], 3, 0, {"mm/s"});
+        selAccel[i]=new val_selector(maxAcl[i]/10, util::toString("pgMoveGUI_selAccel",coords[i]), util::toString(coords[i]," stage max move acceleration: ").c_str(), 1e-3, maxAcl[i], 3, 0, {"mm/s^2"});
         slayout->addWidget(selVeloc[i]);
         slayout->addWidget(selAccel[i]);
         connect(selVeloc[i], qOverload<>(&val_selector::changed), [=]{this->updateXPSVelAcc(i);});
