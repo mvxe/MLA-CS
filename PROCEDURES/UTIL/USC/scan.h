@@ -79,7 +79,7 @@ public:
     static QWidget* parent; //for dialogs
 
     std::mutex* useCorr;                //from correction
-    pgScanGUI::scanRes** cor{nullptr};
+    pgScanGUI::scanRes* cor{nullptr};
 private:
     void init_gui_activation();
     void init_gui_settings();

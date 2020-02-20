@@ -39,6 +39,7 @@ private:
 
     QHBoxLayout* layout;
     iImageDisplay* LDisplay;
+    QPixmap* LDisplayPixmap{nullptr};
     QWidget* tBarW;
     QVBoxLayout* layoutTBarW;
     smp_selector* selDisp;

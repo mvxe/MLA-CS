@@ -73,6 +73,7 @@ void pgHistogrameGUI::updateImg(const pgScanGUI::scanRes* res ,double *rmin, dou
         cv::Mat display(Vsize+1,Hsize,CV_8UC4,{0,0,0,0});
         double minh,maxh;
         cv::minMaxIdx(hist,&minh,&maxh);
+        if(maxh==0) maxh=1;
         for(int i=0;i!=Hsize;i++){
             int lim=hist.at<float>(i)/maxh*Vsize;
             int limPrev, limNext;

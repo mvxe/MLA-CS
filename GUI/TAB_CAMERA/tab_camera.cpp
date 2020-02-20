@@ -140,6 +140,8 @@ tab_camera::tab_camera(QWidget* parent){
 
 tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
     delete scanRes;
+    delete pgHistGUI;
+    delete pgCor;
     delete pgCal;
     delete pgSGUI;
     delete pgBGUI;

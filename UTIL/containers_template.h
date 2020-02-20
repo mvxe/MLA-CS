@@ -97,6 +97,7 @@ template <typename T> void varShare<T>::cleanup(){
         if((*it)->num==0){
             typename std::list<varSt*>::iterator itt=it;
             it++;
+            delete (*itt)->var;
             delete *itt;
             active.erase(itt);
         } else it++;
@@ -104,6 +105,7 @@ template <typename T> void varShare<T>::cleanup(){
 }
 template <typename T>  varShare<T>::~varShare(){
     while(!active.empty()) {
+        delete active.back()->var;
         delete active.back();
         active.pop_back();
     }

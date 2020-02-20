@@ -37,6 +37,9 @@ RESOURCES += \
     icons/icon.qrc
 
 unix:!macx: LIBS += -lcurlpp -lcurl -lserial -DVIENNACL_WITH_OPENCL  -lOpenCL -ldlib -lblas -llapack
+#QMAKE_CXXFLAGS += -g -gdwarf        # for debugging purposes (using heaptrack)
+#QMAKE_CFLAGS+="-fsanitize=address -fno-omit-frame-pointer"       # for debugging purposes : asan
+#QMAKE_LFLAGS+="-fsanitize=address"
 
 INCLUDEPATH += /usr/include/glib-2.0 \
         /usr/include/aravis-0.6

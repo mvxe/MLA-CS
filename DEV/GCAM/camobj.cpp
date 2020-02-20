@@ -130,6 +130,14 @@ void camobj::end(){
     if(cam!=NULL) g_clear_object(&cam);
     if(dev!=NULL) dev=NULL;   //no unref here because unrefing cam seams to unref dev too, but it doesnt set it to NULL
     ID="none";
+    while(!FreeBuffers.empty()){
+        if(G_IS_OBJECT(&FreeBuffers.front()->object)) g_clear_object(&FreeBuffers.front());
+        FreeBuffers.pop();
+    }
+    while(!FullBuffers.empty()){
+        if(G_IS_OBJECT(&FullBuffers.front()->object)) g_clear_object(&FullBuffers.front());
+        FullBuffers.pop_front();
+    }
 }
 
 void camobj::control_lost_cb (ArvDevice *ldev){

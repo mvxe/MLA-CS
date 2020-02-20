@@ -14,7 +14,7 @@ class FQsPC      //this class should let threads exchange images safely (Frame Q
 {
 public:
     FQsPC();
-
+    ~FQsPC();
     bool isThereInterest();         //if this returns false dont bother filling a new matrix, nobody is interested in frames
     unsigned getFreeNumber();       //get the number of free matrices
     unsigned getFullNumber();       //get the number of full matrices

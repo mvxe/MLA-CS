@@ -447,9 +447,9 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override){
     resultFinalPhase.setTo(std::numeric_limits<float>::max() , maskUMat);
     resultFinalPhase.copyTo(res->depth);
     if(useCorr->try_lock()){
-        if(*cor==nullptr)std::cerr<<"Correction was nullptr!\n";
-        else if((*cor)->depth.empty())std::cerr<<"Correction depthmap was empty!\n";
-        else if(res->depth.cols==(*cor)->depth.cols && res->depth.rows==(*cor)->depth.rows) cv::subtract(res->depth,(*cor)->depth,res->depth,res->maskN);
+        if(cor==nullptr)std::cerr<<"Correction was nullptr!\n";
+        else if(cor->depth.empty())std::cerr<<"Correction depthmap was empty!\n";
+        else if(res->depth.cols==cor->depth.cols && res->depth.rows==cor->depth.rows) cv::subtract(res->depth,cor->depth,res->depth,res->maskN);
         else std::cerr<<"Cannot do correction: the measured and correction depthmaps are of different dimensions!\n";
         useCorr->unlock();
     }

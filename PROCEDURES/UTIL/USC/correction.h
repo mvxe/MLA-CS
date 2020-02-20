@@ -19,7 +19,7 @@ public:
     QWidget* gui_settings;
 
     std::mutex useCorr;                 //this will be locked when usecorr is disabled or the correction is updated
-    pgScanGUI::scanRes* cor{nullptr};
+    pgScanGUI::scanRes cor;
 private:
     bool useCorrLocked{false};
 

@@ -1,6 +1,16 @@
 #include "DEV/GCAM/frame_queues.h"
 
 FQsPC::FQsPC(){}
+FQsPC::~FQsPC(){
+    while(!mat_ptr_free.empty()){
+        delete mat_ptr_free.front();
+        mat_ptr_free.pop();
+    }
+    while(!mat_ptr_full.empty()){
+        delete mat_ptr_full.front().mat;
+        mat_ptr_full.pop_front();
+    }
+}
 bool FQsPC::isThereInterest(){
     std::lock_guard<std::mutex>lock(qmx);
     std::list<FQ>::iterator it=user_queues.begin();

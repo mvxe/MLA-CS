@@ -42,8 +42,7 @@ pgCorrection::pgCorrection(pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI): pgSGUI(pgSGUI)
     enableCorrection=new checkbox_save(false,"pgCorrection_enableCorrection","Enable correction.");
     connect(enableCorrection, SIGNAL(changed(bool)), this, SLOT(enableCorrectionChanged(bool)));
     slayout->addWidget(enableCorrection);
-    cor=new pgScanGUI::scanRes;
-    if(!pgSGUI->loadScan(cor, fileName)) {cor=nullptr; std::cerr<<"Could not find pgCorrection file: "<<fileName<<"\n";useCorr.lock();useCorrLocked=true;}
+    if(!pgSGUI->loadScan(&cor, fileName)) {std::cerr<<"Could not find pgCorrection file: "<<fileName<<"\n";useCorr.lock();useCorrLocked=true;}
 }
 pgCorrection::~pgCorrection(){
     if(scans!=nullptr) delete scans;
@@ -52,14 +51,12 @@ pgCorrection::~pgCorrection(){
 void pgCorrection::onSetAsCalib(){
     if(!useCorrLocked) {useCorr.lock();useCorrLocked=true;}
     pgSGUI->saveScan(&avg, fileName);
-    if(cor!=nullptr) delete cor;
-    cor=new pgScanGUI::scanRes();
-    *cor=avg;
+    cor=avg;
     if(enableCorrection->val){useCorr.unlock();useCorrLocked=false;}
 }
 void pgCorrection::enableCorrectionChanged(bool state){
     if(state){
-        if(cor!=nullptr) {useCorr.unlock();useCorrLocked=false;}
+        if(!cor.depth.empty()) {useCorr.unlock();useCorrLocked=false;}
     }else{
         if(!useCorrLocked) {useCorr.lock();useCorrLocked=true;}
     }
@@ -67,6 +64,7 @@ void pgCorrection::enableCorrectionChanged(bool state){
 
 void pgCorrection::onStartCalib(bool state){
     if(!state) return;
+    preserveResult->setEnabled(false);
     if(scans!=nullptr) {recalcCalib->setEnabled(false); delete scans; scans=nullptr;}
     scans=new std::vector<pgScanGUI::scanRes>;
 
@@ -77,6 +75,7 @@ void pgCorrection::onStartCalib(bool state){
         for(int i=0;i<selArrayXsize->val; i++){
             if(!startCalib->isChecked()){   //abort
                 std::cerr<<"Aborting calibration.\n";
+                preserveResult->setEnabled(true);
                 return;
             }
             while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
@@ -96,6 +95,7 @@ void pgCorrection::onStartCalib(bool state){
     startCalib->setChecked(false);
     if(!preserveResult->isChecked()) {recalcCalib->setEnabled(false); delete scans; scans=nullptr;}
     else recalcCalib->setEnabled(true);
+    preserveResult->setEnabled(true);
     setAsCalib->setEnabled(true);
 }
 void pgCorrection::onStartRecalc(){
