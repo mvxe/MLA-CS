@@ -65,7 +65,7 @@ focusSettings::focusSettings(uint num, pgFocusGUI* parent): parent(parent){
     range=new val_selector(10., util::toString("pgFocusGUI_range",num), "Scan Range:", 1., 2000., 3, 3 , {"nm","um",QChar(0x03BB),"L"});
     connect(range, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(range);
-    ppwl=new val_selector(10., util::toString("pgFocusGUI_ppwl",num), "Points Per Wavelength: ", 0.001, 100., 3);
+    ppwl=new val_selector(10., util::toString("pgFocusGUI_ppwl",num), "Points Per Wavelength: ", 0.001, 500., 3);
     connect(ppwl, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(ppwl);
 }
@@ -181,6 +181,8 @@ void pgFocusGUI::_refocus(){
 
     cv::UMat pixSum(1, nFrames, CV_64F, cv::Scalar(0));
     cv::Mat mat2D(nFrames, nCols, CV_64F);
+
+    if(!saveNextFocus.empty()) {std::ofstream wfile(util::toString(saveNextFocus,"/","test-avgAllPix.dat")); for(int i=0;i!=nFrames;i++) wfile<<cv::mean(*framequeue->getUserMat(i))[0]<<"\n"; wfile.close();}
 
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
     MLP.progress_comp=0;

@@ -169,7 +169,7 @@ void pgBeamAnalysis::ctrlRedLaser(bool state){
 bool pgBeamAnalysis::waitTillLEDIsOff(FQ* framequeueDisp){
     // first we take frames until we hit the first one that has the LED turned off This is recognized using criteria below:
     const int borderWidth=10;
-    const uchar lIntThresh=10;      // 1/25 of max int
+    const uchar lIntThresh=20;      // 1/25 of max int
     const float lOuterRatio=0.75;   // at least lOuterRatio of the pixels within the borderWidth pixel width border must be smaller than lIntThresh
 //    const uchar uIntThresh=50;      // 1/5 of max int
 //    const float uInnerRatio=0.000001; // at least uInnerRatio of the pixels within the borderWidth pixel width border must be larger than uIntThresh
@@ -418,7 +418,7 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, double *xMin, dou
         ctrlRedLaser(false);
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
         while(!PVTret.check_if_done()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
-        std::string text=util::toString("pgBeamAnalysis::getCalibWritingBeamRange failed.");
+        std::string text=util::toString("pgBeamAnalysis::getCalibWritingBeamRange failed.\n");
         QMessageBox::critical(this, "Error", QString::fromStdString(text));
         std::cerr<<text;
         return;
