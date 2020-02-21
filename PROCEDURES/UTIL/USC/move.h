@@ -92,8 +92,8 @@ private:
     static constexpr char coords[4]={'X','Y','Z','F'};
     static constexpr double maxVel[4]={300,25,300,300};
     static constexpr double maxAcl[4]={2500,100,2500,2500};
-    static constexpr double minTJerk[4]={0.02,0.005,0.02,0.02};
-    static constexpr double maxTJerk[4]={0.02,0.05,0.02,0.02};
+    static constexpr double minTJerk[4]={0.005,0.005,0.005,0.005};
+    static constexpr double maxTJerk[4]={0.05,0.05,0.05,0.05};
 
 private Q_SLOTS:
     void onLockF(bool locked);
