@@ -40,6 +40,7 @@ void XPS::run(){    //this is the XPS thread loop
                     go.pXPS->execCommand("Login","Administrator","Administrator");
                     go.pXPS->setGPIO(XPS::iuScopeLED,true);
                     go.pXPS->setGPIO(XPS::writingLaser,false);
+                    resetStagePars();
                     initGroups();
                     homeGroups();
                     flushQueue();
@@ -83,7 +84,8 @@ void XPS::resetStagePars(){
                 if(ret.v.retval<0) goto skip;
                 par[k]=std::stod(ret.v.retstr.substr(ret.v.retstr.find(',')+1));
             }
-            execCommand("PositionerSGammaParametersSet",util::toString(groupGetName(groups[i].ID),'.',groups[i].positionerNames[j]),par[0],par[1],par[2],par[3]);
+            //execCommand("PositionerSGammaParametersSet",util::toString(groupGetName(groups[i].ID),'.',groups[i].positionerNames[j]),par[0],par[1],par[2],par[3]);
+            execCommand("PositionerSGammaParametersSet",util::toString(groupGetName(groups[i].ID),'.',groups[i].positionerNames[j]),groups[i].defaultVel[j],groups[i].defaultAcc[j],par[2],par[3]);
             skip: flushQueue();
         }
 
