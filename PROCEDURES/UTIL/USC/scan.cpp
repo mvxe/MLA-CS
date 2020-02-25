@@ -79,7 +79,10 @@ void pgScanGUI::init_gui_settings(){
     saveAvgMess=new QPushButton("Autosave raw measurements"); saveAvgMess->setCheckable(true);
     saveAvgMess->setToolTip("Select folder for saving all subsequent individual raw measurements. Last ROI applies (ie you must try saving something raw by selection first), else whole image is saved. Click again to disable further saving.");
     slayout->addWidget(new twid(saveAvgMess));
+    saveNextMirrorBaselineHist=new QPushButton("Save next mirror baseline histogram.");
+    slayout->addWidget(new twid(saveNextMirrorBaselineHist));
     connect(saveAvgMess, SIGNAL(released()), this, SLOT(onBSaveAvgMess()));
+    connect(saveNextMirrorBaselineHist, SIGNAL(released()), this, SLOT(onBSaveNextMirrorBaselineHist()));
     onMenuChange(0);
 }
 
@@ -114,6 +117,10 @@ scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
     slayout->addWidget(tiltCorBlur);
     tiltCorThrs=new val_selector(0.2, util::toString("tab_camera_tiltCorThrs",num), "Tilt Correction 2nd Derivative Exclusion Threshold: ", 0, 1, 2);
     slayout->addWidget(tiltCorThrs);
+    findBaseline=new checkbox_save(false,util::toString("tab_camera_findBaseline",num),"Correct for mirror baseline.");
+    slayout->addWidget(findBaseline);
+    findBaselineHistStep=new val_selector(0.1, util::toString("tab_camera_findBaselineHistStep",num), "Mirror baseline cor. hist. step: ", 0.01, 10, 2, 0, {"nm"});
+    slayout->addWidget(findBaselineHistStep);
 }
 void pgScanGUI::onMenuChange(int index){
     for(int i=0;i!=Nset;i++) settingWdg[i]->setVisible(i==index?true:false);
@@ -128,6 +135,8 @@ void pgScanGUI::onMenuChange(int index){
     exclDill=settingWdg[index]->exclDill;
     tiltCorBlur=settingWdg[index]->tiltCorBlur;
     tiltCorThrs=settingWdg[index]->tiltCorThrs;
+    findBaseline=settingWdg[index]->findBaseline;
+    findBaselineHistStep=settingWdg[index]->findBaselineHistStep;
     recalculate();
 }
 
@@ -263,20 +272,20 @@ void pgScanGUI::_correctTilt(scanRes* res){
     //cv::GaussianBlur(res->depth, blured, cv::Size(ksize, ksize), sigma, sigma);   //using just gaussian blur also blurs out the inf edges maksed over, which sometimes causes tilt to fail
     cv::bilateralFilter(res->depth, blured, ksize, sigma, sigma);                   //this does not blur over obvious sharp edges (but is a bit slower)
     double derDbound=tiltCorThrs->val;
-    cv::Mat firstD, secondD, mask, maskT;
+    cv::Mat firstD, secondD, mask, maskT;                                           cv::Mat mask4hist;
     cv::Sobel(blured, firstD, CV_32F,1,0); //X
     cv::Sobel(blured, secondD, CV_32F,2,0); //X
     cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
     cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
     mask.setTo(cv::Scalar::all(0), maskT);
-    mask.setTo(cv::Scalar::all(0), res->mask);
+    mask.setTo(cv::Scalar::all(0), res->mask);                                      if(findBaseline->val) mask.copyTo(mask4hist);
     res->tiltCor[0]=-cv::mean(firstD,mask)[0]/8;
     cv::Sobel(blured, firstD, CV_32F,0,1); //Y
     cv::Sobel(blured, secondD, CV_32F,0,2); //Y
     cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
     cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
     mask.setTo(cv::Scalar::all(0), maskT);
-    mask.setTo(cv::Scalar::all(0), res->mask);
+    mask.setTo(cv::Scalar::all(0), res->mask);                                      if(findBaseline->val) cv::bitwise_and(mask4hist,mask,mask4hist);
     res->tiltCor[1]=-cv::mean(firstD,mask)[0]/8;
     std::cout<<"CPhases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
 
@@ -291,6 +300,27 @@ void pgScanGUI::_correctTilt(scanRes* res){
     for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=i*res->tiltCor[1];
     cv::repeat(slopeY1, 1, nCols, slopeY);
     cv::add(slopeY,res->depth,res->depth);
+
+    if(findBaseline->val){      //we also want to find the baseline level: we only look at points that are flat enough (some of the original flat image must be visible)
+        const double histRes=findBaselineHistStep->val;
+        double min,max;
+        cv::minMaxLoc(res->depth, &min, &max, nullptr, nullptr, mask4hist);  //the ignored mask values will be <min , everything is in nm
+        if(max<=min) max=min+1;
+        int hlen=max-min;
+        hlen/=histRes;
+        int histSize[]={hlen}; float hranges[]={(float)min, (float)max}; const float* ranges[]={hranges}; int channels[]={0};
+        cv::Mat hist;
+        cv::calcHist(&res->depth, 1, channels, mask4hist, hist, 1, histSize, ranges);
+        if(!fnameSaveNextMirrorBaselineHist.empty()){
+            std::ofstream wfile(util::toString(fnameSaveNextMirrorBaselineHist,"/baselineHist.txt"));
+            for(int i=0;i!=hlen;i++) wfile<<hist.at<float>(i)<<"\n";
+            fnameSaveNextMirrorBaselineHist.clear();
+            wfile.close();
+        }
+        cv::Point mpt;
+        cv::minMaxLoc(hist, nullptr, nullptr, nullptr, &mpt);
+        cv::subtract(res->depth,min+mpt.y*histRes,res->depth);
+    }
 }
 
 void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override){
@@ -539,7 +569,6 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override){
      else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
 
     cv::minMaxLoc(res->depth, &res->min, &res->max, &ignore, &ignore, res->maskN);  //the ignored mask values will be <min , everything is in nm
-
     result.put(res);
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
@@ -823,4 +852,8 @@ void pgScanGUI::onBSaveAvgMess(){
         stringSaveAvgMess=QFileDialog::getExistingDirectory(gui_settings, "Select Folder for Saving Raw Images").toStdString();
         if(!stringSaveAvgMess.empty()) {bSaveAvgMess=true; saveIter=0;}
     }
+}
+
+void pgScanGUI::onBSaveNextMirrorBaselineHist(){
+    fnameSaveNextMirrorBaselineHist=QFileDialog::getExistingDirectory(gui_settings, "Select folder for saving next mirror baseline histogram.").toStdString();
 }

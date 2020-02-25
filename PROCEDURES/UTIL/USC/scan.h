@@ -123,9 +123,13 @@ private:
     val_selector* exclDill;
     val_selector* tiltCorBlur;
     val_selector* tiltCorThrs;
+    checkbox_save* findBaseline;
+    val_selector* findBaselineHistStep;
     smp_selector* debugDisplayModeSelect;
     val_selector* avgDiscardCriteria;
     QPushButton* saveAvgMess;
+    QPushButton* saveNextMirrorBaselineHist;
+    std::string fnameSaveNextMirrorBaselineHist;
 
     int totalFrameNum;
     int peakLoc;        //the expected peak position in the FFT spectrum
@@ -158,6 +162,7 @@ private Q_SLOTS:
     void onBScanContinuous(bool status);
     void onMenuChange(int index);
     void onBSaveAvgMess();
+    void onBSaveNextMirrorBaselineHist();
 Q_SIGNALS:
     void doneExpMinmax(int min, int max);
 };
@@ -179,6 +184,8 @@ public:
     val_selector* exclDill;
     val_selector* tiltCorBlur;
     val_selector* tiltCorThrs;
+    checkbox_save* findBaseline;
+    val_selector* findBaselineHistStep;
     pgScanGUI* parent;
 };
 
