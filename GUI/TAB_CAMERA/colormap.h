@@ -13,7 +13,7 @@ class checkbox_save;
 class colorMap: public QWidget{
     Q_OBJECT
 public:
-    colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI);
+    colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, checkbox_save* showAbsHeight, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI);
     void colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange=false, bool isForExport=false, std::string label="Height (nm)");
     const bool& changed{_changed};
     void draw_bw_target(cv::Mat* src, float dX, float dY);
@@ -54,6 +54,7 @@ private:
     double phiX0, phiY0, phiX1, phiY1, phiXR, phiYR;
 
     smp_selector* cm_sel;
+    checkbox_save* showAbsHeight;
     cv::Scalar& exclColor;
     pgScanGUI* pgSGUI;      //for XY calibration
     pgTiltGUI* pgTGUI;      // ^^

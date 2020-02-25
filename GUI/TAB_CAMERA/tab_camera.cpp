@@ -35,8 +35,10 @@ tab_camera::tab_camera(QWidget* parent){
     pgFGUI=new pgFocusGUI(MLP, pgSGUI);
     pgPRGUI=new pgPosRepGUI;
     cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
-    cMap=new colorMap(cm_sel, exclColor, pgSGUI, pgTGUI);
-    tCG=new tabCamGnuplot;
+    showAbsHeight=new checkbox_save(false,"tab_camera_showAbsHeight","Abs. height.");
+    connect(showAbsHeight, SIGNAL(changed()), this, SLOT(onShowAbsHeightChanged()));
+    cMap=new colorMap(cm_sel, exclColor, showAbsHeight, pgSGUI, pgTGUI);
+    tCG=new tabCamGnuplot(showAbsHeight);
     pgSGUI->pgMGUI=pgMGUI;
     pgCor=new pgCorrection(pgSGUI, pgMGUI);
     pgSGUI->useCorr=&pgCor->useCorr;
@@ -106,6 +108,7 @@ tab_camera::tab_camera(QWidget* parent){
     epc_sel=new QPushButton("Excl."); epc_sel->setFlat(true); epc_sel->setIcon(QPixmap(":/color.svg"));
     connect(epc_sel, SIGNAL(released()), this, SLOT(on_EP_sel_released()));
     cm_sel->addWidget(epc_sel);
+    cm_sel->addWidget(showAbsHeight);
     pgHistGUI=new pgHistogrameGUI(400, 50, cm_sel, exclColor);
     layoutTBarW->addWidget(pgHistGUI);
 
@@ -176,7 +179,7 @@ void tab_camera::work_fun(){
             else LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
             addInfo->setVisible(false);
         }
-        if(scanRes->changed() || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || loadedScanChanged){
+        if(scanRes->changed() || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || loadedScanChanged){
             const pgScanGUI::scanRes* res;
             if(scanRes->changed()) loadedOnDisplay=false;
             if(loadedOnDisplay) res=&loadedScan;
@@ -186,7 +189,7 @@ void tab_camera::work_fun(){
         }
     }else if(selDisp->index==1 || selDisp->index==2){   // Depth map or SD
         LDisplay->isDepth=true;
-        if(pgDpEv->debugChanged || scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || exclColorChanged || pgHistGUI->changed || cMap->changed || selectingFlag || lastSelectingFlag || loadedScanChanged){
+        if(pgDpEv->debugChanged || scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || cMap->changed || selectingFlag || lastSelectingFlag || loadedScanChanged){
             const pgScanGUI::scanRes* res;
             if(scanRes->changed()) loadedOnDisplay=false;
             if(loadedOnDisplay) res=&loadedScan;
@@ -234,7 +237,7 @@ void tab_camera::work_fun(){
     oldIndex=selDisp->index;
     if(onDisplay!=nullptr) framequeueDisp->freeUserMat();
     lastSelectingFlag=selectingFlag;
-    exclColorChanged=false;
+    redrawHistClrmap=false;
     loadedScanChanged=false;
 
     redLaserOn->setEnabled(go.pRPTY->connected);
@@ -254,7 +257,10 @@ void tab_camera::on_EP_sel_released(){
     exclColor.val[2]=color.red();
     exclColor.val[1]=color.green();
     exclColor.val[0]=color.blue();
-    exclColorChanged=true;
+    redrawHistClrmap=true;
+}
+void tab_camera::onShowAbsHeightChanged(){
+    redrawHistClrmap=true;
 }
 
 void tab_camera::tab_entered(){

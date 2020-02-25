@@ -1,7 +1,7 @@
 #include "colormap.h"
 #include "GUI/gui_includes.h"
 
-colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI): cm_sel(cm_sel), exclColor(exclColor), pgSGUI(pgSGUI), pgTGUI(pgTGUI){
+colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, checkbox_save* showAbsHeight, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI): cm_sel(cm_sel), exclColor(exclColor), showAbsHeight(showAbsHeight), pgSGUI(pgSGUI), pgTGUI(pgTGUI){
     layout=new QVBoxLayout;
     this->setLayout(layout);
     fontFace=new smp_selector("colorBar_fontFace", "Font: ", 0, OCV_FF::qslabels());
@@ -99,6 +99,9 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
     else if(displayANTicks->val!=0) div=range/displayANTicks->val;
     else nticks=0;
 
+    bool sah;   //show abs height, else show relative starting from 0
+    double minRnd;  //fist tick if abs height
+
     cv::Mat cblabel;
     if(nticks!=0){
         for(int mult=-2;mult!=100;mult++){
@@ -115,11 +118,15 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
         cblabel=cv::Mat(size.height*2,size.width+2,CV_8UC4,{0,0,0,0});
         cv::putText(cblabel,label, {0,4*size.height/3}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
         cv::rotate(cblabel,cblabel,cv::ROTATE_90_COUNTERCLOCKWISE);
+        sah=showAbsHeight->val;
+        if(sah) minRnd=ceil(min/tick)*tick;
     }
     int textMaxWidth=1;
     int textMaxHeight=1;  //all should be the same though
+
     for(int i=0;i!=nticks;i++){
-        cv::Size size=cv::getTextSize(util::toString(i*tick), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
+        double tickn=sah?(minRnd+i*tick):(i*tick);
+        cv::Size size=cv::getTextSize(util::toString(tickn), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
         if(textMaxWidth<size.width) textMaxWidth=size.width;
         if(textMaxHeight<size.height) textMaxHeight=size.height;
     }
@@ -171,8 +178,9 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
     cv::rectangle(*dst, {hsize+Gap,marginY}, {hsize+Gap+cbhsize-1,vsize-1+marginY}, {0,0,0,255}, 1);
 
     for(int i=0;i!=nticks;i++){
-        int ypos=vsize-1+marginY- (i*tick*(vsize-1)/range);
-        cv::putText(*dst,util::toString(i*tick), cv::Point(hsize+Gap+textHDis+cbhsize,ypos+textMaxHeight/2), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
+        double tickn=sah?(minRnd+i*tick):(i*tick);
+        int ypos=vsize-1+marginY-((tickn-(sah?min:0))*(vsize-1)/range);
+        cv::putText(*dst,util::toString(tickn), cv::Point(hsize+Gap+textHDis+cbhsize,ypos+textMaxHeight/2), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
         cv::line(*dst, {hsize+Gap,ypos}, {hsize+Gap+(cbhsize-1)/3,ypos}, {0,0,0,255}, 1);
         cv::line(*dst, {hsize+Gap+2*(cbhsize-1)/3,ypos}, {hsize+Gap+cbhsize-1,ypos}, {0,0,0,255}, 1);
     }

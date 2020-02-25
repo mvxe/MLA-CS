@@ -66,11 +66,12 @@ private:
 
     smp_selector* cm_sel;       //for selecting the colormap for display
     QPushButton* epc_sel;       //for selecting the excluded pixel color
+    checkbox_save* showAbsHeight;
     cv::Scalar exclColor;
     cc_save<double> _scolorR{exclColor.val[0], 0,&go.gui_config.save,"tab_camera-exclColor-B"};
     cc_save<double> _scolorG{exclColor.val[1], 0,&go.gui_config.save,"tab_camera-exclColor-G"};
     cc_save<double> _scolorB{exclColor.val[2], 0,&go.gui_config.save,"tab_camera-exclColor-R"};
-    bool exclColorChanged{false};
+    bool redrawHistClrmap{false};
     pgHistogrameGUI* pgHistGUI;
     checkbox_save* main_show_scale;
     checkbox_save* main_show_target;
@@ -113,6 +114,7 @@ private Q_SLOTS:
     void work_fun();
     void on_tab_change(int index);
     void on_EP_sel_released();
+    void onShowAbsHeightChanged();
 
     void onSavePixData();
     void onSaveCameraPicture();

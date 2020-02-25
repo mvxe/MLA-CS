@@ -5,7 +5,7 @@
 #include "UTIL/pipe.h"
 #include <QString>
 
-tabCamGnuplot::tabCamGnuplot(){
+tabCamGnuplot::tabCamGnuplot(checkbox_save* showAbsHeight): showAbsHeight(showAbsHeight){
     layout=new QVBoxLayout;
     this->setLayout(layout);
 
@@ -65,7 +65,8 @@ void tabCamGnuplot::plotLine(const pgScanGUI::scanRes* scan, const cv::Point& st
                             "set ylabel font \"Helvetica,",xyLabelFontSize->val,"\"\n",
                             "set xlabel \"Position (um)\"\n",
                             "set ylabel \"Height (nm)\"\n",
-                            "plot \"-\" using 1:2 w lp lc ",lpColor->val," pt ",pointType->val," ps ",pointSize->val," lw ",lineWidth->val," notitle\n");
+                            "set xzeroaxis\n",
+                            "plot [0:",sqrt(pow(start.x-end.x,2)+pow(start.y-end.y,2))*scan->XYnmppx/1000,"] \"-\" using 1:2 w lp lc ",lpColor->val," pt ",pointType->val," ps ",pointSize->val," lw ",lineWidth->val," notitle\n");
     streamLine(&a.POUT, scan, start, end, useSD);
     a.POUT<<"e\n";
     a.POUT.flush();
@@ -94,11 +95,12 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
                                                 "unset ztics\n");
     else a.POUT<<util::toString("set cblabel \"Height (nm)\"\n",
                                 "set view equal xy\n");
-    a.POUT<<util::toString( "set xyplane 0\n",
+    a.POUT<<util::toString( "set xyplane at 0\n",
                             "set hidden3d\n",
                             "set view ,,",viewZoom->val,",",scaleZ->val,"\n",
                             "set palette rgb ",d3paletteR->val,",",d3paletteG->val,",",d3paletteB->val,"\n",
-                            "splot \"-\" matrix using ($1*",scan->XYnmppx/1000,"):($2*",scan->XYnmppx/1000,"):3 w pm3d pt 6 notitle\n");
+                            "splot [0:",(cv::Mat(scan->depth, roi).cols-1)*scan->XYnmppx/1000,"][0:",(cv::Mat(scan->depth, roi).rows-1)*scan->XYnmppx/1000,"] \"-\" matrix using ($1*",scan->XYnmppx/1000,"):($2*",scan->XYnmppx/1000,"):3 w pm3d pt 6 notitle\n");
+    bool sah=showAbsHeight->val;
     cv::Mat data;
     if(useSD && !scan->depthSS.empty()){
         cv::divide(cv::Mat(scan->depthSS, roi),scan->avgNum-1,data);
@@ -113,7 +115,7 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
         for(int i=0;i!=data.cols;i++){
             if(i!=0) a.POUT<<" ";
             if(!maskN.at<uchar>(j,i)) a.POUT<<"nan";
-            else a.POUT<<(data.at<float>(j,i)-min)*(equalizeXYZ->val?0.001:1);
+            else a.POUT<<(data.at<float>(j,i)-(sah?0:min))*(equalizeXYZ->val?0.001:1);
         }
         a.POUT<<"\n";
     }
@@ -149,10 +151,11 @@ void tabCamGnuplot::streamLine(std::ostream *stream, const pgScanGUI::scanRes* s
                               scan->mask.at<uchar>( ceil(_Y),floor(_X))||
                               scan->mask.at<uchar>(floor(_Y), ceil(_X)));
     }
-    float minval=std::numeric_limits<float>::max();
-    for(int i=0;i<=len;i++) if(lineData[i]<minval) minval=lineData[i];
-    for(int i=0;i<=len;i++) lineData[i]-=minval;
-
+    if(!showAbsHeight->val){
+        float minval=std::numeric_limits<float>::max();
+        for(int i=0;i<=len;i++) if(lineData[i]<minval) minval=lineData[i];
+        for(int i=0;i<=len;i++) lineData[i]-=minval;
+    }
     for(int i=0;i<=len;i++)
         *stream<<i*scan->XYnmppx/1000<<" "<<(lineMask[i]?"nan":util::toString(lineData[i]))<<"\n";
 }

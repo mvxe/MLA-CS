@@ -641,7 +641,8 @@ void pgScanGUI::saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::strin
     cv::minMaxLoc(cv::Mat(scan->depth, roi), &min, &max, &ignore, &ignore, cv::Mat(scan->maskN, roi));
     wfile<<util::toString("# XY is in pixels, see below for conversion constant. Depth is in nm!\n");
     wfile<<util::toString("# For how to plot with gnuplot see http://www.gnuplotting.org/interpolation-of-heat-maps/\n");
-    wfile<<util::toString("# Max value: ",max-min,"\n");
+    wfile<<util::toString("# Min value: ",min,"\n");
+    wfile<<util::toString("# Max value: ",max,"\n");
     wfile<<util::toString("# Applied X Tilt Correction: ",scan->tiltCor[0],"\n");
     wfile<<util::toString("# Applied Y Tilt Correction: ",scan->tiltCor[1],"\n");
     wfile<<util::toString("# X during measurement: ",scan->pos[0]," mm\n");
@@ -654,7 +655,7 @@ void pgScanGUI::saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::strin
         for(int i=0;i!=display.cols;i++){
             if(i!=0) wfile<<" ";
             if(display.at<float>(j,i)==std::numeric_limits<float>::max()) wfile<<"nan";
-            else wfile<<display.at<float>(j,i)-min;
+            else wfile<<display.at<float>(j,i);
         }
         wfile<<"\n";
     }
