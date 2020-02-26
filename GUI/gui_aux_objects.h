@@ -117,8 +117,8 @@ public:
     ~twds_selector();
     void doneAddingWidgets();   //call this after youve added all widgets with addWidget
 private:
-    bool _index;
-    cc_save<bool> indexSave;
+    int _index;
+    cc_save<int> indexSave;
 };
 
 // GUI adaptiveScrollBar

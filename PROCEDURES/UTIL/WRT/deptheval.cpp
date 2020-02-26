@@ -5,7 +5,10 @@
 pgDepthEval::pgDepthEval(pgBoundsGUI* pgBGUI): pgBGUI(pgBGUI){
     layout=new QVBoxLayout;
     this->setLayout(layout);
-    debugDisp=new smp_selector("Display debug:", 0, {"none","Blur","^^+Laplacian","^^+Thresh","^^+Dilate","^^+Exclusion","^^+Border"});
+    QLabel* text=new QLabel("This section is for debugging only. Here you can check how various filters applied to the image using parameters below work. (some of) These functions are used in (some of) the methods in Write Calibration (however the parameters below are overriden by those there).");
+    text->setWordWrap(true);
+    layout->addWidget(text);
+    debugDisp=new smp_selector("Display debug:", 0, {"none","Blur","Blur+Laplacian","Blur+Laplacian+Thresh","Blur+Laplacian+Thresh+Dilate","Blur+Laplacian+Thresh+Dilate+Exclusion","Blur+Laplacian+Thresh+Dilate+Exclusion+Border","Exclusion","Exclusion+DilateSQ","Exclusion+DilateSQ+Border"});
     connect(debugDisp, SIGNAL(changed(int)), this, SLOT(onDebugIndexChanged(int)));
     layout->addWidget(debugDisp);
     layout->addWidget(new hline);
@@ -31,7 +34,7 @@ void pgDepthEval::onChanged(){
 
 const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* src){
     _debugChanged=false;
-    if(src==nullptr || debugIndex<0 || debugIndex==0 || debugIndex>6) return src;
+    if(src==nullptr || debugIndex<0 || debugIndex==0 || debugIndex>9) return src;
 
     res.max=src->max; res.min=src->min;
     res.pos[0]=src->pos[0]; res.XYnmppx=src->XYnmppx;
@@ -46,29 +49,41 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
     res.depth.setTo(res.max+abs(res.max-res.min)/2,res.mask);    //if you blur values with infinite... it spills out of the mask
     cv::GaussianBlur(res.depth, res.depth, cv::Size(ksize, ksize), sigma, sigma);
     cv::Point  ignore;
-    if(debugIndex==1) {res.depth.setTo(std::numeric_limits<float>::max(),res.mask); cv::minMaxLoc(res.depth, &res.min, &res.max, &ignore, &ignore, res.maskN); return &res;}
-    cv::Laplacian(res.depth, res.depth, CV_32F);
-    cv::divide(res.depth,8,res.depth);  //this should make the colorbar unit nm/nm^2
-    res.depth.setTo(std::numeric_limits<float>::max(),res.mask);
-    cv::minMaxLoc(res.depth, &res.min, &res.max, &ignore, &ignore, res.maskN);
-    if(debugIndex==2) return &res;
-    cv::Mat mask, maskT;
-    double thrs=findf_Thrs->val;
-    cv::compare(res.depth,  thrs, mask , cv::CMP_GT);
-    cv::compare(res.depth, -thrs, maskT, cv::CMP_LT);
-    res.mask.setTo(cv::Scalar::all(255), mask);
-    res.mask.setTo(cv::Scalar::all(255), maskT);
-    if(debugIndex==3) {bitwise_not(res.mask, res.maskN); return &res;}
     int dilation_size=findf_Dill->val;
-    if(dilation_size>0){
-        cv::Mat element=cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dilation_size+1,2*dilation_size+1), cv::Point(dilation_size,dilation_size));
-        cv::dilate(res.mask, res.mask, element);
+    if(debugIndex<=6){
+        if(debugIndex==1) {res.depth.setTo(std::numeric_limits<float>::max(),res.mask); cv::minMaxLoc(res.depth, &res.min, &res.max, &ignore, &ignore, res.maskN); return &res;}
+        cv::Laplacian(res.depth, res.depth, CV_32F);
+        cv::divide(res.depth,8,res.depth);  //this should make the colorbar unit nm/nm^2
+        res.depth.setTo(std::numeric_limits<float>::max(),res.mask);
+        cv::minMaxLoc(res.depth, &res.min, &res.max, &ignore, &ignore, res.maskN);
+        if(debugIndex==2) return &res;
+        cv::Mat mask, maskT;
+        double thrs=findf_Thrs->val;
+        cv::compare(res.depth,  thrs, mask , cv::CMP_GT);
+        cv::compare(res.depth, -thrs, maskT, cv::CMP_LT);
+        res.mask.setTo(cv::Scalar::all(255), mask);
+        res.mask.setTo(cv::Scalar::all(255), maskT);
+        if(debugIndex==3) {bitwise_not(res.mask, res.maskN); return &res;}
+
+        if(dilation_size>0){
+            cv::Mat element=cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dilation_size+1,2*dilation_size+1), cv::Point(dilation_size,dilation_size));
+            cv::dilate(res.mask, res.mask, element);
+        }
+        bitwise_not(res.mask, res.maskN);
+        if(debugIndex==4)  return &res;
     }
-    bitwise_not(res.mask, res.maskN);
-    if(debugIndex==4)  return &res;
 
     pgBGUI->drawBound(&res.mask, res.XYnmppx, true);
-    if(debugIndex==5)  return &res;
+    if(debugIndex==5 || debugIndex==7)  return &res;
+
+    if(debugIndex==8 || debugIndex==9) if(dilation_size>0){
+        cv::Mat element=cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2*dilation_size+1,2*dilation_size+1), cv::Point(dilation_size,dilation_size));
+        cv::Mat mask2(res.mask.rows,res.mask.cols,res.mask.type(),cv::Scalar(0));
+        pgBGUI->drawBound(&mask2, res.XYnmppx, true);
+        cv::dilate(mask2, mask2, element);
+        cv::bitwise_or(mask2, res.mask, res.mask);
+        if(debugIndex==8) return &res;
+    }
 
     int red=dilation_size<res.mask.rows?dilation_size:res.mask.rows;
     res.mask.rowRange(0,red).setTo(cv::Scalar(255));
@@ -76,13 +91,13 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
     red=dilation_size<res.mask.cols?dilation_size:res.mask.cols;
     res.mask.colRange(0,red).setTo(cv::Scalar(255));
     res.mask.colRange(res.mask.cols-red,res.mask.cols).setTo(cv::Scalar(255));
-    if(debugIndex==6)  return &res;
+    if(debugIndex==6 || debugIndex==9)  return &res;
 }
 
-cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, double XYnmppx, int dil, double thresh, double blur){
-    if(dil==-1) dil=findf_Dill->val;
-    if(thresh==-1) thresh=findf_Thrs->val;
-    if(blur==-1) blur=findf_Blur->val;
+cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, int dil, double thresh, double blur){       // used in Find Nearest Calibration method
+    if(dil<0) dil=findf_Dill->val;
+    if(thresh<0) thresh=findf_Thrs->val;
+    if(blur<0) blur=findf_Blur->val;
 
     cv::Mat retMask;
     src->mask.copyTo(retMask);
@@ -112,7 +127,23 @@ cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, double XYnmp
         retMask.colRange(0,red).setTo(cv::Scalar(255));
         retMask.colRange(retMask.cols-red,retMask.cols).setTo(cv::Scalar(255));
     }
-    pgBGUI->drawBound(&retMask, XYnmppx, true);
+    pgBGUI->drawBound(&retMask, res.XYnmppx, true);
+    return retMask;
+}
+
+cv::Mat pgDepthEval::getMaskBoundary(const pgScanGUI::scanRes* src, int dilx, int dily){    //used in Auto Array Calibration method
+    if(dilx<0) dilx=0;
+    if(dily<0) dily=0;
+    cv::Mat retMask(src->mask.rows,src->mask.cols,src->mask.type(),cv::Scalar(0));
+    cv::Mat element=cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2*dilx+1,2*dily+1), cv::Point(dilx,dily));
+    pgBGUI->drawBound(&retMask, src->XYnmppx, true);
+    cv::dilate(retMask, retMask, element);
+    int red=dily<retMask.rows?dily:retMask.rows;
+    retMask.rowRange(0,red).setTo(cv::Scalar(255));
+    retMask.rowRange(retMask.rows-red,retMask.rows).setTo(cv::Scalar(255));
+    red=dilx<retMask.cols?dilx:retMask.cols;
+    retMask.colRange(0,red).setTo(cv::Scalar(255));
+    retMask.colRange(retMask.cols-red,retMask.cols).setTo(cv::Scalar(255));
     return retMask;
 }
 

@@ -15,7 +15,6 @@ class pgCalib: public QWidget{
     Q_OBJECT
 public:
     pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn);
-    ~pgCalib();
 
     QWidget* gui_activation;
     QWidget* gui_settings;
@@ -29,14 +28,13 @@ private:
     pgScanGUI* pgSGUI;
     pgDepthEval* pgDpEv;
     pgBeamAnalysis* pgBeAn;
-    varShareClient<pgScanGUI::scanRes>* scanRes;
 
     //activation
     QVBoxLayout* alayout;
-    hidCon* hcGoToNearestFree;
-    QPushButton* btnGoToNearestFree;
-    val_selector* selRadDilGoToNearestFree;
-    val_selector* selRadSprGoToNearestFree;
+//    hidCon* hcGoToNearestFree;
+//    QPushButton* btnGoToNearestFree;
+//    val_selector* selRadDilGoToNearestFree;
+//    val_selector* selRadSprGoToNearestFree;
     QPushButton* btnSelectSaveFolder;
     std::string saveFolderName{""};
     HQPushButton* btnWriteCalib;
@@ -73,8 +71,20 @@ private:
         checkbox_save* selArrayRandomize;
         checkbox_save* saveMats;
         checkbox_save* savePic;
-        checkbox_save* doRefocusUScope;
-        checkbox_save* doRedFocusCenter;
+//        checkbox_save* doRefocusUScope;
+//        checkbox_save* doRedFocusCenter;
+    vtwid* calibMethodAutoArray;
+        val_selector* selAArrayDoNMes;
+        val_selector* selAArrayXsize;
+        val_selector* selAArrayYsize;
+        val_selector* selAArraySpacing;
+        val_selector* selAArrayAvgN;
+        val_selector* selAArrayIntA;
+        val_selector* selAArrayIntB;
+        val_selector* selAArrayDurA;
+        val_selector* selAArrayDurB;
+        val_selector* selAArrayNGenCand;
+        val_selector* selAArraySetMaskToThisHeight;
     int measCounter{0};
     bool drawWriteAreaOn{false};
 
@@ -90,14 +100,18 @@ private:
     constexpr static int maxRedoScanTries=3;
     constexpr static double discardMaskRoiThresh=0.001;     //if more than 0.1% of the pixels in the roi are bad, discard and try again, up to maxRedoScanTries. If it still fails accept it anyway
 
+    struct _pw;
+    static bool _pwsort(_pw i,_pw j);
+
     void WCFFindNearest();
     void WCFArray();
+    void WCFAArray();
     void writePulse(int intensity, double duration, const std::string filename="", uchar* usedAvg=nullptr, const int cmdQueue=0, const int recQueue=1);       //duration in us
     std::string makeDateTimeFolder(const std::string folder);
     void saveConf(std::string filename, double focus, double exclusionOrSpacing, int intensity, double duration, uchar averaging);       //focus in mm, duration in ms, exclusionOrSpacing in um
     void saveConfMain(std::string filename, double focus, double extraFocusOffset);    //focus, extraFocusOffset in mm
 private Q_SLOTS:
-    void onGoToNearestFree();
+//    void onGoToNearestFree();
     void onSelSaveF();
     void onWCF();
     void onProcessFocusMes();

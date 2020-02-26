@@ -598,11 +598,11 @@ void pgScanGUI::calcExpMinMax(FQ* framequeue, cv::Mat* mask){
 
 QWidget* pgScanGUI::parent{nullptr};
 cv::Rect pgScanGUI::lastROI{0,0,0,0};
-void pgScanGUI::saveScan(const scanRes* scan, std::string fileName, bool useLastROI){
-    if(useLastROI && lastROI!=cv::Rect(0,0,0,0)) pgScanGUI::saveScan(scan, lastROI, fileName);
-    else pgScanGUI::saveScan(scan, {0,0,scan->depth.cols,scan->depth.rows}, fileName);
+void pgScanGUI::saveScan(const scanRes* scan, std::string fileName, bool useLastROI, bool saveSD){
+    if(useLastROI && lastROI!=cv::Rect(0,0,0,0)) pgScanGUI::saveScan(scan, lastROI, fileName, saveSD);
+    else pgScanGUI::saveScan(scan, {0,0,scan->depth.cols,scan->depth.rows}, fileName, saveSD);
 }
-void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName){
+void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName, bool saveSD){
     lastROI=roi;
     if(scan==nullptr) return;
     if(fileName=="") fileName=QFileDialog::getSaveFileName(parent,"Select file for saving Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
@@ -621,7 +621,7 @@ void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string f
     wfile.write(reinterpret_cast<const char*>(&(scan->avgNum)),sizeof(scan->avgNum));
     wfile.close();
 
-    if(!scan->depthSS.empty() && scan->avgNum>1){
+    if(!scan->depthSS.empty() && scan->avgNum>1 && saveSD){
         fileName.insert(fileName.length()-4,"-SD");
         cv::imwrite(fileName, cv::Mat(scan->depthSS, roi));
     }

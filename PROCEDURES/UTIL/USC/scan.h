@@ -68,8 +68,8 @@ public:
     double vsConv(val_selector* vs);
 
     static cv::Rect lastROI;
-    static void saveScan(const scanRes* scan, std::string fileName="", bool useLastROI=false);
-    static void saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName="");
+    static void saveScan(const scanRes* scan, std::string fileName="", bool useLastROI=false, bool saveSD=true);
+    static void saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName="", bool saveSD=true);
     static void saveScanTxt(const scanRes* scan, std::string fileName="");
     static void saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::string fileName="");
     static bool loadScan(scanRes* scan, std::string fileName="");                       //return true if success
