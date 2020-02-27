@@ -566,7 +566,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override){
     }
 
     if((cbCorrectTilt->val && cbTilt_override==0) || cbTilt_override==1) _correctTilt(res);     //autocorrect tilt
-     else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
+    else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
 
     cv::minMaxLoc(res->depth, &res->min, &res->max, &ignore, &ignore, res->maskN);  //the ignored mask values will be <min , everything is in nm
     result.put(res);
@@ -843,6 +843,7 @@ redo: ret.depth=cv::Mat(scans->at(0).depth.rows,scans->at(0).depth.cols,CV_32F,c
         cv::bitwise_not(scans->at(i).mask,scans->at(i).maskN);
     }
     _correctTilt(&ret);
+    cv::minMaxLoc(ret.depth, &ret.min, &ret.max, nullptr, nullptr, ret.maskN);
     return ret;
 }
 
