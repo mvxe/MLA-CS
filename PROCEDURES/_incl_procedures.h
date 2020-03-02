@@ -19,6 +19,7 @@
 #include "PROCEDURES/UTIL/WRT/beamanl.h"
 #include "PROCEDURES/UTIL/WRT/write.h"
 #include "PROCEDURES/UTIL/USC/correction.h"
+#include "PROCEDURES/UTIL/WRT/predictor.h"
 
 
 #endif // _INCL_PROCEDURES_H

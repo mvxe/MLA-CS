@@ -85,6 +85,17 @@ void pgScanGUI::init_gui_settings(){
     connect(saveNextMirrorBaselineHist, SIGNAL(released()), this, SLOT(onBSaveNextMirrorBaselineHist()));
     onMenuChange(0);
 }
+void pgScanGUI::scanRes::copyTo(scanRes& dst) const{
+    dst.max=max; dst.min=min;
+    dst.pos[0]=pos[0]; dst.XYnmppx=XYnmppx;
+    dst.pos[1]=pos[1]; dst.pos[2]=pos[2];
+    dst.tiltCor[0]=tiltCor[0]; dst.tiltCor[1]=tiltCor[1];
+    dst.avgNum=avgNum;
+    depth.copyTo(dst.depth);
+    mask.copyTo(dst.mask);
+    maskN.copyTo(dst.maskN);
+    depthSS.copyTo(dst.depthSS);
+}
 
 scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
     slayout=new QVBoxLayout;

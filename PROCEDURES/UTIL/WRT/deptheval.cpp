@@ -36,13 +36,7 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
     _debugChanged=false;
     if(src==nullptr || debugIndex<0 || debugIndex==0 || debugIndex>9) return src;
 
-    res.max=src->max; res.min=src->min;
-    res.pos[0]=src->pos[0]; res.XYnmppx=src->XYnmppx;
-    res.pos[1]=src->pos[1]; res.pos[2]=src->pos[2];
-    res.tiltCor[0]=src->tiltCor[0]; res.tiltCor[1]=src->tiltCor[1];
-    src->depth.copyTo(res.depth);
-    src->mask.copyTo(res.mask);
-    src->maskN.copyTo(res.maskN);
+    src->copyTo(res);
     double sigma=findf_Blur->val;
     int ksize=sigma*5;
     if(!(ksize%2)) ksize++;

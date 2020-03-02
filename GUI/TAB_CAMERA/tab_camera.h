@@ -88,6 +88,7 @@ private:
     pgCalib* pgCal;
     pgBeamAnalysis* pgBeAn;
     pgWrite* pgWrt;
+    pgWritePredictor* pgWrtPrd;
 
     QCheckBox* redLaserOn;
     QCheckBox* greenLaserOn;

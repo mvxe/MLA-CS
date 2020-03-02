@@ -51,6 +51,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgDpEv=new pgDepthEval(pgBGUI);
     pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn);
     pgWrt=new pgWrite;
+    pgWrtPrd=new pgWritePredictor(pgMGUI);
 
     redLaserOn=new QCheckBox("Red Laser");
     redLaserOn->setToolTip("This laser is turned on automatically when autocalibrating. You can hovewer turn it on for some manual operations.");
@@ -98,6 +99,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageSettings->addWidget(pgBeAn->gui_settings,"Beam Centering");
         pageSettings->addWidget(tCG,"Gnuplot");
         pageSettings->addWidget(pgWrt->gui_settings, "Writing");
+        pageSettings->addWidget(pgWrtPrd->gui_settings, "Writing-Predictor");
 
     TWCtrl->addTab(pageMotion,"Motion");
     TWCtrl->addTab(pageWriting,"Writing");
@@ -189,14 +191,15 @@ void tab_camera::work_fun(){
         }
     }else if(selDisp->index==1 || selDisp->index==2){   // Depth map or SD
         LDisplay->isDepth=true;
-        if(pgDpEv->debugChanged || scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || cMap->changed || selectingFlag || lastSelectingFlag || loadedScanChanged){
+        if(pgDpEv->debugChanged || pgWrtPrd->debugChanged || scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || cMap->changed || selectingFlag || lastSelectingFlag || loadedScanChanged){
             const pgScanGUI::scanRes* res;
             if(scanRes->changed()) loadedOnDisplay=false;
             if(loadedOnDisplay) res=&loadedScan;
             else res=scanRes->get();
 
             if(res!=nullptr){
-                res=pgDpEv->getDebugImage(res); //if there is no debug image, it returns res so the command does nothing
+                res=pgDpEv->getDebugImage(res);         //if there is no debug image, it returns res so the command does nothing
+                res=pgWrtPrd->getDebugImage(res);       //see above
                 double min,max;
                 cv::Mat display;
                 if(selDisp->index==1 || res->depthSS.empty()){  //show Depth Map

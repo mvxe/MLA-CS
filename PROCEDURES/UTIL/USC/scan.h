@@ -50,7 +50,8 @@ public:
                                                     // does at least N measurements (and most N+1) with avg (cbAvg_override==1), if mask is more than redoIfMaskHasMore fraction of total(ROID) pixels, redo mesurements, up to redoN times
                                                     // this funtion is blocking, but processes qt events
 
-    struct scanRes{
+    class scanRes{
+    public:
         cv::Mat depth;
         cv::Mat mask;
         cv::Mat maskN;      //for convenience, much faster to do while its already on the gpu
@@ -61,6 +62,7 @@ public:
         double XYnmppx;     //useful if we load a scan which was done at different settings, -1 means the one in settings is valid
         int avgNum;
         cv::Mat depthSS;    //this is for calculating the standard deviation: will be empty if avgNum=1
+        void copyTo(scanRes& dst) const;
     };
     varShare<scanRes> result;
 
