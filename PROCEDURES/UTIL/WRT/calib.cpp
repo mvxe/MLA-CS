@@ -730,7 +730,8 @@ void pgCalib::onProcessFocusMes(){
     std::ofstream wfile(saveName);
     int n=0;
     wfile<<"# <1: not used> <2: focus distance(mm)> <3: peak height(nm)> <4: X width (1/e^2)(um)> <5: Y width (1/e^2)(um)> <6: ellipse angle(rad)>\n";
-    wfile<<"# <7: XY width (1/e^2)(um)> <8: X offset(um)> <9: Y offset(um)> <10: XY offset(um)> <11: Intensity (a.u.)> <12: duration(ms)> <13: MeanAbs.ReflectivityDeriv.(a.u.)> <14: Max absolute 1st der. (px/um)> <15: Min Laplacian (px/um^2)> <16: Max Laplacian (px/um^2)>\n";
+    wfile<<"# <7: XY width (1/e^2)(um)> <8: X offset(um)> <9: Y offset(um)> <10: XY offset(um)> <11: Intensity (a.u.)> <12: duration(ms)> <13: MeanAbs.ReflectivityDeriv.(a.u.)>\n";
+    wfile<<"# <14: Max absolute 1st der. (px/um)> <15: Min Laplacian (px/um^2)> <16: Max Laplacian (px/um^2)> <17: peak height(nm)(max)> <18: peak height(nm)(max-min)>\n";
     for(auto& fldr:measFolders){ n++;
         double FZdif;
         double none;        //for backward compat., not used for now
@@ -805,13 +806,15 @@ void pgCalib::onProcessFocusMes(){
         cv::minMaxIdx(derv, &minDepthLaplacian, &maxDepthLaplacian);
 
         if(res(0)<0 || res(0)>scanDif.depth.cols || res(1)<0 || res(1)>scanDif.depth.rows || res(2)<=0){   //center of the fit is out of frame or other things that indicate fit faliure
-            wfile<<none<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "<<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<"\n";
+            wfile<<none<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "<<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<" "<<scanDif.max<<" "<<scanDif.max-scanDif.min<<"\n";
             std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
-                 <<none<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "<<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<"\n";
+                 <<none<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "<<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<" "<<scanDif.max<<" "<<scanDif.max-scanDif.min<<"\n";
         }else{
-            wfile<<none<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "<<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<"\n";
+            wfile<<none<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "
+                <<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<" "<<scanDif.max<<" "<<scanDif.max-scanDif.min<<"\n";
             std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
-                 <<none<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "<<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<"\n";
+                 <<none<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "
+                <<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<" "<<scanDif.max<<" "<<scanDif.max-scanDif.min<<"\n";
         }
     }
     wfile.close();
