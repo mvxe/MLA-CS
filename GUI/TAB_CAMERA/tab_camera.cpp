@@ -50,7 +50,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgBGUI=new pgBoundsGUI(pgMGUI,pgBeAn);
     pgDpEv=new pgDepthEval(pgBGUI);
     pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn);
-    pgWrt=new pgWrite;
+    pgWrt=new pgWrite(pgBeAn,pgMGUI);
     //pgWrtPrd=new pgWritePredictor(pgMGUI);
 
     redLaserOn=new QCheckBox("Red Laser");
@@ -173,6 +173,7 @@ void tab_camera::work_fun(){
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY);
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
                 pgCal->drawWriteArea(&temp);
+                pgWrt->drawWriteArea(&temp);
                 LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_Indexed8)));
 //                cv::applyColorMap(temp, temp, OCV_CM::ids[cm_sel->index]);
 //                cv::cvtColor(temp, temp, cv::COLOR_BGR2RGB);
