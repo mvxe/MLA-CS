@@ -480,7 +480,6 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override){
         phaseUnwrapping->unwrapPhaseMap(res->depth, res->depth,res->maskN);    //unfortunately this does not work for UMat (segfaults for ocv 4.1.2), thats why we shuffle the mat back and forth
         res->depth.copyTo(resultFinalPhase);
     }
-    cv::Point ignore;
     resultFinalPhase.convertTo(resultFinalPhase,-1,vsConv(led_wl)/4/M_PI);
 
     MLP.progress_comp=90;
@@ -579,7 +578,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override){
     if((cbCorrectTilt->val && cbTilt_override==0) || cbTilt_override==1) _correctTilt(res);     //autocorrect tilt
     else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
 
-    cv::minMaxLoc(res->depth, &res->min, &res->max, &ignore, &ignore, res->maskN);  //the ignored mask values will be <min , everything is in nm
+    cv::minMaxLoc(res->depth, &res->min, &res->max, nullptr, nullptr, res->maskN);  //the ignored mask values will be <min , everything is in nm
     result.put(res);
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();

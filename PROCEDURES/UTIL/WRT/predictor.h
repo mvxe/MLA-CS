@@ -9,11 +9,11 @@ namespace cv{class Mat;}
 class _predictor: public QObject{
     Q_OBJECT
 public:
-    virtual void getBestSize(int* xSize, int* ySize, double XYnmppx)=0;       //returns the ideal Mat size (relating to spot size), if smaller the writing spot may be cut off
-    virtual cv::Mat eval(const pgScanGUI::scanRes* pre, double centerHChange, double* intensity=nullptr, double* duration=nullptr)=0;    //optionally returns the intensity and duration
-    virtual void    evalm(pgScanGUI::scanRes* pre, double centerHChange, double* intensity=nullptr, double* duration=nullptr)=0;         //this one modifies the received scanRes instead of just returning the changed mat
+    cv::Mat eval(const pgScanGUI::scanRes* pre, cv::Point2f center, float centerHChange, double* intensity=nullptr, double* duration=nullptr);    //optionally returns the intensity and duration
+    void    evalm(pgScanGUI::scanRes* pre, cv::Point2f center, float centerHChange, double* intensity=nullptr, double* duration=nullptr);         //this one modifies the received scanRes instead of just returning the changed mat
     QWidget* gui_settings;
 protected:
+    virtual void    _eval(const pgScanGUI::scanRes* pre, cv::Mat* post, cv::Point2f center, float centerHChange, double* intensity=nullptr, double* duration=nullptr)=0;
     QVBoxLayout* slayout;
 };
 
@@ -21,14 +21,13 @@ protected:
 class gaussian_predictor: public _predictor{
 public:
     gaussian_predictor();
-    void getBestSize(int* xSize, int* ySize, double XYnmppx);
-    cv::Mat eval(const pgScanGUI::scanRes* pre, double centerHChange, double* intensity=nullptr, double* duration=nullptr);
-    void evalm(pgScanGUI::scanRes* pre, double centerHChange, double* intensity=nullptr, double* duration=nullptr);
 private:
     val_selector* pulseDur;
     val_selector* pulseFWHM;
     val_selector* bestSizeCutoffPercent;
-    double gaussian(double x, double y, double a, double wx, double wy, double an=0);
+    float gaussian(float x, float y, float a, float wx, float wy, float an=0);
+    void _getBestSize(int* xSize, int* ySize, double XYnmppx);       //returns the ideal Mat size (relating to spot size), if smaller the writing spot may be cut off
+    void _eval(const pgScanGUI::scanRes* pre, cv::Mat* post, cv::Point2f center, float centerHChange, double* intensity=nullptr, double* duration=nullptr);
 };
 
 
