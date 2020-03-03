@@ -1,6 +1,8 @@
 #ifndef PREDICTOR_H
 #define PREDICTOR_H
 
+//NOTE: this is not used anymore! If you want to use it again uncomment in _incl_procedures.h and tab_camera.h
+
 #include "PROCEDURES/procedure.h"
 #include "GUI/gui_aux_objects.h"
 #include "PROCEDURES/UTIL/USC/scan.h"
