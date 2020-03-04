@@ -23,6 +23,7 @@ private:
     QPushButton* importImg;
     val_selector* depthMaxval;
     val_selector* imgUmPPx;
+    val_selector* ICcor;
     QPushButton* writeDM;
 
     //settings
@@ -38,12 +39,23 @@ private:
     val_selector* constX0;
     val_selector* constC;
     val_selector* pointSpacing;
+    val_selector* FWHMX;
+    val_selector* FWHMY;
+    val_selector* FWHMXYan;
+
+    val_selector* max_vel;
+    val_selector* max_acc;
 
     cv::Mat WRImage;
     bool drawWriteAreaOn{false};
+    const double servoCycle{0.0001};    // The XPS servo cycle (in s)
 
     pgBeamAnalysis* pgBeAn;
     pgMoveGUI* pgMGUI;
+
+    uint getInt(float post, float pre=0);
+    float calcH(float Int, float pre);
+    float gaussian(float x, float y, float a, float wx, float wy, float an);
 private Q_SLOTS:
     void onPulse();
     void onMenuChange(int index);
@@ -68,6 +80,9 @@ public:
     val_selector* constX0;
     val_selector* constC;
     val_selector* pointSpacing;
+    val_selector* FWHMX;
+    val_selector* FWHMY;
+    val_selector* FWHMXYan;
 };
 
 #endif // PGWRITE_H

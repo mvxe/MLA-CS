@@ -49,8 +49,8 @@ void pgScanGUI::init_gui_activation(){
     cbAvg=new checkbox_save(false,"pgScanGUI_ctAvg","Average");
     gui_activation->addWidget(cbAvg);
 
-    xDifShift=new QDoubleSpinBox(); xDifShift->setRange(-100,100); xDifShift->setSuffix(" px"); xDifShift->setDecimals(2);
-    yDifShift=new QDoubleSpinBox(); yDifShift->setRange(-100,100); yDifShift->setSuffix(" px"); xDifShift->setDecimals(2);
+    xDifShift=new QDoubleSpinBox(); xDifShift->setRange(-1000,1000); xDifShift->setSuffix(" px"); xDifShift->setDecimals(2);
+    yDifShift=new QDoubleSpinBox(); yDifShift->setRange(-1000,1000); yDifShift->setSuffix(" px"); xDifShift->setDecimals(2);
     gui_processing=new twid(new QLabel("dif. Shift (x,y): "),xDifShift,yDifShift);
     gui_processing->setToolTip("This applies to all functions that used dif. scans!");
 }
