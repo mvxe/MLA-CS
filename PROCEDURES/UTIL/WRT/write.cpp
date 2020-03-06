@@ -23,7 +23,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     connect(importImg, SIGNAL(released()), this, SLOT(onLoadImg()));
     depthMaxval=new val_selector(10, "pgWrite_depthMaxval", "(if 8/16bit)Maxval=", 0.1, 500, 3, 0, {"nm"});
     alayout->addWidget(new twid(importImg,depthMaxval));
-    ICcor=new val_selector(1, "pgWrite_ICcor", "Intensity correction", 0.5, 1.5, 3);
+    ICcor=new val_selector(1, "pgWrite_ICcor", "Intensity correction", 0.1, 3, 3);
     alayout->addWidget(ICcor);
     imgUmPPx=new val_selector(10, "pgWrite_imgUmPPx", "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
     alayout->addWidget(imgUmPPx);
@@ -131,10 +131,10 @@ void pgWrite::onWriteDM(){
         if(constC->val==0) ints.at<uint16_t>(j,i)=getInt(resizedWrite.at<float>(j,i));
         else{
             float maxNNH{0};
-            if(j-1>=0)                  maxNNH=std::max(maxNNH,gaussian(0, pointSpacing->val, resizedWrite.at<float>(j-1,i  ), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
-            if(i-1>=0)                  maxNNH=std::max(maxNNH,gaussian(0, pointSpacing->val, resizedWrite.at<float>(j  ,i-1), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
-            if(i-1>=0 && j-1>=0)        maxNNH=std::max(maxNNH,gaussian(0, pointSpacing->val, resizedWrite.at<float>(j-1,i-1), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
-            if(i+1<ints.cols && j-1>=0) maxNNH=std::max(maxNNH,gaussian(0, pointSpacing->val, resizedWrite.at<float>(j-1,i+1), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
+            if(j-1>=0)                  maxNNH=std::max(maxNNH,gaussian(0                , pointSpacing->val, resizedWrite.at<float>(j-1,i  ), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
+            if(i-1>=0)                  maxNNH=std::max(maxNNH,gaussian(pointSpacing->val, 0,                 resizedWrite.at<float>(j  ,i-1), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
+            if(i-1>=0 && j-1>=0)        maxNNH=std::max(maxNNH,gaussian(pointSpacing->val, pointSpacing->val, resizedWrite.at<float>(j-1,i-1), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
+            if(i+1<ints.cols && j-1>=0) maxNNH=std::max(maxNNH,gaussian(pointSpacing->val, pointSpacing->val, resizedWrite.at<float>(j-1,i+1), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
             ints.at<uint16_t>(j,i)=getInt(resizedWrite.at<float>(j,i),maxNNH);
         }
     }
@@ -161,7 +161,6 @@ void pgWrite::onWriteDM(){
     double pulseWaitTime=std::ceil(duration->val);      //we round up pulse time to n ms, to make sure we dont have any XPS related timing rounding error
     for(int j=0;j!=ints.rows;j++) for(int i=0;i!=ints.cols;i++){
         if(ints.at<uint16_t>(j,i)==0) continue;
-        std::cerr<<ints.at<uint16_t>(j,i)<<"\n";
         nextpos={-round((i-ints.cols/2.)*pointSpacing->val*100)/100,-round((j-ints.rows/2.)*pointSpacing->val*100)/100};          //in um, rounding to 0.01um precision (should be good enough for the stages) to avoid rounding error (with relative positions later on, thats why here we round absolute positions)
         dist=cv::norm(lastpos-nextpos)/1000;//in mm
         vel=sqrt(max_acc->val*dist);        // v=sqrt(2as) for half the distance -> max speed at constant acceleration
@@ -206,10 +205,10 @@ void pgWrite::onWriteDM(){
 
 uint pgWrite::getInt(float post, float pre){
     const float precision=0.01;
-    float minI=constX0->val*ICcor->val;
+    float minI=(constX0->val+constC->val*pre)*ICcor->val;
     float retI=8192;
     float mid;
-    if(0>=post-pre) return 0;  //its already higher, dont need to write a pulse
+    if(0>=post/*-pre*/) return 0;  //its already higher, dont need to write a pulse
     while(retI-minI>precision){
         mid=(minI+retI)/2;
         if(calcH(mid,pre)>post-pre) retI=mid;
@@ -219,7 +218,7 @@ uint pgWrite::getInt(float post, float pre){
 }
 float pgWrite::calcH(float Int, float pre){
     float DInt=Int-(constX0->val+constC->val*pre)*ICcor->val;
-    return constA->val*DInt*expf(-constB->val/DInt);
+    return constA->val/ICcor->val*DInt*expf(-constB->val*ICcor->val/DInt);
 }
 float pgWrite::gaussian(float x, float y, float a, float wx, float wy, float an){
     float A=powf(cosf(an),2)/2/powf(wx,2)+powf(sinf(an),2)/2/powf(wy,2);
