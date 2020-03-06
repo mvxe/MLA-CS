@@ -21,7 +21,7 @@ tab_camera::tab_camera(QWidget* parent){
     layout->addWidget(LDisplay);
     layout->addWidget(tBarW);
 
-    selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map","Depth Map SD"});
+    selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map","Depth Map SD","Reflectivity"});
     layoutTBarW->addWidget(selDisp);
 
     TWCtrl=new QTabWidget;
@@ -190,7 +190,7 @@ void tab_camera::work_fun(){
             pgHistGUI->updateImg(res);
             oldCm=cm_sel->index;
         }
-    }else if(selDisp->index==1 || selDisp->index==2){   // Depth map or SD
+    }else if(selDisp->index==1 || selDisp->index==2 || selDisp->index==3){   // Depth map or SD or refl.
         LDisplay->isDepth=true;
         if(pgDpEv->debugChanged || /*pgWrtPrd->debugChanged ||*/ scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || cMap->changed || selectingFlag || lastSelectingFlag || loadedScanChanged){
             const pgScanGUI::scanRes* res;
@@ -203,16 +203,21 @@ void tab_camera::work_fun(){
                 //res=pgWrtPrd->getDebugImage(res);       //see above
                 double min,max;
                 cv::Mat display;
-                if(selDisp->index==1 || res->depthSS.empty()){  //show Depth Map
+                if(selDisp->index==1 || (selDisp->index==2 && res->depthSS.empty()) || (selDisp->index==3 && res->refl.empty())){  //show Depth Map
                     pgHistGUI->updateImg(res, &min, &max);
                     cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
-                }else{                  //show SD
+                }else if(selDisp->index==2){                //show SD
                     cv::divide(res->depthSS,res->avgNum-1,display);
-                    double _min,_max; cv::Point ignore;
+                    double _min,_max;
                     cv::sqrt(display,display);
-                    cv::minMaxLoc(display, &_min, &_max, &ignore, &ignore, res->maskN);
+                    cv::minMaxLoc(display, &_min, &_max, nullptr, nullptr, res->maskN);
                     pgHistGUI->updateImg(res, &min, &max, 0, _max, &display);
                     cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD (nm)");
+                }else if(selDisp->index==3){                //show reflectivity
+                    res->refl.copyTo(display);
+                    pgHistGUI->updateImg(res, nullptr, nullptr, 0, 255, &display);
+                    cv::Mat tempMask(display.rows, display.cols, CV_8U, cv::Scalar(0));
+                    cMap->colormappize(&display, &display, &tempMask, 0, 255, res->XYnmppx, false, false, "Reflectivity");
                 }
                 dispDepthMatRows=res->depth.rows;
                 dispDepthMatCols=res->depth.cols;
@@ -414,19 +419,18 @@ void tab_camera::onSaveDepthMap(void){
         cv::Mat display;
         int width=abs(selEndX-selStartX);
         int height=abs(selEndY-selStartY);
-        if(selDisp->index==1 || res->depthSS.empty()){
+        if(selDisp->index==1 || (selDisp->index==2 && res->depthSS.empty()) || (selDisp->index==3 && res->refl.empty())){
             pgHistGUI->updateImg(res, &min, &max);
             if(width>1 && height>1){
                 cv::Mat temp0(res->depth,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cv::Mat temp2; bitwise_not(temp1, temp2);
                 double minr, maxr;
-                cv::Point ignore;
-                cv::minMaxLoc(temp0, &minr, &maxr, &ignore, &ignore, temp2);
+                cv::minMaxLoc(temp0, &minr, &maxr, nullptr, nullptr, temp2);
                 cMap->colormappize(&temp0, &display, &temp1, std::min(std::max(min,minr), std::min(max,maxr)), std::max(std::min(max,maxr),std::max(min,minr)), res->XYnmppx, pgHistGUI->ExclOOR, true);
             }
             else cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR, !*cMap->exportSet4WholeVal);
-        }else{
+        }else if(selDisp->index==2){
             cv::divide(res->depthSS,res->avgNum-1,display);
             double _min,_max; cv::Point ignore;
             cv::sqrt(display,display);
@@ -437,12 +441,16 @@ void tab_camera::onSaveDepthMap(void){
                 cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
                 cv::Mat temp2; bitwise_not(temp1, temp2);
                 double minr, maxr;
-                cv::Point ignore;
-                cv::minMaxLoc(temp0, &minr, &maxr, &ignore, &ignore, temp2);
+                cv::minMaxLoc(temp0, &minr, &maxr, nullptr, nullptr, temp2);
                 cMap->colormappize(&temp0, &display, &temp1, 0, maxr, res->XYnmppx, pgHistGUI->ExclOOR, true, "SD (nm)");
             }
             else cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, !*cMap->exportSet4WholeVal, "SD (nm)");
+        }else if(selDisp->index==3){                //show reflectivity
+            cv::Mat temp0(res->refl,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+            cv::Mat tempMask(temp0.rows, temp0.cols, CV_8U, cv::Scalar(0));
+            cMap->colormappize(&temp0, &display, &tempMask, 0, 255, res->XYnmppx, false, !*cMap->exportSet4WholeVal, "Reflectivity");
         }
+
         cv::cvtColor(display, display, cv::COLOR_RGBA2BGRA);
         imwrite(fileName, display,{cv::IMWRITE_PNG_COMPRESSION,9});
     }
@@ -512,13 +520,13 @@ void tab_camera::onPlotLine(){
     const pgScanGUI::scanRes* res;
     if(loadedOnDisplay) res=&loadedScan;
     else res=scanRes->get();
-    tCG->plotLine(res,cv::Point(selStartX,selStartY),cv::Point(selEndX,selEndY),selDisp->index==2);
+    tCG->plotLine(res,cv::Point(selStartX,selStartY),cv::Point(selEndX,selEndY),selDisp->index);
 }
 void tab_camera::onSaveLine(){
     const pgScanGUI::scanRes* res;
     if(loadedOnDisplay) res=&loadedScan;
     else res=scanRes->get();
-    tCG->saveLine(res,cv::Point(selStartX,selStartY),cv::Point(selEndX,selEndY),selDisp->index==2);
+    tCG->saveLine(res,cv::Point(selStartX,selStartY),cv::Point(selEndX,selEndY),selDisp->index);
 }
 
 void tab_camera::onPlotRect(){
@@ -528,7 +536,7 @@ void tab_camera::onPlotRect(){
     if(loadedOnDisplay) res=&loadedScan;
     else res=scanRes->get();
     if(res==nullptr) return;
-    tCG->plotRoi(res, cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height),selDisp->index==2);
+    tCG->plotRoi(res, cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height),selDisp->index);
 }
 
 void tab_camera::on2DFFT(){

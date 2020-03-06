@@ -42,11 +42,12 @@ public:
     constexpr static unsigned timerCM_delay=100;
 
     std::atomic<bool> measurementInProgress{false}; //for outside calling functions
-    void doOneRound(char cbAvg_override=0, char cbTilt_override=0);
+    void doOneRound(char cbAvg_override=0, char cbTilt_override=0, char cbRefl_override=0);
                                                     // for cbAvg_override==0, cbAvg setting is used, if cbAvg_override=1 avearage, if cbAvg_override=-1 do not average
                                                     // for cbTilt_override==0, cbTilt setting is used, if cbTilt_override=1 correct tilt, if cbTilt_override=-1 do not correct
+                                                    // for cbRefl_override==0, cbRefl setting is used, if cbRefl_override=1 calc refl, if cbRefl_override=-1 do not calc refl
                                                     // this function is non blocking, check measurementInProgress to see if done
-    void doNRounds(int N, double redoIfMaskHasMore=0.01, int redoN=3, cv::Rect roi={0,0,0,0}, char cbTilt_override=0);
+    void doNRounds(int N, double redoIfMaskHasMore=0.01, int redoN=3, cv::Rect roi={0,0,0,0}, char cbTilt_override=0, char cbRefl_override=0);
                                                     // does at least N measurements (and most N+1) with avg (cbAvg_override==1), if mask is more than redoIfMaskHasMore fraction of total(ROID) pixels, redo mesurements, up to redoN times
                                                     // this funtion is blocking, but processes qt events
 
@@ -62,6 +63,7 @@ public:
         double XYnmppx;     //useful if we load a scan which was done at different settings, -1 means the one in settings is valid
         int avgNum;
         cv::Mat depthSS;    //this is for calculating the standard deviation: will be empty if avgNum=1
+        cv::Mat refl;       //optional: the reflectivity of the mirror
         void copyTo(scanRes& dst) const;
     };
     varShare<scanRes> result;
@@ -70,8 +72,8 @@ public:
     double vsConv(val_selector* vs);
 
     static cv::Rect lastROI;
-    static void saveScan(const scanRes* scan, std::string fileName="", bool useLastROI=false, bool saveSD=true);
-    static void saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName="", bool saveSD=true);
+    static void saveScan(const scanRes* scan, std::string fileName="", bool useLastROI=false, bool saveSD=true, bool saveRF=true);
+    static void saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName="", bool saveSD=true, bool saveRF=true);
     static void saveScanTxt(const scanRes* scan, std::string fileName="");
     static void saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::string fileName="");
     static bool loadScan(scanRes* scan, std::string fileName="");                       //return true if success
@@ -92,6 +94,7 @@ private:
     QPushButton* bCenter;
     checkbox_save* cbCorrectTilt;
     checkbox_save* cbAvg;
+    checkbox_save* cbGetRefl;
 
     //settings
     QVBoxLayout* slayout;
@@ -154,7 +157,7 @@ private:
     QDoubleSpinBox* xDifShift;
     QDoubleSpinBox* yDifShift;
 
-    void _doOneRound(char cbAvg_override=0, char cbTilt_override=0);
+    void _doOneRound(char cbAvg_override=0, char cbTilt_override=0, char cbRefl_override=0);
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
     void _correctTilt(scanRes* res);
 public Q_SLOTS:

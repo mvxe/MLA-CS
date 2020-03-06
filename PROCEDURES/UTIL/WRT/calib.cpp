@@ -327,7 +327,7 @@ void pgCalib::WCFFindNearest(){
     const pgScanGUI::scanRes* res=scanRes->get();
     int roiD=2*selWriteCalibFocusRadDil->val*1000/res->XYnmppx;
     if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
-    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/before"));
+    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/before"), true, false);
 
     uchar selectedavg;
     writePulse(selWriteCalibFocusPulseIntensity->val, selWriteCalibFocusPulseDuration->val, util::toString(folder,"/laser.dat"), &selectedavg);
@@ -454,12 +454,12 @@ void pgCalib::WCFArray(){
         pgSGUI->doNRounds((int)selArrayOneScanN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(go.pGCAM->iuScope->camCols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, go.pGCAM->iuScope->camRows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize));
 
         res=scanRes->get();
-        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/before"));
+        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/before"), true, false);
 
         for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
             cv::utils::fs::createDirectory(util::toString(folder,"/",i+j*WArray.cols));
             pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(),
-                                                  selArraySpacing->val*1000/pgMGUI->getNmPPx(), selArraySpacing->val*1000/pgMGUI->getNmPPx()), util::toString(folder,"/",i+j*WArray.cols,"/before"));
+                                                  selArraySpacing->val*1000/pgMGUI->getNmPPx(), selArraySpacing->val*1000/pgMGUI->getNmPPx()), util::toString(folder,"/",i+j*WArray.cols,"/before"), true, false);
         }
     }
 
@@ -487,27 +487,19 @@ void pgCalib::WCFArray(){
                 const pgScanGUI::scanRes* res=scanRes->get();
                 int roiD=selArraySpacing->val*1000/res->XYnmppx;
                 if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*discardMaskRoiThresh && tryA<maxRedoScanTries){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
-                pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/before"));
+                pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/before"), true, false);
             }
 
             writePulse(WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1]*1000, util::toString(folder,"/",i+j*WArray.cols,"/laser.dat"), &selectedavg);
 
             if(selArrayScanType->index==1){ //multiple mesurement
                 int tryB{0};
-                redoB:  tryB++; pgSGUI->doOneRound(-1);
+                redoB:  tryB++; pgSGUI->doOneRound(-1,0,savePic->val?1:0);
                 while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
                 const pgScanGUI::scanRes* res=scanRes->get();
                 int roiD=selArraySpacing->val*1000/res->XYnmppx;
                 if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*discardMaskRoiThresh && tryB<maxRedoScanTries){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}      //this is (square-circle)/4
                 pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/after"));
-
-                if(savePic->val){
-                    FQ* fq=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-                    fq->setUserFps(999,1);
-                    while(fq->getUserMat()==nullptr)QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
-                    imwrite(util::toString(folder,"/",i+j*WArray.cols,"/pic.png"), cv::Mat(*fq->getUserMat(),cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD)),{cv::IMWRITE_PNG_COMPRESSION,9});
-                    go.pGCAM->iuScope->FQsPCcam.deleteFQ(fq);
-                }
             }
 
             saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), focus+WArray.at<cv::Vec3d>(j,i)[2]/1000, selArraySpacing->val, WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1], selectedavg);
@@ -522,23 +514,13 @@ void pgCalib::WCFArray(){
     while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
 
     if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement
-        pgSGUI->doNRounds((int)selArrayOneScanN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize));
+        pgSGUI->doNRounds((int)selArrayOneScanN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize),0,savePic->val?1:0);
         res=scanRes->get();
         pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/after"));
 
         for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++)   // separate them into individual scans
             pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(),
                                                   selArraySpacing->val*1000/pgMGUI->getNmPPx(), selArraySpacing->val*1000/pgMGUI->getNmPPx()), util::toString(folder,"/",i+j*WArray.cols,"/after"));
-        if(savePic->val){
-            FQ* fq=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-            fq->setUserFps(999,1);
-            while(fq->getUserMat()==nullptr)QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
-            for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++)
-                imwrite(util::toString(folder,"/",i+j*WArray.cols,"/pic.png"), cv::Mat(*fq->getUserMat(),
-                                       cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(),
-                                       selArraySpacing->val*1000/pgMGUI->getNmPPx(), selArraySpacing->val*1000/pgMGUI->getNmPPx())),{cv::IMWRITE_PNG_COMPRESSION,9});
-            go.pGCAM->iuScope->FQsPCcam.deleteFQ(fq);
-        }
     }
 
     btnWriteCalib->setChecked(false);
@@ -647,9 +629,9 @@ redo:
            cv::countNonZero(cv::Mat(resPost->mask,cv::Rect(resPost->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPost->XYnmppx, resPost->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPost->XYnmppx,
                                                            selAArraySpacing->val*1000/resPost->XYnmppx, selAArraySpacing->val*1000/resPost->XYnmppx)))) continue;       //there were bad pixels so we skip
         pgScanGUI::saveScan(resPre, cv::Rect(resPre->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPre->XYnmppx, resPre->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPre->XYnmppx,
-                                              selAArraySpacing->val*1000/resPre->XYnmppx, selAArraySpacing->val*1000/resPre->XYnmppx), util::toString(folder,"/",k,"-pre"),false);
+                                              selAArraySpacing->val*1000/resPre->XYnmppx, selAArraySpacing->val*1000/resPre->XYnmppx), util::toString(folder,"/",k,"-pre"),false,false);
         pgScanGUI::saveScan(resPost, cv::Rect(resPost->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPost->XYnmppx, resPost->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPost->XYnmppx,
-                                              selAArraySpacing->val*1000/resPost->XYnmppx, selAArraySpacing->val*1000/resPost->XYnmppx), util::toString(folder,"/",k,"-post"),false);
+                                              selAArraySpacing->val*1000/resPost->XYnmppx, selAArraySpacing->val*1000/resPost->XYnmppx), util::toString(folder,"/",k,"-post"),false,false);
         wfile<<WArray.at<cv::Vec2d>(j,i)[0]<<" "<<WArray.at<cv::Vec2d>(j,i)[1]<<"\n";
         k++;
     }
@@ -716,7 +698,7 @@ void pgCalib::onProcessFocusMes(){
                     else if(strcmp(entry->d_name,"before.pfm")==0) dirHasMes[1]=true;
                     else if(strcmp(entry->d_name,"after.pfm")==0) dirHasMes[2]=true;
                     else if(strcmp(entry->d_name,"laser.dat")==0) dirHasMes[3]=true;
-                    else if(strcmp(entry->d_name,"pic.png")==0) dirHasMes[4]=true;      //nonessential for backward compatibility
+                    else if(strcmp(entry->d_name,"pic.png")==0 || strcmp(entry->d_name,"after-RF.png")==0) dirHasMes[4]=true;       //nonessential for backward compatibility, also pic.png for backward compatibility
                 }
             }
         }
@@ -783,7 +765,8 @@ void pgCalib::onProcessFocusMes(){
 
         double intReflDeriv{-1};
         if(dirHasMes[4]){
-            cv::Mat refl=imread(util::toString(fldr,"/pic.png"), cv::IMREAD_GRAYSCALE);
+            cv::Mat refl=imread(util::toString(fldr,"/after-RF.png"), cv::IMREAD_GRAYSCALE);
+            if(refl.empty()) refl=imread(util::toString(fldr,"/pic.png"), cv::IMREAD_GRAYSCALE);         // pic.png for backward compatibility
             cv::Mat reflS;
             cv::Mat derv, dervy;
             cv::bilateralFilter(refl, reflS, -1, 4, 4);  //smooth it a bit

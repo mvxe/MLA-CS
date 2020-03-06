@@ -56,7 +56,7 @@ tabCamGnuplot::tabCamGnuplot(checkbox_save* showAbsHeight): showAbsHeight(showAb
     layout->addWidget(equalizeXYZ);
 }
 
-void tabCamGnuplot::plotLine(const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, bool useSD){
+void tabCamGnuplot::plotLine(const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, int type){
     if(scan==nullptr) return;
     gnuplot a;
     a.POUT<<util::toString( "set terminal wxt enhanced\n",
@@ -67,20 +67,20 @@ void tabCamGnuplot::plotLine(const pgScanGUI::scanRes* scan, const cv::Point& st
                             "set ylabel \"Height (nm)\"\n",
                             "set xzeroaxis\n",
                             "plot [0:",sqrt(pow(start.x-end.x,2)+pow(start.y-end.y,2))*scan->XYnmppx/1000,"] \"-\" using 1:2 w lp lc ",lpColor->val," pt ",pointType->val," ps ",pointSize->val," lw ",lineWidth->val," notitle\n");
-    streamLine(&a.POUT, scan, start, end, useSD);
+    streamLine(&a.POUT, scan, start, end, type);
     a.POUT<<"e\n";
     a.POUT.flush();
 }
-void tabCamGnuplot::saveLine(const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, bool useSD){
+void tabCamGnuplot::saveLine(const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, int type){
     std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving line data.", "","Text (*.txt)").toStdString();
     if(scan==nullptr || fileName.empty()) return;
     if(fileName.find(".txt")==std::string::npos) fileName+=".txt";
     std::ofstream wfile(fileName);
     wfile<<"# (um) (nm)\n";
-    streamLine(&wfile, scan, start, end, useSD);
+    streamLine(&wfile, scan, start, end, type);
     wfile.close();
 }
-void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi, bool useSD){
+void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi, int type){
     if(scan==nullptr) return;
     gnuplot a;
     a.POUT<<util::toString( "set terminal wxt enhanced\n",
@@ -102,15 +102,19 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
                             "splot [0:",(cv::Mat(scan->depth, roi).cols-1)*scan->XYnmppx/1000,"][0:",(cv::Mat(scan->depth, roi).rows-1)*scan->XYnmppx/1000,"] \"-\" matrix using ($1*",scan->XYnmppx/1000,"):($2*",scan->XYnmppx/1000,"):3 w pm3d pt 6 notitle\n");
     bool sah=showAbsHeight->val;
     cv::Mat data;
-    if(useSD && !scan->depthSS.empty()){
+    cv::Mat maskN(scan->maskN, roi);
+    if(type==1 || (type==2 && scan->depthSS.empty()) || (type==3 && scan->refl.empty())){
+        data=cv::Mat(scan->depth, roi);
+    }else if(type==2){
         cv::divide(cv::Mat(scan->depthSS, roi),scan->avgNum-1,data);
         cv::sqrt(data,data);
+    }else if(type==3){
+        cv::Mat(scan->refl, roi).convertTo(data,CV_32F);
+        maskN.setTo(cv::Scalar(255));
     }
-    else data=cv::Mat(scan->depth, roi);
-    cv::Mat maskN(scan->maskN, roi);
+
     double min, max;
-    cv::Point ignore;
-    cv::minMaxLoc(data, &min, &max, &ignore, &ignore, maskN);
+    cv::minMaxLoc(data, &min, &max, nullptr, nullptr, maskN);
     for(int j=data.rows-1;j>=0;j--){
         for(int i=0;i!=data.cols;i++){
             if(i!=0) a.POUT<<" ";
@@ -123,13 +127,19 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
     a.POUT.flush();
 }
 
-void tabCamGnuplot::streamLine(std::ostream *stream, const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, bool useSD){
+void tabCamGnuplot::streamLine(std::ostream *stream, const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, int type){
     if(scan==nullptr) return;
     cv::Mat data;
-    if(useSD && !scan->depthSS.empty()){
+    cv::Mat mask(scan->mask);
+    if(type==1 || (type==2 && scan->depthSS.empty()) || (type==3 && scan->refl.empty())){
+        data=scan->depth;
+    }else if(type==2){
         cv::divide(scan->depthSS,scan->avgNum-1,data);
         cv::sqrt(data,data);
-    }else data=scan->depth;
+    }else if(type==3){
+        scan->refl.convertTo(data,CV_32F);
+        mask.setTo(cv::Scalar(0));
+    }
 
     float len;
     len=sqrt(pow(end.x-start.x,2)+pow(end.y-start.y,2));
@@ -146,10 +156,10 @@ void tabCamGnuplot::streamLine(std::ostream *stream, const pgScanGUI::scanRes* s
             (1-(ceil(_X) -_X))*(1-(ceil(_Y) -_Y))*(data.at<float>( ceil(_Y), ceil(_X)))+
             (1-(_X-floor(_X)))*(1-(ceil(_Y) -_Y))*(data.at<float>( ceil(_Y),floor(_X)))+
             (1-(ceil(_X) -_X))*(1-(_Y-floor(_Y)))*(data.at<float>(floor(_Y), ceil(_X))) );
-        lineMask.emplace_back(scan->mask.at<uchar>(floor(_Y),floor(_X))||
-                              scan->mask.at<uchar>( ceil(_Y), ceil(_X))||
-                              scan->mask.at<uchar>( ceil(_Y),floor(_X))||
-                              scan->mask.at<uchar>(floor(_Y), ceil(_X)));
+        lineMask.emplace_back(mask.at<uchar>(floor(_Y),floor(_X))||
+                              mask.at<uchar>( ceil(_Y), ceil(_X))||
+                              mask.at<uchar>( ceil(_Y),floor(_X))||
+                              mask.at<uchar>(floor(_Y), ceil(_X)));
     }
     if(!showAbsHeight->val){
         float minval=std::numeric_limits<float>::max();

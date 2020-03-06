@@ -8,11 +8,11 @@ class tabCamGnuplot: public QWidget{
     Q_OBJECT
 public:
     tabCamGnuplot(checkbox_save* showAbsHeight);
-    void plotLine(const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, bool useSD=false);
-    void saveLine(const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, bool useSD=false);
-    void plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi, bool useSD=false);     // save ROI is already implemented elsewhere
+    void plotLine(const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, int type=1);
+    void saveLine(const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, int type=1);
+    void plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi, int type=1);     // save ROI is already implemented elsewhere
 
-    void streamLine(std::ostream *stream, const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, bool useSD);
+    void streamLine(std::ostream *stream, const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, int type);
 private:
     QVBoxLayout* layout;
     checkbox_save* showAbsHeight;

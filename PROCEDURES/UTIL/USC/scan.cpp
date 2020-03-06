@@ -40,14 +40,16 @@ void pgScanGUI::init_gui_activation(){
     bScan->setText("Scan");
     connect(bScan, SIGNAL(released()), this, SLOT(onBScan()));
     bScanContinuous=new QCheckBox;
-    bScanContinuous->setText("Repeating scan");
+    bScanContinuous->setText("Repeat");
     connect(bScanContinuous, SIGNAL(toggled(bool)), this, SLOT(onBScanContinuous(bool)));
     gui_activation->addWidget(bScan);
     gui_activation->addWidget(bScanContinuous);
-    cbCorrectTilt=new checkbox_save(false,"pgScanGUI_ct","Correct Tilt");
+    cbCorrectTilt=new checkbox_save(false,"pgScanGUI_ct","Fix Tilt");
     gui_activation->addWidget(cbCorrectTilt);
     cbAvg=new checkbox_save(false,"pgScanGUI_ctAvg","Average");
     gui_activation->addWidget(cbAvg);
+    cbGetRefl=new checkbox_save(false,"pgScanGUI_cbGetRefl","Reflectivity");
+    gui_activation->addWidget(cbGetRefl);
 
     xDifShift=new QDoubleSpinBox(); xDifShift->setRange(-1000,1000); xDifShift->setSuffix(" px"); xDifShift->setDecimals(2);
     yDifShift=new QDoubleSpinBox(); yDifShift->setRange(-1000,1000); yDifShift->setSuffix(" px"); xDifShift->setDecimals(2);
@@ -95,6 +97,7 @@ void pgScanGUI::scanRes::copyTo(scanRes& dst) const{
     mask.copyTo(dst.mask);
     maskN.copyTo(dst.maskN);
     depthSS.copyTo(dst.depthSS);
+    refl.copyTo(dst.refl);
 }
 
 scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
@@ -223,13 +226,13 @@ void pgScanGUI::updatePVTs(std::string &report){
     PVTsRdy=true;
 }
 int NA=0;
-void pgScanGUI::doOneRound(char cbAvg_override, char cbTilt_override){
+void pgScanGUI::doOneRound(char cbAvg_override, char cbTilt_override, char cbRefl_override){
     if(!PVTsRdy) recalculate();
     measurementInProgress=true;
-    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,cbAvg_override, cbTilt_override));
+    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,cbAvg_override, cbTilt_override, cbRefl_override));
 }
 
-void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect roi, char cbTilt_override){
+void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect roi, char cbTilt_override, char cbRefl_override){
     if(!PVTsRdy) recalculate();
     varShareClient<pgScanGUI::scanRes>* scanRes=result.getClient();
 
@@ -238,7 +241,7 @@ void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect r
     cv::Mat roiMask;
     do{
         measurementInProgress=true;
-        go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,-1,cbTilt_override));
+        go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,-1,cbTilt_override, cbRefl_override));
         while(measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
         res=scanRes->get();
         doneN++;
@@ -248,7 +251,7 @@ void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect r
 
     while(res->avgNum<N){
         if(MLP._lock_meas.try_lock()){
-            go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,1,cbTilt_override));
+            go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,1,cbTilt_override, cbRefl_override));
             MLP._lock_meas.unlock();
         }
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
@@ -334,7 +337,7 @@ void pgScanGUI::_correctTilt(scanRes* res){
     }
 }
 
-void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override){
+void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRefl_override){
     MLP._lock_meas.lock();                       //wait for other measurements to complete
     if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
     if(!PVTsRdy) return;
@@ -402,12 +405,15 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override){
         clickDataLock.unlock();
     }
 
+    cv::UMat refl;
+    bool fillRefl=((cbGetRefl->val && cbRefl_override==0) || cbRefl_override==1);
+    if(fillRefl) refl=cv::UMat(nRows, nCols, CV_32F);
+
     MLP.progress_comp=0;
     for(int k=0;k!=nRows;k++){      //Processing row by row
         //first copy the matrices such that time becomes a column
         for(int i=0;i!=nFrames;i++)
             framequeue->getUserMat(i)->row(k).copyTo(mat2D.row(i));
-
         //sending the matrix to the GPU, transposing and preforming an DFT
         //Umat2D=mat2D.getUMat(cv::ACCESS_READ);
         cv::UMat Umat2D;
@@ -450,6 +456,14 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override){
         }
         cmpFinRes=cmpFinRes.reshape(0,1);
         cmpFinRes.copyTo(maskUMat.row(k));
+
+        if(fillRefl){
+            cv::split(Umat2D.col(0), planes);
+            cv::magnitude(planes[0], planes[1], magn);
+            cv::transpose(magn,magn);
+            cv::divide(magn,nFrames,magn);
+            magn.copyTo(refl.row(k));
+        }
 
         //std::cerr<<"done with dft"<<k<<"\n";
         MLP.progress_comp=60*(k+1)/nRows;
@@ -579,6 +593,11 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override){
     else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
 
     cv::minMaxLoc(res->depth, &res->min, &res->max, nullptr, nullptr, res->maskN);  //the ignored mask values will be <min , everything is in nm
+
+    if(fillRefl){
+        refl.convertTo(res->refl,CV_8U,2,-127.5);
+    }
+
     result.put(res);
 
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
@@ -608,11 +627,11 @@ void pgScanGUI::calcExpMinMax(FQ* framequeue, cv::Mat* mask){
 
 QWidget* pgScanGUI::parent{nullptr};
 cv::Rect pgScanGUI::lastROI{0,0,0,0};
-void pgScanGUI::saveScan(const scanRes* scan, std::string fileName, bool useLastROI, bool saveSD){
-    if(useLastROI && lastROI!=cv::Rect(0,0,0,0)) pgScanGUI::saveScan(scan, lastROI, fileName, saveSD);
-    else pgScanGUI::saveScan(scan, {0,0,scan->depth.cols,scan->depth.rows}, fileName, saveSD);
+void pgScanGUI::saveScan(const scanRes* scan, std::string fileName, bool useLastROI, bool saveSD, bool saveRF){
+    if(useLastROI && lastROI!=cv::Rect(0,0,0,0)) pgScanGUI::saveScan(scan, lastROI, fileName, saveSD, saveRF);
+    else pgScanGUI::saveScan(scan, {0,0,scan->depth.cols,scan->depth.rows}, fileName, saveSD, saveRF);
 }
-void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName, bool saveSD){
+void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string fileName, bool saveSD, bool saveRF){
     lastROI=roi;
     if(scan==nullptr) return;
     if(fileName=="") fileName=QFileDialog::getSaveFileName(parent,"Select file for saving Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
@@ -634,6 +653,10 @@ void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string f
     if(!scan->depthSS.empty() && scan->avgNum>1 && saveSD){
         fileName.insert(fileName.length()-4,"-SD");
         cv::imwrite(fileName, cv::Mat(scan->depthSS, roi));
+    }
+    if(!scan->refl.empty() && saveRF){
+        fileName.replace(fileName.end()-7,fileName.end(),"-RF.png");
+        cv::imwrite(fileName, cv::Mat(scan->refl, roi));
     }
 }
 void pgScanGUI::saveScanTxt(const scanRes* scan, std::string fileName){
@@ -715,6 +738,8 @@ bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
         fileName.insert(fileName.length()-4,"-SD");
         scan->depthSS=cv::imread(fileName, cv::IMREAD_UNCHANGED);
     }
+    fileName.replace(fileName.end()-7,fileName.end(),"-RF.png");
+    scan->refl=cv::imread(fileName, cv::IMREAD_UNCHANGED);
     return true;
 }
 pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
