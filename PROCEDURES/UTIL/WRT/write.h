@@ -24,6 +24,7 @@ private:
     val_selector* depthMaxval;
     val_selector* imgUmPPx;
     val_selector* ICcor;
+    QPushButton* corICor;
     QPushButton* writeDM;
 
     //settings
@@ -61,6 +62,7 @@ private Q_SLOTS:
     void onLoadImg();
     void onWriteDM();
     void onChangeDrawWriteAreaOn(bool status);
+    void onCorICor();
 };
 
 

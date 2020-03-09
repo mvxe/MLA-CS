@@ -24,7 +24,9 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     depthMaxval=new val_selector(10, "pgWrite_depthMaxval", "(if 8/16bit)Maxval=", 0.1, 500, 3, 0, {"nm"});
     alayout->addWidget(new twid(importImg,depthMaxval));
     ICcor=new val_selector(1, "pgWrite_ICcor", "Intensity correction", 0.1, 3, 3);
-    alayout->addWidget(ICcor);
+    corICor=new QPushButton("Correct Correction");
+    connect(corICor, SIGNAL(released()), this, SLOT(onCorICor()));
+    alayout->addWidget(new twid(ICcor,corICor));
     imgUmPPx=new val_selector(10, "pgWrite_imgUmPPx", "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
     alayout->addWidget(imgUmPPx);
     writeDM=new HQPushButton("Write");
@@ -52,6 +54,15 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     slayout->addWidget(max_acc);
 }
 
+void pgWrite::onCorICor(){
+    bool ok;
+    float preH=QInputDialog::getDouble(gui_activation, "Correct intensity correction", "Input actual written plateau height for given expected height.", 0.001, 0, 1000, 3, &ok);
+    if(!ok) return;
+    uint cInt=getInt(depthMaxval->val);
+    ICcor->setValue(1);
+    uint gInt=getInt(preH);
+    ICcor->setValue((double)cInt/gInt);
+}
 void pgWrite::onPulse(){
     if(!go.pRPTY->connected) return;
     std::vector<uint32_t> commands;
@@ -135,8 +146,7 @@ void pgWrite::onWriteDM(){
     exec_ret ret;
     PVTobj* po=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pgWrite.txt");
     std::vector<uint32_t> commands;
-    //pgMGUI->corPvt(po,0.1, 0, 0, 0, 0, 0, 0,focus->val/1000,0);
-    po->add(0.1, 0, 0, 0, 0, 0, 0,focus->val/1000,0);
+    pgMGUI->corPvt(po,0.1, 0, 0, 0, 0, 0, 0,focus->val/1000,0);
     commands.push_back(CQF::GPIO_MASK(0x40,0,0));
     commands.push_back(CQF::GPIO_DIR (0x40,0,0));
     commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
@@ -149,8 +159,9 @@ void pgWrite::onWriteDM(){
     double time;    // in s
     double pulseWaitTime=std::ceil(duration->val);      //we round up pulse time to n ms, to make sure we dont have any XPS related timing rounding error
     for(int j=0;j!=ints.rows;j++) for(int i=0;i!=ints.cols;i++){
-        if(ints.at<uint16_t>(j,i)==0) continue;
-        nextpos={-round((i-ints.cols/2.)*pointSpacing->val*100)/100,-round((j-ints.rows/2.)*pointSpacing->val*100)/100};          //in um, rounding to 0.01um precision (should be good enough for the stages) to avoid rounding error (with relative positions later on, thats why here we round absolute positions)
+        int ii=(j%2)?i:(ints.cols-i-1);
+        if(ints.at<uint16_t>(j,ii)==0) continue;
+        nextpos={-round((ii-ints.cols/2.)*pointSpacing->val*100)/100,-round((j-ints.rows/2.)*pointSpacing->val*100)/100};          //in um, rounding to 0.01um precision (should be good enough for the stages) to avoid rounding error (with relative positions later on, thats why here we round absolute positions)
         dist=cv::norm(lastpos-nextpos)/1000;//in mm
         vel=sqrt(max_acc->val*dist);        // v=sqrt(2as) for half the distance -> max speed at constant acceleration
         if(vel>max_vel->val){               // we must split the motion into three: acceleration -> constant -> deacceleration
@@ -159,23 +170,19 @@ void pgWrite::onWriteDM(){
             time=2*sqrt(dist/max_acc->val); // t=sqrt(2s/a), twice the time (acc and deacc) and half the distance
         }
         time=(ceil(time/servoCycle)*servoCycle);    // we round time up to XPS servo cycle to prevent rounding (relative) errors later
-        //std::cerr<<time<<"s "<<pulseWaitTime/1000<<"s "<<dist<<"mm "<<(nextpos.x-lastpos.x)/1000<<"mm "<<(nextpos.y-lastpos.y)/1000<<"mm\n";
-        //pgMGUI->corPvt(po,time, (nextpos.x-lastpos.x)/1000, 0, (nextpos.y-lastpos.y)/1000, 0, 0, 0,0,0);
         if(time>0){
-            po->add(time, (nextpos.x-lastpos.x)/1000, 0, (nextpos.y-lastpos.y)/1000, 0, 0, 0,0,0);
+            pgMGUI->corPvt(po,time, (nextpos.x-lastpos.x)/1000, 0, (nextpos.y-lastpos.y)/1000, 0, 0, 0,0,0);
             commands.push_back(CQF::WAIT(time/8e-9));
         }
-        //pgMGUI->corPvt(po,pulseWaitTime/1000, 0, 0, 0, 0, 0, 0,0,0);
-        po->add(pulseWaitTime/1000, 0, 0, 0, 0, 0, 0,0,0);
+        pgMGUI->corPvt(po,pulseWaitTime/1000, 0, 0, 0, 0, 0, 0,0,0);
         commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //for debugging purposes
-        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, ints.at<uint16_t>(j,i), 0));
+        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, ints.at<uint16_t>(j,ii), 0));
         commands.push_back(CQF::WAIT((duration->val)/8e-6 - 3));
         commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
         if(pulseWaitTime!=duration->val) commands.push_back(CQF::WAIT((pulseWaitTime-duration->val)/8e-6));
         lastpos=nextpos;
     }
-    //pgMGUI->corPvt(po,0.1, 0, 0, 0, 0, 0, 0,-focus->val/1000,0);
-    po->add(0.1, -lastpos.x/1000, 0, -lastpos.y/1000, 0, 0, 0,-focus->val/1000,0);
+    pgMGUI->corPvt(po,0.1, -lastpos.x/1000, 0, -lastpos.y/1000, 0, 0, 0,-focus->val/1000,0);
     po->addAction(XPS::writingLaser,false);
 
     if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";go.pXPS->destroyPVTobj(po);return;}
