@@ -38,10 +38,14 @@ private:
     val_selector* constB;
     val_selector* constX0;
     val_selector* pointSpacing;
+    val_selector* multirunDivisor;
     val_selector* FWHMX;
     val_selector* FWHMY;
     val_selector* FWHMXYan;
-
+    struct wpoint{
+        cv::Point2d coord;
+        uint intensity;
+    };
     val_selector* max_vel;
     val_selector* max_acc;
 
@@ -78,6 +82,7 @@ public:
     val_selector* constB;
     val_selector* constX0;
     val_selector* pointSpacing;
+    val_selector* multirunDivisor;
     val_selector* FWHMX;
     val_selector* FWHMY;
     val_selector* FWHMXYan;
