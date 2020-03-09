@@ -73,7 +73,6 @@ void pgWrite::onMenuChange(int index){
     constB=settingWdg[index]->constB;
     constX0=settingWdg[index]->constX0;
     pointSpacing=settingWdg[index]->pointSpacing;
-    multirunDivisor=settingWdg[index]->multirunDivisor;
     FWHMX=settingWdg[index]->FWHMX;
     FWHMY=settingWdg[index]->FWHMY;
     FWHMXYan=settingWdg[index]->FWHMXYan;
@@ -93,8 +92,6 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     slayout->addWidget(constX0);
     pointSpacing=new val_selector(1, util::toString("writeSettings_pointSpacing",num), "Point spacing", 0.01, 10, 3, 0, {"um"});
     slayout->addWidget(pointSpacing);
-    multirunDivisor=new val_selector(1, util::toString("writeSettings_multirunDivisor",num), "Multirun divisor", 1, 100, 0);
-    slayout->addWidget(multirunDivisor);
     FWHMX=new val_selector(5, util::toString("writeSettings_FWHMX",num), "FWHM X", 0.1, 100, 2, 0, {"um"});
     slayout->addWidget(FWHMX);
     FWHMY=new val_selector(5, util::toString("writeSettings_FWHMY",num), "FWHM Y", 0.1, 100, 2, 0, {"um"});
@@ -111,7 +108,6 @@ void pgWrite::onLoadImg(){
 
     writeDM->setEnabled(true);
 }
-
 void pgWrite::onWriteDM(){
     cv::Mat tmpWrite, resizedWrite;
     if(WRImage.type()==CV_8U){
@@ -126,84 +122,70 @@ void pgWrite::onWriteDM(){
     else cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_CUBIC);                                 //enlarge
 
     //now convert depths to a matrix of intensities;
-    int Nmulti=multirunDivisor->val;
-    std::vector<wpoint> toWrite[Nmulti*Nmulti];
+    cv::Mat ints(resizedWrite.rows,resizedWrite.cols,CV_16U);
 
-    //we generate a submatrix - unit cell
-    cv::Mat distSum(Nmulti,Nmulti,CV_32F,cv::Scalar(0));
-    cv::Mat used(Nmulti,Nmulti,CV_8U,cv::Scalar(255));
-    int minIdx[2];  //[y,x]
-    uint tmpI;
-    for(int i=0;i!=Nmulti*Nmulti;i++){
-        cv::minMaxIdx(distSum,nullptr,nullptr,minIdx,nullptr,used);
-        used.at<uchar>(minIdx[0],minIdx[1])=0;
-        for(int j=0;j!=Nmulti;j++) for(int k=0;k!=Nmulti;k++) if(used.at<uchar>(j,k)!=0)
-            distSum.at<float>(j,k)+=sqrtf(powf(j-minIdx[0],2)+powf(k-minIdx[1],2));
-        for(int j=0;j!=resizedWrite.rows;j++) for(int k=0;k!=resizedWrite.cols;k++) if((j%Nmulti)==minIdx[0] && (k%Nmulti)==minIdx[1]){
-            tmpI=getInt(resizedWrite.at<float>(j,k));
-            if(tmpI>0) toWrite[i].push_back({{-round((k-resizedWrite.cols/2.)*pointSpacing->val*100)/100,-round((j-resizedWrite.rows/2.)*pointSpacing->val*100)/100},tmpI});
-                //in um, rounding to 0.01um precision (should be good enough for the stages) to avoid rounding error (with relative positions later on, thats why here we round absolute positions)
-        }
+    for(int j=0;j!=ints.rows;j++) for(int i=0;i!=ints.cols;i++){
+        ints.at<uint16_t>(j,i)=getInt(resizedWrite.at<float>(j,i));
     }
 
     if(!go.pRPTY->connected) return;
     go.pXPS->setGPIO(XPS::iuScopeLED,true);
     go.pXPS->setGPIO(XPS::writingLaser,false);
-    pgMGUI->move(0,0,0,focus->val/1000);
-    cv::Point2d lastpos{0,0};
-    cv::Point2d nextpos;
+
     exec_ret ret;
     PVTobj* po=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pgWrite.txt");
     std::vector<uint32_t> commands;
+    //pgMGUI->corPvt(po,0.1, 0, 0, 0, 0, 0, 0,focus->val/1000,0);
+    po->add(0.1, 0, 0, 0, 0, 0, 0,focus->val/1000,0);
     commands.push_back(CQF::GPIO_MASK(0x40,0,0));
     commands.push_back(CQF::GPIO_DIR (0x40,0,0));
-    for(int i=0;i!=Nmulti*Nmulti;i++){
-        commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
-        po->addAction(XPS::writingLaser,true);
+    commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
+    po->addAction(XPS::writingLaser,true);
 
-        double vel;
-        double dist;
-        double time;    // in s
-        double pulseWaitTime=std::ceil(duration->val);      //we round up pulse time to n ms, to make sure we dont have any XPS related timing rounding error
-        for(int j=0;j!=toWrite[i].size();j++){
-            nextpos=toWrite[i].at(j).coord;
-            dist=cv::norm(lastpos-nextpos)/1000;//in mm
-            vel=sqrt(max_acc->val*dist);        // v=sqrt(2as) for half the distance -> max speed at constant acceleration
-            if(vel>max_vel->val){               // we must split the motion into three: acceleration -> constant -> deacceleration
-                time=2*max_vel->val/max_acc->val + (dist-pow(max_vel->val,2)/max_acc->val)/max_vel->val;       // accel+deaccel+(dist-2*(v^2/2a))
-            }else{                              // we must split the motion into two: acceleration -> deacceleration
-                time=2*sqrt(dist/max_acc->val); // t=sqrt(2s/a), twice the time (acc and deacc) and half the distance
-            }
-            time=(ceil(time/servoCycle)*servoCycle);    // we round time up to XPS servo cycle to prevent rounding (relative) errors later
-            //std::cerr<<time<<"s "<<pulseWaitTime/1000<<"s "<<dist<<"mm "<<(nextpos.x-lastpos.x)/1000<<"mm "<<(nextpos.y-lastpos.y)/1000<<"mm\n";
-            //pgMGUI->corPvt(po,time, (nextpos.x-lastpos.x)/1000, 0, (nextpos.y-lastpos.y)/1000, 0, 0, 0,0,0);
-            if(time>0){
-                po->add(time, (nextpos.x-lastpos.x)/1000, 0, (nextpos.y-lastpos.y)/1000, 0, 0, 0,0,0);
-                commands.push_back(CQF::WAIT(time/8e-9));
-            }
-            //pgMGUI->corPvt(po,pulseWaitTime/1000, 0, 0, 0, 0, 0, 0,0,0);
-            po->add(pulseWaitTime/1000, 0, 0, 0, 0, 0, 0,0,0);
-            commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //for debugging purposes
-            commands.push_back(CQF::SG_SAMPLE(CQF::O0td, toWrite[i].at(j).intensity, 0));
-            commands.push_back(CQF::WAIT((duration->val)/8e-6 - 3));
-            commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
-            if(pulseWaitTime!=duration->val) commands.push_back(CQF::WAIT((pulseWaitTime-duration->val)/8e-6));
-            lastpos=nextpos;
+    cv::Point2d lastpos{0,0};
+    cv::Point2d nextpos;
+    double vel;
+    double dist;
+    double time;    // in s
+    double pulseWaitTime=std::ceil(duration->val);      //we round up pulse time to n ms, to make sure we dont have any XPS related timing rounding error
+    for(int j=0;j!=ints.rows;j++) for(int i=0;i!=ints.cols;i++){
+        if(ints.at<uint16_t>(j,i)==0) continue;
+        nextpos={-round((i-ints.cols/2.)*pointSpacing->val*100)/100,-round((j-ints.rows/2.)*pointSpacing->val*100)/100};          //in um, rounding to 0.01um precision (should be good enough for the stages) to avoid rounding error (with relative positions later on, thats why here we round absolute positions)
+        dist=cv::norm(lastpos-nextpos)/1000;//in mm
+        vel=sqrt(max_acc->val*dist);        // v=sqrt(2as) for half the distance -> max speed at constant acceleration
+        if(vel>max_vel->val){               // we must split the motion into three: acceleration -> constant -> deacceleration
+            time=2*max_vel->val/max_acc->val + (dist-pow(max_vel->val,2)/max_acc->val)/max_vel->val;       // accel+deaccel+(dist-2*(v^2/2a))
+        }else{                              // we must split the motion into two: acceleration -> deacceleration
+            time=2*sqrt(dist/max_acc->val); // t=sqrt(2s/a), twice the time (acc and deacc) and half the distance
         }
-        po->addAction(XPS::writingLaser,false);
-
-        if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";go.pXPS->destroyPVTobj(po);return;}
-        printf("Used %d of %d commands\n",commands.size(), go.pRPTY->getNum(RPTY::A2F_RSMax,0));
-        if(go.pRPTY->getNum(RPTY::A2F_RSMax,0)<=commands.size()) {std::cerr<<"too many commands\n";go.pXPS->destroyPVTobj(po);return;}
-        go.pRPTY->A2F_write(0,commands.data(),commands.size());
-        commands.clear();
-        while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
-        go.pXPS->execPVTobj(po, &ret);
-        while(!ret.check_if_done())QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
-        po->clear();
-        commands.clear();
+        time=(ceil(time/servoCycle)*servoCycle);    // we round time up to XPS servo cycle to prevent rounding (relative) errors later
+        //std::cerr<<time<<"s "<<pulseWaitTime/1000<<"s "<<dist<<"mm "<<(nextpos.x-lastpos.x)/1000<<"mm "<<(nextpos.y-lastpos.y)/1000<<"mm\n";
+        //pgMGUI->corPvt(po,time, (nextpos.x-lastpos.x)/1000, 0, (nextpos.y-lastpos.y)/1000, 0, 0, 0,0,0);
+        if(time>0){
+            po->add(time, (nextpos.x-lastpos.x)/1000, 0, (nextpos.y-lastpos.y)/1000, 0, 0, 0,0,0);
+            commands.push_back(CQF::WAIT(time/8e-9));
+        }
+        //pgMGUI->corPvt(po,pulseWaitTime/1000, 0, 0, 0, 0, 0, 0,0,0);
+        po->add(pulseWaitTime/1000, 0, 0, 0, 0, 0, 0,0,0);
+        commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //for debugging purposes
+        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, ints.at<uint16_t>(j,i), 0));
+        commands.push_back(CQF::WAIT((duration->val)/8e-6 - 3));
+        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
+        if(pulseWaitTime!=duration->val) commands.push_back(CQF::WAIT((pulseWaitTime-duration->val)/8e-6));
+        lastpos=nextpos;
     }
-    pgMGUI->move(-lastpos.x/1000,-lastpos.y/1000,0,-focus->val/1000);
+    //pgMGUI->corPvt(po,0.1, 0, 0, 0, 0, 0, 0,-focus->val/1000,0);
+    po->add(0.1, -lastpos.x/1000, 0, -lastpos.y/1000, 0, 0, 0,-focus->val/1000,0);
+    po->addAction(XPS::writingLaser,false);
+
+    if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";go.pXPS->destroyPVTobj(po);return;}
+    printf("Used %d of %d commands\n",commands.size(), go.pRPTY->getNum(RPTY::A2F_RSMax,0));
+    if(go.pRPTY->getNum(RPTY::A2F_RSMax,0)<=commands.size()) {std::cerr<<"too many commands\n";go.pXPS->destroyPVTobj(po);return;}
+    go.pRPTY->A2F_write(0,commands.data(),commands.size());
+    commands.clear();
+
+    go.pXPS->execPVTobj(po, &ret);
+    while(!ret.check_if_done())QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
 
     //TODO cap point number and reprogram for large number of points to be written
     //TODO add calculation that takes into account measured depth as pre
