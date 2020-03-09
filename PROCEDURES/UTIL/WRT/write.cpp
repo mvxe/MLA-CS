@@ -72,7 +72,6 @@ void pgWrite::onMenuChange(int index){
     constA=settingWdg[index]->constA;
     constB=settingWdg[index]->constB;
     constX0=settingWdg[index]->constX0;
-    constC=settingWdg[index]->constC;
     pointSpacing=settingWdg[index]->pointSpacing;
     FWHMX=settingWdg[index]->FWHMX;
     FWHMY=settingWdg[index]->FWHMY;
@@ -91,8 +90,6 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     slayout->addWidget(constB);
     constX0=new val_selector(1000, util::toString("writeSettings_constI00",num), "Constant I\u2080\u2080", 0, 8192, 3, 0, {"a.u."});
     slayout->addWidget(constX0);
-    constC=new val_selector(0, util::toString("writeSettings_constC",num), "Constant C", 0, 100, 3, 0, {"1/nm"});
-    slayout->addWidget(constC);
     pointSpacing=new val_selector(1, util::toString("writeSettings_pointSpacing",num), "Point spacing", 0.01, 10, 3, 0, {"um"});
     slayout->addWidget(pointSpacing);
     FWHMX=new val_selector(5, util::toString("writeSettings_FWHMX",num), "FWHM X", 0.1, 100, 2, 0, {"um"});
@@ -128,15 +125,7 @@ void pgWrite::onWriteDM(){
     cv::Mat ints(resizedWrite.rows,resizedWrite.cols,CV_16U);
 
     for(int j=0;j!=ints.rows;j++) for(int i=0;i!=ints.cols;i++){
-        if(constC->val==0) ints.at<uint16_t>(j,i)=getInt(resizedWrite.at<float>(j,i));
-        else{
-            float maxNNH{0};
-            if(j-1>=0)                  maxNNH=std::max(maxNNH,gaussian(0                , pointSpacing->val, resizedWrite.at<float>(j-1,i  ), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
-            if(i-1>=0)                  maxNNH=std::max(maxNNH,gaussian(pointSpacing->val, 0,                 resizedWrite.at<float>(j  ,i-1), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
-            if(i-1>=0 && j-1>=0)        maxNNH=std::max(maxNNH,gaussian(pointSpacing->val, pointSpacing->val, resizedWrite.at<float>(j-1,i-1), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
-            if(i+1<ints.cols && j-1>=0) maxNNH=std::max(maxNNH,gaussian(pointSpacing->val, pointSpacing->val, resizedWrite.at<float>(j-1,i+1), FWHMX->val/2/sqrt(2*log(2)), FWHMY->val/2/sqrt(2*log(2)), FWHMXYan->val));
-            ints.at<uint16_t>(j,i)=getInt(resizedWrite.at<float>(j,i),maxNNH);
-        }
+        ints.at<uint16_t>(j,i)=getInt(resizedWrite.at<float>(j,i));
     }
 
     if(!go.pRPTY->connected) return;
@@ -205,7 +194,7 @@ void pgWrite::onWriteDM(){
 
 uint pgWrite::getInt(float post, float pre){
     const float precision=0.01;
-    float minI=(constX0->val+constC->val*pre)*ICcor->val;
+    float minI=constX0->val*ICcor->val;
     float retI=8192;
     float mid;
     if(0>=post/*-pre*/) return 0;  //its already higher, dont need to write a pulse
@@ -217,7 +206,7 @@ uint pgWrite::getInt(float post, float pre){
     return roundf(retI);
 }
 float pgWrite::calcH(float Int, float pre){
-    float DInt=Int-(constX0->val+constC->val*pre)*ICcor->val;
+    float DInt=Int-constX0->val*ICcor->val;
     return constA->val/ICcor->val*DInt*expf(-constB->val*ICcor->val/DInt);
 }
 float pgWrite::gaussian(float x, float y, float a, float wx, float wy, float an){

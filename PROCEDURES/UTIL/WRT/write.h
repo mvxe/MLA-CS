@@ -37,7 +37,6 @@ private:
     val_selector* constA;
     val_selector* constB;
     val_selector* constX0;
-    val_selector* constC;
     val_selector* pointSpacing;
     val_selector* FWHMX;
     val_selector* FWHMY;
@@ -78,7 +77,6 @@ public:
     val_selector* constA;
     val_selector* constB;
     val_selector* constX0;
-    val_selector* constC;
     val_selector* pointSpacing;
     val_selector* FWHMX;
     val_selector* FWHMY;
