@@ -45,7 +45,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     }
     connect(selectWriteSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     onMenuChange(0);
-    QLabel* textl=new QLabel("Predicting height change with formula:\n\u0394H=A(I-I\u2080)exp(-B/(I-I\u2080)),\nwhere I\u2080=I\u2080\u2080+C\u00B7H\u2080,\nwhere H\u2080 is the height before the write, and I and I\u2080 are intensities.\nSet C to 0 if no pre-height correction is desired.");
+    QLabel* textl=new QLabel("Predicting height change with formula:\n\u0394H=A(I-I\u2080)exp(-B/(I-I\u2080)),\nwhere I and I\u2080 are intensities.");
     textl->setWordWrap(true);
     slayout->addWidget(textl);
 
@@ -94,9 +94,6 @@ void pgWrite::onMenuChange(int index){
     constX0=settingWdg[index]->constX0;
     plataeuPeakRatio=settingWdg[index]->plataeuPeakRatio;
     pointSpacing=settingWdg[index]->pointSpacing;
-    FWHMX=settingWdg[index]->FWHMX;
-    FWHMY=settingWdg[index]->FWHMY;
-    FWHMXYan=settingWdg[index]->FWHMXYan;
 }
 writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     slayout=new QVBoxLayout;
@@ -116,12 +113,6 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     slayout->addWidget(new twid(plataeuPeakRatio,corPPR));
     pointSpacing=new val_selector(1, util::toString("writeSettings_pointSpacing",num), "Point spacing", 0.01, 10, 3, 0, {"um"});
     slayout->addWidget(pointSpacing);
-    FWHMX=new val_selector(5, util::toString("writeSettings_FWHMX",num), "FWHM X", 0.1, 100, 2, 0, {"um"});
-    slayout->addWidget(FWHMX);
-    FWHMY=new val_selector(5, util::toString("writeSettings_FWHMY",num), "FWHM Y", 0.1, 100, 2, 0, {"um"});
-    slayout->addWidget(FWHMY);
-    FWHMXYan=new val_selector(0, util::toString("writeSettings_FWHMXYan",num), "FWHM XY angle", 0, M_PI, 2, 0, {"rad"});
-    slayout->addWidget(FWHMXYan);
 }
 void pgWrite::onLoadImg(){
     writeDM->setEnabled(false);

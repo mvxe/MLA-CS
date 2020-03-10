@@ -40,9 +40,6 @@ private:
     val_selector* constX0;
     val_selector* plataeuPeakRatio;
     val_selector* pointSpacing;
-    val_selector* FWHMX;
-    val_selector* FWHMY;
-    val_selector* FWHMXYan;
 
     val_selector* max_vel;
     val_selector* max_acc;
@@ -84,9 +81,6 @@ public:
     val_selector* plataeuPeakRatio;
     QPushButton* corPPR;
     val_selector* pointSpacing;
-    val_selector* FWHMX;
-    val_selector* FWHMY;
-    val_selector* FWHMXYan;
 };
 
 #endif // PGWRITE_H
