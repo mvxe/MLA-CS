@@ -651,12 +651,14 @@ void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string f
     wfile.close();
 
     if(!scan->depthSS.empty() && scan->avgNum>1 && saveSD){
-        fileName.insert(fileName.length()-4,"-SD");
-        cv::imwrite(fileName, cv::Mat(scan->depthSS, roi));
+        std::string nfileName=fileName;
+        nfileName.insert(fileName.length()-4,"-SD");
+        cv::imwrite(nfileName, cv::Mat(scan->depthSS, roi));
     }
     if(!scan->refl.empty() && saveRF){
-        fileName.replace(fileName.end()-7,fileName.end(),"-RF.png");
-        cv::imwrite(fileName, cv::Mat(scan->refl, roi));
+        std::string nfileName=fileName;
+        nfileName.replace(nfileName.end()-4,nfileName.end(),"-RF.png");
+        cv::imwrite(nfileName, cv::Mat(scan->refl, roi));
     }
 }
 void pgScanGUI::saveScanTxt(const scanRes* scan, std::string fileName){
@@ -735,11 +737,15 @@ bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
     rfile.close();
 
     if(scan->avgNum>1){
-        fileName.insert(fileName.length()-4,"-SD");
-        scan->depthSS=cv::imread(fileName, cv::IMREAD_UNCHANGED);
+        std::string nfileName=fileName;
+        nfileName.insert(fileName.length()-4,"-SD");
+        scan->depthSS=cv::imread(nfileName, cv::IMREAD_UNCHANGED);
     }
-    fileName.replace(fileName.end()-7,fileName.end(),"-RF.png");
-    scan->refl=cv::imread(fileName, cv::IMREAD_UNCHANGED);
+    {
+        std::string nfileName=fileName;
+        nfileName.replace(nfileName.end()-4,nfileName.end(),"-RF.png");
+        scan->refl=cv::imread(nfileName, cv::IMREAD_UNCHANGED);
+    }
     return true;
 }
 pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
