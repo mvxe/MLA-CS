@@ -41,6 +41,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     for(int i=0;i!=Nset;i++) {
         settingWdg.push_back(new writeSettings(i, this));
         slayout->addWidget(settingWdg.back());
+        connect(settingWdg.back()->corPPR, SIGNAL(released()), this, SLOT(onCorPPR()));
     }
     connect(selectWriteSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     onMenuChange(0);
@@ -63,6 +64,14 @@ void pgWrite::onCorICor(){
     uint gInt=getInt(preH);
     ICcor->setValue((double)cInt/gInt);
 }
+void pgWrite::onCorPPR(){
+    bool ok;
+    float preH=QInputDialog::getDouble(gui_activation, "Correct plateau-peak ratio", "Input actual written plateau height for given expected peak height.", 0.001, 0, 1000, 3, &ok);
+    if(!ok) return;
+    uint cInt=getInt(depthMaxval->val);
+    uint gInt=getInt(preH);
+    plataeuPeakRatio->setValue(plataeuPeakRatio->val*gInt/cInt);
+}
 void pgWrite::onPulse(){
     if(!go.pRPTY->connected) return;
     std::vector<uint32_t> commands;
@@ -83,6 +92,7 @@ void pgWrite::onMenuChange(int index){
     constA=settingWdg[index]->constA;
     constB=settingWdg[index]->constB;
     constX0=settingWdg[index]->constX0;
+    plataeuPeakRatio=settingWdg[index]->plataeuPeakRatio;
     pointSpacing=settingWdg[index]->pointSpacing;
     FWHMX=settingWdg[index]->FWHMX;
     FWHMY=settingWdg[index]->FWHMY;
@@ -101,6 +111,9 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     slayout->addWidget(constB);
     constX0=new val_selector(1000, util::toString("writeSettings_constI00",num), "Constant I\u2080\u2080", 0, 8192, 3, 0, {"a.u."});
     slayout->addWidget(constX0);
+    plataeuPeakRatio=new val_selector(1, util::toString("writeSettings_plataeuPeakRatio",num), "Plataeu-Peak height ratio", 1, 10, 3);
+    corPPR=new QPushButton("Correct PPR");
+    slayout->addWidget(new twid(plataeuPeakRatio,corPPR));
     pointSpacing=new val_selector(1, util::toString("writeSettings_pointSpacing",num), "Point spacing", 0.01, 10, 3, 0, {"um"});
     slayout->addWidget(pointSpacing);
     FWHMX=new val_selector(5, util::toString("writeSettings_FWHMX",num), "FWHM X", 0.1, 100, 2, 0, {"um"});
@@ -201,7 +214,7 @@ void pgWrite::onWriteDM(){
 
 uint pgWrite::getInt(float post, float pre){
     const float precision=0.01;
-    float minI=constX0->val*ICcor->val;
+    float minI=constX0->val*ICcor->val/plataeuPeakRatio->val;
     float retI=8192;
     float mid;
     if(0>=post/*-pre*/) return 0;  //its already higher, dont need to write a pulse
@@ -213,7 +226,7 @@ uint pgWrite::getInt(float post, float pre){
     return roundf(retI);
 }
 float pgWrite::calcH(float Int, float pre){
-    float DInt=Int-constX0->val*ICcor->val;
+    float DInt=Int-constX0->val*ICcor->val/plataeuPeakRatio->val;
     return constA->val/ICcor->val*DInt*expf(-constB->val*ICcor->val/DInt);
 }
 float pgWrite::gaussian(float x, float y, float a, float wx, float wy, float an){

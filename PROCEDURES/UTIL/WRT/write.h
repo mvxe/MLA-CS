@@ -38,6 +38,7 @@ private:
     val_selector* constA;
     val_selector* constB;
     val_selector* constX0;
+    val_selector* plataeuPeakRatio;
     val_selector* pointSpacing;
     val_selector* FWHMX;
     val_selector* FWHMY;
@@ -63,6 +64,7 @@ private Q_SLOTS:
     void onWriteDM();
     void onChangeDrawWriteAreaOn(bool status);
     void onCorICor();
+    void onCorPPR();
 };
 
 
@@ -79,6 +81,8 @@ public:
     val_selector* constA;
     val_selector* constB;
     val_selector* constX0;
+    val_selector* plataeuPeakRatio;
+    QPushButton* corPPR;
     val_selector* pointSpacing;
     val_selector* FWHMX;
     val_selector* FWHMY;
