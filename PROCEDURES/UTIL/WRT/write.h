@@ -6,6 +6,7 @@
 #include "PROCEDURES/UTIL/USC/scan.h"
 class writeSettings;
 class pgBeamAnalysis;
+class QLineEdit;
 class pgWrite: public QObject{
     Q_OBJECT
 public:
@@ -26,6 +27,8 @@ private:
     val_selector* ICcor;
     QPushButton* corICor;
     QPushButton* writeDM;
+    QLineEdit* tagText;
+    HQPushButton* writeTag;
 
     //settings
     QVBoxLayout* slayout;
@@ -45,7 +48,8 @@ private:
     val_selector* max_acc;
 
     cv::Mat WRImage;
-    bool drawWriteAreaOn{false};
+    cv::Mat tagImage;
+    int drawWriteAreaOn{0};     //1 is img, 2 is tag
     const double servoCycle{0.0001};    // The XPS servo cycle (in s)
 
     pgBeamAnalysis* pgBeAn;
@@ -58,8 +62,10 @@ private Q_SLOTS:
     void onPulse();
     void onMenuChange(int index);
     void onLoadImg();
-    void onWriteDM();
+    void onWriteDM(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgUmPPx=0, double override_pointSpacing=0, double override_duration=0, double override_focus=0);  //if you override override mat, you must override them all
+    void onWriteTag();
     void onChangeDrawWriteAreaOn(bool status);
+    void onChangeDrawWriteAreaOnTag(bool status);
     void onCorICor();
     void onCorPPR();
 };
@@ -81,6 +87,13 @@ public:
     val_selector* plataeuPeakRatio;
     QPushButton* corPPR;
     val_selector* pointSpacing;
+
+    //tag:
+    smp_selector* fontFace;
+    val_selector* fontSize;
+    val_selector* fontThickness;
+    val_selector* imgUmPPx;
+    val_selector* depthMaxval;
 };
 
 #endif // PGWRITE_H

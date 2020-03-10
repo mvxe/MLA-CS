@@ -33,10 +33,16 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     connect(writeDM, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
     connect(writeDM, SIGNAL(released()), this, SLOT(onWriteDM()));
     alayout->addWidget(new twid(writeDM));
+    tagText=new QLineEdit;
+    writeTag=new HQPushButton("Write Tag");
+    connect(writeTag, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOnTag(bool)));
+    connect(writeTag, SIGNAL(released()), this, SLOT(onWriteTag()));
+    alayout->addWidget(new twid(new QLabel("Tag:"),tagText,writeTag));
+
     writeDM->setEnabled(false);
     alayout->addWidget(new hline);
 
-    selectWriteSetting=new smp_selector("Select write setting: ", 0, {"Set0", "Set1", "Set2", "Set3", "Set4"});    //should have Nset strings
+    selectWriteSetting=new smp_selector("Select write setting: ", 0, {"Set0", "Set1", "Set2", "Set3", "Tag"});    //should have Nset strings
     slayout->addWidget(selectWriteSetting);
     for(int i=0;i!=Nset;i++) {
         settingWdg.push_back(new writeSettings(i, this));
@@ -113,6 +119,18 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     slayout->addWidget(new twid(plataeuPeakRatio,corPPR));
     pointSpacing=new val_selector(1, util::toString("writeSettings_pointSpacing",num), "Point spacing", 0.01, 10, 3, 0, {"um"});
     slayout->addWidget(pointSpacing);
+    if(num==4){ //tag settings
+        fontFace=new smp_selector("writeSettings_tag_fontFace", "Font ", 0, OCV_FF::qslabels());
+        slayout->addWidget(fontFace);
+        fontSize=new val_selector(1., "writeSettings_tag_fontSize", "Font Size ", 0, 10., 2);
+        slayout->addWidget(fontSize);
+        fontThickness=new val_selector(1, "writeSettings_tag_fontThickness", "Font Thickness ", 1, 10, 0, 0, {"px"});
+        slayout->addWidget(fontThickness);
+        imgUmPPx=new val_selector(10, "writeSettings_tag_imgUmPPx", "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
+        slayout->addWidget(imgUmPPx);
+        depthMaxval=new val_selector(10, "writeSettings_tag_depthMaxval", "Maxval=", 0.1, 500, 3, 0, {"nm"});
+        slayout->addWidget(depthMaxval);
+    }
 }
 void pgWrite::onLoadImg(){
     writeDM->setEnabled(false);
@@ -123,17 +141,36 @@ void pgWrite::onLoadImg(){
 
     writeDM->setEnabled(true);
 }
-void pgWrite::onWriteDM(){
+void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double override_imgUmPPx, double override_pointSpacing, double override_duration, double override_focus){
     cv::Mat tmpWrite, resizedWrite;
-    if(WRImage.type()==CV_8U){
-        WRImage.convertTo(tmpWrite, CV_32F, depthMaxval->val/255);
-    }else if(WRImage.type()==CV_16U){
-        WRImage.convertTo(tmpWrite, CV_32F, depthMaxval->val/65536);
-    }else if(WRImage.type()==CV_32F) WRImage.copyTo(tmpWrite);
+    cv::Mat* src;
+    double vdepthMaxval, vimgUmPPx, vpointSpacing, vduration, vfocus;
+    if(override!=nullptr){
+        src=override;
+        vdepthMaxval=override_depthMaxval;
+        vimgUmPPx=override_imgUmPPx;
+        vpointSpacing=override_pointSpacing;
+        vduration= override_duration;
+        vfocus=override_focus;
+    }
+    else{
+        src=&WRImage;
+        vdepthMaxval=depthMaxval->val;
+        vimgUmPPx=imgUmPPx->val;
+        vpointSpacing=pointSpacing->val;
+        vduration=duration->val;
+        vfocus=focus->val;
+    }
+
+    if(src->type()==CV_8U){
+        src->convertTo(tmpWrite, CV_32F, vdepthMaxval/255);
+    }else if(src->type()==CV_16U){
+        src->convertTo(tmpWrite, CV_32F, vdepthMaxval/65536);
+    }else if(src->type()==CV_32F) src->copyTo(tmpWrite);
     else {QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n"); writeDM->setEnabled(false); return;}
 
-    double ratio=imgUmPPx->val/pointSpacing->val;
-    if(imgUmPPx->val<pointSpacing->val) cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_AREA);   //shrink
+    double ratio=vimgUmPPx/vpointSpacing;
+    if(vimgUmPPx<vpointSpacing) cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_AREA);   //shrink
     else cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_CUBIC);                                 //enlarge
 
     //now convert depths to a matrix of intensities;
@@ -150,7 +187,7 @@ void pgWrite::onWriteDM(){
     exec_ret ret;
     PVTobj* po=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pgWrite.txt");
     std::vector<uint32_t> commands;
-    pgMGUI->corPvt(po,0.1, 0, 0, 0, 0, 0, 0,focus->val/1000,0);
+    pgMGUI->corPvt(po,0.1, 0, 0, 0, 0, 0, 0,vfocus/1000,0);
     commands.push_back(CQF::GPIO_MASK(0x40,0,0));
     commands.push_back(CQF::GPIO_DIR (0x40,0,0));
     commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
@@ -161,11 +198,11 @@ void pgWrite::onWriteDM(){
     double vel;
     double dist;
     double time;    // in s
-    double pulseWaitTime=std::ceil(duration->val);      //we round up pulse time to n ms, to make sure we dont have any XPS related timing rounding error
+    double pulseWaitTime=std::ceil(vduration);      //we round up pulse time to n ms, to make sure we dont have any XPS related timing rounding error
     for(int j=0;j!=ints.rows;j++) for(int i=0;i!=ints.cols;i++){
         int ii=(j%2)?i:(ints.cols-i-1);
         if(ints.at<uint16_t>(j,ii)==0) continue;
-        nextpos={-round((ii-ints.cols/2.)*pointSpacing->val*100)/100,-round((j-ints.rows/2.)*pointSpacing->val*100)/100};          //in um, rounding to 0.01um precision (should be good enough for the stages) to avoid rounding error (with relative positions later on, thats why here we round absolute positions)
+        nextpos={-round((ii-ints.cols/2.)*vpointSpacing*100)/100,-round((j-ints.rows/2.)*vpointSpacing*100)/100};          //in um, rounding to 0.01um precision (should be good enough for the stages) to avoid rounding error (with relative positions later on, thats why here we round absolute positions)
         dist=cv::norm(lastpos-nextpos)/1000;//in mm
         vel=sqrt(max_acc->val*dist);        // v=sqrt(2as) for half the distance -> max speed at constant acceleration
         if(vel>max_vel->val){               // we must split the motion into three: acceleration -> constant -> deacceleration
@@ -181,12 +218,12 @@ void pgWrite::onWriteDM(){
         pgMGUI->corPvt(po,pulseWaitTime/1000, 0, 0, 0, 0, 0, 0,0,0);
         commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //for debugging purposes
         commands.push_back(CQF::SG_SAMPLE(CQF::O0td, ints.at<uint16_t>(j,ii), 0));
-        commands.push_back(CQF::WAIT((duration->val)/8e-6 - 3));
+        commands.push_back(CQF::WAIT((vduration)/8e-6 - 3));
         commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
-        if(pulseWaitTime!=duration->val) commands.push_back(CQF::WAIT((pulseWaitTime-duration->val)/8e-6));
+        if(pulseWaitTime!=vduration) commands.push_back(CQF::WAIT((pulseWaitTime-vduration)/8e-6));
         lastpos=nextpos;
     }
-    pgMGUI->corPvt(po,0.1, -lastpos.x/1000, 0, -lastpos.y/1000, 0, 0, 0,-focus->val/1000,0);
+    pgMGUI->corPvt(po,0.1, -lastpos.x/1000, 0, -lastpos.y/1000, 0, 0, 0,-vfocus/1000,0);
     po->addAction(XPS::writingLaser,false);
 
     if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";go.pXPS->destroyPVTobj(po);return;}
@@ -201,6 +238,13 @@ void pgWrite::onWriteDM(){
     //TODO cap point number and reprogram for large number of points to be written
     //TODO add calculation that takes into account measured depth as pre
     go.pXPS->destroyPVTobj(po);
+}
+void pgWrite::onWriteTag(){
+    std::cerr<<"writing tag\n";
+    cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
+    tagImage=cv::Mat(size.height+4,size.width+4,CV_8U,cv::Scalar(0));
+    cv::putText(tagImage,tagText->text().toStdString(), {0,size.height+1}, OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, cv::Scalar(255), settingWdg[4]->fontThickness->val, cv::LINE_AA);
+    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val, settingWdg[4]->pointSpacing->val,settingWdg[4]->duration->val,settingWdg[4]->focus->val);
 }
 
 uint pgWrite::getInt(float post, float pre){
@@ -229,13 +273,30 @@ float pgWrite::gaussian(float x, float y, float a, float wx, float wy, float an)
 
 
 void pgWrite::onChangeDrawWriteAreaOn(bool status){
-    drawWriteAreaOn=status;
+    drawWriteAreaOn=status?1:0;
+}
+void pgWrite::onChangeDrawWriteAreaOnTag(bool status){
+    drawWriteAreaOn=status?2:0;
 }
 void pgWrite::drawWriteArea(cv::Mat* img){
-    if(!drawWriteAreaOn || WRImage.empty() || !writeDM->isEnabled()) return;
-    double ratio=imgUmPPx->val;
-    double xSize=round(ratio*WRImage.cols)*1000/pgMGUI->getNmPPx();
-    double ySize=round(ratio*WRImage.rows)*1000/pgMGUI->getNmPPx();
+    if(!drawWriteAreaOn) return;
+    double ratio;
+    double xSize;
+    double ySize;
+
+    if(drawWriteAreaOn==2){ //tag
+        if(tagText->text().toStdString().empty()) return;
+        ratio=settingWdg[4]->imgUmPPx->val;    //TODO change
+        cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
+        xSize=round(ratio*(size.width+1))*1000/pgMGUI->getNmPPx();
+        ySize=round(ratio*(size.height+1))*1000/pgMGUI->getNmPPx();
+    }else{
+        if(WRImage.empty() || !writeDM->isEnabled()) return;
+        ratio=imgUmPPx->val;
+        xSize=round(ratio*WRImage.cols)*1000/pgMGUI->getNmPPx();
+        ySize=round(ratio*WRImage.rows)*1000/pgMGUI->getNmPPx();
+    }
+
     double clr[2]={0,255}; int thck[2]={3,1};
     for(int i=0;i!=2;i++)
         cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, img->rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
