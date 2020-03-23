@@ -22,7 +22,9 @@ tab_camera::tab_camera(QWidget* parent){
     layout->addWidget(tBarW);
 
     selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map","Depth Map SD","Reflectivity"});
-    layoutTBarW->addWidget(selDisp);
+    dispScale=new val_selector(1, "camera_dispScale", "Scale: ", 0.1, 1, 2);
+    connect(dispScale, SIGNAL(changed()), this, SLOT(updateImgF()));
+    layoutTBarW->addWidget(new twid(selDisp,dispScale));
 
     TWCtrl=new QTabWidget;
     TWCtrl->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Expanding);
@@ -174,15 +176,15 @@ void tab_camera::work_fun(){
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
                 pgCal->drawWriteArea(&temp);
                 pgWrt->drawWriteArea(&temp);
-                LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_Indexed8)));
+                scaleDisplay(temp, QImage::Format_Indexed8);
 //                cv::applyColorMap(temp, temp, OCV_CM::ids[cm_sel->index]);
 //                cv::cvtColor(temp, temp, cv::COLOR_BGR2RGB);
-//                LDisplay->setPixmap(QPixmap::fromImage(QImage(temp.data, temp.cols, temp.rows, temp.step, QImage::Format_RGB888)));
+//                scaleDisplay(temp, QImage::Format_RGB888);
             }
-            else LDisplay->setPixmap(QPixmap::fromImage(QImage(onDisplay->data, onDisplay->cols, onDisplay->rows, onDisplay->step, QImage::Format_Indexed8)));
+            else scaleDisplay(*onDisplay, QImage::Format_Indexed8);
             addInfo->setVisible(false);
         }
-        if(scanRes->changed() || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || loadedScanChanged){
+        if(scanRes->changed() || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || updateDisp){
             const pgScanGUI::scanRes* res;
             if(scanRes->changed()) loadedOnDisplay=false;
             if(loadedOnDisplay) res=&loadedScan;
@@ -192,7 +194,7 @@ void tab_camera::work_fun(){
         }
     }else if(selDisp->index==1 || selDisp->index==2 || selDisp->index==3){   // Depth map or SD or refl.
         LDisplay->isDepth=true;
-        if(pgDpEv->debugChanged || /*pgWrtPrd->debugChanged ||*/ scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || cMap->changed || selectingFlag || lastSelectingFlag || loadedScanChanged){
+        if(pgDpEv->debugChanged || /*pgWrtPrd->debugChanged ||*/ scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || cMap->changed || selectingFlag || lastSelectingFlag || updateDisp){
             const pgScanGUI::scanRes* res;
             if(scanRes->changed()) loadedOnDisplay=false;
             if(loadedOnDisplay) res=&loadedScan;
@@ -227,7 +229,7 @@ void tab_camera::work_fun(){
                     else cv::rectangle(display, {selStartX+1,selStartY+(display.rows-res->depth.rows)/2},{selCurX+1,selCurY+(display.rows-res->depth.rows)/2}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, 1);
                 }
 
-                LDisplay->setPixmap(QPixmap::fromImage(QImage(display.data, display.cols, display.rows, display.step, QImage::Format_RGBA8888)));
+                scaleDisplay(display, QImage::Format_RGBA8888);
                 if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0 || res->avgNum>1){
                     std::string text;
                     if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0) text+=util::toString("Tilt correction was: X: ",res->tiltCor[0],", Y: ",res->tiltCor[1]);
@@ -247,13 +249,20 @@ void tab_camera::work_fun(){
     if(onDisplay!=nullptr) framequeueDisp->freeUserMat();
     lastSelectingFlag=selectingFlag;
     redrawHistClrmap=false;
-    loadedScanChanged=false;
+    updateDisp=false;
 
     redLaserOn->setEnabled(go.pRPTY->connected);
     greenLaserOn->setEnabled(go.pRPTY->connected);
 
     measPB->setValue(MLP.progress_meas);
     compPB->setValue(MLP.progress_comp);
+}
+
+void tab_camera::scaleDisplay(cv::Mat img, QImage::Format format){
+    cv::Mat tmp;
+    if(dispScale->val!=1) cv::resize(img, tmp, cv::Size(0,0),dispScale->val,dispScale->val, cv::INTER_AREA);
+    else tmp=img;
+    LDisplay->setPixmap(QPixmap::fromImage(QImage(tmp.data, tmp.cols, tmp.rows, tmp.step, format)));
 }
 
 void tab_camera::on_tab_change(int index){
@@ -290,14 +299,27 @@ void tab_camera::tab_exited(){
 
 //  iImageDisplay EVENT HANDLING
 
+void iImageDisplay::calsVars(QMouseEvent *event, double* xcoord, double* ycoord, double* pwidth, double* pheight){
+    *xcoord=event->pos().x()-(width()-pixmap()->width())/2;
+    *ycoord=event->pos().y()-(height()-pixmap()->height())/2;
+    if(pwidth!=nullptr) *pwidth=pixmap()->width();
+    *pheight=pixmap()->height();
+    if(parent->dispScale->val!=1){
+        *xcoord/=parent->dispScale->val;
+        *ycoord/=parent->dispScale->val;
+        if(pwidth!=nullptr) *pwidth/=parent->dispScale->val;
+        *pheight/=parent->dispScale->val;
+    }
+}
+
 void iImageDisplay::mouseMoveEvent(QMouseEvent *event){
-    int xcoord=event->pos().x()-(width()-pixmap()->width())/2;
-    int ycoord=event->pos().y()-(height()-pixmap()->height())/2;
+    double xcoord,ycoord,pxH;
+    calsVars(event, &xcoord, &ycoord, nullptr, &pxH);
     parent->selCurX=xcoord;
     parent->selCurY=ycoord;
     if(isDepth){
         parent->selCurX-=1;                                 //correct for drawn margins on image
-        parent->selCurY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
+        parent->selCurY-=(pxH-parent->dispDepthMatRows)/2;
         if(parent->selectingFlag && parent->selectingFlagIsLine){
             if(event->modifiers()&Qt::ControlModifier){  //ctrl is held
                 if(abs(parent->selCurX-parent->selStartX)>abs(parent->selCurY-parent->selStartY)) parent->selCurY=parent->selStartY;
@@ -308,15 +330,15 @@ void iImageDisplay::mouseMoveEvent(QMouseEvent *event){
     else{}
 }
 void iImageDisplay::mousePressEvent(QMouseEvent *event){
-    int xcoord=event->pos().x()-(width()-pixmap()->width())/2;
-    int ycoord=event->pos().y()-(height()-pixmap()->height())/2;
+    double xcoord,ycoord,pxH;
+    calsVars(event, &xcoord, &ycoord, nullptr, &pxH);
     parent->selStartX=xcoord; parent->selCurX=xcoord;
     parent->selStartY=ycoord; parent->selCurY=ycoord;
     if(isDepth){
         parent->selCurX-=1;                                 //correct for drawn margins on image
-        parent->selCurY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
+        parent->selCurY-=(pxH-parent->dispDepthMatRows)/2;
         parent->selStartX-=1;
-        parent->selStartY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
+        parent->selStartY-=(pxH-parent->dispDepthMatRows)/2;
 
         if(event->button()==Qt::RightButton){
             parent->selectingFlag=true;
@@ -329,14 +351,14 @@ void iImageDisplay::mousePressEvent(QMouseEvent *event){
     else{}
 }
 void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
-    int xcoord=event->pos().x()-(width()-pixmap()->width())/2;
-    int ycoord=event->pos().y()-(height()-pixmap()->height())/2;
+    double xcoord,ycoord,pxW,pxH;
+    calsVars(event, &xcoord, &ycoord, &pxW, &pxH);
     parent->selEndX=xcoord;
     parent->selEndY=ycoord;
 
     if(isDepth){
         parent->selEndX-=1;                                 //correct for drawn margins on image
-        parent->selEndY-=(pixmap()->height()-parent->dispDepthMatRows)/2;
+        parent->selEndY-=(pxH-parent->dispDepthMatRows)/2;
 
         if((parent->selStartX<0 && parent->selEndX<0) || (parent->selStartX>=parent->dispDepthMatCols && parent->selEndX>=parent->dispDepthMatCols) || (parent->selStartY<0 && parent->selEndY<0) || (parent->selStartY>=parent->dispDepthMatRows && parent->selEndY>=parent->dispDepthMatRows))
             {parent->selectingFlag=false; return;}
@@ -362,13 +384,13 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
         }
     }
     else{
-        if(xcoord<0 || xcoord>=pixmap()->width() || ycoord<0 || ycoord>=pixmap()->height()) return; //ignore events outside pixmap;
+        if(xcoord<0 || xcoord>=pxW || ycoord<0 || ycoord>=pxH) return; //ignore events outside pixmap;
         if(event->button()==Qt::LeftButton){
             double DX, DY;
-            DX=(pixmap()->width()/2+parent->pgBeAn->writeBeamCenterOfsX-xcoord)*parent->pgMGUI->getNmPPx()/1000000;     //we also correct for real writing beam offset from center
-            DY=(pixmap()->height()/2+parent->pgBeAn->writeBeamCenterOfsY-ycoord)*parent->pgMGUI->getNmPPx()/1000000;
+            DX=(pxW/2+parent->pgBeAn->writeBeamCenterOfsX-xcoord)*parent->pgMGUI->getNmPPx()/1000000;     //we also correct for real writing beam offset from center
+            DY=(pxH/2+parent->pgBeAn->writeBeamCenterOfsY-ycoord)*parent->pgMGUI->getNmPPx()/1000000;
             parent->pgMGUI->move(DX,DY,0,0,true);
-            if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(pixmap()->width()/2-xcoord, pixmap()->height()/2-ycoord);
+            if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(pxW/2-xcoord, pxH/2-ycoord);
         }else if(event->button()==Qt::RightButton){
             parent->clickMenu->popup(QCursor::pos());
         }
@@ -472,15 +494,18 @@ void tab_camera::onSaveDepthMapRaw(bool txt){
 }
 void tab_camera::onLoadDepthMapRaw(void){
     if(pgScanGUI::loadScan(&loadedScan)){
-        loadedScanChanged=true;
+        updateDisp=true;
         loadedOnDisplay=true;
     }
 }
 void tab_camera::showScan(pgScanGUI::scanRes scan){
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 100);    //wait for tab_camera to detect new scan, and then send signal
     loadedScan=scan;
-    loadedScanChanged=true;
+    updateDisp=true;
     loadedOnDisplay=true;
+}
+void tab_camera::updateImgF(){
+    updateDisp=true;
 }
 void tab_camera::onDiff2Raw(){
     pgScanGUI::scanRes scanBefore, scanAfter;
@@ -488,7 +513,7 @@ void tab_camera::onDiff2Raw(){
         pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
         if(scanDif.depth.empty()) return;
         loadedScan=scanDif;
-        loadedScanChanged=true;
+        updateDisp=true;
         loadedOnDisplay=true;
     }
 }
@@ -512,7 +537,7 @@ void tab_camera::onRotateDepthMap(){
     }
     cv::Point ignore;
     cv::minMaxLoc(loadedScan.depth, &loadedScan.min, &loadedScan.max, &ignore, &ignore, loadedScan.maskN);
-    loadedScanChanged=true;
+    updateDisp=true;
     loadedOnDisplay=true;
 }
 
@@ -602,7 +627,7 @@ void tab_camera::on2DFFT(){
     cv::multiply(magP,magP,loadedScan.depthSS); loadedScan.avgNum=2;    //these make it display properly as SD gets additional operations performed on it
     cv::minMaxLoc(magI,&loadedScan.min,&loadedScan.max);
 
-    loadedScanChanged=true;
+    updateDisp=true;
     loadedOnDisplay=true;
 }
 

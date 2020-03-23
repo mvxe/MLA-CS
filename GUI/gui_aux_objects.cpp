@@ -43,6 +43,7 @@ void val_selector::init0(QString label, double min, double max, double precision
     spinbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     spinbox->setRange(min,max);
     spinbox->setDecimals(precision);
+    spinbox->setSingleStep(pow(10,-precision));
     spinbox->setValue(value);
     connect(spinbox, SIGNAL(valueChanged(double)), this, SLOT(on_value_change(double)));
 }

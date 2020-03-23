@@ -45,6 +45,7 @@ private:
     smp_selector* selDisp;
     int oldIndex=-1;
     int oldCm=-1;
+    val_selector* dispScale;
     QTabWidget* TWCtrl;
 
     twd_selector* pageMotion;
@@ -97,9 +98,9 @@ private:
     QMenu* clickMenuDepthRight;
     QMenu* clickMenuDepthLeft;
 
-    int selStartX, selStartY;
-    int selCurX, selCurY;
-    int selEndX, selEndY;
+    double selStartX, selStartY;
+    double selCurX, selCurY;
+    double selEndX, selEndY;
     bool selectingFlag{false};
     bool lastSelectingFlag{false};
     bool selectingFlagIsLine{false};
@@ -110,7 +111,9 @@ private:
     const cv::Mat* onDisplay;
 
     constexpr static unsigned work_call_time=33;    //work_fun is called periodically via timer every this many milliseconds
-    pgScanGUI::scanRes loadedScan; bool loadedScanChanged{false}; bool loadedOnDisplay{false};
+    pgScanGUI::scanRes loadedScan; bool updateDisp{false}; bool loadedOnDisplay{false};
+
+    void scaleDisplay(cv::Mat img, QImage::Format format);
 private Q_SLOTS:
     void work_fun();
     void on_tab_change(int index);
@@ -130,6 +133,8 @@ private Q_SLOTS:
     void onPlotRect();
     void on2DFFT();
 
+    void updateImgF();
+
     void onRedLaserToggle(bool state);
     void onGreenLaserToggle(bool state);
 
@@ -143,6 +148,7 @@ public:
     int isDepth{false};
     tab_camera* parent;
 private:
+    void calsVars(QMouseEvent *event, double* xcoord, double* ycoord, double* pwidth, double* pheight);
     void mouseMoveEvent(QMouseEvent *event);
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
