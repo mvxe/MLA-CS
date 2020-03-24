@@ -10,7 +10,6 @@
 MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainWindow(parent), ui(new Ui::MainWindow) {
     mats= new std::vector<cv::Mat>;
 
-    onDisplay=new cv::Mat();
     connect(qapp,SIGNAL(aboutToQuit()),this,SLOT(program_exit()));
     shortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q),this,SLOT(program_exit()));
 
@@ -37,9 +36,6 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
 
     iuScope_img=go.pGCAM->iuScope->FQsPCcam.getNewFQ();    //make new image queue
     utilCam_img=go.pGCAM->utilCam->FQsPCcam.getNewFQ();    //make new image queue
-    ui->camera_stream->pmw=this;
-    ui->utilcam_stream->pmw=this;
-    ui->focusbtn->pmw=this;
 
     tabDev=new tab_devices(ui->tab_dev);
     tabMon=new tab_monitor(ui->tab_rpty_monitor);
@@ -50,7 +46,6 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
 
 MainWindow::~MainWindow(){
     delete ui;
-    delete onDisplay;
     if(!cleanedTabs){
         delete tabDev;
         delete tabMon;
@@ -73,9 +68,6 @@ void MainWindow::on_tabWidget_currentChanged(int index){
     lastIndex=index;
 
     ui->centralWidget->setFocus();  //prevents random textboxes from receiving focus after tab switch
-
-    if (tabName=="CameraOld") iuScope_img->setUserFps(30.,5);
-    else if(lastTabName=="CameraOld") iuScope_img->setUserFps(0.);
 
     if (tabName=="UtilCam") utilCam_img->setUserFps(30.,5);
     else if(lastTabName=="UtilCam") utilCam_img->setUserFps(0.);
@@ -134,100 +126,6 @@ void MainWindow::updateCncMenu(QMenu* menuN){
         actx->setToolTip(QString::fromStdString(go.pCNC->serial_desc.get()->at(i).description));
         menuN->addAction(actx);
     }
-}
-
-void mtlabel::mousePressEvent(QMouseEvent *event){
-    double disp_x=-(event->pos().x()-size().width()/2.)/size().width()*1280;
-    double disp_y=-(event->pos().y()-size().height()/2.)/size().height()*1024;
-    if(go.pXPS->connected)
-        go.pXPS->MoveRelative(XPS::mgroup_XYZF,disp_x*pmw->xps_x_sen/100000,disp_y*pmw->xps_y_sen/100000,0,0);
-}
-
-void mtlabel::wheelEvent(QWheelEvent *event){
-    if(go.pXPS->connected)
-        go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,(double)event->delta()*pmw->xps_z_sen/1000000,-(double)event->delta()*pmw->xps_z_sen/1000000);
-}
-
-void fclabel::wheelEvent(QWheelEvent *event){
-    if(go.pXPS->connected)
-        go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,0,(double)event->delta()*pmw->xps_f_sen/1000000);
-}
-
-void MainWindow::on_move_btn_released(){
-    double disp_x=-ui->move_distance->value()/1000.*cos(ui->move_angle->value()*M_PI/180);
-    double disp_y=ui->move_distance->value()/1000.*sin(ui->move_angle->value()*M_PI/180);
-    if(go.pXPS->connected)
-        go.pXPS->MoveRelative(XPS::mgroup_XYZF,disp_x,disp_y,0,0);
-}
-
-void MainWindow::on_btm_kill_released(){
-    //disable.set(true,5);
-//    for (int i=0;i!=8;i++){
-//        exec_ret ret;
-//        go.pXPS->execCommand(&ret, "HardwareDriverAndStageGet", i,  "char *");
-//        ret.block_till_done();
-//        std::cerr<<ret.v.retstr<<"\n";
-//    }
-//    0,XPS-DRV02;XMS50,EndOfAPI
-//    0,XPS-DRV02;XMS100,EndOfAPI
-//    0,XPS-DRV03;VP-25XL,EndOfAPI
-
-    //if (lol) {go.pXPS->execCommand(&ret, "GPIODigitalSet","GPIO3.DO", 1,1);lol=false;}
-    //else  {go.pXPS->execCommand(&ret, "GPIODigitalSet","GPIO3.DO", 1,0);lol=true;}
-    //ret.block_till_done(); std::cerr<<ret.v.retstr<<"\n";
-    //iuScope_img->setUserFps(0.);
-    go.pXPS->killGroups();
-//    exec_ret ret;
-//    go.pXPS->execCommand(&ret,"PositionerCorrectorAutoTuning",util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZ),".Z"), 1,"double *","double *","double *");
-//    ret.block_till_done();
-//    std::cerr<<ret.v.retstr<<"\n";
-}
-
-void MainWindow::on_btn_home_released(){
-    go.pXPS->initGroups();
-    go.pXPS->homeGroups();
-}
-
-void MainWindow::on_btn_focus_released(){
-    go.newThread<PFindFocus>(-999, 1, 0.1, 50, 0);
-}
-
-void MainWindow::on_btn_depthdmap_released(){
-    QString fileName = QFileDialog::getSaveFileName(this,tr("Image"), "",tr("Images (*.png *.xpm *.jpg)"));
-    if(fileName.isEmpty()) return;
-    go.newThread<pGetDepthMap>(0.01, -0.00144, 0.001, 50, fileName.toStdString());
-}
-
-void MainWindow::on_btn_calXY_released(){
-    std::cout<<a<<" "<<xps_x_sen<<" "<<b<<" "<<xps_y_sen<<"\n";
-    xps_x_sen=a;
-    xps_y_sen=b;
-    go.newThread<pCalibrateXY>(0.03, &a, &b);
-}
-
-void MainWindow::on_btn_wrtingTest_released(){
-    go.newThread<pWritingTest>();
-}
-
-void MainWindow::on_btn_save_img_released(){
-    const cv::Mat* dmat=nullptr;
-    do{
-        dmat=iuScope_img->getUserMat();
-    } while (dmat==nullptr);
-    QString fileName = QFileDialog::getSaveFileName(this,tr("Image"), "",tr("Images (*.png *.xpm *.jpg)"));
-    if(fileName.isEmpty()) return;
-    std::cout<<"Saving image to "<<fileName.toStdString()<<"\n";
-    imwrite(fileName.toStdString(), *dmat);
-}
-
-void MainWindow::on_btn_PBurnArray_released(){
-    go.newThread<pBurnArray>(ui->sb_PBurnArray_spacing->value(), ui->sb_PBurnArray_dotfst->value(), ui->sb_PBurnArray_dotIfst->value(), ui->sb_PBurnArray_dotlst->value(), ui->sb_PBurnArray_dotIlst->value(), ui->sb_PBurnArray_xgrid->value(), ui->sb_PBurnArray_ygrid->value(), ui->checkBox->isChecked());
-}
-
-void MainWindow::on_pushButton_10_released(){   //burn array from file
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Texy"), "",tr("Text (*.txt)"));
-    if(fileName.isEmpty()) return;
-    go.newThread<pBurnArray>(fileName.toStdString(), ui->cb_wlines->isChecked(), ui->mult->value(), ui->sb_PBurnArray_dotfst->value());
 }
 
 void MainWindow::on_pushButton_2_released(){
@@ -542,28 +440,6 @@ void MainWindow::on_pushButton_7_released(){    //fit beam: for gaussian beam D4
 
 }
 
-void MainWindow::on_pushButton_9_released(){     //laser toggle
-    if(go.pRPTY->connected){
-        std::vector<uint32_t> commands;
-        commands.push_back(CQF::W4TRIG_INTR());
-        commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));
-        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, ui->sb_PBurnArray_dotIfst->value(), 0));
-        commands.push_back(CQF::WAIT(ui->sb_PBurnArray_dotfst->value()/8e-6));
-        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
-        go.pRPTY->A2F_write(0,commands.data(),commands.size());
-        go.pRPTY->trig(1<<0);
-    }
-}
-
-void MainWindow::on_pushButton_12_toggled(bool checked){
-    if(go.pRPTY->connected){
-        std::vector<uint32_t> commands;
-        if(checked) commands.push_back(CQF::SG_SAMPLE(CQF::O0td, ui->sb_PBurnArray_dotIfst->value(), 0));
-        else commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
-        go.pRPTY->A2F_write(0,commands.data(),commands.size());
-        go.pRPTY->trig(1<<0);
-    }
-}
 
 void MainWindow::on_pushButton_11_clicked(){    //RPTY TEST : TODO REMOVE
 //    for(int i=0;i!=4;i++){

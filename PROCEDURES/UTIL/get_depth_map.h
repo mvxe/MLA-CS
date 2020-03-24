@@ -1,33 +1,36 @@
-#ifndef GET_DEPTH_MAP_H
-#define GET_DEPTH_MAP_H
+////NOTE: this is not used anymore! left as code example
 
-#include "PROCEDURES/procedure.h"
-class FQ;
-class PVTobj;
-namespace cv {
-    class Mat;
-}
 
-class pGetDepthMap: public sproc
-{
-public:
-    pGetDepthMap(double range, double offset, double speed, unsigned char threshold, std::string filename);
-    ~pGetDepthMap();
-private:
-    void run();
+//#ifndef GET_DEPTH_MAP_H
+//#define GET_DEPTH_MAP_H
 
-    void single();
-    void multiple();
+//#include "PROCEDURES/procedure.h"
+//class FQ;
+//class PVTobj;
+//namespace cv {
+//    class Mat;
+//}
 
-    FQ* framequeue;
-    PVTobj* po;
-    exec_ret ret;
-    double range, offset, speed, threshold;
-    double addOfs;
-    std::string filename;
+//class pGetDepthMap: public sproc
+//{
+//public:
+//    pGetDepthMap(double range, double offset, double speed, unsigned char threshold, std::string filename);
+//    ~pGetDepthMap();
+//private:
+//    void run();
 
-    const cv::Mat* mat;
-    int NMat{0};
-};
+//    void single();
+//    void multiple();
 
-#endif // GET_DEPTH_MAP_H
+//    FQ* framequeue;
+//    PVTobj* po;
+//    exec_ret ret;
+//    double range, offset, speed, threshold;
+//    double addOfs;
+//    std::string filename;
+
+//    const cv::Mat* mat;
+//    int NMat{0};
+//};
+
+//#endif // GET_DEPTH_MAP_H

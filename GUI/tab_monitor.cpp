@@ -74,8 +74,6 @@ tab_monitor::tab_monitor(QWidget *parent){
         graphLayout->addWidget(SGgraphView);
         SGgraphView->hide();
 
-
-
     buttonWidget=new QWidget;
     buttonLayout=new QVBoxLayout;
     buttonWidget->setLayout(buttonLayout);
@@ -109,30 +107,29 @@ tab_monitor::tab_monitor(QWidget *parent){
         }
         connect(averagingSelect, SIGNAL(triggered(QAction *)), this, SLOT(on_averaging_select(QAction *)));
 
-
-        QHBoxLayout* trigLayout=new QHBoxLayout;
-        QWidget* trigWidget=new QWidget;
-        trigWidget->setLayout(trigLayout);
-        buttonLayout->addWidget(trigWidget);
-
             CBtrig=new QCheckBox;
-            trigLayout->addWidget(CBtrig);
             CBtrig->setText("Trigger on laser pulse");
+            CBtrig->setEnabled(false);
             connect(CBtrig, SIGNAL(stateChanged(int)), this, SLOT(on_CBtrig_stateChanged(int)));
 
             CBlpauto=new QCheckBox;
-            trigLayout->addWidget(CBlpauto);
-            CBlpauto->setText("auto 1Hz");
+            CBlpauto->setText("Auto pulse (1Hz or 60Hz)");
+            CBlpauto->setEnabled(false);
             connect(CBlpauto, SIGNAL(stateChanged(int)), this, SLOT(on_CBlpauto_stateChanged(int)));
+            pulseInt=new val_selector(1000, "tabMon_pulseInt", "Pulse Int:", 1, 8192, 0);
+            pulseDur=new val_selector(1, "tabMon_pulseDur", "Dur", 0.001, 10000, 3, 0, {"ms"});
+
+            buttonLayout->addWidget(new vtwid(new twid(CBtrig,CBlpauto), new twid(pulseInt,pulseDur),true, false));
 
         rstView = new QPushButton;
         rstView->setText("Reset graph view range.");
-        buttonLayout->addWidget(rstView);
+        buttonLayout->addWidget(new twid(rstView));
         connect(rstView, SIGNAL(released()), this, SLOT(on_rstView_released()));
 
         CBfastack=new QCheckBox;
         buttonLayout->addWidget(CBfastack);
         CBfastack->setText("Fast ack. (60Hz)");
+        CBfastack->setEnabled(false);
         connect(CBfastack, SIGNAL(stateChanged(int)), this, SLOT(on_CBfastack_stateChanged(int)));
 
         QLabel* infotxt=new QLabel;
@@ -183,6 +180,7 @@ void tab_monitor::on_averaging_select(QAction *action){
 
 void tab_monitor::on_CBtrig_stateChanged(int state){
     trig_on_laser_pulse=(state==Qt::Checked);
+    CBlpauto->setEnabled(state==Qt::Checked);
 }
 void tab_monitor::on_CBlpauto_stateChanged(int state){
     laser_pulse_auto=(state==Qt::Checked);
@@ -226,9 +224,11 @@ void tab_monitor::on_rstView_released(){
 void tab_monitor::try_unblock(){
     if(!rdy_ack && rdy_ch && rdy_avg){
         rdy_ack=true;
-        CBsaveWF->setDisabled(false);
-        CBsaveFT->setDisabled(false);
-        CBspectrogram->setDisabled(false);
+        CBtrig->setEnabled(true);
+        CBfastack->setEnabled(true);
+        CBsaveWF->setEnabled(true);
+        CBsaveFT->setEnabled(true);
+        CBspectrogram->setEnabled(true);
         init_timer();
     }
 }
@@ -246,6 +246,19 @@ void tab_monitor::work_fun(){
 
         //printf("its open or some cb is on\n");
         if(go.pRPTY->connected){
+            if(laser_pulse_auto){   //copied from write.cpp (too lazy to link since this will be rewritten anyway at some point)
+                std::vector<uint32_t> commands;
+                commands.push_back(CQF::W4TRIG_INTR());
+                commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));
+                commands.push_back(CQF::SG_SAMPLE(CQF::O0td, pulseInt->val, 0));
+                long int dur=pulseDur->val/8e-6-1;
+                while(dur>100000000) {commands.push_back(CQF::WAIT(100000000)); dur-=100000000;}
+                commands.push_back(CQF::WAIT(dur));
+                commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
+                go.pRPTY->A2F_write(0,commands.data(),commands.size());
+                go.pRPTY->trig(1<<0);
+            }
+
             //printf("RPTY is connected\n");
 
 //            printf("A2F_RSMax for queue %d is %d\n",RPTY_A2F_queue,go.pRPTY->getNum(RPTY::A2F_RSMax,RPTY_A2F_queue));
@@ -344,9 +357,6 @@ void tab_monitor::work_fun(){
                 go.pRPTY->A2F_write(RPTY_A2F_queue,commands.data(),commands.size());
             }
             if(!trig_on_laser_pulse) go.pRPTY->trig(1<<RPTY_A2F_queue);
-            if(laser_pulse_auto && trig_on_laser_pulse)
-                pmw->on_pushButton_9_released();
-
         }
     }
 }

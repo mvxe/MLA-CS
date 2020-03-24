@@ -12,13 +12,12 @@ class FQ;
 
 namespace Ui {
 class MainWindow;
-class tab_camera_old;
 class tab_settings;
 class tab_connection;
 class tab_devices;
 }
 
-class MainWindow : public QMainWindow , public GUI_slots_baseclass, public tab_camera_old, public tab_settings, public tab_positioners
+class MainWindow : public QMainWindow , public GUI_slots_baseclass, public tab_settings, public tab_positioners
 {
     Q_OBJECT
 public:
@@ -45,12 +44,6 @@ private Q_SLOTS:
     void on_cam1_select_triggered(QAction *arg1);
     void cam1_select_show();
 
-    void on_sl_xsens_valueChanged(int value);
-    void on_sl_ysens_valueChanged(int value);
-    void on_sl_zsens_valueChanged(int value);
-    void on_sl_expo_valueChanged(int value);
-    void on_btm_kill_released();
-    void on_btn_home_released();
     void on_btn_X_dec_released();
     void on_btn_Y_dec_released();
     void on_btn_Z_dec_released();
@@ -63,18 +56,6 @@ private Q_SLOTS:
     void on_btn_X_inc_released();
     void on_btn_Y_inc_released();
     void on_btn_Z_inc_released();
-
-    void on_btn_focus_released();
-
-    void on_btn_depthdmap_released();
-
-    void on_btn_calXY_released();
-
-    void on_btn_wrtingTest_released();
-
-    void on_btn_save_img_released();
-
-    void on_btn_PBurnArray_released();
 
     void cam2_select_show();
     void on_cam2_select_triggered(QAction *arg1);
@@ -108,23 +89,9 @@ private Q_SLOTS:
 
     void on_doubleSpinBox_5_valueChanged(double arg1);
 
-    void on_sl_fsens_valueChanged(int value);
-
-
-
-    void on_pushButton_10_released();
-
-    void on_move_btn_released();
-
     void on_pushButton_11_clicked();
 
-    void on_pushButton_12_toggled(bool checked);
-
     void on_pushButton_13_released();
-
-public Q_SLOTS:
-
-    void on_pushButton_9_released();
 
 private:
     QApplication* qapp;
@@ -153,7 +120,6 @@ private:
     tab_devices* tabDev;
     tab_monitor* tabMon;
     tab_camera* tabCam;
-    int donth=0;
 
     /* beam profiler variables, TODO move this elsewhere*/
     std::vector<cv::Mat>* mats{nullptr};
@@ -181,22 +147,5 @@ private:
 
     /* up to here*/
 };
-
-class mtlabel : public QLabel{
-    using QLabel::QLabel;
-    void mousePressEvent(QMouseEvent *event);
-    void wheelEvent(QWheelEvent *event);
-public:
-    MainWindow* pmw;
-};
-
-class fclabel : public QLabel{
-    using QLabel::QLabel;
-    void wheelEvent(QWheelEvent *event);
-public:
-    MainWindow* pmw;
-};
-
-
 
 #endif // MAINWINDOW_H

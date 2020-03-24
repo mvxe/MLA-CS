@@ -18,6 +18,8 @@ public:
     QWidget* graphWidget;
     QVBoxLayout* graphLayout;
 
+    val_selector* pulseInt;
+    val_selector* pulseDur;
     QWidget* buttonWidget;
         QChartView* WFgraphView;
         QChartView* FTgraphView;

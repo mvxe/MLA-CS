@@ -366,6 +366,7 @@ twid::twid(bool setmargin, bool setstretch){
     this->setLayout(layout);
     if(setmargin) layout->setMargin(0);
     if(setstretch) layout->addStretch(0);
+    setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Maximum);
 }
 void twid::addWidget(QWidget* widget, bool front){
     layout->insertWidget(front?0:(layout->count()-1), widget);
@@ -381,6 +382,7 @@ vtwid::vtwid(bool setmargin, bool setstretch){
     this->setLayout(layout);
     if(setmargin) layout->setMargin(0);
     if(setstretch) layout->addStretch(0);
+    setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Maximum);
 }
 void vtwid::addWidget(QWidget* widget, bool front){
     layout->insertWidget(front?0:(layout->count()-1), widget);
