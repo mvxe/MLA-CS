@@ -18,13 +18,11 @@ pgFocusGUI::pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI): MLP(MLP), pgSGUI(pg
 }
 
 void pgFocusGUI::init_gui_activation(){
-    gui_activation=new QWidget;
-    alayout=new QHBoxLayout;
-    gui_activation->setLayout(alayout);
+    gui_activation=new twid(false);
     bFocus=new QPushButton;
     bFocus->setText("ReFocus");
     connect(bFocus, SIGNAL(released()), this, SLOT(onRefocus()));
-    alayout->addWidget(new twid(bFocus));
+    gui_activation->addWidget(bFocus);
 }
 void pgFocusGUI::onRefocus(){if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();refocus();}}
 void pgFocusGUI::refocus(){

@@ -14,6 +14,7 @@ class QPushButton;
 class mesLockProg;
 class smp_selector;
 class focusSettings;
+class twid;
 
 namespace cv{class Mat;}
 
@@ -22,7 +23,7 @@ class pgFocusGUI: public QObject{
     //GUI
 public:
     pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI);
-    QWidget* gui_activation;
+    twid* gui_activation;
     QWidget* gui_settings;
     QTimer* timer;
 
@@ -38,7 +39,6 @@ public:
     pgScanGUI* pgSGUI;          //we share some settings with this
 
     //activation
-    QHBoxLayout* alayout;
     QPushButton* bFocus;
 
     //settings
