@@ -93,6 +93,8 @@ private Q_SLOTS:
 
     void on_pushButton_13_released();
 
+    void on_rpty_rst_btn_released();
+
 private:
     QApplication* qapp;
     Ui::MainWindow *ui;

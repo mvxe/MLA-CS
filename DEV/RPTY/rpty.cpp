@@ -65,6 +65,22 @@ int RPTY::getNum(getNumType statID, unsigned char queue){
     return ret;
 }
 int RPTY::trig(unsigned char queues){
-    uint32_t command[2]={8,queues};
+    uint32_t command[2]={8,(uint32_t)(queues&0xF)};
+    return TCP_con::write(command,8);
+}
+int RPTY::FIFOreset(unsigned char A2Fqueues, unsigned char F2Aqueues){
+    uint32_t command[2]={9,(uint32_t)((A2Fqueues&0xF)&((F2Aqueues&0xF)<<4))};
+    return TCP_con::write(command,8);
+}
+int RPTY::FIFOreset(){
+    uint32_t command[2]={9,0x100};
+    return TCP_con::write(command,8);
+}
+int RPTY::PIDreset(unsigned char PIDN){
+    uint32_t command[2]={100,(uint32_t)(PIDN&0x3)};
+    return TCP_con::write(command,8);
+}
+int RPTY::PIDreset(){
+    uint32_t command[2]={100,0x4};
     return TCP_con::write(command,8);
 }

@@ -58,6 +58,7 @@ void MainWindow::GUI_update(){
     if (rpty_con!=go.pRPTY->connected){
         rpty_con=go.pRPTY->connected;
         ui->si_RPTY->setPixmap(rpty_con?px_online:px_offline);
+        ui->rpty_rst_btn->setEnabled(rpty_con);
     }
     if (cnc_con!=go.pCNC->connected){
         cnc_con=go.pCNC->connected;

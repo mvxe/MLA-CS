@@ -96,6 +96,13 @@ void MainWindow::on_cam2_select_triggered(QAction *arg1){
     ui->cam2_select->setText("camera ID: "+arg1->text());
     go.pGCAM->utilCam->checkID=true;
 }
+void MainWindow::on_rpty_rst_btn_released(){
+    if(go.pRPTY->connected){
+        std::cerr<<"Resetting RPTY.\n";
+        go.pRPTY->FIFOreset();
+        go.pRPTY->PIDreset();
+    }
+}
 
 void MainWindow::cnc_select_show(){
     updateCncMenu(menu3);
