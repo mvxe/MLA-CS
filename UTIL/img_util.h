@@ -26,37 +26,6 @@ private:
     double _min,_max;
 };
 
-
-//MATOP
-
-class matOp{
-public:
-    template <typename T>
-    static void spread(cv::Mat* mat);        //spreads the nonzero values around by 1 pixel (for mask spreading)
-};
-
-template <typename T>
-void matOp::spread(cv::Mat* mat){
-    if(mat==nullptr) return;
-    cv::Mat temp=mat->clone();
-    T val;
-    for(int i=0;i!=temp.cols;i++) for(int j=0;j!=temp.rows;j++){
-        val=temp.at<T>(j,i);
-        if(val!=0){
-            if(i!=0){               mat->at<T>(  j,i-1)=val;
-                if(j!=0)            mat->at<T>(j-1,i-1)=val;
-                if(j!=temp.rows)    mat->at<T>(j+1,i-1)=val;
-            }
-            if(i!=temp.cols)        mat->at<T>(  j,i+1)=val;
-            if(j!=0){               mat->at<T>(j-1,i  )=val;
-                if(i!=0)            mat->at<T>(j-1,i-1)=val;
-                if(i!=temp.cols)    mat->at<T>(j-1,i+1)=val;
-            }
-            if(j!=temp.rows)        mat->at<T>(j+1,i  )=val;
-        }
-    }
-}
-
 //OpenCV COLORMAPS  // TODO: as you upgrade OpenCV version you might want to expand this list to support more new colormaps.
 
 class OCV_CM{
