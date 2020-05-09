@@ -256,7 +256,7 @@ void tab_monitor::work_fun(){
                 commands.push_back(CQF::WAIT(dur));
                 commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
                 go.pRPTY->A2F_write(0,commands.data(),commands.size());
-                go.pRPTY->trig(1<<0);
+                go.pRPTY->trig(0);
             }
 
             //printf("RPTY is connected\n");
@@ -356,7 +356,7 @@ void tab_monitor::work_fun(){
                 commands.push_back(CQF::ACK(1<<RPTY_F2A_queue, selectedavg, selectedchannels, false));
                 go.pRPTY->A2F_write(RPTY_A2F_queue,commands.data(),commands.size());
             }
-            if(!trig_on_laser_pulse) go.pRPTY->trig(1<<RPTY_A2F_queue);
+            if(!trig_on_laser_pulse) go.pRPTY->trig(RPTY_A2F_queue);
         }
     }
 }

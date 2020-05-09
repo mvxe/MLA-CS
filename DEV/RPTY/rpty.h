@@ -15,7 +15,7 @@ public:
     int A2F_write(unsigned char queue, uint32_t *data, uint32_t size4); //queue is 0-3; note: size4 is number of uint32_t (4 bytes each), not bytes; return 0 if success, else -1
     enum getNumType{F2A_RSMax=0, F2A_RSCur=1, F2A_lostN=2, A2F_RSMax=3, A2F_RSCur=4, A2F_lostN=5};  //maximum number of elements, number of elemenst currently in queue, number of lost elements
     int getNum(getNumType statID, unsigned char queue);                 //queue is 0-3; for command see enum above; returns the result or -1 if error
-    int trig(unsigned char queues);                                     //queues is a 4bit binary value (0xF), where each queue is one bit: this lets one trigger multiple queues silmultaneously
+    int trig(unsigned char queue);                                      //queue is 0-3
     int FIFOreset(unsigned char A2Fqueues, unsigned char F2Aqueues=0);  //queues is a 4bit binary value (0xF), where each queue is one bit: this lets one reset multiple queues silmultaneously
     int FIFOreset();                                                    //total reset
 
