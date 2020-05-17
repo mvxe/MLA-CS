@@ -645,7 +645,15 @@ void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string f
     wfile.write(reinterpret_cast<const char*>(&min),sizeof(min));
     wfile.write(reinterpret_cast<const char*>(&max),sizeof(max));
     wfile.write(reinterpret_cast<const char*>(scan->tiltCor),sizeof(scan->tiltCor));
-    wfile.write(reinterpret_cast<const char*>(scan->pos),sizeof(scan->pos));
+    if(roi.x==0 && roi.y==0){   // NOTE: the save posX and posY point in the opposite direction of the image matrix iterators!
+        wfile.write(reinterpret_cast<const char*>(scan->pos),sizeof(scan->pos));
+    }else{  //gotta correct image coordinates for cropped images...
+        double pos[3];
+        for(int i=0;i!=3;i++)  pos[i]=scan->pos[i];
+        pos[0]-=roi.x*scan->XYnmppx/1e6;
+        pos[1]-=roi.y*scan->XYnmppx/1e6;
+        wfile.write(reinterpret_cast<const char*>(pos),sizeof(pos));
+    }
     wfile.write(reinterpret_cast<const char*>(&(scan->XYnmppx)),sizeof(scan->XYnmppx));
     wfile.write(reinterpret_cast<const char*>(&(scan->avgNum)),sizeof(scan->avgNum));
     wfile.close();
