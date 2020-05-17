@@ -32,7 +32,10 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     writeDM=new HQPushButton("Write");
     connect(writeDM, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
     connect(writeDM, SIGNAL(released()), this, SLOT(onWriteDM()));
-    alayout->addWidget(new twid(writeDM));
+    writeFrame=new HQPushButton("Frame");
+    connect(writeFrame, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteFrameAreaOn(bool)));
+    connect(writeFrame, SIGNAL(released()), this, SLOT(onWriteFrame()));
+    alayout->addWidget(new twid(writeDM,writeFrame));
     tagText=new QLineEdit;
     writeTag=new HQPushButton("Write Tag");
     connect(writeTag, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOnTag(bool)));
@@ -40,6 +43,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     alayout->addWidget(new twid(new QLabel("Tag:"),tagText,writeTag));
 
     writeDM->setEnabled(false);
+    writeFrame->setEnabled(false);
     alayout->addWidget(new hline);
 
     selectWriteSetting=new smp_selector("Select write setting: ", 0, {"Set0", "Set1", "Set2", "Set3", "Tag"});    //should have Nset strings
@@ -130,6 +134,8 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
         slayout->addWidget(imgUmPPx);
         depthMaxval=new val_selector(10, "writeSettings_tag_depthMaxval", "Maxval=", 0.1, 500, 3, 0, {"nm"});
         slayout->addWidget(depthMaxval);
+        frameDis=new val_selector(10, "writeSettings_tag_frameDis", "Frame Distance=", 0.1, 500, 3, 0, {"um"});
+        slayout->addWidget(frameDis);
     }
 }
 void pgWrite::onLoadImg(){
@@ -140,6 +146,7 @@ void pgWrite::onLoadImg(){
     if(WRImage.empty()) {QMessageBox::critical(gui_activation, "Error", "Image empty.\n"); return;}
 
     writeDM->setEnabled(true);
+    writeFrame->setEnabled(true);
 }
 void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double override_imgUmPPx, double override_pointSpacing, double override_duration, double override_focus){
     cv::Mat tmpWrite, resizedWrite;
@@ -239,6 +246,26 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
     //TODO add calculation that takes into account measured depth as pre
     go.pXPS->destroyPVTobj(po);
 }
+void pgWrite::onWriteFrame(){
+    std::cerr<<"writing frame\n";
+    cv::Size size=WRImage.size();
+    double ratio=imgUmPPx->val; double fr=settingWdg[4]->frameDis->val;
+    int xSize=round(ratio*WRImage.cols+2*fr)/settingWdg[4]->imgUmPPx->val;
+    int ySize=round(ratio*WRImage.rows+2*fr)/settingWdg[4]->imgUmPPx->val;
+    tagImage=cv::Mat(ySize,xSize,CV_8U,cv::Scalar(0));
+    int tglen=fr/settingWdg[4]->imgUmPPx->val;
+    for(int i=0;i!=2;i++) for(int j=0;j<tglen;j++){
+        if(j<xSize){
+            tagImage.at<uchar>(i*(ySize-1),j        )=255;
+            tagImage.at<uchar>(i*(ySize-1),xSize-1-j)=255;
+        }
+        if(j<ySize){
+            tagImage.at<uchar>(j,        i*(xSize-1))=255;
+            tagImage.at<uchar>(ySize-1-j,i*(xSize-1))=255;
+        }
+    }
+    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val, settingWdg[4]->pointSpacing->val,settingWdg[4]->duration->val,settingWdg[4]->focus->val);
+}
 void pgWrite::onWriteTag(){
     std::cerr<<"writing tag\n";
     cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
@@ -278,13 +305,21 @@ void pgWrite::onChangeDrawWriteAreaOn(bool status){
 void pgWrite::onChangeDrawWriteAreaOnTag(bool status){
     drawWriteAreaOn=status?2:0;
 }
+void pgWrite::onChangeDrawWriteFrameAreaOn(bool status){
+    drawWriteAreaOn=status?3:0;
+}
 void pgWrite::drawWriteArea(cv::Mat* img){
     if(!drawWriteAreaOn) return;
     double ratio;
     double xSize;
     double ySize;
 
-    if(drawWriteAreaOn==2){ //tag
+    if(drawWriteAreaOn==3){ //frame
+        if(WRImage.empty() || !writeFrame->isEnabled()) return;
+        ratio=imgUmPPx->val; double fr=settingWdg[4]->frameDis->val;
+        xSize=round(ratio*WRImage.cols+2*fr)*1000/pgMGUI->getNmPPx();
+        ySize=round(ratio*WRImage.rows+2*fr)*1000/pgMGUI->getNmPPx();
+    }else if(drawWriteAreaOn==2){ //tag
         if(tagText->text().toStdString().empty()) return;
         ratio=settingWdg[4]->imgUmPPx->val;    //TODO change
         cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);

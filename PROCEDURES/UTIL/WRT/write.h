@@ -27,6 +27,7 @@ private:
     val_selector* ICcor;
     QPushButton* corICor;
     QPushButton* writeDM;
+    QPushButton* writeFrame;
     QLineEdit* tagText;
     HQPushButton* writeTag;
 
@@ -49,7 +50,7 @@ private:
 
     cv::Mat WRImage;
     cv::Mat tagImage;
-    int drawWriteAreaOn{0};     //1 is img, 2 is tag
+    int drawWriteAreaOn{0};     //1 is img, 2 is tag, 3 is frame
     const double servoCycle{0.0001};    // The XPS servo cycle (in s)
 
     pgBeamAnalysis* pgBeAn;
@@ -63,9 +64,11 @@ private Q_SLOTS:
     void onMenuChange(int index);
     void onLoadImg();
     void onWriteDM(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgUmPPx=0, double override_pointSpacing=0, double override_duration=0, double override_focus=0);  //if you override override mat, you must override them all
+    void onWriteFrame();
     void onWriteTag();
     void onChangeDrawWriteAreaOn(bool status);
     void onChangeDrawWriteAreaOnTag(bool status);
+    void onChangeDrawWriteFrameAreaOn(bool status);
     void onCorICor();
     void onCorPPR();
 };
@@ -94,6 +97,7 @@ public:
     val_selector* fontThickness;
     val_selector* imgUmPPx;
     val_selector* depthMaxval;
+    val_selector* frameDis;
 };
 
 #endif // PGWRITE_H
