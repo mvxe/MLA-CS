@@ -98,6 +98,8 @@ void pgWrite::onPulse(){
 void pgWrite::onMenuChange(int index){
     for(int i=0;i!=Nset;i++) settingWdg[i]->setVisible(i==index?true:false);
     focus=settingWdg[index]->focus;
+    focusXcor=settingWdg[index]->focusXcor;
+    focusYcor=settingWdg[index]->focusYcor;
     duration=settingWdg[index]->duration;
     constA=settingWdg[index]->constA;
     constB=settingWdg[index]->constB;
@@ -110,6 +112,10 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     this->setLayout(slayout);
     focus=new val_selector(0, util::toString("writeSettings_focus",num), "Focus (in relation to green center)", -1000, 1000, 3, 0, {"um"});
     slayout->addWidget(focus);
+    focusXcor=new val_selector(0, util::toString("writeSettings_focusXcor",num), "Focus X cor.", -1000, 1000, 3, 0, {"um"});
+    slayout->addWidget(focusXcor);
+    focusYcor=new val_selector(0, util::toString("writeSettings_focusYcor",num), "Focus Y cor", -1000, 1000, 3, 0, {"um"});
+    slayout->addWidget(focusYcor);
     duration=new val_selector(1, util::toString("writeSettings_duration",num), "Pulse duration", 0.001, 1000, 3, 0, {"ms"});
     slayout->addWidget(duration);
     constA=new val_selector(1, util::toString("writeSettings_constA",num), "Constant A", 0, 1, 6, 0, {"nm"});
@@ -148,10 +154,10 @@ void pgWrite::onLoadImg(){
     writeDM->setEnabled(true);
     writeFrame->setEnabled(true);
 }
-void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double override_imgUmPPx, double override_pointSpacing, double override_duration, double override_focus){
+void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double override_imgUmPPx, double override_pointSpacing, double override_duration, double override_focus, double ov_fxcor, double ov_fycor){
     cv::Mat tmpWrite, resizedWrite;
     cv::Mat* src;
-    double vdepthMaxval, vimgUmPPx, vpointSpacing, vduration, vfocus;
+    double vdepthMaxval, vimgUmPPx, vpointSpacing, vduration, vfocus, vfocusXcor, vfocusYcor;
     if(override!=nullptr){
         src=override;
         vdepthMaxval=override_depthMaxval;
@@ -159,6 +165,8 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
         vpointSpacing=override_pointSpacing;
         vduration= override_duration;
         vfocus=override_focus;
+        vfocusXcor=ov_fxcor;
+        vfocusYcor=ov_fycor;
     }
     else{
         src=&WRImage;
@@ -167,6 +175,8 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
         vpointSpacing=pointSpacing->val;
         vduration=duration->val;
         vfocus=focus->val;
+        vfocusXcor=focusXcor->val;
+        vfocusYcor=focusYcor->val;
     }
 
     if(src->type()==CV_8U){
@@ -194,7 +204,7 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
     exec_ret ret;
     PVTobj* po=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pgWrite.txt");
     std::vector<uint32_t> commands;
-    pgMGUI->corPvt(po,0.1, 0, 0, 0, 0, 0, 0,vfocus/1000,0);
+    pgMGUI->corPvt(po,0.1, vfocusXcor/1000, 0, vfocusYcor/1000, 0, 0, 0,vfocus/1000,0);
     commands.push_back(CQF::GPIO_MASK(0x40,0,0));
     commands.push_back(CQF::GPIO_DIR (0x40,0,0));
     commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
@@ -230,7 +240,7 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
         if(pulseWaitTime!=vduration) commands.push_back(CQF::WAIT((pulseWaitTime-vduration)/8e-6));
         lastpos=nextpos;
     }
-    pgMGUI->corPvt(po,0.1, -lastpos.x/1000, 0, -lastpos.y/1000, 0, 0, 0,-vfocus/1000,0);
+    pgMGUI->corPvt(po,0.1, -lastpos.x/1000-vfocusXcor/1000, 0, -lastpos.y/1000-vfocusYcor/1000, 0, 0, 0,-vfocus/1000,0);
     po->addAction(XPS::writingLaser,false);
 
     if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";go.pXPS->destroyPVTobj(po);return;}
@@ -264,14 +274,14 @@ void pgWrite::onWriteFrame(){
             tagImage.at<uchar>(ySize-1-j,i*(xSize-1))=255;
         }
     }
-    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val, settingWdg[4]->pointSpacing->val,settingWdg[4]->duration->val,settingWdg[4]->focus->val);
+    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val, settingWdg[4]->pointSpacing->val,settingWdg[4]->duration->val,settingWdg[4]->focus->val,settingWdg[4]->focusXcor->val,settingWdg[4]->focusYcor->val);
 }
 void pgWrite::onWriteTag(){
     std::cerr<<"writing tag\n";
     cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
     tagImage=cv::Mat(size.height+4,size.width+4,CV_8U,cv::Scalar(0));
     cv::putText(tagImage,tagText->text().toStdString(), {0,size.height+1}, OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, cv::Scalar(255), settingWdg[4]->fontThickness->val, cv::LINE_AA);
-    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val, settingWdg[4]->pointSpacing->val,settingWdg[4]->duration->val,settingWdg[4]->focus->val);
+    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val, settingWdg[4]->pointSpacing->val,settingWdg[4]->duration->val,settingWdg[4]->focus->val,settingWdg[4]->focusXcor->val,settingWdg[4]->focusYcor->val);
 }
 
 uint pgWrite::getInt(float post, float pre){

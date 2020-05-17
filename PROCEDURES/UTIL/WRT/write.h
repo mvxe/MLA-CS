@@ -38,6 +38,8 @@ private:
     std::vector<writeSettings*> settingWdg;
     constexpr static unsigned Nset{5};
     val_selector* focus;
+    val_selector* focusXcor;
+    val_selector* focusYcor;
     val_selector* duration;
     val_selector* constA;
     val_selector* constB;
@@ -63,7 +65,7 @@ private Q_SLOTS:
     void onPulse();
     void onMenuChange(int index);
     void onLoadImg();
-    void onWriteDM(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgUmPPx=0, double override_pointSpacing=0, double override_duration=0, double override_focus=0);  //if you override override mat, you must override them all
+    void onWriteDM(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgUmPPx=0, double override_pointSpacing=0, double override_duration=0, double override_focus=0, double ov_fxcor=0, double ov_fycor=0);  //if you override override mat, you must override them all
     void onWriteFrame();
     void onWriteTag();
     void onChangeDrawWriteAreaOn(bool status);
@@ -83,6 +85,8 @@ public:
     QVBoxLayout* slayout;
     pgWrite* parent;
     val_selector* focus;
+    val_selector* focusXcor;
+    val_selector* focusYcor;
     val_selector* duration;
     val_selector* constA;
     val_selector* constB;
