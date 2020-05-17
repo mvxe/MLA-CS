@@ -119,7 +119,8 @@ tab_camera::tab_camera(QWidget* parent){
     main_show_scale=new checkbox_save(false,"tab_camera_main_show_scale","ScaleBar");
     main_show_target=new checkbox_save(false,"tab_camera_main_show_target","Target");
     main_show_bounds=new checkbox_save(false,"tab_camera_main_show_bounds","Write Bounds");
-    layoutTBarW->addWidget(new twid(main_show_scale, main_show_target, main_show_bounds));
+    main_antishake=new checkbox_save(false,"tab_camera_main_antishake","Antishake");
+    layoutTBarW->addWidget(new twid(main_show_scale, main_show_target, main_show_bounds, main_antishake));
 
     measPB=new QProgressBar; measPB->setRange(0,100);
     compPB=new QProgressBar; compPB->setRange(0,100);
@@ -143,6 +144,8 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuDepthLeft=new QMenu;
     clickMenuDepthLeft->addAction("Plot Line (Gnuplot)", this, SLOT(onPlotLine()));
     clickMenuDepthLeft->addAction("Save Line (.txt)", this, SLOT(onSaveLine()));
+
+    oldImg=new cv::Mat;
 }
 
 tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
@@ -171,6 +174,18 @@ void tab_camera::work_fun(){
         if(onDisplay!=nullptr){
             if(main_show_target->isChecked() || main_show_scale->isChecked() || main_show_bounds->isChecked()){
                 cv::Mat temp=onDisplay->clone();
+                if(main_antishake->isChecked()){
+                    int histSize=256;
+                    float range[]={0,256};
+                    const float* histRange={range};
+                    cv::Mat hist;
+                    calcHist(&temp,1,0,cv::Mat(),hist,1,&histSize,&histRange,true,false);
+                    cv::Point mcv;
+                    cv::minMaxLoc(hist,nullptr,nullptr,nullptr,&mcv);
+                    cv::add(temp,128-mcv.y,temp);
+                    if(!oldImg->empty()) temp=0.25*temp+0.75**oldImg;
+                    temp.copyTo(*oldImg);
+                }
                 if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY);
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
