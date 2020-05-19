@@ -570,7 +570,7 @@ void tab_camera::onCombineMes(){
             cv::Mat tmpMask(scans[i].refl.size(), CV_8U, cv::Scalar(0));
             cMap->colormappize(&scans[i].refl, &res, &tmpMask, min, max, scans[i].XYnmppx, pgHistGUI->ExclOOR);
         }else cMap->colormappize(&scans[i].depth, &res, &scans[i].mask, scans[i].min, scans[i].max, scans[i].XYnmppx, pgHistGUI->ExclOOR);
-        res(cv::Rect(1,1,scans[i].depth.cols,scans[i].depth.rows)).copyTo(outMat(cv::Rect(sX,sY,scans[i].depth.cols,scans[i].depth.rows)));
+        res(cv::Rect(1,(res.rows-scans[i].depth.rows)/2,scans[i].depth.cols,scans[i].depth.rows)).copyTo(outMat(cv::Rect(sX,sY,scans[i].depth.cols,scans[i].depth.rows)));
     }
     std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving Depth Map (wtih border, scalebar and colorbar).", "","Images (*.png)").toStdString();
     if(fileName.empty())return;
