@@ -83,8 +83,10 @@ tab_camera::tab_camera(QWidget* parent){
     pageProcessing=new twd_selector;
         loadRawBtn=new QPushButton("Load measurement"); connect(loadRawBtn, SIGNAL(released()), this, SLOT(onLoadDepthMapRaw()));
         diff2RawBtn=new QPushButton("Load 2 measurements and dif them"); connect(diff2RawBtn, SIGNAL(released()), this, SLOT(onDiff2Raw()));
+        combineMes=new QPushButton("Combine measurements"); connect(combineMes, SIGNAL(released()), this, SLOT(onCombineMes()));
+        combineUseRefl=new QCheckBox("Use Reflectivity");
 
-        pageProcessing->addWidget(new vtwid(new twid(loadRawBtn),new twid(diff2RawBtn),pgSGUI->gui_processing,false, false));
+        pageProcessing->addWidget(new vtwid(new twid(loadRawBtn),new twid(diff2RawBtn),new twid(combineMes,combineUseRefl),pgSGUI->gui_processing,false, false));
         pageProcessing->addWidget(pgCal->gui_processing);
 
     pageSettings=new twd_selector("","Select");
@@ -232,9 +234,10 @@ void tab_camera::work_fun(){
                     cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD (nm)");
                 }else if(selDisp->index==3){                //show reflectivity
                     res->refl.copyTo(display);
-                    pgHistGUI->updateImg(res, nullptr, nullptr, 0, 255, &display);
+                    double min,max; cv::minMaxIdx(display,&min,&max);
+                    pgHistGUI->updateImg(res, nullptr, nullptr, min, max, &display);
                     cv::Mat tempMask(display.rows, display.cols, CV_8U, cv::Scalar(0));
-                    cMap->colormappize(&display, &display, &tempMask, 0, 255, res->XYnmppx, false, false, "Reflectivity");
+                    cMap->colormappize(&display, &display, &tempMask, min, max, res->XYnmppx, false, false, "Reflectivity");
                 }
                 dispDepthMatRows=res->depth.rows;
                 dispDepthMatCols=res->depth.cols;
@@ -531,6 +534,48 @@ void tab_camera::onDiff2Raw(){
         updateDisp=true;
         loadedOnDisplay=true;
     }
+}
+void tab_camera::onCombineMes(){
+    QStringList files=QFileDialog::getOpenFileNames(this,"Select depthmaps to combine (files with -SD are ignored)","","Depthmaps (*.pfm)");
+    std::deque<pgScanGUI::scanRes> scans;
+    while(!files.empty()){
+        if(files.back().toStdString().find("-SD")==std::string::npos){
+            std::cout<<"loading "<<files.back().toStdString()<<"\n";
+            scans.emplace_back();
+            if(!pgScanGUI::loadScan(&scans.back(),files.back().toStdString())) scans.pop_back();
+        }
+        files.pop_back();
+    }
+    std::cout<<"Loaded in total "<<scans.size()<<" depthmaps.\n";
+    if(scans.size()<=1) return;
+    double minX=std::numeric_limits<double>::max(),minY=minX,maxX=std::numeric_limits<double>::lowest(),maxY=maxX; // NOTE: the values in X/Y mm go in opposite direction from matrix col/row
+    double tmp;
+    for(int i=0;i!=scans.size();i++){
+        if(maxX<scans[i].pos[0]) maxX=scans[i].pos[0];
+        if(maxY<scans[i].pos[1]) maxY=scans[i].pos[1];
+        tmp=scans[i].pos[0]-scans[i].depth.cols*scans[i].XYnmppx/1e6;
+        if(minX>tmp) minX=tmp;
+        tmp=scans[i].pos[1]-scans[i].depth.rows*scans[i].XYnmppx/1e6;
+        if(minY>tmp) minY=tmp;
+    }
+    cv::Size newSize((int)ceil((maxX-minX)*1e6/scans[0].XYnmppx),(int)ceil((maxY-minY)*1e6/scans[0].XYnmppx));
+    std::cout<<"New mat size: "<<newSize<<"\n";
+    cv::Mat outMat(newSize, CV_8UC4, cv::Scalar(0,0,0,0));
+    for(int i=0;i!=scans.size();i++){
+        int sX=(maxX-scans[i].pos[0])*1e6/scans[i].XYnmppx;
+        int sY=(maxY-scans[i].pos[1])*1e6/scans[i].XYnmppx;
+        cv::Mat res;
+        if(combineUseRefl->isChecked()){
+            double min,max; cv::minMaxIdx(scans[i].refl,&min, &max);
+            cv::Mat tmpMask(scans[i].refl.size(), CV_8U, cv::Scalar(0));
+            cMap->colormappize(&scans[i].refl, &res, &tmpMask, min, max, scans[i].XYnmppx, pgHistGUI->ExclOOR);
+        }else cMap->colormappize(&scans[i].depth, &res, &scans[i].mask, scans[i].min, scans[i].max, scans[i].XYnmppx, pgHistGUI->ExclOOR);
+        res(cv::Rect(1,1,scans[i].depth.cols,scans[i].depth.rows)).copyTo(outMat(cv::Rect(sX,sY,scans[i].depth.cols,scans[i].depth.rows)));
+    }
+    std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving Depth Map (wtih border, scalebar and colorbar).", "","Images (*.png)").toStdString();
+    if(fileName.empty())return;
+    if(fileName.find(".png")==std::string::npos) fileName+=".png";
+    imwrite(fileName, outMat,{cv::IMWRITE_PNG_COMPRESSION,9});
 }
 void tab_camera::onRotateDepthMap(){
     double angle=QInputDialog::getDouble(this, "Rotate Depth Map", "Rotation Angle (degrees):", 0, -360, 360, 2);

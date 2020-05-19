@@ -67,6 +67,8 @@ private:
 
     QPushButton* loadRawBtn;
     QPushButton* diff2RawBtn;
+    QPushButton* combineMes;
+    QCheckBox* combineUseRefl;
 
     // writing
     pgBoundsGUI* pgBGUI;
@@ -114,6 +116,7 @@ private Q_SLOTS:
     void onLoadDepthMapRaw();
     void onRotateDepthMap();
     void onDiff2Raw();
+    void onCombineMes();
     void onPlotLine();
     void onSaveLine();
     void onPlotRect();
