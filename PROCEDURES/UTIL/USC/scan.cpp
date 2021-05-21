@@ -548,7 +548,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
             //  sigma = sqrt(S(n) / (n - 1))
 
             //we calc the mean
-            if(cv::countNonZero(res->mask)-cv::countNonZero(oldScanRes->mask) > res->mask.total()*avgDiscardCriteria->val){  //the new measurement has too many bad pixels compared to old res - we discard
+            if(cv::countNonZero(res->mask)-cv::countNonZero(oldScanRes->mask) > res->mask.total()*avgDiscardCriteria->val/100){  //the new measurement has too many bad pixels compared to old res - we discard
                 std::cerr<<"Too many bad pixels, skipping.\n";
                 std::cerr<<"done nr "<<NA<<"\n"; NA++;
                 MLP.progress_comp=100;
