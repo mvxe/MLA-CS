@@ -82,7 +82,7 @@ template <typename T> const T* varShareClient<T>::get(){
     return var->var;
 }
 template <typename T> bool varShareClient<T>::changed(){
-    return (var!=parent->current);
+    return (var!=nullptr && var!=parent->current);
 }
 template <typename T> void varShare<T>::put(T* var){
     std::lock_guard<std::mutex>lock(active_lock);
