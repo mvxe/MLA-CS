@@ -40,6 +40,7 @@ public:
 
     //activation
     QPushButton* bFocus;
+    val_selector* times;
 
     //settings
     QVBoxLayout* slayout;
@@ -63,6 +64,13 @@ public:
     void _refocus();
     std::atomic<bool> _focusingDone{false};
     double vsConv(val_selector* vs);
+
+    // for doing multiple focuses: measure and process in the same time
+    std::mutex fociLock;
+    std::vector<double> foci;
+    std::atomic<unsigned> todo;
+    std::atomic<unsigned> todoTotal;
+
 public Q_SLOTS:
     void recalculate();
 private Q_SLOTS:
