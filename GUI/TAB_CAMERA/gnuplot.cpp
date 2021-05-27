@@ -95,11 +95,6 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
                                                 "unset ztics\n");
     else a.POUT<<util::toString("set cblabel \"Height (nm)\"\n",
                                 "set view equal xy\n");
-    a.POUT<<util::toString( "set xyplane at 0\n",
-                            "set hidden3d\n",
-                            "set view ,,",viewZoom->val,",",scaleZ->val,"\n",
-                            "set palette rgb ",d3paletteR->val,",",d3paletteG->val,",",d3paletteB->val,"\n",
-                            "splot [0:",(cv::Mat(scan->depth, roi).cols-1)*scan->XYnmppx/1000,"][0:",(cv::Mat(scan->depth, roi).rows-1)*scan->XYnmppx/1000,"] \"-\" matrix using ($1*",scan->XYnmppx/1000,"):($2*",scan->XYnmppx/1000,"):3 w pm3d pt 6 notitle\n");
     bool sah=showAbsHeight->val;
     cv::Mat data;
     cv::Mat maskN(scan->maskN, roi);
@@ -115,6 +110,12 @@ void tabCamGnuplot::plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi
 
     double min, max;
     cv::minMaxLoc(data, &min, &max, nullptr, nullptr, maskN);
+    a.POUT<<"set title \"min= "<<min<<"\"\n";
+    a.POUT<<util::toString( "set xyplane at 0\n",
+                            "set hidden3d\n",
+                            "set view ,,",viewZoom->val,",",scaleZ->val,"\n",
+                            "set palette rgb ",d3paletteR->val,",",d3paletteG->val,",",d3paletteB->val,"\n",
+                            "splot [0:",(cv::Mat(scan->depth, roi).cols-1)*scan->XYnmppx/1000,"][0:",(cv::Mat(scan->depth, roi).rows-1)*scan->XYnmppx/1000,"] \"-\" matrix using ($1*",scan->XYnmppx/1000,"):($2*",scan->XYnmppx/1000,"):3 w pm3d pt 6 notitle\n");
     for(int j=data.rows-1;j>=0;j--){
         for(int i=0;i!=data.cols;i++){
             if(i!=0) a.POUT<<" ";
