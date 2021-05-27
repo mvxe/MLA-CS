@@ -159,7 +159,7 @@ protected:
     };
     std::mutex active_lock;
     std::list<varSt*> active;
-    std::atomic<varSt*> current;    //just to reduce locking, used by varShareClient to return changed
+    std::atomic<varSt*> current{nullptr};    //just to reduce locking, used by varShareClient to return changed
 };
 
 
