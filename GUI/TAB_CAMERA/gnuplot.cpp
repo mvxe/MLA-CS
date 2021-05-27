@@ -149,18 +149,29 @@ void tabCamGnuplot::streamLine(std::ostream *stream, const pgScanGUI::scanRes* s
     std::vector<float> lineData;
     std::vector<bool> lineMask;
     lineData.reserve((int)len+1);
+    double angle=atan2(end.y-start.y,end.x-start.x);
+    double cosang=cos(angle);
+    double sinang=sin(angle);
     for(int i=0;i<=len;i++){
-        float _X=end.x+(start.x-end.x)*(len-i+0.01)/len;  //the 0.01 fixes a weird floor/ceil bug
-        float _Y=end.y+(start.y-end.y)*(len-i+0.01)/len;
-        lineData.emplace_back(
-            (1-(_X-floor(_X)))*(1-(_Y-floor(_Y)))*(data.at<float>(floor(_Y),floor(_X)))+
-            (1-(ceil(_X) -_X))*(1-(ceil(_Y) -_Y))*(data.at<float>( ceil(_Y), ceil(_X)))+
-            (1-(_X-floor(_X)))*(1-(ceil(_Y) -_Y))*(data.at<float>( ceil(_Y),floor(_X)))+
-            (1-(ceil(_X) -_X))*(1-(_Y-floor(_Y)))*(data.at<float>(floor(_Y), ceil(_X))) );
-        lineMask.emplace_back(mask.at<uchar>(floor(_Y),floor(_X))||
-                              mask.at<uchar>( ceil(_Y), ceil(_X))||
-                              mask.at<uchar>( ceil(_Y),floor(_X))||
-                              mask.at<uchar>(floor(_Y), ceil(_X)));
+        float _X,_Y;
+        float _Xfrac=std::modf(start.x+i*cosang,&_X);
+        float _Yfrac=std::modf(start.y+i*sinang,&_Y);
+        float val=data.at<float>(_Y,_X)*(1-_Xfrac)*(1-_Yfrac);
+        bool bmask=mask.at<uchar>(_Y,_X);
+        if(_Xfrac!=0){
+            val+=data.at<float>(_Y,_X+1)*_Xfrac*(1-_Yfrac);
+            bmask|=mask.at<uchar>(_Y,_X+1);
+        }
+        if(_Yfrac!=0){
+            val+=data.at<float>(_Y+1,_X)*(1-_Xfrac)*_Yfrac;
+            bmask|=mask.at<uchar>(_Y+1,_X);
+        }
+        if(_Xfrac!=0&&_Yfrac!=0){
+            val+=data.at<float>(_Y+1,_X+1)*_Xfrac*_Yfrac;
+            bmask|=mask.at<uchar>(_Y+1,_X+1);
+        }
+        lineData.emplace_back(val);
+        lineMask.emplace_back(bmask);
     }
     if(!showAbsHeight->val){
         float minval=std::numeric_limits<float>::max();
