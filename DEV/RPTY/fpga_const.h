@@ -67,8 +67,8 @@ public:
     // O0T1 (11<<28)
     // O1T0 (12<<28)
     // O1T1 (13<<28)
-    enum W4TRIG_SGCHANNELS {O0td=4, O1td=5, O0O1=6, T0td=7, T1td=8, T0T1=9, O0T0=10, O0T1=11, O1T0=12, O1T1=13};
-    static inline uint32_t SG_SAMPLE (W4TRIG_SGCHANNELS channels, int ch0val, int ch1val_or_time);
+    enum SGCHANNELS {O0td=4, O1td=5, O0O1=6, T0td=7, T1td=8, T0T1=9, O0T0=10, O0T1=11, O1T0=12, O1T1=13};
+    static inline uint32_t SG_SAMPLE (SGCHANNELS channels, int ch0val, int ch1val_or_time);
     //  ??  (14<<28)
     //  ??  (15<<28)
 
@@ -109,7 +109,7 @@ inline uint32_t CQF::W4TRIG_GPIO (W4TRIG_GPIO_TYPE type, bool AND, unsigned char
 inline uint32_t CQF::WAIT (unsigned time){
     return (uint32_t)( (3<<28)|time );
 }       //time is a 28 bit unsigned number (num of clock cycles to wait), NOTE 0 does the same as 1
-inline uint32_t CQF::SG_SAMPLE (W4TRIG_SGCHANNELS channels, int ch0val, int ch1val_or_time){
+inline uint32_t CQF::SG_SAMPLE (SGCHANNELS channels, int ch0val, int ch1val_or_time){
     return (uint32_t)( (((uint32_t)channels)<<28)|((ch0val&0x3FFF)<<14)|(ch1val_or_time&0x3FFF) );
 }       //channels see enums above
         //ch0val value of the first channel, 14 bit signed value (NOTE: the program does not handle overlow)
