@@ -21,6 +21,7 @@ public:
 
     int PIDreset(unsigned char PIDN);                                   //PIDN is a 2bit binary value (0x3), where each PID is one bit: this resets only the internal PID values such a integrated sum
     int PIDreset();                                                     //total reset
+    int A2F_loop(unsigned char queue, bool loop);                       //queue is 0-3
 private:
     void run();
 };

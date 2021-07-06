@@ -84,3 +84,7 @@ int RPTY::PIDreset(){
     uint32_t command[2]={100,0x4};
     return TCP_con::write(command,8);
 }
+int RPTY::A2F_loop(unsigned char queue, bool loop){
+    uint32_t command[2]={10,(uint32_t)(queue)|(loop?0x10000:0)};
+    return TCP_con::write(command,8);
+}
