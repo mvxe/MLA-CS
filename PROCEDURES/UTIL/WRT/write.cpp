@@ -93,7 +93,7 @@ void pgWrite::onPulse(){
     commands.push_back(CQF::WAIT(dur));
     commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
     go.pRPTY->A2F_write(0,commands.data(),commands.size());
-    go.pRPTY->trig(0);
+    go.pRPTY->A2F_trig(0);
 }
 void pgWrite::onMenuChange(int index){
     for(int i=0;i!=Nset;i++) settingWdg[i]->setVisible(i==index?true:false);

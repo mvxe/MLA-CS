@@ -537,7 +537,7 @@ std::cerr<<"max "<<go.pRPTY->getNum(RPTY::A2F_RSMax,0)<<"\n";
                     commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 1000, extra*(1<<avg)*len));
                     commands.push_back(CQF::ACK(1, avg, CQF::fADC_A__fADC_B, false));
                     go.pRPTY->A2F_write(0,commands.data(),commands.size());
-                                go.pRPTY->trig(0);
+                                go.pRPTY->A2F_trig(0);
                                 commands.clear();
 
 

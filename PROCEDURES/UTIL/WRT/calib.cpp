@@ -232,7 +232,7 @@ void pgCalib::writePulse(int intensity, double duration, const std::string filen
     commands.push_back(CQF::WAIT(0.1*duration/8e-3 - 1));
     if(!filename.empty()) commands.push_back(CQF::ACK(1<<recQueue, selectedavg, CQF::fADC_A__fADC_B, false));
     go.pRPTY->A2F_write(cmdQueue,commands.data(),commands.size());
-    go.pRPTY->trig(cmdQueue);
+    go.pRPTY->A2F_trig(cmdQueue);
     commands.clear();
 
     if(usedAvg!=nullptr) *usedAvg=selectedavg;
