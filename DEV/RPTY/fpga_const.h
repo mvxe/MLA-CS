@@ -7,10 +7,10 @@ public:
     // N/A   ( 0<<28)
     // OTHER ( 1<<28)
         // TRIG_OTHER   ( 0<<24)
-        static inline uint32_t TRIG_OTHER (unsigned char command_queues);
+        static inline uint32_t TRIG_OTHER (uint8_t command_queues);
         // ACK          ( 1<<24)
-        enum ACK_CHANNELS { fADC_A__fADC_A=0,       //when doing this, left side(MSB) value is newer than the right side(LSB)
-                            fADC_B__fADC_B=1,
+        enum ACK_CHANNELS { fADC_A__fADC_A=0,       //see AQF class
+                            fADC_B__fADC_B=1,       //when doing this, left side(MSB) value is newer than the right side(LSB)
                             PIDO_0__PIDO_0=2,
                             PIDO_1__PIDO_1=3,
                             sADC_0__sADC_0=4,
@@ -23,21 +23,24 @@ public:
                             fADC_A__PIDO_1=11,
                             fADC_B__PIDO_0=12,
                             fADC_B__PIDO_1=13,
-                            generated_14bit=14,
+                            gpioP_gpioN=14,         // gpioP is MSB (b21-b14), gpioN is LSB (b7-b0) (other bits will be 0, so you may use )
                             generated_14bitX2=15};
-        static inline uint32_t ACK (unsigned char acquisition_queues, unsigned char averaging, ACK_CHANNELS ACK_channels, bool setActive);
-        // ??           ( 2<<24)
-        // ??           ( 3<<24)
-        // ??           ( 4<<24)
+        static inline uint32_t ACK (uint8_t acquisition_queues, uint8_t averaging, ACK_CHANNELS ACK_channels, bool setActive);
+        // flags mask   ( 2<<24)
+        static inline uint32_t FLAGS_MASK (uint16_t mask);
+        // flags local set ( 3<<24)
+        static inline uint32_t FLAGS_LOCAL_SET (uint16_t value);
+        // flags shared set ( 4<<24)
+        static inline uint32_t FLAGS_SHARED_SET (uint16_t value);
         // ??           ( 5<<24)
         // ??           ( 6<<24)
         // ??           ( 7<<24)
         // GPIO_MASK    ( 8<<24)
-        static inline uint32_t GPIO_MASK (unsigned char N, unsigned char P, unsigned char LED);
+        static inline uint32_t GPIO_MASK (uint8_t N, uint8_t P, uint8_t LED);
         // GPIO_DIR     ( 9<<24)
-        static inline uint32_t GPIO_DIR  (unsigned char N, unsigned char P, unsigned char LED);
+        static inline uint32_t GPIO_DIR  (uint8_t N, uint8_t P, uint8_t LED);
         // GPIO_VAL     (10<<24)
-        static inline uint32_t GPIO_VAL  (unsigned char N, unsigned char P, unsigned char LED);
+        static inline uint32_t GPIO_VAL  (uint8_t N, uint8_t P, uint8_t LED);
         // PWMA         (11<<24)
         // PWMB         (12<<24)
         // PWMC         (13<<24)
@@ -49,12 +52,19 @@ public:
         // W4TRIG_INTR ( 0<<24)
         static inline uint32_t W4TRIG_INTR ();     //from ARM or other queue
         // W4TRIG_GPIO  ( 1<<24)
-        enum W4TRIG_GPIO_TYPE{LOW=0, HIGH=1, FALL=2, RISE=3};
-        static inline uint32_t W4TRIG_GPIO (W4TRIG_GPIO_TYPE type, bool AND, unsigned char N, unsigned char P);
+        static const bool HIGH=1;
+        static const bool LOW=0;
+        static inline uint32_t W4TRIG_GPIO (bool level, bool AND, uint8_t N, uint8_t P, bool getTrigTime=false);
+        static inline uint32_t W4TRIG_FLAGS_LOCAL (bool level, bool AND, uint16_t mask, bool getTrigTime=false);
+        static inline uint32_t W4TRIG_FLAGS_SHARED (bool level, bool AND, uint16_t mask, bool getTrigTime=false);
         // W4TRIG_ADC_S ( 2<<24)
         //static uint32_t W4TRIG_ADC_S ();  TODO
         // W4TRIG_ADC_F ( 3<<24)
         //static uint32_t W4TRIG_ADC_F ();  TODO
+        static inline uint32_t IF_GPIO (bool level, bool AND, uint8_t N, uint8_t P, bool getTrigTime=false);
+        static inline uint32_t IF_FLAGS_LOCAL (bool level, bool AND, uint16_t mask, bool getTrigTime=false);
+        static inline uint32_t IF_FLAGS_SHARED (bool level, bool AND, uint16_t mask, bool getTrigTime=false);
+        static inline uint32_t END ();
     // WAIT ( 3<<28)
     static inline uint32_t WAIT (unsigned time);
     // O0td ( 4<<28)
@@ -76,22 +86,33 @@ public:
 
 
 
-inline uint32_t CQF::TRIG_OTHER (unsigned char command_queues){
+inline uint32_t CQF::TRIG_OTHER (uint8_t command_queues){
     return (uint32_t)( (1<<28)|(0<<24)|(command_queues&0xF) );
 }       //command_queues: 4 bit value : each bit is one queue (allows one to trigger multiple queues silmultaneously)
-inline uint32_t CQF::ACK (unsigned char acquisition_queues, unsigned char averaging, ACK_CHANNELS ACK_channels, bool setActive){
+inline uint32_t CQF::ACK (uint8_t acquisition_queues, uint8_t averaging, ACK_CHANNELS ACK_channels, bool setActive){
     return (uint32_t)( (1<<28)|(1<<24)|(((uint32_t)acquisition_queues&0xF)<<10)|(((uint32_t)averaging&0x1F)<<5)|(((uint32_t)ACK_channels)<<1)|(setActive?1:0) );
 }       //acquisition_queues: 4 bit value : each bit is one queue (allows one to trigger multiple queues silmultaneously)
         //averaging: 5 bit value: 0-31 (averages 2^averaging number of samples)
+        //  averaging is ignored for gpioP_gpioN
         //ACK_channels see enums above
         //setActive: the acquisiton runs as long as setActive is true for that queue
-inline uint32_t CQF::GPIO_MASK (unsigned char N, unsigned char P, unsigned char LED){
+inline uint32_t FLAGS_MASK (uint16_t mask){
+    return (uint32_t)( (1<<28)|(2<<24)|((uint32_t)mask) );
+}
+inline uint32_t FLAGS_LOCAL_SET (uint16_t value){
+    return (uint32_t)( (1<<28)|(3<<24)|((uint32_t)value) );
+}
+inline uint32_t FLAGS_SHARED_SET (uint16_t value){
+    return (uint32_t)( (1<<28)|(4<<24)|((uint32_t)value) );
+}
+inline uint32_t CQF::GPIO_MASK (uint8_t N, uint8_t P, uint8_t LED){
     return (uint32_t)( (1<<28)|(8<<24)|((uint32_t)N<<16)|((uint32_t)P<<8)|((uint32_t)LED) );
 }       //parameters are binary representation of the ports, 8 bit each
-inline uint32_t CQF::GPIO_DIR (unsigned char N, unsigned char P, unsigned char LED){
+inline uint32_t CQF::GPIO_DIR (uint8_t N, uint8_t P, uint8_t LED){
     return (uint32_t)( (1<<28)|(9<<24)|((uint32_t)N<<16)|((uint32_t)P<<8)|((uint32_t)LED) );
 }       //parameters are binary representation of the ports, 8 bit each
-inline uint32_t CQF::GPIO_VAL (unsigned char N, unsigned char P, unsigned char LED){
+        //NOTE: low = output, high = input ! By default (after reset) GPIOs will be inputs, LEDs will be outputs
+inline uint32_t CQF::GPIO_VAL (uint8_t N, uint8_t P, uint8_t LED){
     return (uint32_t)( (1<<28)|(10<<24)|((uint32_t)N<<16)|((uint32_t)P<<8)|((uint32_t)LED) );
 }       //parameters are binary representation of the ports, 8 bit each
 inline uint32_t CQF::PWM (PWM_CHANNEL channel, uint16_t val){
@@ -101,11 +122,32 @@ inline uint32_t CQF::PWM (PWM_CHANNEL channel, uint16_t val){
 inline uint32_t CQF::W4TRIG_INTR (){
     return (uint32_t)( (2<<28)|(0<<24) );
 }
-inline uint32_t CQF::W4TRIG_GPIO (W4TRIG_GPIO_TYPE type, bool AND, unsigned char N, unsigned char P){
-    return (uint32_t)( (2<<28)|(1<<24)|(((uint32_t)type)<<22)|((uint32_t)AND<<21)|((uint32_t)N<<8)|((uint32_t)P) );
-}       //type see enums above
+inline uint32_t CQF::W4TRIG_GPIO (bool level, bool AND, uint8_t N, uint8_t P, bool getTrigTime){
+    return (uint32_t)( (2<<28)|(1<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)N<<8)|((uint32_t)P) );
+}       //level is LOW(0) or HIGH(1)
         //AND, if true, all pins must change as specified, if false, OR is used instead
         //N and P are 8 bit masks
+        //getTrigTime if true, the queue will await a CQF::WAIT command, and the gpio has to continuously be in the specified state for this long to trigger
+        //  this could be useful against noise. Note that for rise/fall triggers, the trigger changes into high/low after the first transition.
+        //  commands other than CQF::WAIT will be ignored
+inline uint32_t CQF::W4TRIG_FLAGS_LOCAL (bool level, bool AND, uint16_t mask, bool getTrigTime){
+    return (uint32_t)( (2<<28)|(4<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)mask) );
+}
+inline uint32_t CQF::W4TRIG_FLAGS_SHARED (bool level, bool AND, uint16_t mask, bool getTrigTime){
+    return (uint32_t)( (2<<28)|(5<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)mask) );
+}
+inline uint32_t CQF::IF_GPIO (bool level, bool AND, uint8_t N, uint8_t P, bool getTrigTime){
+    return (uint32_t)( (14<<28)|(1<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)N<<8)|((uint32_t)P) );
+}       //same as above, except nonblocking (if condition is false, it skips everything up to the assocciated END, nesting is possible (up to 256))
+inline uint32_t CQF::IF_FLAGS_LOCAL (bool level, bool AND, uint16_t mask, bool getTrigTime){
+    return (uint32_t)( (14<<28)|(4<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)mask) );
+}
+inline uint32_t CQF::IF_FLAGS_SHARED (bool level, bool AND, uint16_t mask, bool getTrigTime){
+    return (uint32_t)( (14<<28)|(5<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)mask) );
+}
+inline uint32_t CQF::END (){
+    return (uint32_t)(15<<28);
+}       //extra ENDs are ignored
 inline uint32_t CQF::WAIT (unsigned time){
     return (uint32_t)( (3<<28)|time );
 }       //time is a 28 bit unsigned number (num of clock cycles to wait), NOTE 0 does the same as 1
@@ -119,6 +161,8 @@ class AQF{       //class containing functions that convert from acquisition queu
 public:
     static inline int16_t getChMSB(uint32_t acq);     //example: gets the fADC_A from fADC_A__fADC_B
     static inline int16_t getChLSB(uint32_t acq);     //example: gets the fADC_B from fADC_A__fADC_B
+    static inline uint8_t getN(uint32_t acq);                //use with gpioP_gpioN
+    static inline uint8_t getP(uint32_t acq);                //-||-
 };
 
 inline int16_t AQF::getChMSB(uint32_t acq){
@@ -130,6 +174,12 @@ inline int16_t AQF::getChLSB(uint32_t acq){
     int ret = (acq&0x00003FFF);
     if (ret&0x2000) {ret^=0x2000; ret^=0xFFFFE000;}
     return ret;
+}
+inline uint8_t AQF::getN(uint32_t acq){
+    return (acq&0x000000FF);
+}
+inline uint8_t AQF::getP(uint32_t acq){
+    return ((acq&0x003FC000)>>14);
 }
 
 #endif //FPGACONST_H
