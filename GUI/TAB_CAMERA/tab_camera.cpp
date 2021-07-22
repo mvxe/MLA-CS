@@ -300,7 +300,7 @@ void tab_camera::onShowAbsHeightChanged(){
 }
 
 void tab_camera::tab_entered(){
-    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
+    //if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
 
     framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeueDisp->setUserFps(30,5);

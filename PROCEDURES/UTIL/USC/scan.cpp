@@ -728,9 +728,10 @@ void pgScanGUI::saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::strin
 bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
     if(fileName=="") fileName=QFileDialog::getOpenFileName(parent,"Select file to load Depth Map (raw, float).", "","Images (*.pfm)").toStdString();
     if(fileName.empty())return false;
-    if(scan==nullptr) scan=new scanRes;
+    bool newSR{false};
+    if(scan==nullptr) {newSR=true; scan=new scanRes;}
     scan->depth=cv::imread(fileName, cv::IMREAD_UNCHANGED);
-    if(scan->depth.empty()){delete scan; scan=nullptr; return false;}
+    if(scan->depth.empty()){if(newSR) {delete scan; scan=nullptr;} return false;}
     cv::compare(scan->depth, std::numeric_limits<float>::max(), scan->mask, cv::CMP_EQ);
     cv::bitwise_not(scan->mask, scan->maskN);
     std::ifstream rfile(fileName);
