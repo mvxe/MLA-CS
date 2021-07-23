@@ -96,13 +96,13 @@ inline uint32_t CQF::ACK (uint8_t acquisition_queues, uint8_t averaging, ACK_CHA
         //  averaging is ignored for gpioP_gpioN
         //ACK_channels see enums above
         //setActive: the acquisiton runs as long as setActive is true for that queue
-inline uint32_t FLAGS_MASK (uint16_t mask){
+inline uint32_t CQF::FLAGS_MASK (uint16_t mask){
     return (uint32_t)( (1<<28)|(2<<24)|((uint32_t)mask) );
 }
-inline uint32_t FLAGS_LOCAL_SET (uint16_t value){
+inline uint32_t CQF::FLAGS_LOCAL_SET (uint16_t value){
     return (uint32_t)( (1<<28)|(3<<24)|((uint32_t)value) );
 }
-inline uint32_t FLAGS_SHARED_SET (uint16_t value){
+inline uint32_t CQF::FLAGS_SHARED_SET (uint16_t value){
     return (uint32_t)( (1<<28)|(4<<24)|((uint32_t)value) );
 }
 inline uint32_t CQF::GPIO_MASK (uint8_t N, uint8_t P, uint8_t LED){
