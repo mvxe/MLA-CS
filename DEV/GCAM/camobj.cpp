@@ -43,28 +43,28 @@ void camobj::start(){
     arv_device_write_memory (dev,0x0000000000020018,4,&valx,NULL);  //SI_maximum_leader_size
         /*                                                                     */
 
-    payload=arv_camera_get_payload(cam);
-    arv_camera_set_acquisition_mode(cam, ARV_ACQUISITION_MODE_CONTINUOUS);
-    arv_camera_get_sensor_size(cam,&Xsize,&Ysize);
-    arv_camera_set_region(cam,0,0,Xsize,Ysize);
-    format=arv_camera_get_pixel_format_as_string(cam);
+    payload=arv_camera_get_payload(cam, NULL);
+    arv_camera_set_acquisition_mode(cam, ARV_ACQUISITION_MODE_CONTINUOUS, NULL);
+    arv_camera_get_sensor_size(cam,&Xsize,&Ysize, NULL);
+    arv_camera_set_region(cam,0,0,Xsize,Ysize, NULL);
+    format=arv_camera_get_pixel_format_as_string(cam, NULL);
 
     std::cerr<<"payload="<<payload<<"\n";
     std::cerr<<"Xsize="<<Xsize<<"\n";
     std::cerr<<"Ysize="<<Ysize<<"\n";
     std::cerr<<"format="<<format<<"\n";
 
-    arv_camera_set_exposure_time(cam,expo.get());
-    expo.set(arv_camera_get_exposure_time(cam));
+    arv_camera_set_exposure_time(cam,expo.get(), NULL);
+    expo.set(arv_camera_get_exposure_time(cam, NULL));
     std::cerr<<"exposure(us)="<<expo.get()<<"\n";
 
     double fmin,fmax;
-    arv_camera_get_frame_rate_bounds (cam, &fmin, &fmax);   //TODO this function returns weird massive fmax for basler cameras, and then they dont work
-    std::cerr<<"curFPS="<< arv_camera_get_frame_rate(cam)<<"\n";
+    arv_camera_get_frame_rate_bounds (cam, &fmin, &fmax, NULL);   //TODO this function returns weird massive fmax for basler cameras, and then they dont work
+    std::cerr<<"curFPS="<< arv_camera_get_frame_rate(cam, NULL)<<"\n";
     std::cerr<<"maxFPS="<<fmax<<"\n";
     std::cerr<<"minFPS="<<fmin<<"\n";
     fmax=30;    //TODO override
-    arv_camera_set_frame_rate(cam, fmax);
+    arv_camera_set_frame_rate(cam, fmax, NULL);
     ackFPS=fmax;
     FQsPCcam.setCamFPS(ackFPS);
     std::cerr<<"ackFPS="<<ackFPS<<"\n";
@@ -108,12 +108,12 @@ void camobj::work(){
             /*work part start*/
         if(FQsPCcam.isThereInterest()){
             if(!ackstatus){
-                arv_camera_start_acquisition(cam);
+                arv_camera_start_acquisition(cam, NULL);
                 ackstatus=true;
             }
         }else{
             if(ackstatus){
-                arv_camera_stop_acquisition(cam);
+                arv_camera_stop_acquisition(cam, NULL);
                 ackstatus=false;
             }
         }
@@ -125,17 +125,17 @@ void camobj::end(){
     _connected=false;
     control_lost=false;
     if(str!=NULL) arv_stream_set_emit_signals (str, FALSE);
-    if(cam!=NULL) arv_camera_stop_acquisition(cam);
+    if(cam!=NULL) arv_camera_stop_acquisition(cam, NULL);
     if(str!=NULL) g_clear_object(&str);
     if(cam!=NULL) g_clear_object(&cam);
     if(dev!=NULL) dev=NULL;   //no unref here because unrefing cam seams to unref dev too, but it doesnt set it to NULL
     ID="none";
     while(!FreeBuffers.empty()){
-        if(G_IS_OBJECT(&FreeBuffers.front()->object)) g_clear_object(&FreeBuffers.front());
+        delete FullBuffers.front();
         FreeBuffers.pop();
     }
     while(!FullBuffers.empty()){
-        if(G_IS_OBJECT(&FullBuffers.front()->object)) g_clear_object(&FullBuffers.front());
+        delete FullBuffers.front();
         FullBuffers.pop_front();
     }
 }
@@ -151,11 +151,11 @@ void camobj::control_lost_cb (ArvDevice *ldev){
 void camobj::con_cam(){
     _connected=false;
     ID=selected_ID.get();
-    cam=arv_camera_new(ID.c_str());
+    cam=arv_camera_new(ID.c_str(), NULL);
     if(cam==NULL)
         {end(); return;}
     dev=arv_camera_get_device(cam);
-    str=arv_camera_create_stream(cam, NULL, NULL);
+    str=arv_camera_create_stream(cam, NULL, NULL, NULL);
     if(dev==NULL || str==NULL)
         {end(); return;}
     g_signal_connect(dev, "control-lost", G_CALLBACK(control_lost_cb), this);
@@ -167,59 +167,52 @@ void camobj::con_cam(){
 
 
 
-ArvDeviceStatus camobj::set(std::string atr, bool nvar){
+void camobj::set(std::string atr, bool nvar){
     std::lock_guard<std::mutex>lock(mtx);
-    arv_device_set_boolean_feature_value(dev, atr.c_str(), nvar);
-    return arv_device_get_status(dev);
+    arv_device_set_boolean_feature_value(dev, atr.c_str(), nvar, NULL);
 }
-ArvDeviceStatus camobj::set(std::string atr, long int nvar){
+void camobj::set(std::string atr, long int nvar){
     std::lock_guard<std::mutex>lock(mtx);
-    arv_device_set_integer_feature_value(dev, atr.c_str(), nvar);
-    return arv_device_get_status(dev);
+    arv_device_set_integer_feature_value(dev, atr.c_str(), nvar, NULL);
 }
-ArvDeviceStatus camobj::set(std::string atr, double nvar){
+void camobj::set(std::string atr, double nvar){
     std::lock_guard<std::mutex>lock(mtx);
-    arv_device_set_float_feature_value(dev, atr.c_str(), nvar);
-    return arv_device_get_status(dev);
+    arv_device_set_float_feature_value(dev, atr.c_str(), nvar, NULL);
 }
-ArvDeviceStatus camobj::set(std::string atr, std::string nvar){
+void camobj::set(std::string atr, std::string nvar){
     std::lock_guard<std::mutex>lock(mtx);
-    arv_device_set_string_feature_value(dev, atr.c_str(), nvar.c_str());
-    return arv_device_get_status(dev);
+    arv_device_set_string_feature_value(dev, atr.c_str(), nvar.c_str(), NULL);
 }
 bool camobj::get_bool(std::string atr){
     std::lock_guard<std::mutex>lock(mtx);
-    return arv_device_get_boolean_feature_value(dev, atr.c_str());
+    return arv_device_get_boolean_feature_value(dev, atr.c_str(), NULL);
 }
 long int camobj::get_lint(std::string atr){
     std::lock_guard<std::mutex>lock(mtx);
-    return arv_device_get_integer_feature_value(dev, atr.c_str());
+    return arv_device_get_integer_feature_value(dev, atr.c_str(), NULL);
 }
 double camobj::get_dbl(std::string atr){
     std::lock_guard<std::mutex>lock(mtx);
-    return arv_device_get_float_feature_value(dev, atr.c_str());
+    return arv_device_get_float_feature_value(dev, atr.c_str(), NULL);
 }
 std::string camobj::get_str(std::string atr){
     std::lock_guard<std::mutex>lock(mtx);
-    return arv_device_get_string_feature_value(dev, atr.c_str());
+    return arv_device_get_string_feature_value(dev, atr.c_str(), NULL);
 }
-ArvDeviceStatus camobj::run(std::string atr){
+void camobj::run(std::string atr){
     std::lock_guard<std::mutex>lock(mtx);
-    arv_device_execute_command(dev, atr.c_str());
-    return arv_device_get_status(dev);
+    arv_device_execute_command(dev, atr.c_str(), NULL);
 }
 
-ArvDeviceStatus camobj::set_trigger(std::string trig){
+void camobj::set_trigger(std::string trig){
     std::lock_guard<std::mutex>lock(mtx);
     if(trig=="none"){
-        arv_camera_clear_triggers(cam);
+        arv_camera_clear_triggers(cam, NULL);
     }
-    else arv_camera_set_trigger(cam, trig.c_str()); //Typical values for source are "Line1" or "Line2". See the camera documentation for the allowed values. Activation is set to rising edge. It can be changed by accessing the underlying device object.
-    return arv_device_get_status(dev);
+    else arv_camera_set_trigger(cam, trig.c_str(), NULL); //Typical values for source are "Line1" or "Line2". See the camera documentation for the allowed values. Activation is set to rising edge. It can be changed by accessing the underlying device object.
 }
 
-ArvDeviceStatus camobj::get_frame_rate_bounds (double *min, double *max){
+void camobj::get_frame_rate_bounds (double *min, double *max){
     std::lock_guard<std::mutex>lock(mtx);
-    arv_camera_get_frame_rate_bounds(cam, min, max);
-    return arv_device_get_status(dev);
+    arv_camera_get_frame_rate_bounds(cam, min, max, NULL);
 }

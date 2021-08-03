@@ -15,19 +15,19 @@ class camobj: public camobj_config{
     friend class gcam_config;
     friend class FrameObserver;
 public:
-    ArvDeviceStatus set(std::string atr, bool nvar);
-    ArvDeviceStatus set(std::string atr, long int nvar);
-    ArvDeviceStatus set(std::string atr, double nvar);
-    ArvDeviceStatus set(std::string atr, std::string nvar);
+    void set(std::string atr, bool nvar);
+    void set(std::string atr, long int nvar);
+    void set(std::string atr, double nvar);
+    void set(std::string atr, std::string nvar);
     bool        get_bool(std::string atr);
     long int    get_lint(std::string atr);
     double      get_dbl(std::string atr);
     std::string get_str(std::string atr);
     template <typename T> T get(std::string atr);
-    ArvDeviceStatus run(std::string atr);
+    void run(std::string atr);
 
-    ArvDeviceStatus set_trigger(std::string trig="none");
-    ArvDeviceStatus get_frame_rate_bounds (double *min, double *max);
+    void set_trigger(std::string trig="none");
+    void get_frame_rate_bounds (double *min, double *max);
 
     std::mutex mkmx;
     tsvar_save<std::string> selected_ID;                    //thread safe access to select camera ID

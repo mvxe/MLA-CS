@@ -42,7 +42,7 @@ unix:!macx: LIBS += -lcurlpp -lcurl -lserial -DVIENNACL_WITH_OPENCL  -lOpenCL -l
 #QMAKE_LFLAGS+="-fsanitize=address"
 
 INCLUDEPATH += /usr/include/glib-2.0 \
-        /usr/include/aravis-0.6
+        /usr/include/aravis-0.8
 
 QT += charts
 
@@ -160,5 +160,5 @@ SOURCES += \
 
 unix {
     CONFIG += link_pkgconfig
-    PKGCONFIG += opencv4 glib-2.0 aravis-0.6
+    PKGCONFIG += opencv4 glib-2.0 aravis-0.8
 }
