@@ -70,8 +70,10 @@ class tsvar{
 public:
     tsvar(std::mutex *mxn, T initial);
     virtual bool set(T nvar);           //the usual set, returns false on success (if the provided value is valid)
-    T get(bool silent = false);         //the usual get, the optional parameter silent, if true, makes the get operation not set changed to false
-    bool changed();                     //has the variable been changed since last get()
+    T get();                            //the usual get
+    bool changed();                     //returns whether the variable has been changed, also resets the changed flag
+    T operator = (T nvar);
+    operator T();
 protected:
     std::mutex* mx;
     T var;

@@ -44,8 +44,14 @@ namespace rtoml{
                 public:
                     T* var;
                     _Var(T& ovar): var(&ovar){}
-                    void save(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& dst){ dst=*var; }
-                    void load(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& src){ *var=toml::get<T>(src); }
+                    void save(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& dst){
+                        if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value) dst=*var;
+                        else dst=var->get();
+                    }
+                    void load(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& src){
+                        if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value) *var=toml::get<T>(src);
+                        else var->set(toml::get<decltype(var->get())>(src));     //if type is neither arithmetic or string, assume it's a class with get()/set()
+                    }
             };
             _BVar* var{nullptr};
             std::map<std::string, vsr>* map{nullptr};

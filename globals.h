@@ -16,6 +16,7 @@
 #include <UTIL/containers.h>
 #include <UTIL/utility.h>
 #include <UTIL/threadpool.h>
+#include "UTIL/.rtoml/rtoml.hpp"
 
 class XPS;
 class GCAM;

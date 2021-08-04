@@ -40,20 +40,22 @@ template <typename T>
 bool tsvar<T>::set(T nvar){
     if(check(nvar)) return true;
     std::lock_guard<std::mutex>lock(*mx);
+    if(var!=nvar) change = true;
     var = nvar;
-    change = true;
     return false;
 }
 template <typename T>
-T tsvar<T>::get(bool silent){
+T tsvar<T>::get(){
     std::lock_guard<std::mutex>lock(*mx);
-    if (!silent) change = false;
     return var;
 }
 template <typename T>
 bool tsvar<T>::changed(){
     std::lock_guard<std::mutex>lock(*mx);
-    return change;
+    if(change){
+        change=false;
+        return true;
+    } else return false;
 }
 template <typename T>
 bool tsvar<T>::check(T nvar){
@@ -63,6 +65,19 @@ template <typename T>
 void tsvar<T>::err(T initial){
     std::cerr << "ERROR: A container of tsvar was initialized with an invalid value ( " << initial << " ).\n";
     _containers_internal::quit();
+}
+template <typename T>
+T tsvar<T>::operator = (T nvar){
+    std::lock_guard<std::mutex>lock(*mx);
+    if(var!=nvar) change = true;
+    var = nvar;
+    return var;
+}
+template <typename T>
+tsvar<T>::operator T(){
+    std::lock_guard<std::mutex>lock(*mx);
+
+    return var;
 }
 
 
