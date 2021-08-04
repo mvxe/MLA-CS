@@ -48,6 +48,7 @@ QT += charts
 
 HEADERS += \
     DEV/XPS/xps.h \
+    UTIL/.rtoml/rtoml.hpp \
     includes.h \
     globals.h \
     GUI/slots_baseclass.h \

@@ -33,76 +33,6 @@
 #include ".toml/toml.hpp"
 
 namespace rtoml{
-    std::string format(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& data){   // fixes indentation, removes empty comments (needed to prevent inline)
-        std::string str = toml::format(data,80,10);                                           // tsl::ordered_map preserves insertion order
-        if(str.size()==0) return str;
-        
-        std::size_t lineBegin=0;
-        std::size_t lineEnd=str.find('\n');
-        if(lineEnd==std::string::npos) lineEnd=str.size();
-        std::size_t pos;
-        std::string sstr;
-        
-        int level=0;
-        const std::string indentation="    ";
-        const size_t indSize=indentation.size();
-        const bool addNewlineAfterEveryVar=true;
-        
-        std::stack<std::size_t> commentPos;
-        for(;;){                                //goes over every line
-            sstr=str.substr(lineBegin,lineEnd-lineBegin);
-            
-            if(sstr[0]=='#'){
-                if(sstr.size()==1){             //empty comment... remove it
-                    str.erase(lineBegin,2);
-                    lineEnd=str.find('\n',lineBegin);
-                    continue;
-                }
-                commentPos.push(lineBegin);
-            }else{
-                bool isSecOrVar=false;
-                if(sstr[0]=='['){
-                    pos=sstr.find(']');
-                    if(pos!=std::string::npos){ // there is [...]...
-                        level=0;
-                        isSecOrVar=true;
-                        for(std::size_t i=1;i!=pos-1;i++)
-                            if(sstr[i]=='.') level++;
-                    }
-                }
-                
-                if(addNewlineAfterEveryVar){
-                    size_t pos;
-                    if(!isSecOrVar){
-                        pos=sstr.find('#');
-                        if(pos!=std::string::npos) sstr=str.substr(0,pos);
-                        pos=sstr.find('=');
-                        if(pos!=std::string::npos) isSecOrVar=true;
-                    }
-                    if(isSecOrVar) str.insert(lineEnd+1,"\n");
-                }
-                
-                for(int i=0;i!=level;i++){      // apply indentation
-                    str.insert(lineBegin,indentation);
-                    if(lineEnd!=std::string::npos) lineEnd+=indSize;
-                }
-                while(!commentPos.empty()){     // apply indentation to comments
-                    for(int i=0;i!=level;i++){
-                        str.insert(commentPos.top(),indentation);
-                        lineBegin+=indSize;
-                        if(lineEnd!=std::string::npos) lineEnd+=indSize;
-                    }
-                    commentPos.pop();
-                }
-            }
-            
-            if(lineEnd==std::string::npos) break;
-            lineBegin=lineEnd+1;
-            lineEnd=str.find('\n',lineBegin);
-        }
-        return str;
-    }
-
     class vsr{
         private:
             class _BVar{
@@ -149,6 +79,75 @@ namespace rtoml{
                 }else{                                      // initialized as a variable - load it
                     var->load(data);
                 }
+            }
+            std::string format(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& data){   // fixes indentation, removes empty comments (needed to prevent inline)
+                std::string str = toml::format(data,80,10);                                           // tsl::ordered_map preserves insertion order
+                if(str.size()==0) return str;
+
+                std::size_t lineBegin=0;
+                std::size_t lineEnd=str.find('\n');
+                if(lineEnd==std::string::npos) lineEnd=str.size();
+                std::size_t pos;
+                std::string sstr;
+
+                int level=0;
+                const std::string indentation="    ";
+                const size_t indSize=indentation.size();
+                const bool addNewlineAfterEveryVar=true;
+
+                std::stack<std::size_t> commentPos;
+                for(;;){                                //goes over every line
+                    sstr=str.substr(lineBegin,lineEnd-lineBegin);
+
+                    if(sstr[0]=='#'){
+                        if(sstr.size()==1){             //empty comment... remove it
+                            str.erase(lineBegin,2);
+                            lineEnd=str.find('\n',lineBegin);
+                            continue;
+                        }
+                        commentPos.push(lineBegin);
+                    }else{
+                        bool isSecOrVar=false;
+                        if(sstr[0]=='['){
+                            pos=sstr.find(']');
+                            if(pos!=std::string::npos){ // there is [...]...
+                                level=0;
+                                isSecOrVar=true;
+                                for(std::size_t i=1;i!=pos-1;i++)
+                                    if(sstr[i]=='.') level++;
+                            }
+                        }
+
+                        if(addNewlineAfterEveryVar){
+                            size_t pos;
+                            if(!isSecOrVar){
+                                pos=sstr.find('#');
+                                if(pos!=std::string::npos) sstr=str.substr(0,pos);
+                                pos=sstr.find('=');
+                                if(pos!=std::string::npos) isSecOrVar=true;
+                            }
+                            if(isSecOrVar) str.insert(lineEnd+1,"\n");
+                        }
+
+                        for(int i=0;i!=level;i++){      // apply indentation
+                            str.insert(lineBegin,indentation);
+                            if(lineEnd!=std::string::npos) lineEnd+=indSize;
+                        }
+                        while(!commentPos.empty()){     // apply indentation to comments
+                            for(int i=0;i!=level;i++){
+                                str.insert(commentPos.top(),indentation);
+                                lineBegin+=indSize;
+                                if(lineEnd!=std::string::npos) lineEnd+=indSize;
+                            }
+                            commentPos.pop();
+                        }
+                    }
+
+                    if(lineEnd==std::string::npos) break;
+                    lineBegin=lineEnd+1;
+                    lineEnd=str.find('\n',lineBegin);
+                }
+                return str;
             }
         public:
             vsr(){}
