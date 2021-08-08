@@ -24,25 +24,25 @@ class val_selector : public QWidget{       //template for devices
 public:
     val_selector(double initialValue, QString label, double min, double max, double precision);
     val_selector(double initialValue, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels);
-    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision);
-    val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels);
-    const double& val{value};
-    const int& index{unitIndex};
-    void setValue(double nvalue);
+    const std::atomic<double>& val;         // thread safe
+    const std::atomic<int>& index;          // thread safe
 
+    void set(std::string valueAndUnit);     // thread safe, for toml::vsr
+    std::string get();                      // thread safe, for toml::vsr
+public Q_SLOTS:
+    void setValue(double nvalue, int index=-1); // not thread safe, no change to index if index=-1
 private:
-    double value;
-    cc_save<double> valueSave;
-    int unitIndex;
-    cc_save<int> unitIndexSave;
+    std::atomic<double> value;
+    std::atomic<int> unitIndex;
 
     QHBoxLayout* layout;
     QLabel* _label;
     QDoubleSpinBox* spinbox;
     QScrollToolButton* unit;
+    std::vector<QString> labels;            // for get()/set()
 
     void init0(QString label, double min, double max, double precision);
-    void init1(std::vector<QString> labels);
+    void init1();
 private Q_SLOTS:
     void on_menu_change();
     void on_value_change(double nvalue);
@@ -51,6 +51,7 @@ Q_SIGNALS:
     void changed(double value);
     void changed(double value, int index);
     void changed(int index);
+    void _changed(double value, int index); // do not use
 };
 
 //  SIMPLE SELECTOR
@@ -59,27 +60,30 @@ class smp_selector : public QWidget{       //template for devices
     Q_OBJECT
 public:
     smp_selector(QString label, int initialIndex, std::vector<QString> labels);
-    smp_selector(std::string varSaveName, QString label, int initialIndex, std::vector<QString> labels);
-    const int& index{_index};
+    const std::atomic<int>& index{_index};  // thread safe
     void addWidget(QWidget* widget);
 
+    void set(std::string label);            // thread safe, for toml::vsr
+    std::string get();                      // thread safe, for toml::vsr
+    std::string getLabel(int index);
 private:
-    int _index;
-    cc_save<int> indexSave;
+    std::atomic<int> _index;
 
     QHBoxLayout* layout;
     QLabel* _label;
     QScrollToolButton* _sBtn;
+    std::vector<QString> labels;            // for get()/set()
 
-    void init(QString label, std::vector<QString> labels);
 private Q_SLOTS:
     void on_menu_change();
+    void setIndex(int index);
 Q_SIGNALS:
     void changed();
     void changed(int index);
+    void _changed(int index);               // do not use
 };
 
-// TAB WIDGET DISPLAY SELECTOR
+// TAB WIDGET DISPLAY SELECTOR - add widgets with addWidget
 
 class twd_selector : public QWidget{
     Q_OBJECT
@@ -89,36 +93,29 @@ public:
     void timerStop();
     void timerStart();
     bool showSel;
-    const int& index{active_index};
+    const std::atomic<int>& index{active_index};    // thread safe
+
+    void set(std::string label);            // thread safe (assuming no more calls to addWidget), for toml::vsr
+    std::string get();                      // thread safe (assuming no more calls to addWidget), for toml::vsr
+public Q_SLOTS:
     void setIndex(int index);
 private:
     QVBoxLayout* layout;
     QVBoxLayout* layouts;
     QScrollToolButton* select;
     std::vector<QWidget*> widgets;
+    std::vector<std::string> labels;        // for get()/set()
     int insertOfs;
-    int active_index=-1;
+    std::atomic<int> active_index{-1};
 
     QPushButton* showBtn;   //for addShown
     QWidget* wI;
 Q_SIGNALS:
     void changed(int index);
+    void _changed(int index);               // do not use
 private Q_SLOTS:
     void on_menu_change();
     void onClicked();   //for addShown
-};
-
-// TAB WIDGET DISPLAY SELECTOR WITH INDEX SAVE
-
-class twds_selector : public twd_selector{
-    Q_OBJECT
-public:
-    twds_selector(std::string varSaveName, int initialIndex=-1, std::string menu="", std::string init="", bool twidSetMargin=true, bool addStretch=true, bool addShown=false);
-    ~twds_selector();
-    void doneAddingWidgets();   //call this after youve added all widgets with addWidget
-private:
-    int _index;
-    cc_save<int> indexSave;
 };
 
 // GUI adaptiveScrollBar
@@ -154,23 +151,26 @@ Q_SIGNALS:
 
 
 
-//  CHECKBOX WITH SAVE
+//  CHECKBOX thread safe with get()/set() (compatible with rtoml)
 
-class checkbox_save : public QCheckBox{       //template for devices
+class checkbox_gs : public QCheckBox{
     Q_OBJECT
 public:
-    checkbox_save(bool initialState, std::string varSaveName, QString label);
-    const bool& val{value};
-    void setValue(bool nvalue);
+    checkbox_gs(bool initialState, QString label);
+    const std::atomic<bool>& val{value};    // thread safe
+    void setValue(bool nvalue);             // not thread safe
+
+    void set(bool nvalue);          // thread safe, for toml::vsr
+    bool get();                     // thread safe, for toml::vsr
 
 private:
-    bool value;
-    cc_save<bool> valueSave;
+    std::atomic<bool> value;
 private Q_SLOTS:
     void on_toggled(bool state);
 Q_SIGNALS:
     void changed();
     void changed(bool state);
+    void _changed(bool state);      // do not use
 };
 
 

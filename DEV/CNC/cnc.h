@@ -16,7 +16,8 @@ class CNC : public protooth{
 public:
     CNC();
     ~CNC();
-    tsvar_save<std::string> selected_ID;                    //thread safe access to select serial ID
+    rtoml::vsr conf;                                        //configuration map
+    tsvar<std::string> selected_ID;                         //thread safe access to select serial ID
     const std::atomic<bool>& connected{_connected};         //thread safe access to camera status
     std::atomic<bool> checkID{true};
     std::atomic<bool> refreshID{true};

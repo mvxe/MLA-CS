@@ -4,6 +4,10 @@
 #include "GUI/gui_includes.h"
 
 pgHistogrameGUI::pgHistogrameGUI(int Hsize, int Vsize, smp_selector* cm_sel, cv::Scalar& exclColor): Hsize(Hsize), Vsize(Vsize), cm_sel(cm_sel), exclColor(exclColor){
+    conf["hPcnt"]=_hPcnt;
+    conf["lPcnt"]=_lPcnt;
+    conf["outOfRangeToExcl"]=cbOORtE;
+
     layout=new QVBoxLayout;
     btnLayout= new QHBoxLayout;
     this->setLayout(layout);

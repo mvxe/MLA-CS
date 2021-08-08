@@ -4,6 +4,10 @@
 
 tab_camera::tab_camera(QWidget* parent){
     pgScanGUI::parent=this; //for dialogs in pgScanGUI static functions
+    conf["exclColor-B"]=exclColor.val[0];
+    conf["exclColor-G"]=exclColor.val[1];
+    conf["exclColor-R"]=exclColor.val[2];
+
     layout=new QHBoxLayout;
     parent->setLayout(layout);
 
@@ -22,7 +26,8 @@ tab_camera::tab_camera(QWidget* parent){
     layout->addWidget(tBarW);
 
     selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map","Depth Map SD","Reflectivity"});
-    dispScale=new val_selector(1, "camera_dispScale", "Scale: ", 0.1, 1, 2);
+    dispScale=new val_selector(1, "Scale: ", 0.1, 1, 2);
+    conf["dispScale"]=dispScale;
     connect(dispScale, SIGNAL(changed()), this, SLOT(updateImgF()));
     layoutTBarW->addWidget(new twid(selDisp,dispScale));
 
@@ -31,28 +36,43 @@ tab_camera::tab_camera(QWidget* parent){
     layoutTBarW->addWidget(TWCtrl);
 
     pgSGUI=new pgScanGUI(MLP);
+    conf["pgScan"]=pgSGUI->conf;
     scanRes=pgSGUI->result.getClient();
     pgMGUI=new pgMoveGUI;
+    conf["pgMove"]=pgMGUI->conf;
     pgTGUI=new pgTiltGUI;
+    conf["pgTilt"]=pgTGUI->conf;
     pgFGUI=new pgFocusGUI(MLP, pgSGUI);
+    conf["pgFocus"]=pgFGUI->conf;
     pgPRGUI=new pgPosRepGUI;
-    cm_sel=new smp_selector("tab_camera_smp_selector", "Select colormap: ", 0, OCV_CM::qslabels());
-    showAbsHeight=new checkbox_save(false,"tab_camera_showAbsHeight","Abs. height.");
+    cm_sel=new smp_selector("Select colormap: ", 0, OCV_CM::qslabels());
+    conf["cm_sel"]=cm_sel;
+    showAbsHeight=new checkbox_gs(false,"Abs. height.");
+    conf["showAbsHeight"]=showAbsHeight;
     connect(showAbsHeight, SIGNAL(changed()), this, SLOT(onShowAbsHeightChanged()));
     cMap=new colorMap(cm_sel, exclColor, showAbsHeight, pgSGUI, pgTGUI);
+    conf["colormap"]=cMap->conf;
     tCG=new tabCamGnuplot(showAbsHeight);
+    conf["tabCamGnuplot"]=tCG->conf;
     pgSGUI->pgMGUI=pgMGUI;
     pgCor=new pgCorrection(pgSGUI, pgMGUI);
+    conf["pgCorrection"]=pgCor->conf;
     pgSGUI->useCorr=&pgCor->useCorr;
     pgSGUI->cor=&pgCor->cor;
     connect(pgCor, SIGNAL(sendToDisplay(pgScanGUI::scanRes)), this, SLOT(showScan(pgScanGUI::scanRes)));
     camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
+    conf["camera_settings"]=camSet->conf;
 
     pgBeAn=new pgBeamAnalysis(MLP, pgMGUI, pgSGUI);
+    conf["pgBeamAnalysis"]=pgBeAn->conf;
     pgBGUI=new pgBoundsGUI(pgMGUI,pgBeAn);
+    conf["pgBounds"]=pgBGUI->conf;
     pgDpEv=new pgDepthEval(pgBGUI);
+    conf["pgDepthEval"]=pgDpEv->conf;
     pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn);
+    conf["pgCalib"]=pgCal->conf;
     pgWrt=new pgWrite(pgBeAn,pgMGUI);
+    conf["pgWrite"]=pgWrt->conf;
     //pgWrtPrd=new pgWritePredictor(pgMGUI);
 
     redLaserOn=new QCheckBox("Red Laser");
@@ -116,12 +136,17 @@ tab_camera::tab_camera(QWidget* parent){
     cm_sel->addWidget(epc_sel);
     cm_sel->addWidget(showAbsHeight);
     pgHistGUI=new pgHistogrameGUI(400, 50, cm_sel, exclColor);
+    conf["pgHistograme"]=pgHistGUI->conf;
     layoutTBarW->addWidget(pgHistGUI);
 
-    main_show_scale=new checkbox_save(false,"tab_camera_main_show_scale","ScaleBar");
-    main_show_target=new checkbox_save(false,"tab_camera_main_show_target","Target");
-    main_show_bounds=new checkbox_save(false,"tab_camera_main_show_bounds","Write Bounds");
-    main_antishake=new checkbox_save(false,"tab_camera_main_antishake","Antishake");
+    main_show_scale=new checkbox_gs(false,"ScaleBar");
+    conf["main_show_scale"]=main_show_scale;
+    main_show_target=new checkbox_gs(false,"Target");
+    conf["main_show_target"]=main_show_target;
+    main_show_bounds=new checkbox_gs(false,"Write Bounds");
+    conf["main_show_bounds"]=main_show_bounds;
+    main_antishake=new checkbox_gs(false,"Antishake");
+    conf["main_antishake"]=main_antishake;
     layoutTBarW->addWidget(new twid(main_show_scale, main_show_target, main_show_bounds, main_antishake));
 
     measPB=new QProgressBar; measPB->setRange(0,100);
@@ -148,9 +173,11 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuDepthLeft->addAction("Save Line (.txt)", this, SLOT(onSaveLine()));
 
     oldImg=new cv::Mat;
+    conf.load();    //TODO remove
 }
 
-tab_camera::~tab_camera(){  //we delete these as they may have cc_save variables which actually save when they get destroyed, otherwise we don't care as the program will close anyway
+tab_camera::~tab_camera(){
+    conf.save();    //TODO remove
     delete scanRes;
     delete pgHistGUI;
     delete pgCor;

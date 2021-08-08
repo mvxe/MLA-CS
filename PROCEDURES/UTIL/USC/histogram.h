@@ -16,6 +16,7 @@ class pgHistogrameGUI: public QWidget{
     //GUI
 public:
     pgHistogrameGUI(int Hsize, int Vsize, smp_selector* cm_sel, cv::Scalar& exclColor);        //cvms_mask is inverse mask!
+    rtoml::vsr conf;                                        //configuration map
     void updateImg(const pgScanGUI::scanRes* scanres, double* rmin=nullptr, double* rmax=nullptr, double altMin=0, double altMax=0, cv::Mat* altDepth=nullptr);       //the alt vars to override depth and minmax from res
     const double& hPcnt{_hPcnt};
     const double& lPcnt{_lPcnt};
@@ -30,11 +31,8 @@ private:
     QDoubleSpinBox* _lPcnt_sel;
     QCheckBox* outOfRangeToExcl;
 
-    double _hPcnt, _lPcnt;
-    bool cbOORtE;
-    cc_save<double> sv_hPcnt{_hPcnt, 100,&go.gui_config.save,"pgHistogrameGUI_hPcnt"};
-    cc_save<double> sv_lPcnt{_lPcnt,   0,&go.gui_config.save,"pgHistogrameGUI_lPcnt"};
-    cc_save<bool> sv_outOfRangeToExcl{cbOORtE,false,&go.gui_config.save,"pgHistogrameGUI_outOfRangeToExcl"};
+    double _hPcnt{100}, _lPcnt{0};
+    bool cbOORtE{false};
 
     bool _changed{false};
     smp_selector* cm_sel;

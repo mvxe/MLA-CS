@@ -23,11 +23,14 @@ void pgTiltGUI::init_gui_settings(){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
-    tilt_mult=new val_selector(0, "pgTiltGUI_tilt_mult", "Tilt multiplier: ", -100, 100, 6);
+    tilt_mult=new val_selector(0, "Tilt multiplier: ", -100, 100, 6);
+    conf["tilt_mult"]=tilt_mult;
     slayout->addWidget(tilt_mult);
-    focus_autoadjX=new val_selector(0, "pgTiltGUI_focus_autoadjX", "Focus adjustment for X: ", -100, 100, 12);
+    focus_autoadjX=new val_selector(0, "Focus adjustment for X: ", -100, 100, 12);
+    conf["focus_autoadjX"]=focus_autoadjX;
     slayout->addWidget(focus_autoadjX);
-    focus_autoadjY=new val_selector(0, "pgTiltGUI_focus_autoadjY", "Focus adjustment for Y: ", -100, 100, 12);
+    focus_autoadjY=new val_selector(0, "Focus adjustment for Y: ", -100, 100, 12);
+    conf["focus_autoadjY"]=focus_autoadjY;
     slayout->addWidget(focus_autoadjY);
 
     calib_focus_autoadjX=new QPushButton;
@@ -41,9 +44,11 @@ void pgTiltGUI::init_gui_settings(){
     QLabel* txt=new QLabel("(Click -> tilt -> focus -> Click)");
     slayout->addWidget(new twid(calib_focus_autoadjX, calib_focus_autoadjY, txt));
 
-    tilt_motor_speed=new val_selector(100, "pgTiltGUI_tilt_motor_speed", "Tilt motor speed: ", 0, 5000, 0);
+    tilt_motor_speed=new val_selector(100, "Tilt motor speed: ", 0, 5000, 0);
+    conf["tilt_motor_speed"]=tilt_motor_speed;
     slayout->addWidget(tilt_motor_speed);
-    backlashc=new val_selector(1, "pgTiltGUI_backlashc", "Backlash Correction: ", 0, 100, 4);
+    backlashc=new val_selector(1, "Backlash Correction: ", 0, 100, 4);
+    conf["backlashc"]=backlashc;
     slayout->addWidget(backlashc);
 }
 

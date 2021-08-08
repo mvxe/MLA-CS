@@ -11,6 +11,7 @@ class pgWrite: public QObject{
     Q_OBJECT
 public:
     pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI);
+    rtoml::vsr conf;                //configuration map
     QWidget* gui_activation;
     QWidget* gui_settings;
     void drawWriteArea(cv::Mat* img);
@@ -36,6 +37,7 @@ private:
 
     smp_selector* selectWriteSetting;
     std::vector<writeSettings*> settingWdg;
+    friend class writeSettings;
     constexpr static unsigned Nset{5};
     val_selector* focus;
     val_selector* focusXcor;

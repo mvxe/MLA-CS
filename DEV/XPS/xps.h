@@ -23,11 +23,11 @@ class PVTobj{
 public:
     PVTobj();
     void clear();
-    template<typename... Args>  void add(double val, Args... vals);     //time is relative, distances are relative, velocity is absolute
-    template<typename... Args>  void addAction(Args... vals);           //triggers right after the PREVIOUS COMMAND ENDS (if any)(start of next command, if any)! (can be first and last too)
+    template<typename... Args>  void add(double val, Args&&... vals);   //time is relative, distances are relative, velocity is absolute
+    template<typename... Args>  void addAction(Args&&... vals);         //triggers right after the PREVIOUS COMMAND ENDS (if any)(start of next command, if any)! (can be first and last too)
     void addAction(xps_config::GPIOID ID, bool value);                  //TODO fix bug: if addAction is the first command it may not do anything (sometimes) //Seams to be an XPS bug!
 private:
-    template<typename... Args>  void _add(int n, double val, Args... vals);
+    template<typename... Args>  void _add(int n, double val, Args&&... vals);
     void _add(int n, double val);           //no PVT file row has only one var(time), so we set this private
     xps_config::GroupID ID;
     std::string filename;
@@ -43,7 +43,7 @@ typedef PVTobj* pPVTobj;
 
 class XPS : public TCP_con, public xps_config, public protooth{
     friend void PVTobj::_add(int n, double val);                               //needs access to groups for axisnum
-    template<typename... Args> friend void PVTobj::addAction(Args... vals);    //needs access to groups for axisnum
+    template<typename... Args> friend void PVTobj::addAction(Args&&... vals);  //needs access to groups for axisnum
 private:
     struct execss{
         std::string comm;       //contains the command string to be executed
@@ -60,11 +60,11 @@ public:
     XPS();
     ~XPS();
 
-    template <typename... Args>   void execCommandStr(Args... args);                   //exectue a command without return, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
-    template <typename... Args>   void execCommandStr(exec_ret* ret, Args... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see exec_ret in UTIL/containers
+    template <typename... Args>   void execCommandStr(Args&&... args);                   //exectue a command without return, implemented as a constatntly executing FIFO to ensure the execution order matches the command call order if called repeatedly
+    template <typename... Args>   void execCommandStr(exec_ret* ret, Args&&... args);    //exectue a command with return, before calling this command create a xps_ret object and pass its pointer as the first argument. For readout, see exec_ret in UTIL/containers
 
-    template <typename... Args>   void execCommand(Args... args);                      //same as above command, except it automatically adds brackets and comas, for example  <command>(<arg0>,<arg1>,<arg2>...)
-    template <typename... Args>   void execCommand(exec_ret* ret, Args... args);
+    template <typename... Args>   void execCommand(Args&&... args);                      //same as above command, except it automatically adds brackets and comas, for example  <command>(<arg0>,<arg1>,<arg2>...)
+    template <typename... Args>   void execCommand(exec_ret* ret, Args&&... args);
 
     void initGroup(GroupID ID);
     void initGroups();
@@ -85,9 +85,9 @@ public:
     bool isQueueEmpty();
 
     std::atomic<bool> limit{true};        //set to false to disable limits for the next move command (it is automatically set to true afterwards), the atomic type is thread safe
-    template<typename... Args>  void MoveRelative(GroupID ID, double val, Args... vals);
+    template<typename... Args>  void MoveRelative(GroupID ID, double val, Args&&... vals);
     void MoveRelative(GroupID ID, double val);
-    template<typename... Args>  void MoveAbsolute(GroupID ID, double val, Args... vals);
+    template<typename... Args>  void MoveAbsolute(GroupID ID, double val, Args&&... vals);
     void MoveAbsolute(GroupID ID, double val);
     void syncPos(GroupID ID, bool homeSet=false, exec_ret* excRet=nullptr, bool delRet=false); //pulls the current position from the xps and updates axisCoords, homeSet just puts it into homePos instead of pos.
                                                                                                //If excRet is set it first waits for it to complete before it syncs.  If delret is true it also deleted excRet on exit.
@@ -106,9 +106,9 @@ public:
     const GPIO& getGPIOobj(GPIOID ID);
 
 private:
-    template<typename... Args>  void _MoveRelative(int n, GroupID ID, double val, Args... vals);
+    template<typename... Args>  void _MoveRelative(int n, GroupID ID, double val, Args&&... vals);
     void _MoveRelative(int n, GroupID ID, double val);
-    template<typename... Args>  void _MoveAbsolute(int n, GroupID ID, double val, Args... vals);
+    template<typename... Args>  void _MoveAbsolute(int n, GroupID ID, double val, Args&&... vals);
     void _MoveAbsolute(int n, GroupID ID, double val);
     std::string _copyPVToverFTP(pPVTobj obj);
     void flushQueue();

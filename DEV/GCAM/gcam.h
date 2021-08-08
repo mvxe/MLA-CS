@@ -11,6 +11,7 @@ class GCAM : public gcam_config, public protooth{
 public:
     GCAM();
     ~GCAM();
+    rtoml::vsr conf;
 
     std::atomic<bool> MVM_list{true};          //TODO these two vars should not be exposed to the user, just FrameObserver::CameraListChanged
 private:

@@ -15,6 +15,7 @@ class pgCalib: public QWidget{
     Q_OBJECT
 public:
     pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn);
+    rtoml::vsr conf;                //configuration map
 
     QWidget* gui_activation;
     QWidget* gui_settings;
@@ -41,7 +42,7 @@ private:
 
     //settings
     QVBoxLayout* slayout;
-    twds_selector* calibMethod;
+    twd_selector* calibMethod;
     vtwid* calibMethodFindNearest;
         val_selector* selWriteCalibFocusDoNMeas;
         val_selector* selWriteCalibFocusReFocusNth;
@@ -50,7 +51,7 @@ private:
         val_selector* selWriteCalibFocusBlur;
         val_selector* selWriteCalibFocusThresh;
         val_selector* selWriteCalibFocusRange;
-    //    checkbox_save* selWriteCalibFocusMoveOOTW;
+    //    checkbox_gs* selWriteCalibFocusMoveOOTW;
     //    val_selector* selWriteCalibFocusMoveOOTWDis;
         val_selector* selWriteCalibFocusPulseIntensity;
         val_selector* selWriteCalibFocusPulseDuration;
@@ -59,7 +60,7 @@ private:
         val_selector* selArrayYsize;
         val_selector* selArraySpacing;
         smp_selector* selArrayType;
-        checkbox_save* transposeMat;
+        checkbox_gs* transposeMat;
         val_selector* selArrayIntA;
         val_selector* selArrayIntB;
         val_selector* selArrayDurA;
@@ -68,11 +69,11 @@ private:
         val_selector* selArrayFocB;
         smp_selector* selArrayScanType;     //one scan, multi scan
         val_selector* selArrayOneScanN;
-        checkbox_save* selArrayRandomize;
-        checkbox_save* saveMats;
-        checkbox_save* savePic;
-//        checkbox_save* doRefocusUScope;
-//        checkbox_save* doRedFocusCenter;
+        checkbox_gs* selArrayRandomize;
+        checkbox_gs* saveMats;
+        checkbox_gs* savePic;
+//        checkbox_gs* doRefocusUScope;
+//        checkbox_gs* doRedFocusCenter;
     vtwid* calibMethodAutoArray;
         val_selector* selAArrayDoNMes;
         val_selector* selAArrayXsize;

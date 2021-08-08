@@ -1,6 +1,7 @@
 #ifndef OTHER_SETTINGS_H
 #define OTHER_SETTINGS_H
 #include <QWidget>
+#include "UTIL/.rtoml/rtoml.hpp"
 class QVBoxLayout;
 class QLabel;
 class QCheckBox;
@@ -10,6 +11,7 @@ class cameraSett: public QWidget{
     Q_OBJECT
 public:
     cameraSett(std::atomic<bool>& getExpMinMax);
+    rtoml::vsr conf;                //configuration map
     double setExposurePreset(int N);      //N=0 is normal operation, N=1 is for laser beam calibration, returns the applied setting in us
 private:
     QVBoxLayout* layout;

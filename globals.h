@@ -16,7 +16,7 @@
 #include <UTIL/containers.h>
 #include <UTIL/utility.h>
 #include <UTIL/threadpool.h>
-#include "UTIL/.rtoml/rtoml.hpp"
+#include <UTIL/.rtoml/rtoml.hpp>
 
 class XPS;
 class GCAM;
@@ -30,15 +30,6 @@ class QApplicationQN:public QApplication{   //we redefine QApplication to add ex
 public:
     QApplicationQN(int& argc, char** argv);
     bool notify(QObject* receiver, QEvent* event);
-};
-
-class var_save{
-public:
-    var_save(std::string filename);
-    ~var_save();
-    _savelst save;
-private:
-    std::string filename;
 };
 
 class protooth{              //abstract class for all classes to be in threads
@@ -89,15 +80,11 @@ public:
     globals();
     ~globals();
 
-    var_save config{"general.conf"};                    //this is initialized before everything else and before the globals() is called
-    var_save cams_config{"cameras.conf"};
-    var_save gui_config{"gui.conf"};
-    var_save pos_config{"positioners.conf"};
-
     XPS* pXPS;      //you can access stages through this
     GCAM* pGCAM;    //you can access cameras and frame queues through this, see GCAM/_config.h for members
     RPTY* pRPTY;    //you can access red pitaya functions through this
     CNC* pCNC;      //you can access CNC functions through this
+    rtoml::vsr conf{"devices.toml"};    // temporary
     threadPool OCL_threadpool{16};   //apparently opencl does not do well with threads: depending on the driver it fails after usage on a number (~200) of different threads. Using threadpool apparently fixes this, hence OCL_threadpool
 
     void startup(int argc, char *argv[]);                                           //subsequent calls of this are ignored

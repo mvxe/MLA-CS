@@ -82,35 +82,29 @@ protected:
      */
 
 protected:
-    cc_save<std::string>* save_groupnames[_GROUP_NUM];
-    cc_save<double>* save_axisCoords[3*8*_GROUP_NUM];   //not all of these are used
     axis axisCoords[_GROUP_NUM];    //this contains current positions, min and max limits for all group axes, and automatically saves and reads them from a config file
     std::mutex smx;
 public:
-    tsvar_save_ip IP{&smx, "192.168.0.254", &go.config.save, "XPS_IP"};
-    tsvar_save_port port{&smx, 5001, &go.config.save, "XPS_port"};
-    tsvar_save<unsigned> keepalive{&smx, 500, &go.config.save, "XPS_keepalive"};     //keepalive and connect timeout, in ms
-                                                          //for signaling the XPS thread it's time to close
+    rtoml::vsr conf;                                        //configuration map
+    tsvar_ip IP{&smx, "192.168.0.254"};
+    tsvar_port port{&smx, 5001};
+    tsvar<unsigned> keepalive{&smx, 500};                   //keepalive and connect timeout, in ms
 
     xps_config(){
+        conf["XPS_IP"]=IP;
+        conf["XPS_port"]=port;
+        conf["XPS_keepalive"]=keepalive;
+
         for (int i=0;i!=_GROUP_NUM;i++){
-            save_groupnames[i]=new cc_save<std::string>(groups[i].groupname, groups[i].groupname, &go.config.save, util::toString("groupname_",i));    //read group names from config file (new calls the cc_save constructor which reads the old value from config file, if it exists)
             for (int j=0;j!=groups[i].AxisNum;j++){
-                save_axisCoords[3*8*i+3*j  ]=new cc_save<double>(axisCoords[i].pos[j],    0,&go.config.save, util::toString("grp",i,"pos",j));
-                save_axisCoords[3*8*i+3*j+1]=new cc_save<double>(axisCoords[i].min[j],-9999,&go.config.save, util::toString("grp",i,"min",j));
-                save_axisCoords[3*8*i+3*j+2]=new cc_save<double>(axisCoords[i].max[j], 9999,&go.config.save, util::toString("grp",i,"max",j));
+                axisCoords[i].pos[j]=0;
+                axisCoords[i].min[j]=-9999;
+                axisCoords[i].max[j]=9999;
+                conf[groups[i].groupname][util::toString("pos-",groups[i].positionerNames[j])]=axisCoords[i].pos[j];
+                conf[groups[i].groupname][util::toString("min-",groups[i].positionerNames[j])]=axisCoords[i].min[j];
+                conf[groups[i].groupname][util::toString("max-",groups[i].positionerNames[j])]=axisCoords[i].max[j];
             }
             axisCoords[i]._num=groups[i].AxisNum;
-        }
-    }
-    ~xps_config(){
-        for (int i=0;i!=_GROUP_NUM;i++){
-            delete save_groupnames[i];                  //save group names to config file (delete calls the cc_save destructor which queues the new value for saving into config file)
-            for (int j=0;j!=groups[i].AxisNum;j++){
-                delete save_axisCoords[3*8*i+3*j  ];
-                delete save_axisCoords[3*8*i+3*j+1];
-                delete save_axisCoords[3*8*i+3*j+2];
-            }
         }
     }
 };

@@ -18,6 +18,7 @@ class pgTiltGUI: public QObject{
     //GUI
 public:
     pgTiltGUI();
+    rtoml::vsr conf;                //configuration map
     QWidget* gui_activation;
     QWidget* gui_settings;
 

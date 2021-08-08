@@ -5,6 +5,9 @@
 //#include <dlib/optimization.h>
 
 pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* pgSGUI): MLP(MLP), pgMGUI(pgMGUI), pgSGUI(pgSGUI){
+    conf["saveWBCX"]=_writeBeamCenterOfsX;
+    conf["saveWBCY"]=_writeBeamCenterOfsY;
+
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
@@ -19,23 +22,32 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
 //    btnSaveNextDebug=new QPushButton("Save Next Debug images");
 //    btnSaveNextDebug->setToolTip("Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.");
 //    connect(btnSaveNextDebug, SIGNAL(released()), this, SLOT(onBtnSaveNextDebug()));
-    extraOffsX=new val_selector( 0,"pgBeamAnalysis_extraOffsX", "X Extra Offset:",-100,100,2,0,{"um"});
-    extraOffsY=new val_selector( 0,"pgBeamAnalysis_extraOffsY", "Y Extra Offset:",-100,100,2,0,{"um"});
+    extraOffsX=new val_selector( 0, "X Extra Offset:",-100,100,2,0,{"um"});
+    conf["extraOffsX"]=extraOffsX;
+    extraOffsY=new val_selector( 0, "Y Extra Offset:",-100,100,2,0,{"um"});
+    conf["extraOffsY"]=extraOffsY;
     extraOffsX->setToolTip("In case the two beams do not overlap perfectly, this can be used to correct this. Redo beam centering after changing this value.");
     extraOffsY->setToolTip(extraOffsX->toolTip());
 //    cameraExposure=new val_selector(1, "pgBeamAnalysis_cameraExposure", "Camera Exposure: ", 0, 9999999, 3, 0, {"us"});
-    selThresh=new val_selector( 128,"pgBeamAnalysis_selThresh", "Threshold:",0,255,0);
+    selThresh=new val_selector( 128, "Threshold:",0,255,0);
+    conf["selThresh"]=selThresh;
 //    avgNum=new val_selector( 10,"pgBeamAnalysis_avgNum", "Avg. minimum this many images:",1,1000,0);
 
-    wideFrames=new val_selector( 100,"pgBeamAnalysis_wideFrames", "Number of Frames for Wide Scan: ",10,1000,0);
-    wideRange= new val_selector( 0.5,"pgBeamAnalysis_wideRange", "Scan Range for Wide Scan: ",0.001,1,3,0,{"mm"});
-    accuFrames=new val_selector( 100,"pgBeamAnalysis_accuFrames", "Number of Frames for Accurate Scan: ",10,1000,0);
-    accuRange= new val_selector( 0.05,"pgBeamAnalysis_accuRange", "Scan Range for Accurate Scan: ",0.001,1,3,0,{"mm"});
-    doExtraFocusMesDifDir=new checkbox_save(false,"pgBeamAnalysis_doExtraFocusMesDifDir","Do extra focus measurement from opposite side.");
+    wideFrames=new val_selector( 100, "Number of Frames for Wide Scan: ",10,1000,0);
+    conf["wideFrames"]=wideFrames;
+    wideRange= new val_selector( 0.5, "Scan Range for Wide Scan: ",0.001,1,3,0,{"mm"});
+    conf["wideRange"]=wideRange;
+    accuFrames=new val_selector( 100, "Number of Frames for Accurate Scan: ",10,1000,0);
+    conf["accuFrames"]=accuFrames;
+    accuRange= new val_selector( 0.05, "Scan Range for Accurate Scan: ",0.001,1,3,0,{"mm"});
+    conf["accuRange"]=accuRange;
+    doExtraFocusMesDifDir=new checkbox_gs(false,"Do extra focus measurement from opposite side.");
+    conf["doExtraFocusMesDifDir"]=doExtraFocusMesDifDir;
     btnSaveNextDebugFocus=new QPushButton("Save Next Debug Intensities");
     btnSaveNextDebugFocus->setToolTip("Select Folder for Debug. The measured intensities will be saved for the next 'Get Writing Beam Focus'..");
     connect(btnSaveNextDebugFocus, SIGNAL(released()), this, SLOT(onBtnSaveNextDebugFocus()));
-    extraFocusOffset=new val_selector( 0,"pgBeamAnalysis_extraFocusOffsetnew", "Extra Focus Offset (Laser Beam Foci differece):",-1,1,4,0,{"mm"});
+    extraFocusOffset=new val_selector( 0,"Extra Focus Offset (Laser Beam Foci differece):",-1,1,4,0,{"mm"});
+    conf["extraFocusOffset"]=extraFocusOffset;
     extraFocusOffset->setToolTip("Set this to the value you obtain from calibration: it should be equal to the difference between the reference laser beam focus and the writing laser beam focus.");
     extraFocusOffsetVal=&extraFocusOffset->val;
 

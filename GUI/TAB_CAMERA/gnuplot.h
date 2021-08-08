@@ -7,7 +7,8 @@
 class tabCamGnuplot: public QWidget{
     Q_OBJECT
 public:
-    tabCamGnuplot(checkbox_save* showAbsHeight);
+    tabCamGnuplot(checkbox_gs* showAbsHeight);
+    rtoml::vsr conf;                //configuration map
     void plotLine(const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, int type=1);
     void saveLine(const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, int type=1);
     void plotRoi (const pgScanGUI::scanRes* scan, const cv::Rect& roi, int type=1);     // save ROI is already implemented elsewhere
@@ -15,7 +16,7 @@ public:
     void streamLine(std::ostream *stream, const pgScanGUI::scanRes* scan, const cv::Point& start, const cv::Point& end, int type);
 private:
     QVBoxLayout* layout;
-    checkbox_save* showAbsHeight;
+    checkbox_gs* showAbsHeight;
 
     //2D plot
     val_selector* ticsFontSize;
@@ -33,7 +34,7 @@ private:
     val_selector* d3paletteB;
     val_selector* viewZoom;
     val_selector* scaleZ;
-    checkbox_save* equalizeXYZ;
+    checkbox_gs* equalizeXYZ;
 
 
 };

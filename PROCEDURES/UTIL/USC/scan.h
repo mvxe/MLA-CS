@@ -17,7 +17,7 @@ class mesLockProg;
 class pgMoveGUI;
 class twid;
 class scanRes;
-class checkbox_save;
+class checkbox_gs;
 class QDoubleSpinBox;
 
 class pScan: public sproc{
@@ -34,6 +34,7 @@ class pgScanGUI: public QObject{
     //GUI
 public:
     pgScanGUI(mesLockProg& MLP);
+    rtoml::vsr conf;                                //configuration map
     twid* gui_activation;
     QWidget* gui_settings;
     twid* gui_processing;
@@ -92,9 +93,9 @@ private:
     QPushButton* bScan;
     QCheckBox* bScanContinuous;
     QPushButton* bCenter;
-    checkbox_save* cbCorrectTilt;
-    checkbox_save* cbAvg;
-    checkbox_save* cbGetRefl;
+    checkbox_gs* cbCorrectTilt;
+    checkbox_gs* cbAvg;
+    checkbox_gs* cbGetRefl;
 
     //settings
     QVBoxLayout* slayout;
@@ -117,6 +118,7 @@ public:
 private:
     smp_selector* selectScanSetting;    //scan setting
     std::vector<scanSettings*> settingWdg;
+    friend class scanSettings;
     constexpr static unsigned Nset{5};
 
     val_selector* coh_len;      //coherence length
@@ -128,7 +130,7 @@ private:
     val_selector* exclDill;
     val_selector* tiltCorBlur;
     val_selector* tiltCorThrs;
-    checkbox_save* findBaseline;
+    checkbox_gs* findBaseline;
     val_selector* findBaselineHistStep;
     smp_selector* debugDisplayModeSelect;
     val_selector* avgDiscardCriteria;
@@ -189,7 +191,7 @@ public:
     val_selector* exclDill;
     val_selector* tiltCorBlur;
     val_selector* tiltCorThrs;
-    checkbox_save* findBaseline;
+    checkbox_gs* findBaseline;
     val_selector* findBaselineHistStep;
     pgScanGUI* parent;
 };

@@ -1,6 +1,8 @@
 #include "DEV/GCAM/gcam.h"
 
-camobj::camobj(std::string strID) : camobj_config(strID), selected_ID(&mkmx,strID,&go.config.save,strID){}
+camobj::camobj(std::string strID) : camobj_config(strID), selected_ID(&mkmx,strID){
+    conf[strID]=selected_ID;
+}
 GCAM *camobj::cobj;
 
 void camobj::new_frame_ready (ArvStream *stream, camobj* camm)

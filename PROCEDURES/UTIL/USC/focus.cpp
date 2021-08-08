@@ -43,6 +43,7 @@ void pgFocusGUI::init_gui_settings(){
     gui_settings->setLayout(slayout);
     slayout->addWidget(new QLabel("Some settings borrowed from Scan!"));
     selectFocusSetting=new smp_selector("Select focus setting: ", 0, {"Short", "Medium", "Long"});    //should have Nset strings
+    conf["selectFocusSetting"]=selectFocusSetting;
     slayout->addWidget(selectFocusSetting);
     for(int i=0;i!=Nset;i++) {
         settingWdg.push_back(new focusSettings(i, this));
@@ -51,7 +52,8 @@ void pgFocusGUI::init_gui_settings(){
     connect(selectFocusSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     calcL=new QLabel;
     slayout->addWidget(calcL);
-    gaussianBlur=new val_selector(21, util::toString("pgFocusGUI_gaussianBlur"), "Gaussian Blur Sigma: ", 1, 100, 1, 0, {"px"});
+    gaussianBlur=new val_selector(21, "Gaussian Blur Sigma: ", 1, 100, 1, 0, {"px"});
+    conf["gaussianBlur"]=gaussianBlur;
     slayout->addWidget(gaussianBlur);
     btnSaveNextDebugFocus=new QPushButton("Save Next Debug Values");
     btnSaveNextDebugFocus->setToolTip("Select Folder for Debug. The measured values will be saved for the next 'ReFocus'..");
@@ -66,10 +68,12 @@ void pgFocusGUI::onBtnSaveNextDebugFocus(){
 focusSettings::focusSettings(uint num, pgFocusGUI* parent): parent(parent){
     slayout=new QVBoxLayout;
     this->setLayout(slayout);
-    range=new val_selector(10., util::toString("pgFocusGUI_range",num), "Scan Range:", 1., 2000., 3, 3 , {"nm","um",QChar(0x03BB),"L"});
+    range=new val_selector(10., "Scan Range:", 1., 2000., 3, 3 , {"nm","um",QChar(0x03BB),"L"});
+    parent->conf[parent->selectFocusSetting->getLabel(num)]["range"]=range;
     connect(range, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(range);
-    ppwl=new val_selector(10., util::toString("pgFocusGUI_ppwl",num), "Points Per Wavelength: ", 0.001, 500., 3);
+    ppwl=new val_selector(10., "Points Per Wavelength: ", 0.001, 500., 3);
+    parent->conf[parent->selectFocusSetting->getLabel(num)]["ppwl"]=ppwl;
     connect(ppwl, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(ppwl);
 }

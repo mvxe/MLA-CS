@@ -23,6 +23,7 @@ class pgFocusGUI: public QObject{
     //GUI
 public:
     pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI);
+    rtoml::vsr conf;            //configuration map
     twid* gui_activation;
     QWidget* gui_settings;
     QTimer* timer;
@@ -33,6 +34,7 @@ public:
  private:
     smp_selector* selectFocusSetting;
     std::vector<focusSettings*> settingWdg;
+    friend class focusSettings;
     constexpr static unsigned Nset{3};
     void init_gui_activation();
     void init_gui_settings();

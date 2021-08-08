@@ -10,7 +10,9 @@ class tab_monitor: public QWidget{
     Q_OBJECT
 public:
     tab_monitor(QWidget* parent);
+    ~tab_monitor();
     void init_timer();
+    rtoml::vsr conf{"app_monitor.toml"};                //configuration map
     QTimer *timer;
 
     QHBoxLayout* layout;

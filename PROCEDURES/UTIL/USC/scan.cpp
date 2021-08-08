@@ -44,11 +44,14 @@ void pgScanGUI::init_gui_activation(){
     connect(bScanContinuous, SIGNAL(toggled(bool)), this, SLOT(onBScanContinuous(bool)));
     gui_activation->addWidget(bScan);
     gui_activation->addWidget(bScanContinuous);
-    cbCorrectTilt=new checkbox_save(false,"pgScanGUI_ct","Fix Tilt");
+    cbCorrectTilt=new checkbox_gs(false,"Fix Tilt");
+    conf["cbCorrectTilt"]=cbCorrectTilt;
     gui_activation->addWidget(cbCorrectTilt);
-    cbAvg=new checkbox_save(false,"pgScanGUI_ctAvg","Average");
+    cbAvg=new checkbox_gs(false,"Average");
+    conf["cbAvg"]=cbAvg;
     gui_activation->addWidget(cbAvg);
-    cbGetRefl=new checkbox_save(false,"pgScanGUI_cbGetRefl","Reflectivity");
+    cbGetRefl=new checkbox_gs(false,"Reflectivity");
+    conf["cbGetRefl"]=cbGetRefl;
     gui_activation->addWidget(cbGetRefl);
 
     xDifShift=new QDoubleSpinBox(); xDifShift->setRange(-1000,1000); xDifShift->setSuffix(" px"); xDifShift->setDecimals(2);
@@ -67,6 +70,7 @@ void pgScanGUI::init_gui_settings(){
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
     selectScanSetting=new smp_selector("Select scan setting: ", 0, {"Standard", "Precise", "Set2", "Set3", "Set4"});    //should have Nset strings
+    conf["selectScanSetting"]=selectScanSetting;
     slayout->addWidget(selectScanSetting);
     for(int i=0;i!=Nset;i++) {
         settingWdg.push_back(new scanSettings(i, this));
@@ -75,7 +79,8 @@ void pgScanGUI::init_gui_settings(){
     connect(selectScanSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     debugDisplayModeSelect=new smp_selector("Display mode select (for debugging purposes): ", 0, {"Unwrapped", "Wrapped"});
     slayout->addWidget(debugDisplayModeSelect);
-    avgDiscardCriteria=new val_selector(5.0, "tab_camera_avgDiscardCriteria", "Averaging Mask% Discard Threshold:", 0.1, 100., 1, 1, {"%"});
+    avgDiscardCriteria=new val_selector(5.0, "Averaging Mask% Discard Threshold:", 0.1, 100., 1, 1, {"%"});
+    conf["avgDiscardCriteria"]=avgDiscardCriteria;
     avgDiscardCriteria->setToolTip("If the difference in the number of excluded element between the current measurement and the avg measurement (which combines all previous exclusions(or)) is larger than this percentage times the total num of pixels, the measurement is discarded.");
     slayout->addWidget(avgDiscardCriteria);
     saveAvgMess=new QPushButton("Autosave raw measurements"); saveAvgMess->setCheckable(true);
@@ -103,37 +108,49 @@ void pgScanGUI::scanRes::copyTo(scanRes& dst) const{
 scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
     slayout=new QVBoxLayout;
     this->setLayout(slayout);
-    led_wl=new val_selector(470., util::toString("tab_camera_led_wl",num), "LED Wavelength:", 0.001, 2000., 2, 0, {"nm","um"});
+    led_wl=new val_selector(470., "LED Wavelength:", 0.001, 2000., 2, 0, {"nm","um"});
+    parent->conf[parent->selectScanSetting->getLabel(num)]["led_wl"]=led_wl;
     connect(led_wl, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(led_wl);
-    coh_len=new val_selector(20., util::toString("tab_camera_coh_len",num), "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)});
+    coh_len=new val_selector(20., "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)});
+    parent->conf[parent->selectScanSetting->getLabel(num)]["coh_len"]=coh_len;
     connect(coh_len, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(coh_len);
-    range=new val_selector(10., util::toString("tab_camera_range",num), "Scan Range:", 0.01, 2000., 5, 3 , {"nm","um",QChar(0x03BB),"L"});
+    range=new val_selector(10., "Scan Range:", 0.01, 2000., 5, 3 , {"nm","um",QChar(0x03BB),"L"});
+    parent->conf[parent->selectScanSetting->getLabel(num)]["range"]=range;
     connect(range, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(range);
-    ppwl=new val_selector(20., util::toString("tab_camera_ppwl",num), "Points Per Wavelength: ", 6, 2000., 2);
+    ppwl=new val_selector(20., "Points Per Wavelength: ", 6, 2000., 2);
+    parent->conf[parent->selectScanSetting->getLabel(num)]["ppwl"]=ppwl;
     connect(ppwl, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(ppwl);
-    max_vel=new val_selector(300., util::toString("tab_camera_max_vel",num), "UScope stage max velocity: ", 1e-9, 300., 2, 0, {"mm/s"});
+    max_vel=new val_selector(300., "UScope stage max velocity: ", 1e-9, 300., 2, 0, {"mm/s"});
+    parent->conf[parent->selectScanSetting->getLabel(num)]["max_vel"]=max_vel;
     connect(max_vel, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(max_vel);
-    max_acc=new val_selector(2500., util::toString("tab_camera_max_acc",num), "UScope stage max acceleration: ", 1e-9, 2500., 2, 0, {"mm/s^2"});
+    max_acc=new val_selector(2500., "UScope stage max acceleration: ", 1e-9, 2500., 2, 0, {"mm/s^2"});
+    parent->conf[parent->selectScanSetting->getLabel(num)]["max_acc"]=max_acc;
     connect(max_acc, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(max_acc);
-    dis_thresh=new val_selector(0.9, util::toString("tab_camera_dis_thresh",num), "Peak Discard Threshold: ", 0.1, 1, 2);
+    dis_thresh=new val_selector(0.9, "Peak Discard Threshold: ", 0.1, 1, 2);
+    parent->conf[parent->selectScanSetting->getLabel(num)]["dis_thresh"]=dis_thresh;
     slayout->addWidget(dis_thresh);
     calcL=new QLabel;
     slayout->addWidget(calcL);
-    exclDill=new val_selector(0, util::toString("tab_camera_exclDill",num), "Excluded dillation: ", 0, 100, 0, 0, {"px"});
+    exclDill=new val_selector(0, "Excluded dillation: ", 0, 100, 0, 0, {"px"});
+    parent->conf[parent->selectScanSetting->getLabel(num)]["exclDill"]=exclDill;
     slayout->addWidget(exclDill);
-    tiltCorBlur=new val_selector(2, util::toString("tab_camera_tiltCorBlur",num), "Tilt Correction Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
+    tiltCorBlur=new val_selector(2, "Tilt Correction Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
+    parent->conf[parent->selectScanSetting->getLabel(num)]["tiltCorBlur"]=tiltCorBlur;
     slayout->addWidget(tiltCorBlur);
-    tiltCorThrs=new val_selector(0.2, util::toString("tab_camera_tiltCorThrs",num), "Tilt Correction 2nd Derivative Exclusion Threshold: ", 0, 1, 2);
+    tiltCorThrs=new val_selector(0.2, "Tilt Correction 2nd Derivative Exclusion Threshold: ", 0, 1, 2);
+    parent->conf[parent->selectScanSetting->getLabel(num)]["tiltCorThrs_"]=tiltCorThrs;
     slayout->addWidget(tiltCorThrs);
-    findBaseline=new checkbox_save(false,util::toString("tab_camera_findBaseline",num),"Correct for mirror baseline.");
+    findBaseline=new checkbox_gs(false,"Correct for mirror baseline.");
+    parent->conf[parent->selectScanSetting->getLabel(num)]["tab_camera_findBaseline"]=findBaseline;
     slayout->addWidget(findBaseline);
-    findBaselineHistStep=new val_selector(0.1, util::toString("tab_camera_findBaselineHistStep",num), "Mirror baseline cor. hist. step: ", 0.01, 10, 2, 0, {"nm"});
+    findBaselineHistStep=new val_selector(0.1, "Mirror baseline cor. hist. step: ", 0.01, 10, 2, 0, {"nm"});
+    parent->conf[parent->selectScanSetting->getLabel(num)]["findBaselineHistStep"]=findBaselineHistStep;
     slayout->addWidget(findBaselineHistStep);
 }
 void pgScanGUI::onMenuChange(int index){
@@ -442,7 +459,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
 
         //checking if the magnitudes of peakLocRange number of points around the LED wavelength/2 are higher than it, if so, measurement is unreliable
         bool first=true;
-        cv::multiply(dis_thresh->val,magn.col(peakLocRange),magn.col(peakLocRange));
+        cv::multiply((double)dis_thresh->val,magn.col(peakLocRange),magn.col(peakLocRange));
         cv::UMat cmpRes;
         cv::UMat cmpFinRes;
         for(int j=1;j<=peakLocRange;j++){

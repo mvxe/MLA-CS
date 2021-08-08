@@ -10,7 +10,7 @@ class eadScrlBar;
 class QPushButton;
 class moveDial;
 class QLabel;
-class checkbox_save;
+class checkbox_gs;
 class PVTobj;
 
 class pgMoveGUI: public QObject{
@@ -18,6 +18,7 @@ class pgMoveGUI: public QObject{
     //GUI
 public:
     pgMoveGUI();
+    rtoml::vsr conf;            //configuration map
     QWidget* gui_activation;
     QWidget* gui_settings;
 
@@ -82,7 +83,7 @@ private:
     };
     dpoint curP4calib;
     std::vector<dpoint> p4calib;
-    checkbox_save* skewCorrection;
+    checkbox_gs* skewCorrection;
 
     val_selector* selVeloc[4];
     val_selector* selAccel[4];

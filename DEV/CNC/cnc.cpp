@@ -1,6 +1,7 @@
 #include "cnc.h"
 
-CNC::CNC() : selected_ID(&mkmx,"none",&go.config.save,"cnc_conid"){
+CNC::CNC() : selected_ID(&mkmx,"none"){
+    conf["cnc_conid"]=selected_ID;
     serial_desc.set(new std::vector<_dserial>());
 }
 CNC::~CNC(){}

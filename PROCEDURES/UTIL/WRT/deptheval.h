@@ -10,6 +10,7 @@ class pgDepthEval: public QWidget{
     Q_OBJECT
 public:
     pgDepthEval(pgBoundsGUI* pgBGUI);
+    rtoml::vsr conf;                //configuration map
     const bool& debugChanged{_debugChanged};
     const pgScanGUI::scanRes* getDebugImage(const pgScanGUI::scanRes* src);
     cv::Mat getMaskFlatness(const pgScanGUI::scanRes* src, int dil=-1, double thresh=-1, double blur=-1);   //if dil, thresh and/or blur arent specified, the ones in pgDepthEval settings are used

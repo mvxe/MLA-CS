@@ -42,6 +42,12 @@ void globals::startup(int argc, char *argv[]){
     pGCAM=newThread<GCAM>()->obj;
     pRPTY=newThread<RPTY>()->obj;
     pCNC=newThread<CNC>()->obj;
+    //std::this_thread::sleep_for (std::chrono::milliseconds(100));
+    conf["XPS"]=pXPS->conf;
+    conf["GCAM"]=pGCAM->conf;
+    conf["RPTY"]=pRPTY->conf;
+    conf["CNC"]=pCNC->conf;
+    conf.load();
 
     qapp = new QApplicationQN(argc, argv);
     MainWindow w(qapp);
@@ -68,6 +74,9 @@ void globals::killThread(base_othr*& thro){
 }
 void globals::cleanup(){
     if (!go_mx.try_lock()) return;
+    std::cout<<"Saving conf...\n";
+    conf.save();
+
     std::cout<<"Sending end signals to all threads...\n";
 
     while(!threads.empty())
@@ -88,35 +97,3 @@ void globals::markErrord(){
         }
     } std::cerr<<"Cannot find errord thread id (see markErrord)\n";
 }
-
-/* config_save */
-
-#define _CODE0_ " [val] "
-#define _NCHC0_ 7                  //num of characters in code
-#define _CODE1_ " [var] "
-#define _NCHC1_ 7                   //the config is saved into a plain text file in format VAR1NAME_CODE0_VAR1VALUE_CODE1_VAR2NAME_CODE0_... and so on without newlines
-var_save::var_save(std::string filename): filename(filename){   //at program start we read from file
-    std::ifstream ifile;
-    std::stringstream buffer;
-    ifile.open (filename.c_str());
-    buffer << ifile.rdbuf();
-    ifile.close();
-    int iter=buffer.str().find(_CODE1_,0), iter2, iter3;
-    if (iter!=std::string::npos)
-        for (;;iter=iter3){
-            iter2 = buffer.str().find(_CODE0_,iter+_NCHC0_);
-            if (iter2 == std::string::npos) break;
-            iter3 = buffer.str().find(_CODE1_,iter2+_NCHC1_);
-            if (iter3 == std::string::npos) break;
-            save.push_back({buffer.str().substr(iter+_NCHC0_,iter2-iter-_NCHC0_),buffer.str().substr(iter2+_NCHC1_,iter3-iter2-_NCHC1_)});
-        }
-}
-var_save::~var_save(){  //at program end we write to file
-    std::ofstream ofile;
-    ofile.open (filename.c_str(),std::ofstream::trunc);
-    ofile << _CODE1_;
-    for (int i=0;i!=save.size();i++)
-        ofile << save[i].strname << _CODE0_ << save[i].strval << _CODE1_;
-    ofile.close();
-}
-

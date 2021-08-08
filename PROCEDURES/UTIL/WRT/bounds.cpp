@@ -3,6 +3,26 @@
 #include "includes.h"
 
 pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMGUI), pgBeAn(pgBeAn){
+    conf["saveCircCenterX"]=circCenter[0];
+    conf["saveCircCenterY"]=circCenter[1];
+    conf["saveCircEdgeX0"]=circEdge[0][0];
+    conf["saveCircEdgeX1"]=circEdge[1][0];
+    conf["saveCircEdgeX2"]=circEdge[2][0];
+    conf["saveCircEdgeY0"]=circEdge[0][1];
+    conf["saveCircEdgeY1"]=circEdge[1][1];
+    conf["saveCircEdgeY2"]=circEdge[2][1];
+    conf["saveRectCenterX"]=rectCenter[0];
+    conf["saveRectCenterY"]=rectCenter[1];
+    conf["saveRectEdgeX0"]=rectEdge[0][0];
+    conf["saveRectEdgeX1"]=rectEdge[1][0];
+    conf["saveRectEdgeX2"]=rectEdge[2][0];
+    conf["saveRectEdgeX3"]=rectEdge[3][0];
+    conf["saveRectEdgeY0"]=rectEdge[0][1];
+    conf["saveRectEdgeY1"]=rectEdge[1][1];
+    conf["saveRectEdgeY2"]=rectEdge[2][1];
+    conf["saveRectEdgeY3"]=rectEdge[3][1];
+    conf["saveIndex"]=index;
+
     layout=new QVBoxLayout;
     layout->setMargin(0);
     this->setLayout(layout);
@@ -34,7 +54,8 @@ pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMG
     setCircCenter=new QPushButton("Set");
     connect(setCircCenter, SIGNAL(released()), this, SLOT(onSetCircCenter()));
     setCircCenterTxt=new QLabel(QString::fromStdString(util::toString("Coords: ",circCenter[0],", ",circCenter[1])));
-    selCircRadius=new val_selector(1,"pgBoundsGUI_selCircRadius", "Radius:",0,999999,3,0,{"um"});
+    selCircRadius=new val_selector(1, "Radius:",0,999999,3,0,{"um"});
+    conf["selCircRadius"]=selCircRadius;
     layCircRad->addWidget(new twid(setCircCenter, setCircCenterTxt));
     layCircRad->addWidget(selCircRadius);
 
@@ -43,14 +64,17 @@ pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMG
     connect(setCircEdge, SIGNAL(released()), this, SLOT(onSetCircEdge()));
     setCircEdgeTxt=new QLabel(QString::fromStdString(util::toString(getStatCirc())));
     layCircPts->addWidget(new twid(setCircEdge, setCircEdgeTxt));
-    circClearance=new val_selector(0,"pgBoundsGUI_circClearance", "Clearance:",-999999,999999,3,0,{"um"}); circClearance->setToolTip("A positive clearance makes the active area smaller.");
+    circClearance=new val_selector(0, "Clearance:",-999999,999999,3,0,{"um"}); circClearance->setToolTip("A positive clearance makes the active area smaller.");
+    conf["circClearance"]=circClearance;
     layCircPts->addWidget(circClearance);
 
     setRectCenter=new QPushButton("Set");
     connect(setRectCenter, SIGNAL(released()), this, SLOT(onSetRectCenter()));
     setRectCenterTxt=new QLabel(QString::fromStdString(util::toString("Coords: ",rectCenter[0],", ",rectCenter[1])));
-    selRectWidth=new val_selector(1,"pgBoundsGUI_selRectWidth", "Width:",0,999999,3,0,{"um"});
-    selRectHeight=new val_selector(1,"pgBoundsGUI_selRectHeight", "Height:",0,999999,3,0,{"um"});
+    selRectWidth=new val_selector(1, "Width:",0,999999,3,0,{"um"});
+    conf["selRectWidth"]=selRectWidth;
+    selRectHeight=new val_selector(1, "Height:",0,999999,3,0,{"um"});
+    conf["selRectHeight"]=selRectHeight;
     layRectDim->addWidget(new twid(setRectCenter, setRectCenterTxt));
     layRectDim->addWidget(selRectWidth);
     layRectDim->addWidget(selRectHeight);
@@ -60,7 +84,8 @@ pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMG
     setRectEdgeTxt=new QLabel(QString::fromStdString(util::toString(getStatRect())));
     layRectPts->addWidget(new twid(setRectEdge, new QString("Coords: ")));
     layRectPts->addWidget(setRectEdgeTxt);
-    rectClearance=new val_selector(0,"pgBoundsGUI_rectClearance", "Clearance:",-999999,999999,3,0,{"um"}); rectClearance->setToolTip("A positive clearance makes the active area smaller.");
+    rectClearance=new val_selector(0, "Clearance:",-999999,999999,3,0,{"um"}); rectClearance->setToolTip("A positive clearance makes the active area smaller.");
+    conf["rectClearance"]=rectClearance;
     layRectPts->addWidget(rectClearance);
 
     timer = new QTimer(this);

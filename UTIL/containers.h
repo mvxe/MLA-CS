@@ -13,28 +13,6 @@ namespace _containers_internal {
     void quit();
 }
 
-/*########## cc_save ##########
- * provides a file save container (can be used as base)
- * it loads from config file on construction, and saves on destruction
- * requires a global object var_save to be defined, this must construct befor any cc_save and destruct after,
- * because it handles the actual reading/writing from file
- */
-
-struct _fo{    //for file ops
-    std::string strname;
-    std::string strval;
-};
-typedef std::deque<_fo> _savelst;
-
-template <typename T> class cc_save{
-public:
-    cc_save(T& var, T initial, _savelst* vec, std::string name);        //if you don't want to use it but you reuse code, set vec to nullptr, this disables saving
-    ~cc_save();
-    T& val;
-protected:
-    _fo* tfvec{nullptr};
-};
-
 /*########## exec_dat ##########
  * provides a muxed container for exec queue
  */
@@ -82,39 +60,29 @@ protected:
     void err(T initial);                //constructors of derived classes with overriden check should also call "if (check(initial)) err(initial);"
 };
 
-    /*########## tsvar_save ##########
-     * combines tsvar and cc_save
+    /*########## tsvar_ip ##########
+     * does a is an ip check
      */
 
-    template <typename T>
-    class tsvar_save: public tsvar<T>, public cc_save<T>{
+    class tsvar_ip : public tsvar<std::string>{         //contain ip strings in the format of xxx:xxx:xxx:xxx
     public:
-        tsvar_save(std::mutex *mxn, T initial, _savelst* vec, std::string name):tsvar<T>(mxn, initial),cc_save<T>(tsvar<T>::var, initial, vec, name){}
+        tsvar_ip(std::mutex *mxn, std::string initial): tsvar<std::string>(mxn, initial) , resolved(mxn, " "){if (check(initial)) err(initial);}
+        bool is_name;
+        tsvar<std::string> resolved;
+    protected:
+        bool check(std::string nvar) override;
     };
 
-        /*########## tsvar_save_ip ##########
-         * does a is an ip check
-         */
+    /*########## tsvar_port ##########
+     * does a is an port check
+     */
 
-        class tsvar_save_ip : public tsvar_save<std::string>{     //contain ip strings in the format of xxx:xxx:xxx:xxx
-        public:
-            tsvar_save_ip(std::mutex *mxn, std::string initial, _savelst*  vec, std::string name): tsvar_save<std::string>(mxn, initial, vec, name) , resolved(mxn, " "){if (check(initial)) err(initial);}
-            bool is_name;
-            tsvar<std::string> resolved;
-        protected:
-            bool check(std::string nvar) override;
-        };
-
-        /*########## tsvar_save_port ##########
-         * does a is an port check
-         */
-
-        class tsvar_save_port : public tsvar_save<int>{           //contain port (0 to 65535)
-        public:
-            tsvar_save_port(std::mutex *mxn, int initial, _savelst*  vec, std::string name): tsvar_save<int>(mxn, initial, vec, name){if (check(initial)) err(initial);}
-        protected:
-            bool check(int nvar) override;
-        };
+    class tsvar_port : public tsvar<int>{               //contain port (0 to 65535)
+    public:
+        tsvar_port(std::mutex *mxn, int initial): tsvar<int>(mxn, initial){if (check(initial)) err(initial);}
+    protected:
+        bool check(int nvar) override;
+    };
 
 /*########## tsbool ##########
 bool container with expiration time*/

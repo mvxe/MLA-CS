@@ -3,8 +3,10 @@
 
 GCAM::GCAM(){
     camobj::cobj=this;
-    for(int i=0;i!=_CAM_NUM;i++)
+    for(int i=0;i!=_CAM_NUM;i++){
         _c[i].ptr=new camobj(_c[i].cname);
+        conf=_c[i].ptr->conf;
+    }
     cam_desc.set(new std::vector<_dcams>());
     //arv_g_type_init();
 }

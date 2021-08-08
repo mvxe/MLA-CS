@@ -13,6 +13,7 @@ friend iImageDisplay;
 public:
     tab_camera(QWidget* parent);
     ~tab_camera();
+    rtoml::vsr conf{"app_camera.toml"};                //configuration map
 
     void tab_entered();
     void tab_exited();
@@ -51,17 +52,14 @@ private:
 
     smp_selector* cm_sel;       //for selecting the colormap for display
     QPushButton* epc_sel;       //for selecting the excluded pixel color
-    checkbox_save* showAbsHeight;
-    cv::Scalar exclColor;
-    cc_save<double> _scolorR{exclColor.val[0], 0,&go.gui_config.save,"tab_camera-exclColor-B"};
-    cc_save<double> _scolorG{exclColor.val[1], 0,&go.gui_config.save,"tab_camera-exclColor-G"};
-    cc_save<double> _scolorB{exclColor.val[2], 0,&go.gui_config.save,"tab_camera-exclColor-R"};
+    checkbox_gs* showAbsHeight;
+    cv::Scalar exclColor{0,0,0};
     bool redrawHistClrmap{false};
     pgHistogrameGUI* pgHistGUI;
-    checkbox_save* main_show_scale;
-    checkbox_save* main_show_target;
-    checkbox_save* main_show_bounds;
-    checkbox_save* main_antishake;
+    checkbox_gs* main_show_scale;
+    checkbox_gs* main_show_target;
+    checkbox_gs* main_show_bounds;
+    checkbox_gs* main_antishake;
     QProgressBar* measPB;
     QProgressBar* compPB;
 

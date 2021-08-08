@@ -116,8 +116,10 @@ tab_monitor::tab_monitor(QWidget *parent){
             CBlpauto->setText("Auto pulse (1Hz or 60Hz)");
             CBlpauto->setEnabled(false);
             connect(CBlpauto, SIGNAL(stateChanged(int)), this, SLOT(on_CBlpauto_stateChanged(int)));
-            pulseInt=new val_selector(1000, "tabMon_pulseInt", "Pulse Int:", 1, 8192, 0);
-            pulseDur=new val_selector(1, "tabMon_pulseDur", "Dur", 0.001, 10000, 3, 0, {"ms"});
+            pulseInt=new val_selector(1000, "Pulse Int:", 1, 8192, 0);
+            conf["pulseInt"]=pulseInt;
+            pulseDur=new val_selector(1, "Dur", 0.001, 10000, 3, 0, {"ms"});
+            conf["pulseDur"]=pulseDur;
 
             buttonLayout->addWidget(new vtwid(new twid(CBtrig,CBlpauto), new twid(pulseInt,pulseDur),true, false));
 
@@ -156,6 +158,11 @@ tab_monitor::tab_monitor(QWidget *parent){
 
         buttonLayout->addStretch(0);
 
+    conf.load();    //TODO remove
+}
+
+tab_monitor::~tab_monitor(){
+    conf.save();    //TODO remove
 }
 
 
@@ -240,7 +247,6 @@ void tab_monitor::init_timer(){     //once the tab is visited, the timer interru
 }
 
 void tab_monitor::work_fun(){
-    //printf("lol monitor\n");
     double scale=baseSamplFreq*(1<<selectedavg)*1e3; //in ms
     if(tab_is_open || save_waveform || save_fft || calc_spec){//){
 

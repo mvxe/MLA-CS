@@ -14,23 +14,22 @@ class pgBeamAnalysis: public QWidget{
     Q_OBJECT
 public:
     pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* pgSGUI);
+    rtoml::vsr conf;                //configuration map
     QWidget* gui_settings;
     QWidget* gui_activation;
 //    bool getCalibWritingBeam(float* r=nullptr, float* dx=nullptr, float* dy=nullptr, bool correct=true);                        //return true on failure (also wont correct if faliure)
     void getCalibWritingBeamRange(double *rMinLoc, double *xMin, double *yMin, int frames, double range, bool flipDir=false);   //flipDir makes the scan to scan from the other direction, if you dont need rMinLoc, xMin or yMin you can pass nullptr
     const double& writeBeamCenterOfsX{_writeBeamCenterOfsX};
     const double& writeBeamCenterOfsY{_writeBeamCenterOfsY};
-    const double* extraFocusOffsetVal;
+    const std::atomic<double>* extraFocusOffsetVal;
 public Q_SLOTS:
     bool correctWritingBeamFocus(bool reCenter=true);   //does getCalibWritingBeamRange twice/thrice, using the parameters in settings. Corrects focus. reCenter also corrects the center, return 0 on success
 private:
     mesLockProg& MLP;
     pgMoveGUI* pgMGUI;
     pgScanGUI* pgSGUI;
-    double _writeBeamCenterOfsX;    //the center offset in pixels
-    double _writeBeamCenterOfsY;
-    cc_save<double> saveWBCX{_writeBeamCenterOfsX, 0,&go.pos_config.save,"pgBeamAnalysis_saveWBCX"};
-    cc_save<double> saveWBCY{_writeBeamCenterOfsY, 0,&go.pos_config.save,"pgBeamAnalysis_saveWBCY"};
+    double _writeBeamCenterOfsX{0};    //the center offset in pixels
+    double _writeBeamCenterOfsY{0};
 
     QVBoxLayout* slayout;
     QPushButton* btnReset;
@@ -56,7 +55,7 @@ private:
     val_selector* accuFrames;
     val_selector* accuRange;
     val_selector* selThresh;
-    checkbox_save* doExtraFocusMesDifDir;
+    checkbox_gs* doExtraFocusMesDifDir;
     QPushButton* btnSaveNextDebugFocus;
     val_selector* extraFocusOffset;
     QPushButton* exOfsCalibBtn;

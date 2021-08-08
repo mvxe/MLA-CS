@@ -14,20 +14,25 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
 
     pulse=new QPushButton("Pulse");
     connect(pulse, SIGNAL(released()), this, SLOT(onPulse()));
-    pulseInt=new val_selector(1000, "pgWrite_pulseInt", "Int:", 1, 8192, 0);
-    pulseDur=new val_selector(1, "pgWrite_pulseDur", "Dur", 0.001, 10000, 3, 0, {"ms"});
+    pulseInt=new val_selector(1000, "Int:", 1, 8192, 0);
+    conf["pulseInt"]=pulseInt;
+    pulseDur=new val_selector(1, "Dur", 0.001, 10000, 3, 0, {"ms"});
+    conf["pulseDur"]=pulseDur;
     alayout->addWidget(new hline);
     alayout->addWidget(new twid(pulse, pulseInt, pulseDur));
     alayout->addWidget(new hline);
     importImg=new QPushButton("Import image");
     connect(importImg, SIGNAL(released()), this, SLOT(onLoadImg()));
-    depthMaxval=new val_selector(10, "pgWrite_depthMaxval", "(if 8/16bit)Maxval=", 0.1, 500, 3, 0, {"nm"});
+    depthMaxval=new val_selector(10, "(if 8/16bit)Maxval=", 0.1, 500, 3, 0, {"nm"});
+    conf["depthMaxval"]=depthMaxval;
     alayout->addWidget(new twid(importImg,depthMaxval));
-    ICcor=new val_selector(1, "pgWrite_ICcor", "Intensity correction", 0.1, 3, 3);
+    ICcor=new val_selector(1, "Intensity correction", 0.1, 3, 3);
+    conf["ICcor"]=ICcor;
     corICor=new QPushButton("Correct Correction");
     connect(corICor, SIGNAL(released()), this, SLOT(onCorICor()));
     alayout->addWidget(new twid(ICcor,corICor));
-    imgUmPPx=new val_selector(10, "pgWrite_imgUmPPx", "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
+    imgUmPPx=new val_selector(10, "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
+    conf["imgUmPPx"]=imgUmPPx;
     alayout->addWidget(imgUmPPx);
     writeDM=new HQPushButton("Write");
     connect(writeDM, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
@@ -47,6 +52,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     alayout->addWidget(new hline);
 
     selectWriteSetting=new smp_selector("Select write setting: ", 0, {"Set0", "Set1", "Set2", "Set3", "Tag"});    //should have Nset strings
+    conf["selectWriteSetting"]=selectWriteSetting;
     slayout->addWidget(selectWriteSetting);
     for(int i=0;i!=Nset;i++) {
         settingWdg.push_back(new writeSettings(i, this));
@@ -59,9 +65,11 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     textl->setWordWrap(true);
     slayout->addWidget(textl);
 
-    max_vel=new val_selector(25, "pgWrite_max_vel", "Max velocity: ", 0.001, 25, 3, 0, {"mm/s"});
+    max_vel=new val_selector(25, "Max velocity: ", 0.001, 25, 3, 0, {"mm/s"});
+    conf["max_vel"]=max_vel;
     slayout->addWidget(max_vel);
-    max_acc=new val_selector(100, "pgWrite_max_acc", "Max acceleration: ", 0.001, 100, 3, 0, {"mm/s^2"});
+    max_acc=new val_selector(100, "Max acceleration: ", 0.001, 100, 3, 0, {"mm/s^2"});
+    conf["max_acc"]=max_acc;
     slayout->addWidget(max_acc);
 }
 
@@ -110,37 +118,52 @@ void pgWrite::onMenuChange(int index){
 writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     slayout=new QVBoxLayout;
     this->setLayout(slayout);
-    focus=new val_selector(0, util::toString("writeSettings_focus",num), "Focus (in relation to green center)", -1000, 1000, 3, 0, {"um"});
+    focus=new val_selector(0, "Focus (in relation to green center)", -1000, 1000, 3, 0, {"um"});
+    parent->conf[parent->selectWriteSetting->getLabel(num)]["focus"]=focus;
     slayout->addWidget(focus);
-    focusXcor=new val_selector(0, util::toString("writeSettings_focusXcor",num), "Focus X cor.", -1000, 1000, 3, 0, {"um"});
+    focusXcor=new val_selector(0, "Focus X cor.", -1000, 1000, 3, 0, {"um"});
+    parent->conf[parent->selectWriteSetting->getLabel(num)]["focusXcor"]=focusXcor;
     slayout->addWidget(focusXcor);
-    focusYcor=new val_selector(0, util::toString("writeSettings_focusYcor",num), "Focus Y cor", -1000, 1000, 3, 0, {"um"});
+    focusYcor=new val_selector(0, "Focus Y cor", -1000, 1000, 3, 0, {"um"});
+    parent->conf[parent->selectWriteSetting->getLabel(num)]["focusYcor"]=focusYcor;
     slayout->addWidget(focusYcor);
-    duration=new val_selector(1, util::toString("writeSettings_duration",num), "Pulse duration", 0.001, 1000, 3, 0, {"ms"});
+    duration=new val_selector(1, "Pulse duration", 0.001, 1000, 3, 0, {"ms"});
+    parent->conf[parent->selectWriteSetting->getLabel(num)]["duration"]=duration;
     slayout->addWidget(duration);
-    constA=new val_selector(1, util::toString("writeSettings_constA",num), "Constant A", 0, 1, 6, 0, {"nm"});
+    constA=new val_selector(1, "Constant A", 0, 1, 6, 0, {"nm"});
+    parent->conf[parent->selectWriteSetting->getLabel(num)]["constA"]=constA;
     slayout->addWidget(constA);
-    constB=new val_selector(100, util::toString("writeSettings_constB",num), "Constant B", 0, 10000, 3);
+    constB=new val_selector(100, "Constant B", 0, 10000, 3);
+    parent->conf[parent->selectWriteSetting->getLabel(num)]["constB"]=constB;
     slayout->addWidget(constB);
-    constX0=new val_selector(1000, util::toString("writeSettings_constI00",num), "Constant I\u2080\u2080", 0, 8192, 3, 0, {"a.u."});
+    constX0=new val_selector(1000, "Constant I\u2080\u2080", 0, 8192, 3, 0, {"a.u."});
+    parent->conf[parent->selectWriteSetting->getLabel(num)]["constI00"]=constX0;
     slayout->addWidget(constX0);
-    plataeuPeakRatio=new val_selector(1, util::toString("writeSettings_plataeuPeakRatio",num), "Plataeu-Peak height ratio", 1, 10, 3);
+    plataeuPeakRatio=new val_selector(1, "Plataeu-Peak height ratio", 1, 10, 3);
+    parent->conf[parent->selectWriteSetting->getLabel(num)]["plataeuPeakRatio"]=plataeuPeakRatio;
     corPPR=new QPushButton("Correct PPR");
     slayout->addWidget(new twid(plataeuPeakRatio,corPPR));
-    pointSpacing=new val_selector(1, util::toString("writeSettings_pointSpacing",num), "Point spacing", 0.01, 10, 3, 0, {"um"});
+    pointSpacing=new val_selector(1, "Point spacing", 0.01, 10, 3, 0, {"um"});
+    parent->conf[parent->selectWriteSetting->getLabel(num)]["pointSpacing"]=pointSpacing;
     slayout->addWidget(pointSpacing);
     if(num==4){ //tag settings
-        fontFace=new smp_selector("writeSettings_tag_fontFace", "Font ", 0, OCV_FF::qslabels());
+        fontFace=new smp_selector("Font ", 0, OCV_FF::qslabels());
+        parent->conf[parent->selectWriteSetting->getLabel(num)]["fontFace"]=fontFace;
         slayout->addWidget(fontFace);
-        fontSize=new val_selector(1., "writeSettings_tag_fontSize", "Font Size ", 0, 10., 2);
+        fontSize=new val_selector(1., "Font Size ", 0, 10., 2);
+        parent->conf[parent->selectWriteSetting->getLabel(num)]["fontSize"]=fontSize;
         slayout->addWidget(fontSize);
-        fontThickness=new val_selector(1, "writeSettings_tag_fontThickness", "Font Thickness ", 1, 10, 0, 0, {"px"});
+        fontThickness=new val_selector(1, "Font Thickness ", 1, 10, 0, 0, {"px"});
+        parent->conf[parent->selectWriteSetting->getLabel(num)]["fontThickness"]=fontThickness;
         slayout->addWidget(fontThickness);
-        imgUmPPx=new val_selector(10, "writeSettings_tag_imgUmPPx", "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
+        imgUmPPx=new val_selector(10, "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
+        parent->conf[parent->selectWriteSetting->getLabel(num)]["imgUmPPx"]=imgUmPPx;
         slayout->addWidget(imgUmPPx);
-        depthMaxval=new val_selector(10, "writeSettings_tag_depthMaxval", "Maxval=", 0.1, 500, 3, 0, {"nm"});
+        depthMaxval=new val_selector(10, "Maxval=", 0.1, 500, 3, 0, {"nm"});
+        parent->conf[parent->selectWriteSetting->getLabel(num)]["depthMaxval"]=depthMaxval;
         slayout->addWidget(depthMaxval);
-        frameDis=new val_selector(10, "writeSettings_tag_frameDis", "Frame Distance=", 0.1, 500, 3, 0, {"um"});
+        frameDis=new val_selector(10, "Frame Distance=", 0.1, 500, 3, 0, {"um"});
+        parent->conf[parent->selectWriteSetting->getLabel(num)]["frameDis"]=frameDis;
         slayout->addWidget(frameDis);
     }
 }

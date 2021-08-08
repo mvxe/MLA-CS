@@ -12,11 +12,14 @@ pgDepthEval::pgDepthEval(pgBoundsGUI* pgBGUI): pgBGUI(pgBGUI){
     connect(debugDisp, SIGNAL(changed(int)), this, SLOT(onDebugIndexChanged(int)));
     layout->addWidget(debugDisp);
     layout->addWidget(new hline);
-    findf_Blur=new val_selector(2, "pgDepthEval_findf_Blur", "Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
+    findf_Blur=new val_selector(2, "Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
+    conf["findf_Blur"]=findf_Blur;
     connect(findf_Blur, SIGNAL(changed()), this, SLOT(onChanged()));
-    findf_Thrs=new val_selector(0.2, "pgDepthEval_findf_Thrs", "2nd Derivative Exclusion Threshold: ", 0, 1, 4);
+    findf_Thrs=new val_selector(0.2, "2nd Derivative Exclusion Threshold: ", 0, 1, 4);
+    conf["findf_Thrs"]=findf_Thrs;
     connect(findf_Thrs, SIGNAL(changed()), this, SLOT(onChanged()));
-    findf_Dill=new val_selector(0, "pgDepthEval_findf_Dill", "Dillation: ", 0, 100, 0, 0, {"px"});                  //TODO turn this into radius in um / add option
+    findf_Dill=new val_selector(0, "Dillation: ", 0, 100, 0, 0, {"px"});                  //TODO turn this into radius in um / add option
+    conf["findf_Dill"]=findf_Dill;
     connect(findf_Dill, SIGNAL(changed()), this, SLOT(onChanged()));
     findf_Dill->setToolTip("Only used for testing: each call to depth eval should specify a dilation radius corresponding to the beam radius or whatever.");
     layout->addWidget(findf_Blur);

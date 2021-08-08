@@ -8,17 +8,23 @@ pgCorrection::pgCorrection(pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI): pgSGUI(pgSGUI)
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
 
-    selArrayXsize=new val_selector(10, "pgCorrection_selArrayXsize", "Array Size X:", 1, 1000, 0);
+    selArrayXsize=new val_selector(10, "Array Size X:", 1, 1000, 0);
+    conf["selArrayXsize"]=selArrayXsize;
     slayout->addWidget(selArrayXsize);
-    selArrayYsize=new val_selector(10, "pgCorrection_selArrayYsize", "Array Size Y:", 1, 1000, 0);
+    selArrayYsize=new val_selector(10, "Array Size Y:", 1, 1000, 0);
+    conf["selArrayYsize"]=selArrayYsize;
     slayout->addWidget(selArrayYsize);
-    selArraySpacing=new val_selector(5, "pgCorrection_selArraySpacing", "Array Spacing:", 0.001, 100, 3, 0, {"um"});
+    selArraySpacing=new val_selector(5, "Array Spacing:", 0.001, 100, 3, 0, {"um"});
+    conf["selArraySpacing"]=selArraySpacing;
     slayout->addWidget(selArraySpacing);
-    selAvgNum=new val_selector(10, "pgCorrection_selAvgNum", "Number of measurements per grid point:", 1, 1000, 0);
+    selAvgNum=new val_selector(10, "Number of measurements per grid point:", 1, 1000, 0);
+    conf["selAvgNum"]=selAvgNum;
     slayout->addWidget(selAvgNum);
-    selExclusionSD=new val_selector(2, "pgCorrection_selExclusionSD", "Exlude is dif>this*SD:", 0.1, 100, 2);
+    selExclusionSD=new val_selector(2, "Exlude is dif>this*SD:", 0.1, 100, 2);
+    conf["selExclusionSD"]=selExclusionSD;
     slayout->addWidget(selExclusionSD);
-    corBlur=new val_selector(0, util::toString("pgCorrection_corBlur"), "Correction Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
+    corBlur=new val_selector(0, "Correction Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
+    conf["corBlur"]=corBlur;
     slayout->addWidget(corBlur);
     preserveResult=new QCheckBox("Preserve result (for fiddling with SD).");
     slayout->addWidget(preserveResult);
@@ -39,7 +45,8 @@ pgCorrection::pgCorrection(pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI): pgSGUI(pgSGUI)
     QLabel* lbl=new QLabel(util::toString("The correction file is saved as ",fileName,". It can be replaced by the button above, but you may also manually save a scan over it and restart the program.").c_str());
     lbl->setWordWrap(true);
     slayout->addWidget(lbl);
-    enableCorrection=new checkbox_save(false,"pgCorrection_enableCorrection","Enable correction.");
+    enableCorrection=new checkbox_gs(false,"Enable correction.");
+    conf["enableCorrection"]=enableCorrection;
     connect(enableCorrection, SIGNAL(changed(bool)), this, SLOT(enableCorrectionChanged(bool)));
     slayout->addWidget(enableCorrection);
     if(!pgSGUI->loadScan(&cor, fileName)) {std::cerr<<"Could not find pgCorrection file: "<<fileName<<"\n";useCorr.lock();useCorrLocked=true;}

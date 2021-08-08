@@ -45,17 +45,22 @@ public:
 
 class camobj_config{
 protected:
-    camobj_config(std::string name):name(name){}
+    camobj_config(std::string name):name(name){
+        conf[util::toString(name,"_expo")]=expo;
+    }
+
     std::mutex comx;
     std::string name;   //for saving to file
 public:
+    rtoml::vsr conf;                                        //configuration map
+
     /*       ##########################################
      *      ###### Here we define save variables #######
      *       ##########################################
      */
 
     //no general saves, for now
-    tsvar_save<double> expo{&comx,442,&go.cams_config.save,util::toString(name,"_expo")};           //these can be used by other threads
+    tsvar<double> expo{&comx,442};           //these can be used by other threads
 };
 
 #endif // _CONFIG_GCAM_H

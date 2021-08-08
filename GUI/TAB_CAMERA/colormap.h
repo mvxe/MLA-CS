@@ -2,24 +2,26 @@
 #define COLORMAP_H
 #include <QLabel>
 #include "opencv2/opencv.hpp"
+#include "UTIL/.rtoml/rtoml.hpp"
 class smp_selector;
 class val_selector;
 class QVBoxLayout;
 class pgScanGUI;
 class pgTiltGUI;
 class QPushButton;
-class checkbox_save;
+class checkbox_gs;
 
 class colorMap: public QWidget{
     Q_OBJECT
 public:
-    colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, checkbox_save* showAbsHeight, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI);
+    rtoml::vsr conf;                                        //configuration map
+    colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, checkbox_gs* showAbsHeight, pgScanGUI* pgSGUI, pgTiltGUI* pgTGUI);
     void colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange=false, bool isForExport=false, std::string label="Height (nm)");
     const bool& changed{_changed};
     void draw_bw_target(cv::Mat* src, float dX, float dY);
     void draw_bw_scalebar(cv::Mat* src, double XYnmppx);
     void draw_color_box(cv::Mat* src, int x0, int x1, int y0, int y1);
-    const bool* exportSet4WholeVal;
+    const std::atomic<bool>* exportSet4WholeVal;
 private:
     QVBoxLayout* layout;
     smp_selector* fontFace;
@@ -42,9 +44,9 @@ private:
     smp_selector* xysbar_corner;
     val_selector* xysbar_xoffset;
     val_selector* xysbar_yoffset;
-    checkbox_save* xysbar_color_inv;
+    checkbox_gs* xysbar_color_inv;
 
-    checkbox_save* exportSet4Whole;
+    checkbox_gs* exportSet4Whole;
     val_selector* xysbar_unit_Export;
     smp_selector* xysbar_corner_Export;
     val_selector* xysbar_xoffset_Export;
@@ -54,7 +56,7 @@ private:
     double phiX0, phiY0, phiX1, phiY1, phiXR, phiYR;
 
     smp_selector* cm_sel;
-    checkbox_save* showAbsHeight;
+    checkbox_gs* showAbsHeight;
     cv::Scalar& exclColor;
     pgScanGUI* pgSGUI;      //for XY calibration
     pgTiltGUI* pgTGUI;      // ^^

@@ -4,29 +4,15 @@
 
 //  VAL SELECTOR
 
-val_selector::val_selector(double initialValue, QString label, double min, double max, double precision):
-        valueSave(value, initialValue, nullptr, ""), unitIndexSave(unitIndex, 0, nullptr, ""){
+val_selector::val_selector(double initialValue, QString label, double min, double max, double precision):value(initialValue), unitIndex(0), val(value), index(unitIndex){
     init0(label, min, max, precision);
     layout->addStretch(0);
 }
 
 val_selector::val_selector(double initialValue, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels):
-        valueSave(value, initialValue, nullptr, ""), unitIndexSave(unitIndex, initialIndex, nullptr, ""){
+        value(initialValue), unitIndex(initialIndex), labels(labels), val(value), index(unitIndex){
     init0(label, min, max, precision);
-    init1(labels);
-    layout->addStretch(0);
-}
-
-val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision):
-        valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, 0, nullptr, ""){
-    init0(label, min, max, precision);
-    layout->addStretch(0);
-}
-
-val_selector::val_selector(double initialValue, std::string varSaveName, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels):
-        valueSave(value, initialValue, &go.gui_config.save,varSaveName), unitIndexSave(unitIndex, initialIndex, &go.gui_config.save,util::toString(varSaveName,"_index")){
-    init0(label, min, max, precision);
-    init1(labels);
+    init1();
     layout->addStretch(0);
 }
 
@@ -46,9 +32,10 @@ void val_selector::init0(QString label, double min, double max, double precision
     spinbox->setSingleStep(pow(10,-precision));
     spinbox->setValue(value);
     connect(spinbox, SIGNAL(valueChanged(double)), this, SLOT(on_value_change(double)));
+    connect(this, SIGNAL(_changed(double, int)), this, SLOT(setValue(double, int)));
 }
 
-void val_selector::init1(std::vector<QString> labels){
+void val_selector::init1(){
     unit = new QScrollToolButton();
     layout->addWidget(unit);
     unit->setAutoRaise(true);
@@ -89,23 +76,33 @@ void val_selector::on_value_change(double nvalue){
     Q_EMIT changed(value, unitIndex);
 }
 
-void val_selector::setValue(double nvalue){
+void val_selector::setValue(double nvalue, int index){
     spinbox->setValue(nvalue);
+    if(index>=0 && index<labels.size()){
+        unit->activeAction=unit->menu()->actions()[index];
+        unit->setText(unit->activeAction->text());
+    }
+}
+void val_selector::set(std::string valueAndUnit){
+    size_t dend;
+    value = std::stod(valueAndUnit,&dend);
+    if(labels.empty()) Q_EMIT _changed(value, -1);
+    else for (int i=0; i!=labels.size(); i++){
+        if(labels[i].toStdString()==valueAndUnit.substr(dend+1)){
+            Q_EMIT _changed(value, i);
+            return;
+        }
+    }
+}
+std::string val_selector::get(){
+    if(labels.empty()) return util::toString(value.load());
+    else return util::toString(value.load()," ",labels[unitIndex].toStdString());
 }
 
 
 //  SIMPLE SELECTOR
 
-smp_selector::smp_selector(QString label, int initialIndex, std::vector<QString> labels):
-    indexSave(_index, initialIndex, nullptr, ""){
-    init(label, labels);
-}
-smp_selector::smp_selector(std::string varSaveName, QString label, int initialIndex, std::vector<QString> labels):
-    indexSave(_index, initialIndex, &go.gui_config.save,varSaveName){
-    init(label, labels);
-}
-
-void smp_selector::init(QString label, std::vector<QString> labels){
+smp_selector::smp_selector(QString label, int initialIndex, std::vector<QString> labels):  _index(initialIndex), labels(labels){
     _label = new QLabel(label);
     layout = new QHBoxLayout();
     _sBtn = new QScrollToolButton();
@@ -121,12 +118,13 @@ void smp_selector::init(QString label, std::vector<QString> labels){
     _sBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
     _sBtn->setPopupMode(QToolButton::InstantPopup);
     _sBtn->setMenu(new QMenu);
-    for(int i=0;i!=labels.size();i++){
+    for(auto& ln : labels){
         QAction* action=new QAction;
-        action->setText(labels[i]);
+        action->setText(ln);
         _sBtn->menu()->addAction(action);
     }
     connect(_sBtn->menu(), SIGNAL(aboutToHide()), this, SLOT(on_menu_change()));
+    connect(this, SIGNAL(_changed(int)), this, SLOT(setIndex(int)));
 
     if (_index>=labels.size()) _index=0;
     _sBtn->activeAction=_sBtn->menu()->actions()[_index];
@@ -147,6 +145,25 @@ void smp_selector::on_menu_change(){
     Q_EMIT changed();
     Q_EMIT changed(_index);
 }
+void smp_selector::setIndex(int index){
+    if(index>=_sBtn->menu()->actions().size()) return;
+    _sBtn->menu()->setActiveAction(_sBtn->menu()->actions()[index]);
+    on_menu_change();
+}
+void smp_selector::set(std::string label){
+    for (int i=0; i!=labels.size(); i++){
+        if(labels[i].toStdString()==label){
+            Q_EMIT _changed(i);
+            break;
+        }
+    }
+}
+std::string smp_selector::get(){
+    return labels[_index].toStdString();
+}
+std::string smp_selector::getLabel(int index){
+    return labels[index].toStdString();
+}
 
 // TAB WIDGET DISPLAY SELECTOR
 
@@ -156,6 +173,7 @@ twd_selector::twd_selector(std::string menu, std::string init, bool twidSetMargi
     layout->setMargin(0);
     this->setLayout(layout);
 
+    connect(this, SIGNAL(_changed(int)), this, SLOT(setIndex(int)));
     if(addShown) showBtn=new QPushButton("< show >");
     if(showSel){
         select=new QScrollToolButton();
@@ -185,6 +203,8 @@ twd_selector::twd_selector(std::string menu, std::string init, bool twidSetMargi
 }
 void twd_selector::addWidget(QWidget* widget, QString label){
     widgets.push_back(widget);
+    if(!label.isEmpty()) labels.push_back(label.toStdString());
+    else labels.push_back(util::toString(widgets.size()-1));
     if(showSel){
         widget->hide();
         QAction* action=new QAction;
@@ -216,15 +236,16 @@ void twd_selector::onClicked(){
     wI->setVisible(!wI->isVisible());
     showBtn->setText((wI->isVisible())?"< hide >":"< show >");
 }
-
-twds_selector::twds_selector(std::string varSaveName, int initialIndex, std::string menu, std::string init, bool twidSetMargin, bool addStretch, bool addShown):
-    twd_selector(menu, init, twidSetMargin, addStretch, addShown),
-    indexSave(_index, initialIndex, &go.gui_config.save,varSaveName){}
-twds_selector::~twds_selector(){
-    _index=this->index;
+void twd_selector::set(std::string label){
+    for (int i=0; i!=labels.size(); i++){
+        if(labels[i]==label){
+            Q_EMIT _changed(i);
+            return;
+        }
+    }
 }
-void twds_selector::doneAddingWidgets(){
-    this->setIndex(_index);
+std::string twd_selector::get(){
+    return labels[active_index];
 }
 
 // GUI adaptiveScrollBar
@@ -269,22 +290,27 @@ eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize){
     this->setLayout(layout);
 }
 
-// CHECKBOX WITH SAVE
+// CHECKBOX thread safe with get()/set() (compatible with rtoml)
 
-checkbox_save::checkbox_save(bool initialState, std::string varSaveName, QString label): valueSave(value, initialState, &go.gui_config.save,varSaveName){
+checkbox_gs::checkbox_gs(bool initialState, QString label) : value(initialState){
     this->setChecked(value);
     this->setText(label);
     connect(this, SIGNAL(toggled(bool)), this, SLOT(on_toggled(bool)));
+    connect(this, SIGNAL(_changed(bool)), this, SLOT(setChecked(bool)));
 }
-void checkbox_save::on_toggled(bool state){
+void checkbox_gs::on_toggled(bool state){
     value=state;
     Q_EMIT changed(value);
     Q_EMIT changed();
 }
-void checkbox_save::setValue(bool nvalue){
+void checkbox_gs::setValue(bool nvalue){
     value=nvalue;
-    this->setChecked(value);
+    Q_EMIT _changed(value);                 // should be thread safe
+    Q_EMIT changed(value);
+    Q_EMIT changed();
 }
+void checkbox_gs::set(bool nvalue){setValue(nvalue);}
+bool checkbox_gs::get(){return val;}
 
 
 

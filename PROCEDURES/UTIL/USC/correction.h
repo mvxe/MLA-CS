@@ -9,13 +9,15 @@ class val_selector;
 class QPushButton;
 class pgMoveGUI;
 class QCheckBox;
-class checkbox_save;
+class checkbox_gs;
 
 class pgCorrection: public QObject{
     Q_OBJECT
 public:
     pgCorrection(pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI);
     ~pgCorrection();
+    rtoml::vsr conf;                    //configuration map
+
     QWidget* gui_settings;
 
     std::mutex useCorr;                 //this will be locked when usecorr is disabled or the correction is updated
@@ -35,7 +37,7 @@ private:
     QPushButton* recalcCalib;
 
     QPushButton* setAsCalib;
-    checkbox_save* enableCorrection;
+    checkbox_gs* enableCorrection;
 
     constexpr static int maxRedoScanTries=3;
     constexpr static double discardMaskRoiThresh=0.001;     //if more than 0.1% of the pixels in the scan are bad, discard and try again, up to maxRedoScanTries. If it still fails accept it anyway

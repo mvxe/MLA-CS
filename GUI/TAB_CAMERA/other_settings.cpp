@@ -11,7 +11,8 @@ cameraSett::cameraSett(std::atomic<bool>& getExpMinMax): getExpMinMax(getExpMinM
     report0=new QLabel();
     layout->addWidget(report0);
     layout->addWidget(new hline);
-    expSel=new val_selector(1000, "cameraSett_exp", "Set Exposure: ", 0, 9999999, 3, 0, {"us"});
+    expSel=new val_selector(1000, "Set Exposure: ", 0, 9999999, 3, 0, {"us"});
+    conf["expSel"]=expSel;
     layout->addWidget(expSel);
     report1=new QLabel();
     layout->addWidget(report1);

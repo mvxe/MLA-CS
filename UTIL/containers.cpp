@@ -35,9 +35,9 @@ void _containers_internal::quit(){
     go.quit();
 }
 
-        /*########## tsvar_save_ip ##########*/
+        /*########## tsvar_ip ##########*/
 
-        bool tsvar_save_ip::check(std::string nvar){
+        bool tsvar_ip::check(std::string nvar){
             int n = 0;
             int nums[4];
             for (int i=0;i!=nvar.size();i++){
@@ -54,9 +54,9 @@ void _containers_internal::quit(){
             return false;
         }
 
-        /*########## tsvar_save_port ##########*/
+        /*########## tsvar_port ##########*/
 
-        bool tsvar_save_port::check(int nvar){
+        bool tsvar_port::check(int nvar){
             if (nvar<0 || nvar>65535) return true;
             return false;
         }
@@ -76,21 +76,4 @@ bool tsbool::get(){
     std::lock_guard<std::mutex>lock(*mx);
     if (difftime(time(NULL),mf)>exp_time) var = false;
     return var;
-}
-
-/*########## cc_save ##########*/
-
-template <> cc_save<std::string>::cc_save(std::string& var, std::string initial, _savelst* vec, std::string name): val(var){            //we specialize this one because stringstream only puts the first word into the string, ignoring others after the first whitespace
-    val=initial;
-    if(vec!=nullptr){
-        for (int i=0;i!=vec->size();i++){
-            if (name.compare((*vec)[i].strname)==0){
-                val=(*vec)[i].strval;
-                tfvec=&(*vec)[i];
-                return;
-            }
-        }
-        vec->push_back({name,""});  //if it doesnt exist
-        tfvec=&vec->back();
-    }
 }

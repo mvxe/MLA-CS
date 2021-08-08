@@ -51,18 +51,24 @@ void pgMoveGUI::init_gui_settings(){
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
 
-    xMoveScale=new val_selector(0.001, "pgMoveGUI_xMoveScale", "X move multiplier: ", 0, 100, 6);
+    xMoveScale=new val_selector(0.001, "X move multiplier: ", 0, 100, 6);
+    conf["xMoveScale"]=xMoveScale;
     slayout->addWidget(xMoveScale);
-    yMoveScale=new val_selector(0.001, "pgMoveGUI_yMoveScale", "Y move multiplier: ", 0, 100, 6);
+    yMoveScale=new val_selector(0.001, "Y move multiplier: ", 0, 100, 6);
+    conf["yMoveScale"]=yMoveScale;
     slayout->addWidget(yMoveScale);
-    zMoveScale=new val_selector(0.001, "pgMoveGUI_zMoveScale", "Z move multiplier: ", 0, 100, 6);
+    zMoveScale=new val_selector(0.001, "Z move multiplier: ", 0, 100, 6);
+    conf["zMoveScale"]=zMoveScale;
     slayout->addWidget(zMoveScale);
-    fMoveScale=new val_selector(0.001, "pgMoveGUI_fMoveScale", "F move multiplier: ", 0, 100, 6);
+    fMoveScale=new val_selector(0.001, "F move multiplier: ", 0, 100, 6);
+    conf["fMoveScale"]=fMoveScale;
     slayout->addWidget(fMoveScale);
 
-    autoadjXZ=new val_selector(0, "pgMoveGUI_autoadjXZ", "Focus adjustment for X: ", -100, 100, 12);
+    autoadjXZ=new val_selector(0, "Focus adjustment for X: ", -100, 100, 12);
+    conf["autoadjXZ"]=autoadjXZ;
     slayout->addWidget(autoadjXZ);
-    autoadjYZ=new val_selector(0, "pgMoveGUI_autoadjYZ", "Focus adjustment for Y: ", -100, 100, 12);
+    autoadjYZ=new val_selector(0, "Focus adjustment for Y: ", -100, 100, 12);
+    conf["autoadjYZ"]=autoadjYZ;
     slayout->addWidget(autoadjYZ);
     calib_autoadjXZ=new QPushButton;
     calib_autoadjXZ->setText("Calibrate XZ");
@@ -87,13 +93,17 @@ void pgMoveGUI::init_gui_settings(){
     calculateCalib=new QPushButton("Calculate Calibration Constants"); calculateCalib->setToolTip("The more points, the better!");
     connect(calculateCalib, SIGNAL(released()), this, SLOT(onCalculateCalib()));
     slayout->addWidget(new twid(calculateCalib));
-    calibNmPPx=new val_selector(10, "pgMoveGUI_XYnmppx", "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
+    calibNmPPx=new val_selector(10, "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
+    conf["calibNmPPx"]=calibNmPPx;
     slayout->addWidget(calibNmPPx);
-    calibAngCamToXMot=new val_selector(0, "pgMoveGUI_calibAngCamToXMot", "Camera/Xmot angle: ", -M_PI/2, M_PI/2, 6, 0, {"rad"});
+    calibAngCamToXMot=new val_selector(0, "Camera/Xmot angle: ", -M_PI/2, M_PI/2, 6, 0, {"rad"});
+    conf["calibAngCamToXMot"]=calibAngCamToXMot;
     slayout->addWidget(calibAngCamToXMot);
-    calibAngYMotToXMot=new val_selector(0, "pgMoveGUI_calibAngYMotToXMot", "Xmot/Ymot angle ofs: ", -M_PI/2, M_PI/2, 6, 0, {"rad"});
+    calibAngYMotToXMot=new val_selector(0, "Xmot/Ymot angle ofs: ", -M_PI/2, M_PI/2, 6, 0, {"rad"});
+    conf["calibAngYMotToXMot"]=calibAngYMotToXMot;
     slayout->addWidget(calibAngYMotToXMot);
-    skewCorrection=new checkbox_save(false,"pgMoveGUI_skewCorrection","Correct XY skew and camera angle for all move commands through this function.");
+    skewCorrection=new checkbox_gs(false,"Correct XY skew and camera angle for all move commands through this function.");
+    conf["skewCorrection"]=skewCorrection;
     slayout->addWidget(skewCorrection);
 
     slayout->addWidget(new hline);
@@ -101,8 +111,10 @@ void pgMoveGUI::init_gui_settings(){
     slayout->addWidget(new QLabel("Non PVT move velocities and accelerations (valid only for this tab):"));
 
     for (int i=0;i!=4;i++){
-        selVeloc[i]=new val_selector(maxVel[i]/10, util::toString("pgMoveGUI_selVeloc",coords[i]), util::toString(coords[i]," stage max move velocity: ").c_str(), 1e-3, maxVel[i], 3, 0, {"mm/s"});
-        selAccel[i]=new val_selector(maxAcl[i]/10, util::toString("pgMoveGUI_selAccel",coords[i]), util::toString(coords[i]," stage max move acceleration: ").c_str(), 1e-3, maxAcl[i], 3, 0, {"mm/s^2"});
+        selVeloc[i]=new val_selector(maxVel[i]/10, util::toString(coords[i]," stage max move velocity: ").c_str(), 1e-3, maxVel[i], 3, 0, {"mm/s"});
+        conf[util::toString("selVeloc",coords[i])]=selVeloc[i];
+        selAccel[i]=new val_selector(maxAcl[i]/10, util::toString(coords[i]," stage max move acceleration: ").c_str(), 1e-3, maxAcl[i], 3, 0, {"mm/s^2"});
+        conf[util::toString("selAccel",coords[i])]=selAccel[i];
         slayout->addWidget(selVeloc[i]);
         slayout->addWidget(selAccel[i]);
         connect(selVeloc[i], qOverload<>(&val_selector::changed), [=]{this->updateXPSVelAcc(i);});

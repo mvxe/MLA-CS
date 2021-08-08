@@ -5,35 +5,46 @@
 #include "UTIL/pipe.h"
 #include <QString>
 
-tabCamGnuplot::tabCamGnuplot(checkbox_save* showAbsHeight): showAbsHeight(showAbsHeight){
+tabCamGnuplot::tabCamGnuplot(checkbox_gs* showAbsHeight): showAbsHeight(showAbsHeight){
     layout=new QVBoxLayout;
     this->setLayout(layout);
 
     layout->addWidget(new QLabel("2D plot:"));
-    ticsFontSize=new val_selector(10, "tabCamGnuplot_ticsFontSize", "Tics Font Size: ", 1, 100, 1);
+    ticsFontSize=new val_selector(10, "Tics Font Size: ", 1, 100, 1);
+    conf["ticsFontSize"]=ticsFontSize;
     layout->addWidget(ticsFontSize);
-    xyLabelFontSize=new val_selector(10, "tabCamGnuplot_xyLabelFontSize", "XY Label Font Size: ", 1, 100, 1);
+    xyLabelFontSize=new val_selector(10, "XY Label Font Size: ", 1, 100, 1);
+    conf["xyLabelFontSize"]=xyLabelFontSize;
     layout->addWidget(xyLabelFontSize);
-    lpColor=new val_selector(3, "tabCamGnuplot_lpColor", "Line/Point Color: ", -1, 7, 0);
+    lpColor=new val_selector(3, "Line/Point Color: ", -1, 7, 0);
+    conf["lpColor"]=lpColor;
     layout->addWidget(lpColor);
-    lineWidth=new val_selector(1, "tabCamGnuplot_lineWidth", "Line Width: ", 0.1, 10, 1);
+    lineWidth=new val_selector(1, "Line Width: ", 0.1, 10, 1);
+    conf["lineWidth"]=lineWidth;
     layout->addWidget(lineWidth);
-    pointSize=new val_selector(1, "tabCamGnuplot_pointSize", "Point Size: ", 0.1, 20, 1);
+    pointSize=new val_selector(1, "Point Size: ", 0.1, 20, 1);
+    conf["pointSize"]=pointSize;
     layout->addWidget(pointSize);
-    pointType=new val_selector(6, "tabCamGnuplot_pointType", "Point Type: ", 0, 15, 0);
+    pointType=new val_selector(6, "Point Type: ", 0, 15, 0);
+    conf["pointType"]=pointType;
     layout->addWidget(pointType);
 
     layout->addWidget(new hline);
     layout->addWidget(new QLabel("3D plot:"));
-    d3ticsFontSize=new val_selector(10, "tabCamGnuplot_d3ticsFontSize", "Tics Font Size: ", 1, 100, 1);
+    d3ticsFontSize=new val_selector(10, "Tics Font Size: ", 1, 100, 1);
+    conf["d3ticsFontSize"]=d3ticsFontSize;
     layout->addWidget(d3ticsFontSize);
-    d3xyzLabelFontSize=new val_selector(10, "tabCamGnuplot_d3xyzLabelFontSize", "XYZ Label Font Size: ", 1, 100, 1);
+    d3xyzLabelFontSize=new val_selector(10, "XYZ Label Font Size: ", 1, 100, 1);
+    conf["d3xyzLabelFontSize"]=d3xyzLabelFontSize;
     layout->addWidget(d3xyzLabelFontSize);
-    d3paletteR=new val_selector( 7, "tabCamGnuplot_d3paletteR", "RGB Formula Palette R: ", -36, 36, 0);
+    d3paletteR=new val_selector( 7, "RGB Formula Palette R: ", -36, 36, 0);
+    conf["d3paletteR"]=d3paletteR;
     layout->addWidget(d3paletteR);
-    d3paletteG=new val_selector( 5, "tabCamGnuplot_d3paletteG", "RGB Formula Palette G: ", -36, 36, 0);
+    d3paletteG=new val_selector( 5, "RGB Formula Palette G: ", -36, 36, 0);
+    conf["d3paletteG"]=d3paletteG;
     layout->addWidget(d3paletteG);
-    d3paletteB=new val_selector(15, "tabCamGnuplot_d3paletteB", "RGB Formula Palette B: ", -36, 36, 0);
+    d3paletteB=new val_selector(15, "RGB Formula Palette B: ", -36, 36, 0);
+    conf["d3paletteB"]=d3paletteB;
     layout->addWidget(d3paletteB);
     std::string tooltip=util::toString( "Palette RGB values: \n",
                                         "7,5,15   ... traditional pm3d (black-blue-red-yellow)\n",
@@ -48,11 +59,14 @@ tabCamGnuplot::tabCamGnuplot(checkbox_save* showAbsHeight): showAbsHeight(showAb
     d3paletteR->setToolTip(QString::fromStdString(tooltip));
     d3paletteG->setToolTip(QString::fromStdString(tooltip));
     d3paletteB->setToolTip(QString::fromStdString(tooltip));
-    viewZoom=new val_selector(1, "tabCamGnuplot_viewZoom", "View Zoom: ", 0.1, 5, 2);
+    viewZoom=new val_selector(1, "View Zoom: ", 0.1, 5, 2);
+    conf["viewZoom"]=viewZoom;
     layout->addWidget(viewZoom);
-    scaleZ=new val_selector(1, "tabCamGnuplot_scaleZ", "Scale Z: ", 0.01, 10, 3);
+    scaleZ=new val_selector(1, "Scale Z: ", 0.01, 10, 3);
+    conf["scaleZ"]=scaleZ;
     layout->addWidget(scaleZ);
-    equalizeXYZ=new checkbox_save(false,"tabCamGnuplot_equalizeXYZ","Equalize XYZ");
+    equalizeXYZ=new checkbox_gs(false,"Equalize XYZ");
+    conf["equalizeXYZ"]=equalizeXYZ;
     layout->addWidget(equalizeXYZ);
 }
 

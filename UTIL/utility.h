@@ -2,25 +2,27 @@
 #define UTILITY_H
 
 #include <string>
+#include <sstream>
+#include <atomic>
 
 class util{
 public:
     template<typename... Args>
-    static std::string toString(Args... args);
+    static std::string toString(Args&&... args);
 private:
     template <typename T>
-    static std::string _toString(std::stringstream* strm, T value);
+    static std::string _toString(std::stringstream* strm, T&& value);
     template<typename T, typename... Args>
-    static std::string _toString(std::stringstream* strm, T value, Args... args);
+    static std::string _toString(std::stringstream* strm, T&& value, Args&&... args);
 
 public:
     template<typename... Args>
-    static std::string toCmdString(Args... args);
+    static std::string toCmdString(Args&&... args);
 private:
     template <typename T>
-    static std::string _toCmdString(std::stringstream* strm, T value);
+    static std::string _toCmdString(std::stringstream* strm, T&& value);
     template<typename T, typename... Args>
-    static std::string _toCmdString(std::stringstream* strm, T value, Args... args);
+    static std::string _toCmdString(std::stringstream* strm, T&& value, Args&&... args);
 
 public:
     class doTimes{      //doIt() returns false N times and then true
@@ -44,12 +46,12 @@ public:
 
 
 template<typename... Args>
-std::string util::toString(Args... args){
+std::string util::toString(Args&&... args){
     std::stringstream* nstrm=new std::stringstream();
     return _toString(nstrm, args...);
 }
 template <typename T>
-std::string util::_toString(std::stringstream* strm, T value){
+std::string util::_toString(std::stringstream* strm, T&& value){
     *strm<<value;
     std::string ret=strm->str();
     strm->str("");
@@ -58,19 +60,18 @@ std::string util::_toString(std::stringstream* strm, T value){
     return ret;
 }
 template<typename T, typename... Args>
-std::string util::_toString(std::stringstream* strm, T value, Args... args){
+std::string util::_toString(std::stringstream* strm, T&& value, Args&&... args){
     *strm<<value;
     return _toString(strm, args...);
 }
 
-
 template<typename... Args>
-std::string util::toCmdString(Args... args){
+std::string util::toCmdString(Args&&... args){
     std::stringstream* nstrm=new std::stringstream();
     return _toCmdString(nstrm, args...);
 }
 template <typename T>
-std::string util::_toCmdString(std::stringstream* strm, T value){
+std::string util::_toCmdString(std::stringstream* strm, T&& value){
     if(!strm->str().empty()) *strm<<value<<")";
     else *strm<<value<<"()";
     std::string ret=strm->str();
@@ -80,7 +81,7 @@ std::string util::_toCmdString(std::stringstream* strm, T value){
     return ret;
 }
 template<typename T, typename... Args>
-std::string util::_toCmdString(std::stringstream* strm, T value, Args... args){
+std::string util::_toCmdString(std::stringstream* strm, T&& value, Args&&... args){
     if(!strm->str().empty()) *strm<<value<<",";
     else *strm<<value<<"(";
     return _toCmdString(strm, args...);
