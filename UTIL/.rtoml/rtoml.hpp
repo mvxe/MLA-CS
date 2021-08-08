@@ -39,6 +39,7 @@ namespace rtoml{
                 public:
                     void virtual save(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& dst){}
                     void virtual load(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& src){}
+                    bool virtual changed(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& src){}
             };
             template <typename T> class _Var : public _BVar{
                 public:
@@ -53,6 +54,11 @@ namespace rtoml{
                         if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value) *var=toml::get<T>(src);
                         else if constexpr(std::is_pointer<T>::value) (*var)->set(toml::get<decltype((*var)->get())>(src));  // if it's a pointer to a class with get()/set()
                         else var->set(toml::get<decltype(var->get())>(src));                                                // if it's a class with get()/set()
+                    }
+                    bool changed(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& src){
+                        if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value) return (*var!=toml::get<T>(src));
+                        else if constexpr(std::is_pointer<T>::value) return ((*var)->get()!=toml::get<decltype((*var)->get())>(src));
+                        else return (var->get()!=toml::get<decltype(var->get())>(src));
                     }
             };
             _BVar* var{nullptr};
@@ -84,10 +90,18 @@ namespace rtoml{
                         try {val._loadFromToml(toml::find(data,key), trip);}
                         catch(std::exception& e){if(trip)throw;}
                     }
-
                 }else{                                      // initialized as a variable - load it
                     var->load(data);
                 }
+            }
+            bool _checkFromToml(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& data){
+                if(map!=nullptr){                           // initialized as a map - call check of all entries
+                    for(auto& [key, val]:*map){
+                        try {if(val._checkFromToml(toml::find(data,key))) return true;}
+                        catch(std::exception& e){return true;}      // does not exist, return true
+                    }
+                    return false;
+                }else return var->changed(data);            // initialized as a variable - check it
             }
             std::string format(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& data){   // fixes indentation, removes empty comments (needed to prevent inline)
                 std::string str = toml::format(data,80,10);                                           // tsl::ordered_map preserves insertion order
@@ -214,11 +228,8 @@ namespace rtoml{
                                                             // if confFilename is specified, it overrides the filename
                 if(map==nullptr && var==nullptr)            // not initialized
                     throw std::invalid_argument("Error in vsr.save() with key "+_debug_getFullKeyString()+": trying to save an entry that was not initialized.");
-                bool depth=false;
-                if(confFilename.empty()){
+                if(confFilename.empty())
                     confFilename=this->getConfFilename();
-                    depth=true;
-                }
                 if(confFilename.empty())
                     throw std::invalid_argument("Error in vsr.save() with key "+_debug_getFullKeyString()+": the confFilename was not provided.");
 
@@ -226,7 +237,7 @@ namespace rtoml{
                 try{ data = toml::parse<toml::preserve_comments, tsl::ordered_map>(confFilename); }  // read configuration
                 catch(std::runtime_error e){}               // if it doesn't exist, just ignore
 
-                _saveToToml(depth?_getSubTomlTable(data):data, clear);
+                _saveToToml(_getSubTomlTable(data), clear);
 
                 std::ofstream saveFile;
                 saveFile.open(confFilename);
@@ -240,11 +251,8 @@ namespace rtoml{
                                                             // if confFilename is specified, it overrides the filename
                 if(map==nullptr && var==nullptr)            // not initialized
                     throw std::invalid_argument("Error in vsr.load() with key "+_debug_getFullKeyString()+": trying to load an entry that was not initialized.");
-                bool depth=false;
-                if(confFilename.empty()){
+                if(confFilename.empty())
                     confFilename=this->getConfFilename();
-                    depth=true;
-                }
                 if(confFilename.empty())
                     throw std::invalid_argument("Error in vsr.load() with key "+_debug_getFullKeyString()+": the confFilename was not provided.");
 
@@ -252,7 +260,24 @@ namespace rtoml{
                 try {data = toml::parse<toml::preserve_comments, tsl::ordered_map>(confFilename);}
                 catch(std::exception& e){if(trip)throw;}
 
-                _loadFromToml(depth?_getSubTomlTable(data):data, trip);
+                _loadFromToml(_getSubTomlTable(data), trip);
+            }
+            bool changed(std::string confFilename=""){
+                                                            // returns true if at least one of the entries in the file differs from data in the map, or is missing
+                                                            // useful for save prompts
+                                                            // if confFilename is specified, it overrides the filename
+                if(map==nullptr && var==nullptr)            // not initialized
+                    throw std::invalid_argument("Error in vsr.hasChanged() with key "+_debug_getFullKeyString()+": trying to check an entry that was not initialized.");
+                if(confFilename.empty())
+                    confFilename=this->getConfFilename();
+                if(confFilename.empty())
+                    throw std::invalid_argument("Error in vsr.hasChanged() with key "+_debug_getFullKeyString()+": the confFilename was not provided.");
+
+                toml::basic_value<toml::preserve_comments, tsl::ordered_map> data;
+                try {data = toml::parse<toml::preserve_comments, tsl::ordered_map>(confFilename);}
+                catch(std::exception& e){return true;}      // the file does not exist - return true
+
+                return _checkFromToml(_getSubTomlTable(data));
             }
     };
 }
