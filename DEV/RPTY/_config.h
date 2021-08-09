@@ -8,6 +8,11 @@ protected:
         conf["RPTY_ip"]=IP;
         conf["RPTY_port"]=port;
         conf["RPTY_keepalive"]=keepalive;
+
+//        conf["main_command_queue"]=main_cq;
+//        conf["helper_command_queue"]=helper_cq;
+//        conf["analysis_command_queue"]=analysis_cq;
+//        conf["main_acquisition_queue"]=main_aq;
     }
     std::mutex smx;
 public:
@@ -17,6 +22,10 @@ public:
     tsvar_port port{&smx, 32};
     tsvar<unsigned> keepalive{&smx, 500};                   //keepalive and connect timeout, in ms
 
+//    std::atomic<unsigned> main_cq{0};                       // main command queue
+//    std::atomic<unsigned> helper_cq{1};
+//    std::atomic<unsigned> analysis_cq{2};
+//    std::atomic<unsigned> main_aq{0};                       // main acquisition queue
 };
 
 #endif // _CONFIG_RPTY_H
