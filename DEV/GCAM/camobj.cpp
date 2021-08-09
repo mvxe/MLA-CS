@@ -133,11 +133,11 @@ void camobj::end(){
     if(dev!=NULL) dev=NULL;   //no unref here because unrefing cam seams to unref dev too, but it doesnt set it to NULL
     ID="none";
     while(!FreeBuffers.empty()){
-        delete FullBuffers.front();
+        g_clear_object(&FullBuffers.front());
         FreeBuffers.pop();
     }
     while(!FullBuffers.empty()){
-        delete FullBuffers.front();
+        g_clear_object(&FullBuffers.front());
         FullBuffers.pop_front();
     }
 }
