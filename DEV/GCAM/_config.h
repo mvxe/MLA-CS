@@ -46,7 +46,7 @@ public:
 class camobj_config{
 protected:
     camobj_config(std::string name):name(name){
-        conf[util::toString(name,"_expo")]=expo;
+        conf["exposure_time"]=expo;
     }
 
     std::mutex comx;

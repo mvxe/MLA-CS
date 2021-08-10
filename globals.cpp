@@ -75,7 +75,7 @@ void globals::killThread(base_othr*& thro){
 void globals::cleanup(){
     if (!go_mx.try_lock()) return;
     std::cout<<"Saving conf...\n";
-    conf.save();
+    if(conf.changed()) conf.save();
 
     std::cout<<"Sending end signals to all threads...\n";
 

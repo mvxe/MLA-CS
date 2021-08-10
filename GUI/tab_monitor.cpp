@@ -162,7 +162,7 @@ tab_monitor::tab_monitor(QWidget *parent){
 }
 
 tab_monitor::~tab_monitor(){
-    conf.save();    //TODO remove
+    if(conf.changed()) conf.save();    //TODO remove
 }
 
 

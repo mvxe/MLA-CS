@@ -1,7 +1,7 @@
 #include "DEV/GCAM/gcam.h"
 
 camobj::camobj(std::string strID) : camobj_config(strID), selected_ID(&mkmx,strID){
-    conf[strID]=selected_ID;
+    conf["selected_ID"]=selected_ID;
 }
 GCAM *camobj::cobj;
 

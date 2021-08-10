@@ -33,6 +33,8 @@
 #include ".toml/toml.hpp"
 
 namespace rtoml{
+    template<typename>   struct is_atomic                 : std::false_type {};
+    template<typename T> struct is_atomic<std::atomic<T>> : std::true_type  {};
     class vsr{
         private:
             class _BVar{
@@ -46,19 +48,37 @@ namespace rtoml{
                     T* var;
                     _Var(T& ovar): var(&ovar){}
                     void save(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& dst){
-                        if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value) dst=*var;
-                        else if constexpr(std::is_pointer<T>::value) dst=(*var)->get();
-                        else dst=var->get();
+                        if constexpr(!std::is_pointer<T>::value){
+                            if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value) dst=*var;
+                            else if constexpr(rtoml::is_atomic<T>::value) dst=var->load();
+                            else dst=var->get();
+                        }else{
+                            if constexpr(std::is_arithmetic<T*>::value || std::is_same<T*, std::string>::value) dst=**var;
+                            else if constexpr(rtoml::is_atomic<T*>::value) dst=(*var)->load();
+                            else dst=(*var)->get();
+                        }
                     }
                     void load(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& src){
-                        if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value) *var=toml::get<T>(src);
-                        else if constexpr(std::is_pointer<T>::value) (*var)->set(toml::get<decltype((*var)->get())>(src));  // if it's a pointer to a class with get()/set()
-                        else var->set(toml::get<decltype(var->get())>(src));                                                // if it's a class with get()/set()
+                        if constexpr(!std::is_pointer<T>::value){
+                            if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value) *var=toml::get<T>(src);
+                            else if constexpr(rtoml::is_atomic<T>::value) var->store(toml::get<decltype(var->load())>(src));
+                            else var->set(toml::get<decltype(var->get())>(src));
+                        }else{
+                            if constexpr(std::is_arithmetic<T*>::value || std::is_same<T*, std::string>::value) **var=toml::get<T>(src);
+                            else if constexpr(rtoml::is_atomic<T*>::value) (*var)->store(toml::get<decltype((*var)->load())>(src));
+                            else (*var)->set(toml::get<decltype((*var)->get())>(src));
+                        }
                     }
                     bool changed(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& src){
-                        if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value) return (*var!=toml::get<T>(src));
-                        else if constexpr(std::is_pointer<T>::value) return ((*var)->get()!=toml::get<decltype((*var)->get())>(src));
-                        else return (var->get()!=toml::get<decltype(var->get())>(src));
+                        if constexpr(!std::is_pointer<T>::value){
+                            if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value) return *var!=toml::get<T>(src);
+                            else if constexpr(rtoml::is_atomic<T>::value) return var->load()!=toml::get<decltype(var->load())>(src);
+                            else return var->get()!=toml::get<decltype(var->get())>(src);
+                        }else{
+                            if constexpr(std::is_arithmetic<T*>::value || std::is_same<T*, std::string>::value) return **var!=toml::get<T>(src);
+                            else if constexpr(rtoml::is_atomic<T*>::value) return (*var)->load()!=toml::get<decltype((*var)->load())>(src);
+                            else return (*var)->get()!=toml::get<decltype((*var)->get())>(src);
+                        }
                     }
             };
             _BVar* var{nullptr};
