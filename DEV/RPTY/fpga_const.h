@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdexcept>
 #ifndef FPGACONST_H
 #define FPGACONST_H
 
@@ -57,6 +58,7 @@ public:
         static inline uint32_t W4TRIG_GPIO (bool level, bool AND, uint8_t N, uint8_t P, bool getTrigTime=false);
         static inline uint32_t W4TRIG_FLAGS_LOCAL (bool level, bool AND, uint16_t mask, bool getTrigTime=false);
         static inline uint32_t W4TRIG_FLAGS_SHARED (bool level, bool AND, uint16_t mask, bool getTrigTime=false);
+        static inline uint32_t W4TRIG_MIN_IN_QUEUE (uint32_t number);
         // W4TRIG_ADC_S ( 2<<24)
         //static uint32_t W4TRIG_ADC_S ();  TODO
         // W4TRIG_ADC_F ( 3<<24)
@@ -64,6 +66,7 @@ public:
         static inline uint32_t IF_GPIO (bool level, bool AND, uint8_t N, uint8_t P, bool getTrigTime=false);
         static inline uint32_t IF_FLAGS_LOCAL (bool level, bool AND, uint16_t mask, bool getTrigTime=false);
         static inline uint32_t IF_FLAGS_SHARED (bool level, bool AND, uint16_t mask, bool getTrigTime=false);
+        static inline uint32_t IF_MIN_IN_QUEUE (uint32_t number);
         static inline uint32_t END ();
     // WAIT ( 3<<28)
     static inline uint32_t WAIT (unsigned time);
@@ -123,7 +126,7 @@ inline uint32_t CQF::W4TRIG_INTR (){
     return (uint32_t)( (2<<28)|(0<<24) );
 }
 inline uint32_t CQF::W4TRIG_GPIO (bool level, bool AND, uint8_t N, uint8_t P, bool getTrigTime){
-    return (uint32_t)( (2<<28)|(1<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)N<<8)|((uint32_t)P) );
+    return (uint32_t)( (2<<28)|(8<<24)|(((uint32_t)level)<<17)|((uint32_t)AND<<16)|((uint32_t)getTrigTime<<23)|((uint32_t)N<<8)|((uint32_t)P) );
 }       //level is LOW(0) or HIGH(1)
         //AND, if true, all pins must change as specified, if false, OR is used instead
         //N and P are 8 bit masks
@@ -131,24 +134,36 @@ inline uint32_t CQF::W4TRIG_GPIO (bool level, bool AND, uint8_t N, uint8_t P, bo
         //  this could be useful against noise. Note that for rise/fall triggers, the trigger changes into high/low after the first transition.
         //  commands other than CQF::WAIT will be ignored
 inline uint32_t CQF::W4TRIG_FLAGS_LOCAL (bool level, bool AND, uint16_t mask, bool getTrigTime){
-    return (uint32_t)( (2<<28)|(4<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)mask) );
+    return (uint32_t)( (2<<28)|(9<<24)|(((uint32_t)level)<<17)|((uint32_t)AND<<16)|((uint32_t)getTrigTime<<23)|((uint32_t)mask) );
 }
 inline uint32_t CQF::W4TRIG_FLAGS_SHARED (bool level, bool AND, uint16_t mask, bool getTrigTime){
-    return (uint32_t)( (2<<28)|(5<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)mask) );
+    return (uint32_t)( (2<<28)|(10<<24)|(((uint32_t)level)<<17)|((uint32_t)AND<<16)|((uint32_t)getTrigTime<<23)|((uint32_t)mask) );
+}
+inline uint32_t CQF::W4TRIG_MIN_IN_QUEUE (uint32_t number){
+    if(number>=(1<<24))
+        throw std::invalid_argument("Error in CQF::W4TRIG_MIN_IN_QUEUE: paramater 1 (number) too large (24bit unsigned).");
+    return (uint32_t)( (2<<28)|(1<<24)|(number) );
 }
 inline uint32_t CQF::IF_GPIO (bool level, bool AND, uint8_t N, uint8_t P, bool getTrigTime){
-    return (uint32_t)( (14<<28)|(1<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)N<<8)|((uint32_t)P) );
+    return (uint32_t)( (14<<28)|(8<<24)|(((uint32_t)level)<<17)|((uint32_t)AND<<16)|((uint32_t)getTrigTime<<23)|((uint32_t)N<<8)|((uint32_t)P) );
 }       //same as above, except nonblocking (if condition is false, it skips everything up to the assocciated END, nesting is possible (up to 256))
 inline uint32_t CQF::IF_FLAGS_LOCAL (bool level, bool AND, uint16_t mask, bool getTrigTime){
-    return (uint32_t)( (14<<28)|(4<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)mask) );
+    return (uint32_t)( (14<<28)|(9<<24)|(((uint32_t)level)<<17)|((uint32_t)AND<<16)|((uint32_t)getTrigTime<<23)|((uint32_t)mask) );
 }
 inline uint32_t CQF::IF_FLAGS_SHARED (bool level, bool AND, uint16_t mask, bool getTrigTime){
-    return (uint32_t)( (14<<28)|(5<<24)|(((uint32_t)level)<<22)|((uint32_t)AND<<21)|((uint32_t)getTrigTime<<20)|((uint32_t)mask) );
+    return (uint32_t)( (14<<28)|(10<<24)|(((uint32_t)level)<<17)|((uint32_t)AND<<16)|((uint32_t)getTrigTime<<23)|((uint32_t)mask) );
+}
+inline uint32_t CQF::IF_MIN_IN_QUEUE (uint32_t number){
+    if(number>=(1<<24))
+        throw std::invalid_argument("Error in CQF::IF_MIN_IN_QUEUE: paramater 1 (number) too large (24bit unsigned).");
+    return (uint32_t)( (14<<28)|(1<<24)|(number) );
 }
 inline uint32_t CQF::END (){
     return (uint32_t)(15<<28);
 }       //extra ENDs are ignored
 inline uint32_t CQF::WAIT (unsigned time){
+    if(time>=(1<<28))
+        throw std::invalid_argument("Error in CQF::WAIT: paramater 1 (time) too large (28bit unsigned).");
     return (uint32_t)( (3<<28)|time );
 }       //time is a 28 bit unsigned number (num of clock cycles to wait), NOTE 0 does the same as 1
 inline uint32_t CQF::SG_SAMPLE (SGCHANNELS channels, int ch0val, int ch1val_or_time){
