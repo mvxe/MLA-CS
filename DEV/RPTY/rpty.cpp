@@ -38,7 +38,7 @@ void RPTY::run(){
     }
 }
 
-int RPTY::F2A_read(unsigned char queue, uint32_t *data, uint32_t size4){
+int RPTY::F2A_read(uint8_t queue, uint32_t *data, uint32_t size4){
     uint32_t command[3]={0,queue,size4};
     TCP_con::write(command,12);
     uint32_t index_read=0;
@@ -50,12 +50,12 @@ int RPTY::F2A_read(unsigned char queue, uint32_t *data, uint32_t size4){
     }
     return index_read;  //allways should =size4 else infinite loop, TODO fix maybe?
 }
-int RPTY::A2F_write(unsigned char queue, uint32_t *data, uint32_t size4){
+int RPTY::A2F_write(uint8_t queue, uint32_t *data, uint32_t size4){
     uint32_t command[3]={1,queue,size4};
     TCP_con::write(command,12);
     return TCP_con::write(data,4*size4);
 }
-int RPTY::getNum(getNumType statID, unsigned char queue){
+int RPTY::getNum(getNumType statID, uint8_t queue){
     uint32_t command[2]={2,queue};
     command[0]+=(int)statID;
     TCP_con::write(command,8);
@@ -64,11 +64,11 @@ int RPTY::getNum(getNumType statID, unsigned char queue){
     while (nret<4);
     return ret;
 }
-int RPTY::A2F_trig(unsigned char queue){
+int RPTY::A2F_trig(uint8_t queue){
     uint32_t command[2]={8,(uint32_t)(queue)};
     return TCP_con::write(command,8);
 }
-int RPTY::FIFOreset(unsigned char A2Fqueues, unsigned char F2Aqueues){
+int RPTY::FIFOreset(uint8_t A2Fqueues, uint8_t F2Aqueues){
     uint32_t command[2]={9,(uint32_t)((A2Fqueues&0xF)&((F2Aqueues&0xF)<<4))};
     return TCP_con::write(command,8);
 }
@@ -76,7 +76,7 @@ int RPTY::FIFOreset(){
     uint32_t command[2]={9,0x100};
     return TCP_con::write(command,8);
 }
-int RPTY::PIDreset(unsigned char PIDN){
+int RPTY::PIDreset(uint8_t PIDN){
     uint32_t command[2]={100,(uint32_t)(PIDN&0x3)};
     return TCP_con::write(command,8);
 }
@@ -84,7 +84,7 @@ int RPTY::PIDreset(){
     uint32_t command[2]={100,0x4};
     return TCP_con::write(command,8);
 }
-int RPTY::A2F_loop(unsigned char queue, bool loop){
+int RPTY::A2F_loop(uint8_t queue, bool loop){
     uint32_t command[2]={10,(uint32_t)(queue)|(loop?0x10000:0)};
     return TCP_con::write(command,8);
 }

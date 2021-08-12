@@ -11,8 +11,8 @@ protected:
 
         conf["main_command_queue"]=main_cq;
         conf["helper_command_queue"]=helper_cq;
-        conf["analysis_command_queue"]=analysis_cq;
         conf["main_acquisition_queue"]=main_aq;
+        conf["serial_acquisition_queue"]=serial_aq;
     }
     std::mutex smx;
 public:
@@ -24,8 +24,8 @@ public:
 
     std::atomic<unsigned> main_cq{0};                       // main command queue
     std::atomic<unsigned> helper_cq{1};
-    std::atomic<unsigned> analysis_cq{2};
     std::atomic<unsigned> main_aq{0};                       // main acquisition queue
+    std::atomic<unsigned> serial_aq{1};                     // serial acquisition queue
 };
 
 #endif // _CONFIG_RPTY_H
