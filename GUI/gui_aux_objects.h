@@ -158,7 +158,7 @@ class checkbox_gs : public QCheckBox{
 public:
     checkbox_gs(bool initialState, QString label);
     const std::atomic<bool>& val{value};    // thread safe
-    void setValue(bool nvalue);             // not thread safe
+    void setValue(bool nvalue);             // thread safe
 
     void set(bool nvalue);          // thread safe, for toml::vsr
     bool get();                     // thread safe, for toml::vsr
