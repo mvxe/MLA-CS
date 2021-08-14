@@ -97,10 +97,15 @@ namespace rtoml{
             void _saveToToml(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& data, bool clear){
                 data.comments()=comments;
                 if(map!=nullptr){                           // initialized as a map - call save of all entries
+                    if(map->empty()) return;
                     if(clear) data=toml::basic_value<toml::preserve_comments, tsl::ordered_map>();
                     if(map->size()==1) for(auto& [key, val]:*map) if((*map)[key].comments.empty()) (*map)[key].comments.push_back("");  // prevent inline
-                    for(auto& [key, val]:*map) val._saveToToml(data[key], clear);
-                }else{                                      // initialized as a variable - save it
+                    for(auto& [key, val]:*map){
+                        if(val.map!=nullptr) if(val.map->empty()) continue;
+                        if(val.map!=nullptr || val.var!=nullptr)
+                            val._saveToToml(data[key], clear);
+                    }
+                }else if(var!=nullptr){                                      // initialized as a variable - save it
                     var->save(data);
                 }
             }
@@ -118,7 +123,10 @@ namespace rtoml{
                 if(map!=nullptr){                           // initialized as a map - call check of all entries
                     for(auto& [key, val]:*map){
                         try {if(val._checkFromToml(toml::find(data,key))) return true;}
-                        catch(std::exception& e){return true;}      // does not exist, return true
+                        catch(std::exception& e){           // var does not exist, return true (we dont care about empty maps)
+                            if(val.var!=nullptr) return true;
+                            if(val.map!=nullptr) if(!val.map->empty())  return true;
+                        }
                     }
                     return false;
                 }else return var->changed(data);            // initialized as a variable - check it
@@ -248,6 +256,8 @@ namespace rtoml{
                                                             // if confFilename is specified, it overrides the filename
                 if(map==nullptr && var==nullptr)            // not initialized
                     throw std::invalid_argument("Error in vsr.save() with key "+_debug_getFullKeyString()+": trying to save an entry that was not initialized.");
+                if(map!=nullptr && var==nullptr) if(map->empty())
+                    throw std::invalid_argument("Error in vsr.save() with key "+_debug_getFullKeyString()+": trying to save an empty map.");
                 if(confFilename.empty())
                     confFilename=this->getConfFilename();
                 if(confFilename.empty())

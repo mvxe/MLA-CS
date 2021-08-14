@@ -48,6 +48,10 @@ INCLUDEPATH += /usr/include/glib-2.0 \
 QT += charts
 
 HEADERS += \
+    DEV/RPTY/motionDevices/pinexactstage.h \
+    DEV/RPTY/motionDevices/simpleservo.h \
+    DEV/RPTY/rpbbserial.h \
+    DEV/RPTY/rpmotion.h \
     DEV/XPS/xps.h \
     UTIL/.rtoml/rtoml.hpp \
     includes.h \
@@ -111,6 +115,10 @@ HEADERS += \
     PROCEDURES/UTIL/WRT/predictor.h
 
 SOURCES += \
+    DEV/RPTY/motionDevices/pinexactstage.cpp \
+    DEV/RPTY/motionDevices/simpleservo.cpp \
+    DEV/RPTY/rpbbserial.cpp \
+    DEV/RPTY/rpmotion.cpp \
     DEV/XPS/xps.cpp \
     main.cpp \
     globals.cpp \
