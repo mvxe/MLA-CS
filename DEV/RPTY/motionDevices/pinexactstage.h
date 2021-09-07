@@ -35,8 +35,11 @@ public:
 
 private:
     void home(std::vector<uint32_t>& commands);
+    void _readTillCharReadyAck(unsigned num=0, char breakChar='\n');
     void _readTillChar(std::string& readStr);
     void _modesetAltNs(std::vector<uint32_t>& cq, bool alternating);
+    void _wait4rdy();
+    void _wait4rdy(std::vector<uint32_t> &commands, uint16_t __FLAG_SHARED);
 };
 
 #endif // PINEXACTSTAGE_H

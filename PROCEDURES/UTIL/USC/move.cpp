@@ -142,7 +142,7 @@ void pgMoveGUI::scaledMoveY(double magnitude){move(0,magnitude*xMoveScale->val/1
 void pgMoveGUI::scaledMoveZ(double magnitude){move(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val),0);}
 void pgMoveGUI::scaledMoveF(double magnitude){move(0,0,0,magnitude*fMoveScale->val/1000*pow(10,mpow->val));}
 void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov, bool forceSkewCorrection){
-    if(!go.pXPS->connected) return;
+    //if(!go.pXPS->connected) return;
     double _Xmov=Xmov;
     double _Ymov=Ymov;
     if(skewCorrection->val || forceSkewCorrection){
@@ -152,7 +152,15 @@ void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov, bool fo
 
     double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;    //this correction should change with skewCorrection, but implementing that would be annoying (dont want to add more configuration) and its negligible anyway, just recalibrate autoadjXZ,YZ with skewCorrection if its a problem
     double _Fmov=Fmov-_Zmov;
-    go.pXPS->MoveRelative(XPS::mgroup_XYZF,_Xmov,_Ymov,_Zmov,_Fmov);
+    //go.pXPS->MoveRelative(XPS::mgroup_XYZF,_Xmov,_Ymov,_Zmov,_Fmov);
+    movEv movX{"X",_Xmov};
+    movEv movY{"Y",_Ymov};
+    movEv movZ{"Z",_Zmov};
+    std::cerr<<"moving "<<_Xmov<<" "<<_Ymov<<"\n";
+    //if(_Xmov!=0)
+        go.pRPTY->motion(movX);     //TODO fix multiple moves
+    //if(_Ymov!=0)
+        go.pRPTY->motion(movY);
 }
 
 void pgMoveGUI::corPvt(PVTobj* po, double time, double Xmov, double Xspd, double Ymov, double Yspd, double Zmov, double Zspd, double Fmov, double Fspd, bool forceSkewCorrection){

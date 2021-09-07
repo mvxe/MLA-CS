@@ -18,6 +18,7 @@ bool tsvar<T>::set(T nvar){
 template <typename T>
 T tsvar<T>::get(){
     std::lock_guard<std::mutex>lock(*mx);
+    change=false;   // TODO remove, left for backward compat
     return var;
 }
 template <typename T>

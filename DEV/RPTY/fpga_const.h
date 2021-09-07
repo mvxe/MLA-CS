@@ -58,7 +58,7 @@ public:
         static inline uint32_t W4TRIG_GPIO (bool level, bool AND, uint8_t N, uint8_t P, bool getTrigTime=false);
         static inline uint32_t W4TRIG_FLAGS_LOCAL (bool level, bool AND, uint16_t mask, bool getTrigTime=false);
         static inline uint32_t W4TRIG_FLAGS_SHARED (bool level, bool AND, uint16_t mask, bool getTrigTime=false);
-        static inline uint32_t W4TRIG_MIN_IN_QUEUE (uint32_t number);
+        static inline uint32_t W4TRIG_MIN_IN_QUEUE (uint32_t number);   // this command counts as an element too!
         // W4TRIG_ADC_S ( 2<<24)
         //static uint32_t W4TRIG_ADC_S ();  TODO
         // W4TRIG_ADC_F ( 3<<24)

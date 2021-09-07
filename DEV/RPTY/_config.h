@@ -31,6 +31,7 @@ namespace nRPTY {
         double position;                                    // the absolute motion position, in mm, (used if displacement==0)
         double velocity=0;                                  // velocity override if >0, otherwise default velocity will be used (note: overrides to not persist)
         double acceleration=0;                              // acceleration override if >0, otherwise default acceleration will be used
+        bool relative_move=false;                           // if true, the move is relative rather than absolute
         bool addDelay=false;                                // if true, a WAIT will be added to the queue, with duration equal to expected motion time (if no feedback)
         bool optimize=true;                                 // used for some devices, see specific implementations
     };
@@ -61,7 +62,7 @@ public:
 
     unsigned main_cq{0};                        // main command queue
     unsigned helper_cq{1};
-    unsigned serial_cq{1};                      // serial command queue (for acquisition)
+    unsigned serial_cq{2};                      // serial command queue (for acquisition)
     unsigned main_aq{0};                        // main acquisition queue
     unsigned serial_aq{1};                      // serial acquisition queue
 

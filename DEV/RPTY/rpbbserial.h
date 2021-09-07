@@ -14,18 +14,23 @@ private:
 protected:
     bool inited_o=false;
     bool inited_i=false;
-    uint8_t  gpioN_o, gpioP_o;
-    uint8_t  gpioN_i, gpioP_i;
+    uint8_t  _gpioN_o, _gpioP_o;
+    uint8_t  _gpioN_i, _gpioP_i;
     double _clock;
     double baudrate;
     double stopbits;
-    uint32_t cyclesPerBit;
+    uint32_t _cyclesPerBit;
     uint32_t cyclesPerStopBit;
 
     rtoml::vsr conf;
 
 public:
-    const uint32_t& clock{clock};
+    const uint8_t& gpioN_o{_gpioN_o};
+    const uint8_t& gpioP_o{_gpioP_o};
+    const uint8_t& gpioN_i{_gpioN_i};
+    const uint8_t& gpioP_i{_gpioP_i};
+    const uint32_t& cyclesPerBit{_cyclesPerBit};
+    const double& clock{_clock};
     RPBBSerial();
     void serial_init(std::vector<uint32_t> &commands, int8_t gpio_o, int8_t gpio_i=-1, double baudrate = 115200, double clock = 125000000, double stopbits=1);         // initialize serial
                                                                                         // gpio pin for serial, N (0-7), P (8-15), disabled (-1) (you can disable either input or output if not needed)

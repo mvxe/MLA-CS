@@ -12,8 +12,10 @@ RPTY::~RPTY(){
 
 void RPTY::run(){
     std::string tmp;
+    std::this_thread::sleep_for (std::chrono::seconds(1));  //TODO remove
     for (;;){
         while (!connected && !end){
+            std::cerr<<"not connected\n";
                 //resolving...
             std::string resname;    //this is when user enters hostname instead of ip
             if (resolve(IP.get(), port.get(), &resname)){
@@ -24,14 +26,21 @@ void RPTY::run(){
                     //connecting...
                 connect(keepalive.get());
                 if (connected) {
-
                     /*TODO RPTY init*/
+                    for(int i=0;i!=4;i++){
+                        std::cerr<<"bufn:"<<i<<" lost="<<getNum(F2A_lostN, i)<<" inqueue="<<getNum(F2A_RSCur, i)<<" max="<<getNum(F2A_RSMax, i)<<"\n";
+                        std::cerr<<"bufn:"<<i<<" bufw: lost="<<getNum(A2F_lostN, i)<<" inqueue="<<getNum(A2F_RSCur, i)<<" max="<<getNum(A2F_RSMax, i)<<"\n";
+                    }
+                    std::cerr<<"initing\n";
+                    FIFOreset();
                     initMotionDevices();
+                    std::cerr<<"inited\n";
                 }
             }
             IP.resolved.set(resname);
         }
-        if(connected && (IP.changed() || port.changed())) {/*TODO RPTY disco*/ disconnect();}  //if the user changes the IP or port setting we disconnect
+        if(connected && (IP.changed() || port.changed())) {/*TODO RPTY disco*/
+            disconnect();}  //if the user changes the IP or port setting we disconnect
 
         std::this_thread::sleep_for (std::chrono::milliseconds(1));
         if (connected); /*TODO: RPTY do work here*/
@@ -81,7 +90,7 @@ int RPTY::A2F_trig(uint8_t queue){
     return TCP_con::write(command,8);
 }
 int RPTY::FIFOreset(uint8_t A2Fqueues, uint8_t F2Aqueues){
-    uint32_t command[2]={9,(uint32_t)((A2Fqueues&0xF)&((F2Aqueues&0xF)<<4))};
+    uint32_t command[2]={9,(uint32_t)((A2Fqueues&0xF)|((F2Aqueues&0xF)<<4))};
     return TCP_con::write(command,8);
 }
 int RPTY::FIFOreset(){
@@ -204,7 +213,7 @@ void RPTY::setMotionDeviceType(std::string axisID, std::string type){
 void RPTY::initMotionDevice(std::string axisID){
     if(!motionAxes.count(axisID)) throw std::runtime_error(util::toString("In RPTY::initMotionDevice, axis ",axisID," has not been defined. Define it using RPTY::addMotionDevice."));
     if(motionAxes[axisID].initialized==true)  deinitMotionDevice(axisID);
-
+    std::this_thread::sleep_for (std::chrono::seconds(1));  //TODO remove
     motionAxes[axisID].dev->initMotionDevice();
     motionAxes[axisID].initialized=true;
 }
