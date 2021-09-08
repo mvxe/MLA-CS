@@ -9,9 +9,7 @@ public:
     rpMotionDevice_PINEXACTStage();
     ~rpMotionDevice_PINEXACTStage();
 
-    void motion(QCS& cq, movEv mEv);
-    void motion(std::vector<uint32_t>& cq, movEv mEv);
-    void motion(movEv mEv);
+    void motion(std::vector<uint32_t>& cq, double position, double velocity=0, double acceleration=0, bool relativeMove=false);
 
     void getCurrentPosition(double& position);
     void getMotionError(int& error);
@@ -34,12 +32,13 @@ public:
     double settleTime{0.001};
 
 private:
-    void home(std::vector<uint32_t>& commands);
     void _readTillCharReadyAck(unsigned num=0, char breakChar='\n');
     void _readTillChar(std::string& readStr);
     void _modesetAltNs(std::vector<uint32_t>& cq, bool alternating);
-    void _wait4rdy();
+    enum _wevent{_ev_wait4rdy, _ev_wait4ont};
+    void _wait4ev(_wevent ev);
     void _wait4rdy(std::vector<uint32_t> &commands, uint16_t __FLAG_SHARED);
+    void _wait4ont(std::vector<uint32_t> &commands, uint16_t __FLAG_SHARED);
 };
 
 #endif // PINEXACTSTAGE_H

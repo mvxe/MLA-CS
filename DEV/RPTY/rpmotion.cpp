@@ -6,6 +6,7 @@ double rpMotionDevice::getMotionSetting(mst setting){
         case mst::minPosition: return minPosition;
         case mst::maxPosition: return maxPosition;
         case mst::homePosition: return homePosition;
+        case mst::lastPosition: return lastPosition;
         case mst::defaultVelocity: return defaultVelocity;
         case mst::maximumVelocity: return maximumVelocity;
         case mst::defaultAcceleration: return defaultAcceleration;
@@ -17,6 +18,7 @@ rpMotionDevice::rpMotionDevice(){
     conf["minPosition"]=minPosition;
     conf["maxPosition"]=maxPosition;
     conf["homePosition"]=homePosition;
+    conf["lastPosition"]=lastPosition;
     conf["defaultVelocity"]=defaultVelocity;
     conf["maximumVelocity"]=maximumVelocity;
     conf["defaultAcceleration"]=defaultAcceleration;

@@ -10,9 +10,11 @@ public:
     rpMotionDevice();
     virtual ~rpMotionDevice(){};
 
-    virtual void motion(QCS& cq, movEv mEv)=0;
-    virtual void motion(std::vector<uint32_t>& cq, movEv mEv)=0;
-    virtual void motion(movEv mEv)=0;
+    virtual void motion(std::vector<uint32_t>& cq, double position, double velocity=0, double acceleration=0, bool relativeMove=false)=0;
+        // cq - queue to put the commands into
+        // position - the absolute (or relative if relativeMove==true) motion position, in mm (or radian if rotational)
+        // velocity - velocity override if >0, otherwise default velocity will be used (note: overrides to not persist)
+        // acceleration - acceleration override if >0, otherwise default acceleration will be used
     double getMotionSetting(mst setting);
 
     virtual void getCurrentPosition(double& position)=0;
@@ -23,10 +25,12 @@ public:
 
     rtoml::vsr conf;
     const std::string type{"md_none"};
+    std::string axisID;
 
     double minPosition;
     double maxPosition;
     double homePosition;
+    double lastPosition;
     double defaultVelocity;
     double maximumVelocity;
     double defaultAcceleration;

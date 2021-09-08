@@ -35,7 +35,7 @@ namespace nRPTY {
         bool addDelay=false;                                // if true, a WAIT will be added to the queue, with duration equal to expected motion time (if no feedback)
         bool optimize=true;                                 // used for some devices, see specific implementations
     };
-    enum mst{minPosition, maxPosition, homePosition, defaultVelocity, maximumVelocity, defaultAcceleration, maximumAcceleration};
+    enum mst{minPosition, maxPosition, homePosition, lastPosition, defaultVelocity, maximumVelocity, defaultAcceleration, maximumAcceleration};
 }
 using namespace nRPTY;
 

@@ -5,6 +5,7 @@ rpMotionDevice_PINEXACTStage::rpMotionDevice_PINEXACTStage(){
     minPosition=-13;
     maxPosition=+13;
     homePosition=0;
+    lastPosition=0;
     defaultVelocity=10;
     maximumVelocity=10;
     defaultAcceleration=50;
@@ -29,23 +30,26 @@ void rpMotionDevice_PINEXACTStage::_modesetAltNs(std::vector<uint32_t>& cq, bool
         serial.string_to_command(util::toString("SPA 1 0x7001A00 ",_alternating?"1":"0","\n"), cq);
     }
 }
-void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, movEv mEv){
-    if(mEv.velocity==0) mEv.velocity=defaultVelocity;
-    if(mEv.acceleration==0) mEv.acceleration=defaultAcceleration;
-    if(mEv.velocity!=last_velocity) {
-        serial.string_to_command(util::toString("VEL 1 ",mEv.velocity,"\n"), cq);
-        last_velocity=mEv.velocity;
+void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double position, double velocity, double acceleration, bool relativeMove){
+    double tpos=relativeMove?lastPosition+position:position;
+    if(tpos>maxPosition || tpos<minPosition)  throw std::invalid_argument(util::toString("In rpMotionDevice_PINEXACTStage::motion for axis ",axisID,", target position is not within min/max: target poisition=",tpos,", min=",minPosition,", max=", maxPosition));
+    if(velocity==0) velocity=defaultVelocity;
+    if(acceleration==0) acceleration=defaultAcceleration;
+    if(velocity!=last_velocity) {
+        serial.string_to_command(util::toString("VEL 1 ",velocity,"\n"), cq);
+        last_velocity=velocity;
     }
-    if(mEv.acceleration!=last_acceleration){
-        serial.string_to_command(util::toString("ACC 1 ",mEv.acceleration,"\n"), cq);
-        last_acceleration=mEv.acceleration;
+    if(acceleration!=last_acceleration){
+        serial.string_to_command(util::toString("ACC 1 ",acceleration,"\n"), cq);
+        last_acceleration=acceleration;
     }
-    std::string com=(mEv.displacement!=0)?"MVR":"MOV";
-    double value=(mEv.displacement!=0)?mEv.displacement:mEv.position;
+    std::string com=relativeMove?"MVR":"MOV";
+    if(relativeMove) lastPosition+=position;
+    else lastPosition=position;
     switch(mType){
     case mt_nanostepping_delay:
         //_modesetAltNs(cq, false);
-        serial.string_to_command(util::toString(com," 1 ",value,"\n"), cq);
+        serial.string_to_command(util::toString(com," 1 ",position,"\n"), cq);
         //TODO relative move boundary tracking
         //TODO delay calculation
         break;
@@ -62,12 +66,11 @@ void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, movEv mEv){
         //TODO
     }
 }
-void rpMotionDevice_PINEXACTStage::motion(QCS& cq, movEv mEv){}
-void rpMotionDevice_PINEXACTStage::motion(movEv mEv){
-    std::vector<uint32_t> commands;
-    motion(commands, mEv);
-    parent->executeQueue(commands, parent->main_cq);
-}
+//void rpMotionDevice_PINEXACTStage::motion(movEv mEv){
+//    std::vector<uint32_t> commands;
+//    motion(commands, mEv);
+//    parent->executeQueue(commands, parent->main_cq);
+//}
 void rpMotionDevice_PINEXACTStage::_readTillCharReadyAck(unsigned num, char breakChar){
     std::vector<uint32_t> commands;
     if(num==0) commands.push_back(CQF::W4TRIG_INTR());
@@ -109,13 +112,6 @@ void rpMotionDevice_PINEXACTStage::getMotionError(int& error){
     error=std::stoi(readStr);
 }
 
-void rpMotionDevice_PINEXACTStage::home(std::vector<uint32_t>& commands){
-    motionType mt=mType;
-    mType=mt_nanostepping_ontarget;                                     // always use nanostepping with ontarget for homing
-    movEv mv{"",0,homePosition,maximumVelocity,maximumAcceleration};
-    mType=mt;
-    motion(commands,mv);
-}
 void rpMotionDevice_PINEXACTStage::initMotionDevice(){
     std::vector<uint32_t> commands;
     serial.serial_init(commands, serial_gpio_o, serial_gpio_i, 115200, 125000000, 1);
@@ -125,9 +121,9 @@ void rpMotionDevice_PINEXACTStage::initMotionDevice(){
     commands.push_back(CQF::WAIT(0.1*serial.clock));
     serial.string_to_command("FRF\n", commands);
     parent->executeQueue(commands, parent->main_cq);
-    _wait4rdy();
+    _wait4ev(_ev_wait4rdy);
 
-    home(commands);
+    motion(commands,lastPosition,maximumVelocity,maximumAcceleration);  // todo save current position and move to it
     parent->executeQueue(commands, parent->main_cq);
 
     int error;
@@ -136,16 +132,26 @@ void rpMotionDevice_PINEXACTStage::initMotionDevice(){
 }
 void rpMotionDevice_PINEXACTStage::deinitMotionDevice(){
     std::vector<uint32_t> commands;
-    home(commands);
+    motion(commands,homePosition,maximumVelocity,maximumAcceleration);
+    parent->executeQueue(commands, parent->main_cq);
+    std::cerr<<"moved\n";
+    _wait4ev(_ev_wait4ont);
+    std::cerr<<"waited\n";
     serial.string_to_command("SVO 1 0\n", commands);        // relaxes piezos
     parent->executeQueue(commands, parent->main_cq);
 }
 
-void rpMotionDevice_PINEXACTStage::_wait4rdy(){
+void rpMotionDevice_PINEXACTStage::_wait4ev(_wevent ev){
     std::vector<uint32_t> commands;
     uint16_t __FLAG_SHARED=0x0100;
-
-    _wait4rdy(commands,__FLAG_SHARED);
+    switch(ev){
+    case _ev_wait4rdy:
+        _wait4rdy(commands,__FLAG_SHARED);
+        break;
+    case _ev_wait4ont:
+        _wait4ont(commands,__FLAG_SHARED);
+        break;
+    }
     parent->executeQueue(commands, parent->helper_cq);
     parent->A2F_loop(parent->helper_cq, true);
     commands.push_back(CQF::FLAGS_MASK(__FLAG_SHARED));
@@ -163,18 +169,67 @@ void rpMotionDevice_PINEXACTStage::_wait4rdy(std::vector<uint32_t> &commands, ui
     cmd+=(unsigned char)0x07;       // #7 (Request Controller Ready Status)
     commands.push_back(CQF::FLAGS_MASK(__FLAG_SHARED));
     commands.push_back(CQF::FLAGS_SHARED_SET(0x0000));
-    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,false,__FLAG_SHARED,false));      // first W4T gets lost in loop
-    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,false,__FLAG_SHARED,false));      // if CTRL_RDY==FALSE or main thread triggered it through __FLAG_SHARED
+    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,false,__FLAG_SHARED,false));              // first W4T gets lost in loop
+    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,false,__FLAG_SHARED,false));              // if CTRL_RDY==FALSE or main thread triggered it through __FLAG_SHARED
         serial.string_to_command(cmd, commands, false);
         // 0xB1=rdy, 0xB0 not rdy - so we are interested in bit 0
-        commands.push_back(CQF::W4TRIG_GPIO(CQF::LOW,false,serial.gpioN_i,serial.gpioP_i,true));  // wait for the start bit of the byte
+        commands.push_back(CQF::W4TRIG_GPIO(CQF::LOW,false,serial.gpioN_i,serial.gpioP_i,true));    // wait for the start bit of the byte
         commands.push_back(CQF::WAIT(0.5*serial.cyclesPerBit));
         commands.push_back(CQF::WAIT(1.0*serial.cyclesPerBit));
-        commands.push_back(CQF::IF_GPIO(CQF::HIGH,false,serial.gpioN_i,serial.gpioP_i,true));     // if CTRL_RDY==TRUE bit 0
+        commands.push_back(CQF::IF_GPIO(CQF::HIGH,false,serial.gpioN_i,serial.gpioP_i,true));       // if CTRL_RDY==TRUE bit 0
         commands.push_back(CQF::WAIT(10));
             commands.push_back(CQF::FLAGS_MASK(__FLAG_SHARED));
             commands.push_back(CQF::FLAGS_SHARED_SET(0x0000));
         commands.push_back(CQF::END());
-        commands.push_back(CQF::WAIT(7.0*serial.cyclesPerBit-1));                                 // wait until the end
+        commands.push_back(CQF::WAIT(7.0*serial.cyclesPerBit-1));                                   // wait until the end
+    commands.push_back(CQF::END());
+}
+
+void rpMotionDevice_PINEXACTStage::_wait4ont(std::vector<uint32_t> &commands, uint16_t __FLAG_SHARED){
+    std::string cmd;
+    cmd+=(unsigned char)0x04;       // #4 (Request Status Register)
+    commands.push_back(CQF::FLAGS_MASK(__FLAG_SHARED));
+    commands.push_back(CQF::FLAGS_SHARED_SET(0x0000));
+    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,false,__FLAG_SHARED,false));              // first W4T gets lost in loop
+    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,false,__FLAG_SHARED,false));              // if ON_TARGET==FALSE or main thread triggered it through __FLAG_SHARED
+        commands.push_back(CQF::FLAGS_MASK(0x0003));
+        commands.push_back(CQF::FLAGS_LOCAL_SET(0x0000));
+        serial.string_to_command(cmd, commands, false);
+        // we are interested in bit #15 (on target)
+        // but the retard stage replies with a hexadecimal value in ascii: ie 0x1234
+        // so we need to decode that, we are only interested then in the highest 4bits - writing up the table gives that ON_TARGET is true if either bit 3 XOR(^) bit 6 of this byte are true
+        for(int i=0;i!=2;i++){  // skip 2 bytes
+            commands.push_back(CQF::W4TRIG_GPIO(CQF::LOW,false,serial.gpioN_i,serial.gpioP_i,true));    // wait for the start bit
+            commands.push_back(CQF::WAIT(serial.cyclesPerBit/2));                                       // W4TRIG_GPIO min low duration (prevent noise trigger) and ignore short pulses
+            commands.push_back(CQF::WAIT(9.0*serial.cyclesPerBit-1));                                   // wait until the end of the byte (halway on the stop bit)
+        }
+        commands.push_back(CQF::W4TRIG_GPIO(CQF::LOW,false,serial.gpioN_i,serial.gpioP_i,true));        // wait for the start bit of the second byte
+        commands.push_back(CQF::WAIT(serial.cyclesPerBit/2));
+        commands.push_back(CQF::WAIT(4.0*serial.cyclesPerBit-1));                                       // wait until the middle of bit 3
+        commands.push_back(CQF::IF_GPIO(CQF::HIGH,false,serial.gpioN_i,serial.gpioP_i,true));           // if ON_TARGET==TRUE bit 3
+        commands.push_back(CQF::WAIT(10));
+            commands.push_back(CQF::FLAGS_MASK(0x0001));
+            commands.push_back(CQF::FLAGS_LOCAL_SET(0x0001));
+        commands.push_back(CQF::END());
+        commands.push_back(CQF::WAIT(3.0*serial.cyclesPerBit-1));                                       // wait until the middle of bit 6
+        commands.push_back(CQF::IF_GPIO(CQF::HIGH,false,serial.gpioN_i,serial.gpioP_i,true));           // if ON_TARGET==TRUE bit 6
+        commands.push_back(CQF::WAIT(10));
+            commands.push_back(CQF::FLAGS_MASK(0x0002));
+            commands.push_back(CQF::FLAGS_LOCAL_SET(0x0002));
+        commands.push_back(CQF::END());
+        commands.push_back(CQF::WAIT(2.0*serial.cyclesPerBit-1));                                       // wait until the end
+        for(auto& i: {false,true}){
+            commands.push_back(CQF::IF_FLAGS_LOCAL(i,false,0x0001,false));
+                commands.push_back(CQF::IF_FLAGS_LOCAL(!i,false,0x0002,false));
+                    commands.push_back(CQF::FLAGS_MASK(__FLAG_SHARED));
+                    commands.push_back(CQF::FLAGS_SHARED_SET(0x0000));                                  // only if bit 3 XOR(^) bit 6
+                commands.push_back(CQF::END());
+            commands.push_back(CQF::END());
+        }
+        for(int i=0;i!=3;i++){      // skip 3 bytes (the fourth will overlap with command send anyway)
+            commands.push_back(CQF::W4TRIG_GPIO(CQF::LOW,false,serial.gpioN_i,serial.gpioP_i,true));    // wait for the start bit
+            commands.push_back(CQF::WAIT(serial.cyclesPerBit/2));                                       // W4TRIG_GPIO min low duration (prevent noise trigger) and ignore short pulses
+            commands.push_back(CQF::WAIT(9.0*serial.cyclesPerBit-1));                                   // wait until the end of the byte (halway on the stop bit)
+        }
     commands.push_back(CQF::END());
 }

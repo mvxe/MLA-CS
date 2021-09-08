@@ -138,15 +138,15 @@ void RPTY::executeQueue(std::vector<uint32_t>& cq, uint8_t queue){
 
 void RPTY::motion(QCS& cq, movEv mEv){
     _motionDeviceThrowExc(mEv.axisID,"motion");
-    motionAxes[mEv.axisID].dev->motion(cq, mEv);
+    //motionAxes[mEv.axisID].dev->motion(cq, mEv);
 }
 void RPTY::motion(std::vector<uint32_t>& cq, movEv mEv){
     _motionDeviceThrowExc(mEv.axisID,"motion");
-    motionAxes[mEv.axisID].dev->motion(cq, mEv);
+    //motionAxes[mEv.axisID].dev->motion(cq, mEv);
 }
 void RPTY::motion(movEv mEv){
     _motionDeviceThrowExc(mEv.axisID,"motion");
-    motionAxes[mEv.axisID].dev->motion(mEv);
+    //motionAxes[mEv.axisID].dev->motion(mEv);
 }
 template <typename... Args>
 void RPTY::motion(QCS& cq, movEv mEv, Args&&... args){
@@ -207,6 +207,7 @@ void RPTY::setMotionDeviceType(std::string axisID, std::string type){
         motionAxes[axisID].conf.save();
         throw std::runtime_error(util::toString("In RPTY::initMotionDevice, uncrecognized/nonexistant motion device defined for axis ",axisID,". Saved possible options to conf."));
     }
+    motionAxes[axisID].dev->axisID=axisID;
     motionAxes[axisID].dev->parent=this;
     motionAxes[axisID].conf.load();
 }

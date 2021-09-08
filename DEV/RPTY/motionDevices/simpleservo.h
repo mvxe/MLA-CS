@@ -8,9 +8,7 @@ public:
     rpMotionDevice_SimpleServo();
     ~rpMotionDevice_SimpleServo();
 
-    void motion(QCS& cq, movEv mEv);
-    void motion(std::vector<uint32_t>& cq, movEv mEv);
-    void motion(movEv mEv);
+    void motion(std::vector<uint32_t>& cq, double position, double velocity=0, double acceleration=0, bool relativeMove=false);
 
     void getCurrentPosition(double& position);
     void getMotionError(int& error);
