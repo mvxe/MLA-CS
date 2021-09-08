@@ -81,7 +81,6 @@ void camobj::pushFrameIntoStream(){
     else{
         ArvBuffer *buffer = arv_buffer_new(payload, NULL);
         arv_stream_push_buffer(str, buffer);
-        FullBuffers.push_back(buffer);
     }
 }
 void camobj::requeueFrame(cv::Mat* MatPtr){
@@ -133,7 +132,7 @@ void camobj::end(){
     if(dev!=NULL) dev=NULL;   //no unref here because unrefing cam seams to unref dev too, but it doesnt set it to NULL
     ID="none";
     while(!FreeBuffers.empty()){
-        g_clear_object(&FullBuffers.front());
+        g_clear_object(&FreeBuffers.front());
         FreeBuffers.pop();
     }
     while(!FullBuffers.empty()){
