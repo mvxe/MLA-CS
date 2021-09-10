@@ -105,20 +105,21 @@ void rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr, char brea
     parent->A2F_loop(parent->serial_cq, false);
     parent->FIFOreset(1<<parent->serial_cq, 1<<parent->serial_aq);
 }
-void rpMotionDevice_PINEXACTStage::getCurrentPosition(double& position){
+double rpMotionDevice_PINEXACTStage::getCurrentPosition(bool getTarget){
     _readQS(0);
     std::vector<uint32_t> commands;
     commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
     commands.push_back(CQF::WAIT(serial.cyclesPerBit*8*5));
     commands.push_back(CQF::FLAGS_MASK(serialFlag));
     commands.push_back(CQF::FLAGS_SHARED_SET(serialFlag));
-    serial.string_to_command("POS?\n", commands);
+    if(getTarget) serial.string_to_command("MOV?\n", commands);
+    else          serial.string_to_command("POS?\n", commands);
     parent->executeQueue(commands, parent->main_cq);
     std::string readStr;
     _readTillChar(readStr,'\n');
-    position=std::stod(readStr.substr(readStr.find("=")+1));
+    return std::stod(readStr.substr(readStr.find("=")+1));
 }
-void rpMotionDevice_PINEXACTStage::getMotionError(int& error){
+int rpMotionDevice_PINEXACTStage::getMotionError(){
     _readQS(0);
     std::vector<uint32_t> commands;
     commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
@@ -129,7 +130,7 @@ void rpMotionDevice_PINEXACTStage::getMotionError(int& error){
     parent->executeQueue(commands, parent->main_cq);
     std::string readStr;
     _readTillChar(readStr,'\n');
-    error=std::stoi(readStr);
+    return std::stoi(readStr);
 }
 
 void rpMotionDevice_PINEXACTStage::initMotionDevice(std::vector<uint32_t>& cq, std::vector<uint32_t>& hq, unsigned& free_flag){
@@ -156,9 +157,6 @@ void rpMotionDevice_PINEXACTStage::referenceMotionDevice(std::vector<uint32_t>& 
     serial.string_to_command("FRF\n", cq);
     cq.push_back(CQF::FLAGS_MASK(rdyFlag));
     cq.push_back(CQF::FLAGS_SHARED_SET(rdyFlag));
-//    int error;    // TODO implement error check here
-//    getMotionError(error);
-//    if(error) std::cerr<<"Motion device error:"<<error<<"\n";   //TODO add ID to rpMotionDevice and note it here
 }
 void rpMotionDevice_PINEXACTStage::deinitMotionDevice(std::vector<uint32_t>& cq){
     cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));

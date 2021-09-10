@@ -44,8 +44,8 @@ public:
 
     double getMotionSetting(std::string axisID, mst setting);
 
-    void getCurrentPosition(std::string axisID, double& position);
-    void getMotionError(std::string axisID, int& error);             // returns error code if the motion device supports it, 0=no erro, this will throw an exception if main_command_queue is in use
+    double getCurrentPosition(std::string axisID, bool getTarget=false);
+    int getMotionError(std::string axisID);             // returns error code if the motion device supports it, 0=no erro, this will throw an exception if main_command_queue is in use
 
 
         // ## aditional higher level functions: ##
@@ -70,6 +70,7 @@ private:
     unsigned _free_flag=1;
     inline void _motionDeviceThrowExc(std::string axisID, std::string function);
     void run();
+    std::mutex mux;
 };
 
 

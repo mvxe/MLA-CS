@@ -19,8 +19,8 @@ public:
         // NOTE : for relative moves, the program does not check if the move is within minPosition/maxPosition (for some devices a soft limit is set on the device firmware though, so the error will be returned via getMotionError)
     double getMotionSetting(mst setting);
 
-    virtual void getCurrentPosition(double& position)=0;
-    virtual void getMotionError(int& error)=0;
+    virtual double getCurrentPosition(bool getTarget=false)=0;
+    virtual int getMotionError()=0;
 
     virtual void initMotionDevice(std::vector<uint32_t>& cq, std::vector<uint32_t>& hq, unsigned& free_flag)=0;
         // hq - helper command queue commands - these will added to the helper loop and should comunicate with the main command queue via flags (use ifs and not w4trig)
