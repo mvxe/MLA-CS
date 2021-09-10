@@ -4,8 +4,8 @@
 rpMotionDevice_PINEXACTStage::rpMotionDevice_PINEXACTStage(){
     minPosition=-13;
     maxPosition=+13;
-    homePosition=0;
     lastPosition=0;
+    restPosition=0;
     defaultVelocity=10;
     maximumVelocity=10;
     defaultAcceleration=50;
@@ -30,11 +30,15 @@ void rpMotionDevice_PINEXACTStage::_modesetAltNs(std::vector<uint32_t>& cq, bool
         serial.string_to_command(util::toString("SPA 1 0x7001A00 ",_alternating?"1":"0","\n"), cq);
     }
 }
-void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double position, double velocity, double acceleration, bool relativeMove){
-    double tpos=relativeMove?lastPosition+position:position;
-    if(tpos>maxPosition || tpos<minPosition)  throw std::invalid_argument(util::toString("In rpMotionDevice_PINEXACTStage::motion for axis ",axisID,", target position is not within min/max: target poisition=",tpos,", min=",minPosition,", max=", maxPosition));
+void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double position, double velocity, double acceleration, bool relativeMove, bool blocking){
+    cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));    // wait for all flags to clear
+//    double tpos=relativeMove?lastPosition+position:position;
+//    if(tpos>maxPosition || tpos<minPosition)  throw std::invalid_argument(util::toString("In rpMotionDevice_PINEXACTStage::motion for axis ",axisID,", target position is not within min/max: target poisition=",tpos,", min=",minPosition,", max=", maxPosition));
+    if(relativeMove && position==0) return;
     if(velocity==0) velocity=defaultVelocity;
     if(acceleration==0) acceleration=defaultAcceleration;
+    if(velocity>maximumVelocity) throw std::invalid_argument(util::toString("In rpMotionDevice_PINEXACTStage::motion for axis ",axisID,", velocity>maximumVelocity"));
+    if(acceleration>maximumAcceleration) throw std::invalid_argument(util::toString("In rpMotionDevice_PINEXACTStage::motion for axis ",axisID,", acceleration>maximumAcceleration"));
     if(velocity!=last_velocity) {
         serial.string_to_command(util::toString("VEL 1 ",velocity,"\n"), cq);
         last_velocity=velocity;
@@ -44,14 +48,17 @@ void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double posi
         last_acceleration=acceleration;
     }
     std::string com=relativeMove?"MVR":"MOV";
-    if(relativeMove) lastPosition+=position;
-    else lastPosition=position;
+//    if(relativeMove) lastPosition+=position;
+//    else lastPosition=position;
     switch(mType){
     case mt_nanostepping_delay:
         //_modesetAltNs(cq, false);
         serial.string_to_command(util::toString(com," 1 ",position,"\n"), cq);
         //TODO relative move boundary tracking
-        //TODO delay calculation
+        if(blocking){
+            cq.push_back(CQF::FLAGS_MASK(ontFlag));
+            cq.push_back(CQF::FLAGS_SHARED_SET(ontFlag));
+        }
         break;
     case mt_nanostepping_ontarget:;
         //_modesetAltNs(cq, false);
@@ -71,16 +78,19 @@ void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double posi
 //    motion(commands, mEv);
 //    parent->executeQueue(commands, parent->main_cq);
 //}
-void rpMotionDevice_PINEXACTStage::_readTillCharReadyAck(unsigned num, char breakChar){
+void rpMotionDevice_PINEXACTStage::_readQS(unsigned num){
     std::vector<uint32_t> commands;
+    commands.push_back(CQF::FLAGS_MASK(serialFlag));
+    commands.push_back(CQF::FLAGS_SHARED_SET(0x0000));
     if(num==0) commands.push_back(CQF::W4TRIG_INTR());
-    serial.serial_ack(commands, parent->serial_aq, num, breakChar);
-    //parent->FIFOreset(1<<parent->serial_cq, 1<<parent->serial_aq);    //TODO reseting FIFO messes with gpio : fix fpga code
+    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,true,serialFlag,false));
+    serial.serial_ack(commands, parent->serial_aq, 0);
+    parent->FIFOreset(1<<parent->serial_cq, 1<<parent->serial_aq);
     parent->executeQueue(commands, parent->serial_cq);
     if(num==0) parent->A2F_loop(parent->serial_cq, true);
     if(num==0) parent->A2F_trig(parent->serial_cq);
 }
-void rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr){
+void rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr, char breakChar){
     std::vector<uint32_t> read;
     while(1){
         while(parent->getNum(RPTY::F2A_RSCur,parent->serial_aq)<8)  std::this_thread::sleep_for (std::chrono::milliseconds(10));
@@ -88,89 +98,77 @@ void rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr){
         read.reserve(toread*8);
         parent->F2A_read(parent->serial_aq, read.data(), toread*8);
         readStr+=serial.convert_data_to_string(read.data(), toread*8);
-        std::cerr<<"got string: "<<readStr<<"\n";
+        //std::cerr<<"got string: "<<readStr<<"\n";
         read.clear();
-        if(readStr.back()=='\n') break;
+        if(readStr.back()==breakChar) break;
     }
+    parent->A2F_loop(parent->serial_cq, false);
+    parent->FIFOreset(1<<parent->serial_cq, 1<<parent->serial_aq);
 }
 void rpMotionDevice_PINEXACTStage::getCurrentPosition(double& position){
-    _readTillCharReadyAck();
+    _readQS(0);
     std::vector<uint32_t> commands;
+    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
+    commands.push_back(CQF::WAIT(serial.cyclesPerBit*8*5));
+    commands.push_back(CQF::FLAGS_MASK(serialFlag));
+    commands.push_back(CQF::FLAGS_SHARED_SET(serialFlag));
     serial.string_to_command("POS?\n", commands);
     parent->executeQueue(commands, parent->main_cq);
     std::string readStr;
-    _readTillChar(readStr);
+    _readTillChar(readStr,'\n');
     position=std::stod(readStr.substr(readStr.find("=")+1));
 }
 void rpMotionDevice_PINEXACTStage::getMotionError(int& error){
-    _readTillCharReadyAck(2);
+    _readQS(0);
     std::vector<uint32_t> commands;
+    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
+    commands.push_back(CQF::WAIT(serial.cyclesPerBit*8*5));
+    commands.push_back(CQF::FLAGS_MASK(serialFlag));
+    commands.push_back(CQF::FLAGS_SHARED_SET(serialFlag));
     serial.string_to_command("ERR?\n", commands);
     parent->executeQueue(commands, parent->main_cq);
     std::string readStr;
-    _readTillChar(readStr);
+    _readTillChar(readStr,'\n');
     error=std::stoi(readStr);
 }
 
-void rpMotionDevice_PINEXACTStage::initMotionDevice(){
-    std::vector<uint32_t> commands;
-    serial.serial_init(commands, serial_gpio_o, serial_gpio_i, 115200, 125000000, 1);
-    serial.string_to_command("SVO 1 1\n", commands);
-    serial.string_to_command(util::toString("SPA 1 0x3F ",settleTime,"\n"), commands);
-    serial.string_to_command(util::toString("SPA 1 0x36 ",settleWindow,"\n"), commands);
-    commands.push_back(CQF::WAIT(0.1*serial.clock));
-    serial.string_to_command("FRF\n", commands);
-    parent->executeQueue(commands, parent->main_cq);
-    _wait4ev(_ev_wait4rdy);
+void rpMotionDevice_PINEXACTStage::initMotionDevice(std::vector<uint32_t>& cq, std::vector<uint32_t>& hq, unsigned& free_flag){
+    serial.serial_init(cq, serial_gpio_o, serial_gpio_i, 115200, 125000000, 1);
+    serial.string_to_command("SVO 1 1\n", cq);
+    serial.string_to_command(util::toString("SPA 1 0x3F ",settleTime,"\n"), cq);
+    serial.string_to_command(util::toString("SPA 1 0x36 ",settleWindow,"\n"), cq);
+    serial.string_to_command(util::toString("VEL 1 ",defaultVelocity,"\n"), cq);
+    serial.string_to_command(util::toString("ACC 1 ",defaultAcceleration,"\n"), cq);
+    serial.string_to_command(util::toString("SPA 1 0x15 ",maxPosition,"\n"), cq);
+    serial.string_to_command(util::toString("SPA 1 0x30 ",minPosition,"\n"), cq);
+    rdyFlag=free_flag; free_flag<<=1;
+    ontFlag=free_flag; free_flag<<=1;
+    serialFlag=free_flag; free_flag<<=1;
+    // TODO throw error if free_flag > 16bit
+    cq.push_back(CQF::FLAGS_MASK(rdyFlag|ontFlag|serialFlag));
+    cq.push_back(CQF::FLAGS_SHARED_SET(0x0000));
 
-    motion(commands,lastPosition,maximumVelocity,maximumAcceleration);  // todo save current position and move to it
-    parent->executeQueue(commands, parent->main_cq);
-
-    int error;
-    getMotionError(error);
-    if(error) std::cerr<<"Motion device error:"<<error<<"\n";   //TODO add ID to rpMotionDevice and note it here
+    _wait4rdy(hq);
+    _wait4ont(hq);
 }
-void rpMotionDevice_PINEXACTStage::deinitMotionDevice(){
-    std::vector<uint32_t> commands;
-    motion(commands,homePosition,maximumVelocity,maximumAcceleration);
-    parent->executeQueue(commands, parent->main_cq);
-    std::cerr<<"moved\n";
-    _wait4ev(_ev_wait4ont);
-    std::cerr<<"waited\n";
-    serial.string_to_command("SVO 1 0\n", commands);        // relaxes piezos
-    parent->executeQueue(commands, parent->main_cq);
+void rpMotionDevice_PINEXACTStage::referenceMotionDevice(std::vector<uint32_t>& cq){
+    cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
+    serial.string_to_command("FRF\n", cq);
+    cq.push_back(CQF::FLAGS_MASK(rdyFlag));
+    cq.push_back(CQF::FLAGS_SHARED_SET(rdyFlag));
+//    int error;    // TODO implement error check here
+//    getMotionError(error);
+//    if(error) std::cerr<<"Motion device error:"<<error<<"\n";   //TODO add ID to rpMotionDevice and note it here
 }
-
-void rpMotionDevice_PINEXACTStage::_wait4ev(_wevent ev){
-    std::vector<uint32_t> commands;
-    uint16_t __FLAG_SHARED=0x0100;
-    switch(ev){
-    case _ev_wait4rdy:
-        _wait4rdy(commands,__FLAG_SHARED);
-        break;
-    case _ev_wait4ont:
-        _wait4ont(commands,__FLAG_SHARED);
-        break;
-    }
-    parent->executeQueue(commands, parent->helper_cq);
-    parent->A2F_loop(parent->helper_cq, true);
-    commands.push_back(CQF::FLAGS_MASK(__FLAG_SHARED));
-    commands.push_back(CQF::FLAGS_SHARED_SET(__FLAG_SHARED));
-    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,false,__FLAG_SHARED,false));
-    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,false,__FLAG_SHARED,false));   // twice because getNum(RPTY::A2F_RSCur,parent->main_cq) returns 0 for current holding W4TRIG :: TODO implement ON_HOLD flag
-    parent->executeQueue(commands, parent->main_cq);
-    while(parent->getNum(RPTY::A2F_RSCur,parent->main_cq)!=0)  std::this_thread::sleep_for (std::chrono::milliseconds(10));
-    parent->A2F_loop(parent->helper_cq, false);
-    parent->FIFOreset(1<<parent->helper_cq);
+void rpMotionDevice_PINEXACTStage::deinitMotionDevice(std::vector<uint32_t>& cq){
+    cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
+    serial.string_to_command("SVO 1 0\n", cq);          // relaxes piezos
 }
 
-void rpMotionDevice_PINEXACTStage::_wait4rdy(std::vector<uint32_t> &commands, uint16_t __FLAG_SHARED){
+void rpMotionDevice_PINEXACTStage::_wait4rdy(std::vector<uint32_t> &commands){
     std::string cmd;
     cmd+=(unsigned char)0x07;       // #7 (Request Controller Ready Status)
-    commands.push_back(CQF::FLAGS_MASK(__FLAG_SHARED));
-    commands.push_back(CQF::FLAGS_SHARED_SET(0x0000));
-    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,false,__FLAG_SHARED,false));              // first W4T gets lost in loop
-    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,false,__FLAG_SHARED,false));              // if CTRL_RDY==FALSE or main thread triggered it through __FLAG_SHARED
+    commands.push_back(CQF::IF_FLAGS_SHARED(CQF::HIGH,false,rdyFlag,false));                        // if CTRL_RDY==FALSE or main thread triggered it through __FLAG_SHARED
         serial.string_to_command(cmd, commands, false);
         // 0xB1=rdy, 0xB0 not rdy - so we are interested in bit 0
         commands.push_back(CQF::W4TRIG_GPIO(CQF::LOW,false,serial.gpioN_i,serial.gpioP_i,true));    // wait for the start bit of the byte
@@ -178,20 +176,17 @@ void rpMotionDevice_PINEXACTStage::_wait4rdy(std::vector<uint32_t> &commands, ui
         commands.push_back(CQF::WAIT(1.0*serial.cyclesPerBit));
         commands.push_back(CQF::IF_GPIO(CQF::HIGH,false,serial.gpioN_i,serial.gpioP_i,true));       // if CTRL_RDY==TRUE bit 0
         commands.push_back(CQF::WAIT(10));
-            commands.push_back(CQF::FLAGS_MASK(__FLAG_SHARED));
+            commands.push_back(CQF::FLAGS_MASK(rdyFlag));
             commands.push_back(CQF::FLAGS_SHARED_SET(0x0000));
         commands.push_back(CQF::END());
         commands.push_back(CQF::WAIT(7.0*serial.cyclesPerBit-1));                                   // wait until the end
     commands.push_back(CQF::END());
 }
 
-void rpMotionDevice_PINEXACTStage::_wait4ont(std::vector<uint32_t> &commands, uint16_t __FLAG_SHARED){
+void rpMotionDevice_PINEXACTStage::_wait4ont(std::vector<uint32_t> &commands){
     std::string cmd;
     cmd+=(unsigned char)0x04;       // #4 (Request Status Register)
-    commands.push_back(CQF::FLAGS_MASK(__FLAG_SHARED));
-    commands.push_back(CQF::FLAGS_SHARED_SET(0x0000));
-    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,false,__FLAG_SHARED,false));              // first W4T gets lost in loop
-    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,false,__FLAG_SHARED,false));              // if ON_TARGET==FALSE or main thread triggered it through __FLAG_SHARED
+    commands.push_back(CQF::IF_FLAGS_SHARED(CQF::HIGH,false,ontFlag,false));                        // if ON_TARGET==FALSE or main thread triggered it through __FLAG_SHARED
         commands.push_back(CQF::FLAGS_MASK(0x0003));
         commands.push_back(CQF::FLAGS_LOCAL_SET(0x0000));
         serial.string_to_command(cmd, commands, false);
@@ -221,7 +216,7 @@ void rpMotionDevice_PINEXACTStage::_wait4ont(std::vector<uint32_t> &commands, ui
         for(auto& i: {false,true}){
             commands.push_back(CQF::IF_FLAGS_LOCAL(i,false,0x0001,false));
                 commands.push_back(CQF::IF_FLAGS_LOCAL(!i,false,0x0002,false));
-                    commands.push_back(CQF::FLAGS_MASK(__FLAG_SHARED));
+                    commands.push_back(CQF::FLAGS_MASK(ontFlag));
                     commands.push_back(CQF::FLAGS_SHARED_SET(0x0000));                                  // only if bit 3 XOR(^) bit 6
                 commands.push_back(CQF::END());
             commands.push_back(CQF::END());

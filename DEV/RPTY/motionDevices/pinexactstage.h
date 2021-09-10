@@ -9,13 +9,14 @@ public:
     rpMotionDevice_PINEXACTStage();
     ~rpMotionDevice_PINEXACTStage();
 
-    void motion(std::vector<uint32_t>& cq, double position, double velocity=0, double acceleration=0, bool relativeMove=false);
+    void motion(std::vector<uint32_t>& cq, double position, double velocity=0, double acceleration=0, bool relativeMove=false, bool blocking=true);
 
     void getCurrentPosition(double& position);
     void getMotionError(int& error);
 
-    void initMotionDevice();
-    void deinitMotionDevice();
+    void initMotionDevice(std::vector<uint32_t>& cq, std::vector<uint32_t>& hq, unsigned& free_flag);
+    void referenceMotionDevice(std::vector<uint32_t>& cq);
+    void deinitMotionDevice(std::vector<uint32_t>& cq);
 
     const std::string type{"md_PINEXACTStage"};
 
@@ -32,13 +33,15 @@ public:
     double settleTime{0.001};
 
 private:
-    void _readTillCharReadyAck(unsigned num=0, char breakChar='\n');
-    void _readTillChar(std::string& readStr);
+    unsigned serialFlag;
+    void _readQS(unsigned num=0);   // for num=0 it loops, otherwise it will setup reading num chars
+    void _readTillChar(std::string& readStr, char breakChar='\n');
     void _modesetAltNs(std::vector<uint32_t>& cq, bool alternating);
     enum _wevent{_ev_wait4rdy, _ev_wait4ont};
-    void _wait4ev(_wevent ev);
-    void _wait4rdy(std::vector<uint32_t> &commands, uint16_t __FLAG_SHARED);
-    void _wait4ont(std::vector<uint32_t> &commands, uint16_t __FLAG_SHARED);
+    unsigned rdyFlag;
+    void _wait4rdy(std::vector<uint32_t> &commands);
+    unsigned ontFlag;
+    void _wait4ont(std::vector<uint32_t> &commands);
 };
 
 #endif // PINEXACTSTAGE_H

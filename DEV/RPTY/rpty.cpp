@@ -1,4 +1,4 @@
-#include "DEV/RPTY/rpty.h"
+﻿#include "DEV/RPTY/rpty.h"
 #include "globals.h"
 #include "motionDevices/pinexactstage.h"
 #include "motionDevices/simpleservo.h"
@@ -27,14 +27,14 @@ void RPTY::run(){
                 connect(keepalive.get());
                 if (connected) {
                     /*TODO RPTY init*/
-                    for(int i=0;i!=4;i++){
-                        std::cerr<<"bufn:"<<i<<" lost="<<getNum(F2A_lostN, i)<<" inqueue="<<getNum(F2A_RSCur, i)<<" max="<<getNum(F2A_RSMax, i)<<"\n";
-                        std::cerr<<"bufn:"<<i<<" bufw: lost="<<getNum(A2F_lostN, i)<<" inqueue="<<getNum(A2F_RSCur, i)<<" max="<<getNum(A2F_RSMax, i)<<"\n";
-                    }
-                    std::cerr<<"initing\n";
+//                    for(int i=0;i!=4;i++){
+//                        std::cerr<<"bufn:"<<i<<" lost="<<getNum(F2A_lostN, i)<<" inqueue="<<getNum(F2A_RSCur, i)<<" max="<<getNum(F2A_RSMax, i)<<"\n";
+//                        std::cerr<<"bufn:"<<i<<" bufw: lost="<<getNum(A2F_lostN, i)<<" inqueue="<<getNum(A2F_RSCur, i)<<" max="<<getNum(A2F_RSMax, i)<<"\n";
+//                    }
                     FIFOreset();
                     initMotionDevices();
-                    std::cerr<<"inited\n";
+                    referenceMotionDevices();
+                    retraceMotionDevices();
                 }
             }
             IP.resolved.set(resname);
@@ -51,6 +51,7 @@ void RPTY::run(){
 
                 deinitMotionDevices();
                 disconnect();
+                conf.save(); //TODO put to button
             }
             std::cout<<"RPTY thread exited.\n";
             done=true;
@@ -110,59 +111,22 @@ int RPTY::A2F_loop(uint8_t queue, bool loop){
     return TCP_con::write(command,8);
 }
 
-
-
-void RPTY::executeQCS(QCS& cq, bool force){
-    for(int i=0;i!=commandQueueNum;i++){
-        if(cq.reset[i]) FIFOreset(1<<i);
-        else if(cq.emptyReq[i])
-            if(getNum(F2A_RSCur, i)!=0){
-                if(force) FIFOreset(1<<i);
-                else throw std::runtime_error("In RPTY::executeQCS, emptyReq is set, but the queue isn't empty");
-            }
-    }
-    for(int i=0;i!=commandQueueNum;i++){
-        if(cq.commands[i].empty()) continue;
-        A2F_write(i, cq.commands[i].data(), cq.commands[i].size());
-        if(cq.makeTrig[i])
-            A2F_trig(i);
-        if(cq.makeLoop[i])
-            A2F_loop(i, true);
-    }
-    cq.clear();
-}
 void RPTY::executeQueue(std::vector<uint32_t>& cq, uint8_t queue){
     A2F_write(queue, cq.data(), cq.size());
     cq.clear();
 }
 
-void RPTY::motion(QCS& cq, movEv mEv){
-    _motionDeviceThrowExc(mEv.axisID,"motion");
-    //motionAxes[mEv.axisID].dev->motion(cq, mEv);
+void RPTY::motion(std::vector<uint32_t>& cq, std::string axisID, double position, double velocity, double acceleration, bool relativeMove, bool blocking){
+    _motionDeviceThrowExc(axisID,"motion");
+    motionAxes[axisID].dev->motion(cq, position, velocity, acceleration, relativeMove, blocking);
 }
-void RPTY::motion(std::vector<uint32_t>& cq, movEv mEv){
-    _motionDeviceThrowExc(mEv.axisID,"motion");
-    //motionAxes[mEv.axisID].dev->motion(cq, mEv);
+void RPTY::motion(std::string axisID, double position, double velocity, double acceleration, bool relativeMove, bool blocking){
+    std::vector<uint32_t> cq;
+    _motionDeviceThrowExc(axisID,"motion");
+    motionAxes[axisID].dev->motion(cq, position, velocity, acceleration, relativeMove, blocking);
+    executeQueue(cq, main_cq);
 }
-void RPTY::motion(movEv mEv){
-    _motionDeviceThrowExc(mEv.axisID,"motion");
-    //motionAxes[mEv.axisID].dev->motion(mEv);
-}
-template <typename... Args>
-void RPTY::motion(QCS& cq, movEv mEv, Args&&... args){
-    motion(cq, mEv);
-    motion(cq, args...);
-}
-template <typename... Args>
-void RPTY::motion(std::vector<uint32_t>& cq, movEv mEv, Args&&... args){
-    motion(cq, mEv);
-    motion(cq, args...);
-}
-template <typename... Args>
-void RPTY::motion(movEv mEv, Args&&... args){
-    motion(mEv);
-    motion(args...);
-}
+
 double RPTY::getMotionSetting(std::string axisID, mst setting){
     _motionDeviceThrowExc(axisID,"getMotionSetting");
     return motionAxes[axisID].dev->getMotionSetting(setting);
@@ -172,22 +136,12 @@ void RPTY::getCurrentPosition(std::string axisID, double& position){
     _motionDeviceThrowExc(axisID,"getCurrentPosition");
     motionAxes[axisID].dev->getCurrentPosition(position);
 }
-template <typename... Args>
-void RPTY::getCurrentPosition(std::string axisID, double& position, Args&&... args){
-    getCurrentPosition(axisID, position);
-    getCurrentPosition(axisID, args...);
-}
 void RPTY::getMotionError(std::string axisID, int& error){
     _motionDeviceThrowExc(axisID,"getMotionError");
     motionAxes[axisID].dev->getMotionError(error);
 }
-template <typename... Args>
-void RPTY::getMotionError(std::string axisID, int& error, Args&&... args){
-    getMotionError(axisID, error);
-    getMotionError(axisID, args...);
-}
-
 void RPTY::addMotionDevice(std::string axisID){
+    if(axesInited) throw std::runtime_error(util::toString("In RPTY::addMotionDevice: cannot add new axes after running RPTY::initMotionDevices. Deinitialize them first."));
     conf[util::toString("axis_",axisID)]=motionAxes[axisID].conf;
     motionAxes[axisID].conf["type"]=motionAxes[axisID].type;
     motionAxes[axisID].conf.load();
@@ -211,34 +165,67 @@ void RPTY::setMotionDeviceType(std::string axisID, std::string type){
     motionAxes[axisID].dev->parent=this;
     motionAxes[axisID].conf.load();
 }
-void RPTY::initMotionDevice(std::string axisID){
-    if(!motionAxes.count(axisID)) throw std::runtime_error(util::toString("In RPTY::initMotionDevice, axis ",axisID," has not been defined. Define it using RPTY::addMotionDevice."));
-    if(motionAxes[axisID].initialized==true)  deinitMotionDevice(axisID);
-    std::this_thread::sleep_for (std::chrono::seconds(1));  //TODO remove
-    motionAxes[axisID].dev->initMotionDevice();
-    motionAxes[axisID].initialized=true;
-}
 void RPTY::initMotionDevices(){
+    if(axesInited) throw std::runtime_error(util::toString("In RPTY::initMotionDevices: axes already initialized."));
+    A2F_loop(helper_cq, false);
+    FIFOreset(1<<helper_cq);
+    std::vector<uint32_t> hq, cq;
+    hq.push_back(CQF::W4TRIG_INTR());
     for(auto& dev : motionAxes){
-        initMotionDevice(dev.first);
+        motionAxes[dev.first].dev->initMotionDevice(cq, hq, _free_flag);
     }
-}
-void RPTY::deinitMotionDevice(std::string axisID){
-    if(!motionAxes.count(axisID)) throw std::runtime_error(util::toString("In RPTY::deinitMotionDevice, axis ",axisID," has not been defined. Define it using RPTY::addMotionDevice."));
-    if(motionAxes[axisID].initialized==false) return;
+    cq.push_back(CQF::TRIG_OTHER(1<<helper_cq));
+    executeQueue(hq, helper_cq);
+    executeQueue(cq, main_cq);
 
-    motionAxes[axisID].dev->deinitMotionDevice();
-    motionAxes[axisID].initialized=false;
+    A2F_loop(helper_cq, true);
+    axesInited=true;
+}
+void RPTY::referenceMotionDevices(){
+    if(!axesInited) throw std::runtime_error(util::toString("In RPTY::referenceMotionDevices: axes not initialized."));
+    std::vector<uint32_t> cq;
+    cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,_free_flag-1,false));   // lock main until all flags must are low
+    for(auto& dev : motionAxes){
+        motionAxes[dev.first].dev->referenceMotionDevice(cq);
+    }
+    executeQueue(cq, main_cq);
+}
+void RPTY::retraceMotionDevices(){
+    std::vector<uint32_t> cq;
+    cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,_free_flag-1,false));   // lock main until all flags must are low
+    for(auto& dev : motionAxes){
+        motionAxes[dev.first].dev->motion(cq, motionAxes[dev.first].dev->lastPosition, motionAxes[dev.first].dev->maximumVelocity, motionAxes[dev.first].dev->maximumAcceleration);
+    }
+    executeQueue(cq, main_cq);
+    for(auto& dev : motionAxes){
+        int er;
+        motionAxes[dev.first].dev->getMotionError(er);
+        std::cerr<<"Axis "<<dev.first<<" error code "<<er<<"\n";
+    }
+
 }
 void RPTY::deinitMotionDevices(){
+    if(!axesInited) throw std::runtime_error(util::toString("In RPTY::deinitMotionDevices: axes not initialized."));
+    std::vector<uint32_t> cq;
+
     for(auto& dev : motionAxes){
-        deinitMotionDevice(dev.first);
+        double position;
+        motionAxes[dev.first].dev->getCurrentPosition(position);
+        std::cerr<<"current position "<<dev.first<<": "<<position<<"\n";
+        motionAxes[dev.first].dev->lastPosition=position;
     }
+    for(auto& dev : motionAxes){
+        motionAxes[dev.first].dev->motion(cq, motionAxes[dev.first].dev->restPosition, motionAxes[dev.first].dev->maximumVelocity, motionAxes[dev.first].dev->maximumAcceleration);
+    }
+
+    for(auto& dev : motionAxes){
+        motionAxes[dev.first].dev->deinitMotionDevice(cq);
+    }
+    executeQueue(cq, main_cq);
+    axesInited=false;
 }
-
-
 
 inline void RPTY::_motionDeviceThrowExc(std::string axisID, std::string function){
     if(!motionAxes.count(axisID)) throw std::runtime_error(util::toString("In RPTY::",function,", axis ",axisID," has not been defined."));
-    else if(!motionAxes[axisID].initialized) throw std::runtime_error(util::toString("In RPTY::",function,", axis ",axisID," has not been initialized."));
+    else if(!axesInited) throw std::runtime_error(util::toString("In RPTY::",function,", axes have not been initialized."));
 }

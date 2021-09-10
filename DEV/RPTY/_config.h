@@ -6,36 +6,7 @@ class rpMotionDevice;
 class RPBBSerial;
 
 namespace nRPTY {
-    static const unsigned commandQueueNum{4};
-    class QCS{  // queue command sets
-    public:
-        std::vector<uint32_t> commands[commandQueueNum];
-        bool empty(){
-            for (auto& cq : commands) if(!cq.empty()) return false;
-            return true;
-        }
-        void clear(){
-            for (auto& cq : commands) cq.clear();
-            for (auto& fl : makeLoop) fl=false;
-            for (auto& fl : makeTrig) fl=false;
-            for (auto& fl : emptyReq) fl=false;
-        }
-        bool reset[commandQueueNum]{};                      // reset command queue before sending commands (default all false)
-        bool makeLoop[commandQueueNum]{};                   // set command queue to loop on exec (default all false)
-        bool makeTrig[commandQueueNum]{};                   // trig command queue on exec (default all false)
-        bool emptyReq[commandQueueNum]{};                   // the queue should be empty on exec (if not exec should throw an error) (default all false)
-    };
-    struct movEv{   // motion event
-        std::string axisID;
-        double displacement=0;                              // the relative motion dispacement, in mm (or radian if rotational)
-        double position;                                    // the absolute motion position, in mm, (used if displacement==0)
-        double velocity=0;                                  // velocity override if >0, otherwise default velocity will be used (note: overrides to not persist)
-        double acceleration=0;                              // acceleration override if >0, otherwise default acceleration will be used
-        bool relative_move=false;                           // if true, the move is relative rather than absolute
-        bool addDelay=false;                                // if true, a WAIT will be added to the queue, with duration equal to expected motion time (if no feedback)
-        bool optimize=true;                                 // used for some devices, see specific implementations
-    };
-    enum mst{minPosition, maxPosition, homePosition, lastPosition, defaultVelocity, maximumVelocity, defaultAcceleration, maximumAcceleration};
+    enum mst{minPosition, maxPosition, lastPosition, restPosition, defaultVelocity, maximumVelocity, defaultAcceleration, maximumAcceleration};
 }
 using namespace nRPTY;
 
@@ -71,9 +42,8 @@ public:
         std::string type{"md_none"};
         rtoml::vsr conf;
         rpMotionDevice* dev{nullptr};
-        bool initialized{false};
     };
-
+    bool axesInited=false;
     std::map<std::string, motionAxis> motionAxes;
 
     // ## command queue class ##

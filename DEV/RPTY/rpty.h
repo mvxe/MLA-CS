@@ -34,27 +34,19 @@ public:
 
         // ## higher level functions: ##
 
-    void executeQCS(QCS& cq, bool force=false);             // if force==true and a queue is not empty but its emptyReq==true, reset that queue
-                                                            //      else an error will be thrown
-                                                            // this also clears QCS if executed
     void executeQueue(std::vector<uint32_t>& cq, uint8_t queue);     // execute only one queue, and clears it
 
     // move commands: if cq is given append the commands to cq, otherwise just execute immediately (force=false)
     // commands go to main_command_queue, for others use the motion(std::vector<uint32_t>& cq...) overload
     // multiple axes can be addressed silmultaneously, whether the moves themselves are silmultaneous depends on the axes/controller/implementation
-    void motion(QCS& cq, movEv mEv);
-    void motion(std::vector<uint32_t>& cq, movEv mEv);
-    void motion(movEv mEv);
-    template <typename... Args>   void motion(QCS& cq, movEv mEv, Args&&... args);
-    template <typename... Args>   void motion(std::vector<uint32_t>& cq, movEv mEv, Args&&... args);
-    template <typename... Args>   void motion(movEv mEv, Args&&... args);
+    void motion(std::vector<uint32_t>& cq, std::string axisID, double position, double velocity=0, double acceleration=0, bool relativeMove=false, bool blocking=true);
+    void motion(std::string axisID, double position, double velocity=0, double acceleration=0, bool relativeMove=false, bool blocking=true);
 
     double getMotionSetting(std::string axisID, mst setting);
 
-    void getCurrentPosition(std::string axisID, double& position);      // this will throw an exception if main_command_queue is in use
-    template <typename... Args>   void getCurrentPosition(std::string axisID, double& position, Args&&... args);
-    void getMotionError(std::string axisID, int& error);                // returns error code if the motion device supports it, 0=no erro, this will throw an exception if main_command_queue is in use
-    template <typename... Args>   void getMotionError(std::string axisID, int& error, Args&&... args);
+    void getCurrentPosition(std::string axisID, double& position);
+    void getMotionError(std::string axisID, int& error);             // returns error code if the motion device supports it, 0=no erro, this will throw an exception if main_command_queue is in use
+
 
         // ## aditional higher level functions: ##
 
@@ -69,12 +61,13 @@ public:
     void addMotionDevice(std::string axisID);
     void setMotionDeviceType(std::string axisID, std::string type);     // useful for GUI config
 
-    void initMotionDevice(std::string axisID);
     void initMotionDevices();                   // inits all non-inited devices
-    void deinitMotionDevice(std::string deviceID);
+    void referenceMotionDevices();
+    void retraceMotionDevices();                // moves all motion devices to the last saved position (RPTY::motion overrides last saved positions)
     void deinitMotionDevices();                 // inits all non-inited devices
 
 private:
+    unsigned _free_flag=1;
     inline void _motionDeviceThrowExc(std::string axisID, std::string function);
     void run();
 };
