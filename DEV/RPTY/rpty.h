@@ -3,20 +3,19 @@
 
 #include "DEV/TCP_con.h"
 
+#include "globals.h"
 #include "UTIL/containers.h"
-#include "_config.h"
 #include "fpga_const.h"
 #include "rpbbserial.h"
 #include "rpmotion.h"
+#include "DEV/controller.h"
 
-using namespace nRPTY;
-
-class RPTY : public TCP_con, public rpty_config, public protooth{
+class RPTY : public TCP_con, public protooth, public controller<std::vector<uint32_t>>{
 public:
     RPTY();
     ~RPTY();
 
-        // ## lower level functions: ##
+        // ## lower level functions: - thread safe##
 
     int F2A_read(uint8_t queue, uint32_t *data, uint32_t size4);    //queue is 0-3; note: size4 is number of uint32_t (4 bytes each), not bytes; return 0 if success, else -1
     int A2F_write(uint8_t queue, uint32_t *data, uint32_t size4);   //queue is 0-3; note: size4 is number of uint32_t (4 bytes each), not bytes; return 0 if success, else -1
@@ -31,20 +30,17 @@ public:
     int A2F_loop(uint8_t queue, bool loop);                         //queue is 0-3
 
 
-
         // ## higher level functions: ##
 
-    void executeQueue(std::vector<uint32_t>& cq, uint8_t queue);     // execute only one queue, and clears it
+    void executeQueue(cqueue& cq, uint8_t queue);     // execute only one queue, and clears it
 
     // move commands: if cq is given append the commands to cq, otherwise just execute immediately (force=false)
-    // commands go to main_command_queue, for others use the motion(std::vector<uint32_t>& cq...) overload
+    // commands go to main_command_queue, for others use the motion(cqueue& cq...) overload
     // multiple axes can be addressed silmultaneously, whether the moves themselves are silmultaneous depends on the axes/controller/implementation
-    void motion(std::vector<uint32_t>& cq, std::string axisID, double position, double velocity=0, double acceleration=0, bool relativeMove=false, bool blocking=true);
+    void motion(cqueue& cq, std::string axisID, double position, double velocity=0, double acceleration=0, bool relativeMove=false, bool blocking=true);
     void motion(std::string axisID, double position, double velocity=0, double acceleration=0, bool relativeMove=false, bool blocking=true);
 
     double getMotionSetting(std::string axisID, mst setting);
-
-    double getCurrentPosition(std::string axisID, bool getTarget=false);
     int getMotionError(std::string axisID);             // returns error code if the motion device supports it, 0=no erro, this will throw an exception if main_command_queue is in use
 
 
@@ -71,6 +67,35 @@ private:
     inline void _motionDeviceThrowExc(std::string axisID, std::string function);
     void run();
     std::mutex mux;
+    std::atomic<bool> recheck_position{true};
+
+
+private:
+    std::mutex smx;
+public:
+    tsvar_ip IP{&smx, "192.168.1.2"};
+    tsvar_port port{&smx, 32};
+    tsvar<unsigned> keepalive{&smx, 500};                   //keepalive and connect timeout, in ms
+
+    unsigned main_cq{0};                        // main command queue
+    unsigned helper_cq{1};
+    unsigned serial_cq{2};                      // serial command queue (for acquisition)
+    unsigned main_aq{0};                        // main acquisition queue
+    unsigned serial_aq{1};                      // serial acquisition queue
+
+
+    struct motionAxis{
+        std::string type{"md_none"};
+        rtoml::vsr conf;
+        rpMotionDevice* dev{nullptr};
+    };
+    bool axesInited=false;
+    std::map<std::string, motionAxis> motionAxes;
+
+    // ## command queue class ##
+
+
+
 };
 
 

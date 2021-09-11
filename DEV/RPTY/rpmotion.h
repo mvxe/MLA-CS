@@ -1,9 +1,9 @@
 #ifndef RPMOTION_H
 #define RPMOTION_H
 
-#include "_config.h"
-
-using namespace nRPTY;
+#include <UTIL/.rtoml/rtoml.hpp>
+#include <mutex>
+class RPTY;
 
 class rpMotionDevice {
 public:
@@ -17,9 +17,8 @@ public:
         // acceleration - acceleration override if >0, otherwise default acceleration will be used
         // blocking - if true, consequent moves will wait for this one to finish (only applicable to some devices)
         // NOTE : for relative moves, the program does not check if the move is within minPosition/maxPosition (for some devices a soft limit is set on the device firmware though, so the error will be returned via getMotionError)
-    double getMotionSetting(mst setting);
 
-    virtual double getCurrentPosition(bool getTarget=false)=0;
+    virtual void updatePosition()=0;
     virtual int getMotionError()=0;
 
     virtual void initMotionDevice(std::vector<uint32_t>& cq, std::vector<uint32_t>& hq, unsigned& free_flag)=0;
@@ -33,6 +32,8 @@ public:
     const std::string type{"md_none"};
     std::string axisID;
 
+    double position;
+
     double minPosition;
     double maxPosition;
     double lastPosition;
@@ -43,6 +44,7 @@ public:
     double maximumAcceleration;
 
     RPTY* parent;
+    std::mutex mux;
 };
 
 #endif // RPMOTION_H

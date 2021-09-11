@@ -5,7 +5,7 @@ rpMotionDevice_SimpleServo::~rpMotionDevice_SimpleServo(){}
 
 void rpMotionDevice_SimpleServo::motion(std::vector<uint32_t>& cq, double position, double velocity, double acceleration, bool relativeMove, bool blocking){}
 
-double rpMotionDevice_SimpleServo::getCurrentPosition(bool getTarget){}
+void rpMotionDevice_SimpleServo::updatePosition(){}
 int rpMotionDevice_SimpleServo::getMotionError(){}
 
 void rpMotionDevice_SimpleServo::initMotionDevice(std::vector<uint32_t>& cq, std::vector<uint32_t> &hq, unsigned &free_flag){}

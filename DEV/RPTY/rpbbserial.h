@@ -6,7 +6,7 @@
 #include <string>
 #include <stdexcept>
 #include <cmath>
-#include "_config.h"
+#include <UTIL/.rtoml/rtoml.hpp>
 
 class RPBBSerial{       // Red Pitaya BitBang Serial
 private:

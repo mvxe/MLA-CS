@@ -3,9 +3,17 @@
 #include "motionDevices/pinexactstage.h"
 #include "motionDevices/simpleservo.h"
 
-// some of this code might not be thread safe
+RPTY::RPTY(){
+    conf["RPTY_ip"]=IP;
+    conf["RPTY_port"]=port;
+    conf["RPTY_keepalive"]=keepalive;
 
-RPTY::RPTY(){}
+    conf["main_command_queue"]=main_cq;
+    conf["helper_command_queue"]=helper_cq;
+    conf["serial_command_queue"]=serial_cq;
+    conf["main_acquisition_queue"]=main_aq;
+    conf["serial_acquisition_queue"]=serial_aq;
+}
 RPTY::~RPTY(){
     for(auto& dev : motionAxes){
         delete dev.second.dev;
@@ -45,8 +53,16 @@ void RPTY::run(){
             disconnect();}  //if the user changes the IP or port setting we disconnect
 
         std::this_thread::sleep_for (std::chrono::milliseconds(1));
-        if (connected); /*TODO: RPTY do work here*/
-
+        if (connected){ /*TODO: RPTY do work here*/
+            if(recheck_position)
+                if(getNum(A2F_RSCur, main_cq)!=0){
+                    for(auto& dev : motionAxes){
+                        std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
+                        motionAxes[dev.first].dev->updatePosition();
+                    }
+                    recheck_position=false;
+                }
+        }
         if(end){
             if (connected){
                 /*TODO RPTY disco*/
@@ -122,33 +138,44 @@ int RPTY::A2F_loop(uint8_t queue, bool loop){
     return TCP_con::write(command,8);
 }
 
-void RPTY::executeQueue(std::vector<uint32_t>& cq, uint8_t queue){
+void RPTY::executeQueue(cqueue& cq, uint8_t queue){
     A2F_write(queue, cq.data(), cq.size());
     cq.clear();
+    recheck_position=true;
 }
 
-void RPTY::motion(std::vector<uint32_t>& cq, std::string axisID, double position, double velocity, double acceleration, bool relativeMove, bool blocking){
+void RPTY::motion(cqueue& cq, std::string axisID, double position, double velocity, double acceleration, bool relativeMove, bool blocking){
     _motionDeviceThrowExc(axisID,"motion");
+    std::lock_guard<std::mutex>lock(motionAxes[axisID].dev->mux);
     motionAxes[axisID].dev->motion(cq, position, velocity, acceleration, relativeMove, blocking);
 }
 void RPTY::motion(std::string axisID, double position, double velocity, double acceleration, bool relativeMove, bool blocking){
-    std::vector<uint32_t> cq;
+    cqueue cq;
     _motionDeviceThrowExc(axisID,"motion");
+    std::lock_guard<std::mutex>lock(motionAxes[axisID].dev->mux);
     motionAxes[axisID].dev->motion(cq, position, velocity, acceleration, relativeMove, blocking);
     executeQueue(cq, main_cq);
 }
 
 double RPTY::getMotionSetting(std::string axisID, mst setting){
     _motionDeviceThrowExc(axisID,"getMotionSetting");
-    return motionAxes[axisID].dev->getMotionSetting(setting);
+    std::lock_guard<std::mutex>lock(motionAxes[axisID].dev->mux);
+    switch (setting){
+    case mst_position: return motionAxes[axisID].dev->position;
+    case mst_minPosition: return motionAxes[axisID].dev->minPosition;
+    case mst_maxPosition: return motionAxes[axisID].dev->maxPosition;
+    case mst_lastPosition: return motionAxes[axisID].dev->lastPosition;
+    case mst_restPosition: return motionAxes[axisID].dev->restPosition;
+    case mst_defaultVelocity: return motionAxes[axisID].dev->defaultVelocity;
+    case mst_maximumVelocity: return motionAxes[axisID].dev->maximumVelocity;
+    case mst_defaultAcceleration: return motionAxes[axisID].dev->defaultAcceleration;
+    case mst_maximumAcceleration: return motionAxes[axisID].dev->maximumAcceleration;
+    }
 }
 
-double RPTY::getCurrentPosition(std::string axisID, bool getTarget){
-    _motionDeviceThrowExc(axisID,"getCurrentPosition");
-   return  motionAxes[axisID].dev->getCurrentPosition();
-}
 int RPTY::getMotionError(std::string axisID){
     _motionDeviceThrowExc(axisID,"getMotionError");
+    std::lock_guard<std::mutex>lock(motionAxes[axisID].dev->mux);
     return motionAxes[axisID].dev->getMotionError();
 }
 void RPTY::addMotionDevice(std::string axisID){
@@ -180,9 +207,10 @@ void RPTY::initMotionDevices(){
     if(axesInited) throw std::runtime_error(util::toString("In RPTY::initMotionDevices: axes already initialized."));
     A2F_loop(helper_cq, false);
     FIFOreset(1<<helper_cq);
-    std::vector<uint32_t> hq, cq;
+    cqueue hq, cq;
     hq.push_back(CQF::W4TRIG_INTR());
     for(auto& dev : motionAxes){
+        std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
         motionAxes[dev.first].dev->initMotionDevice(cq, hq, _free_flag);
     }
     cq.push_back(CQF::TRIG_OTHER(1<<helper_cq));
@@ -194,37 +222,43 @@ void RPTY::initMotionDevices(){
 }
 void RPTY::referenceMotionDevices(){
     if(!axesInited) throw std::runtime_error(util::toString("In RPTY::referenceMotionDevices: axes not initialized."));
-    std::vector<uint32_t> cq;
+    cqueue cq;
     cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,_free_flag-1,false));   // lock main until all flags must are low
     for(auto& dev : motionAxes){
+        std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
         motionAxes[dev.first].dev->referenceMotionDevice(cq);
     }
     executeQueue(cq, main_cq);
 }
 void RPTY::retraceMotionDevices(){
-    std::vector<uint32_t> cq;
+    cqueue cq;
     cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,_free_flag-1,false));   // lock main until all flags must are low
     for(auto& dev : motionAxes){
+        std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
         motionAxes[dev.first].dev->motion(cq, motionAxes[dev.first].dev->lastPosition, motionAxes[dev.first].dev->maximumVelocity, motionAxes[dev.first].dev->maximumAcceleration);
     }
     executeQueue(cq, main_cq);
-    for(auto& dev : motionAxes)
+    for(auto& dev : motionAxes){
+        std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
         std::cerr<<"Axis "<<dev.first<<" error code "<<motionAxes[dev.first].dev->getMotionError()<<"\n";
+    }
 }
 void RPTY::deinitMotionDevices(){
     if(!axesInited) throw std::runtime_error(util::toString("In RPTY::deinitMotionDevices: axes not initialized."));
-    std::vector<uint32_t> cq;
+    cqueue cq;
 
     for(auto& dev : motionAxes){
-        double position=motionAxes[dev.first].dev->getCurrentPosition(true);
-        std::cerr<<"current position "<<dev.first<<": "<<position<<"\n";
-        motionAxes[dev.first].dev->lastPosition=position;
+        std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
+        motionAxes[dev.first].dev->updatePosition();
+        motionAxes[dev.first].dev->lastPosition=motionAxes[dev.first].dev->position;
     }
     for(auto& dev : motionAxes){
+        std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
         motionAxes[dev.first].dev->motion(cq, motionAxes[dev.first].dev->restPosition, motionAxes[dev.first].dev->maximumVelocity, motionAxes[dev.first].dev->maximumAcceleration);
     }
 
     for(auto& dev : motionAxes){
+        std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
         motionAxes[dev.first].dev->deinitMotionDevice(cq);
     }
     executeQueue(cq, main_cq);

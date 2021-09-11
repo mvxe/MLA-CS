@@ -11,7 +11,7 @@ public:
 
     void motion(std::vector<uint32_t>& cq, double position, double velocity=0, double acceleration=0, bool relativeMove=false, bool blocking=true);
 
-    double getCurrentPosition(bool getTarget=false);
+    void updatePosition();
     int getMotionError();
 
     void initMotionDevice(std::vector<uint32_t>& cq, std::vector<uint32_t>& hq, unsigned& free_flag);

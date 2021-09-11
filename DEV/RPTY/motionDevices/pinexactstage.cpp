@@ -105,19 +105,19 @@ void rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr, char brea
     parent->A2F_loop(parent->serial_cq, false);
     parent->FIFOreset(1<<parent->serial_cq, 1<<parent->serial_aq);
 }
-double rpMotionDevice_PINEXACTStage::getCurrentPosition(bool getTarget){
+void rpMotionDevice_PINEXACTStage::updatePosition(){
     _readQS(0);
     std::vector<uint32_t> commands;
     commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
     commands.push_back(CQF::WAIT(serial.cyclesPerBit*8*5));
     commands.push_back(CQF::FLAGS_MASK(serialFlag));
     commands.push_back(CQF::FLAGS_SHARED_SET(serialFlag));
-    if(getTarget) serial.string_to_command("MOV?\n", commands);
-    else          serial.string_to_command("POS?\n", commands);
+    serial.string_to_command("MOV?\n", commands);
+    //serial.string_to_command("POS?\n", commands); // POS returns the actual position - not what we want
     parent->executeQueue(commands, parent->main_cq);
     std::string readStr;
     _readTillChar(readStr,'\n');
-    return std::stod(readStr.substr(readStr.find("=")+1));
+    position=std::stod(readStr.substr(readStr.find("=")+1));
 }
 int rpMotionDevice_PINEXACTStage::getMotionError(){
     _readQS(0);

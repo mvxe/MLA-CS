@@ -53,6 +53,7 @@ HEADERS += \
     DEV/RPTY/rpbbserial.h \
     DEV/RPTY/rpmotion.h \
     DEV/XPS/xps.h \
+    DEV/controller.h \
     UTIL/.rtoml/rtoml.hpp \
     includes.h \
     globals.h \
@@ -63,7 +64,6 @@ HEADERS += \
     DEV/XPS/xps_template.h \
     DEV/XPS/_config.h \
     DEV/RPTY/rpty.h \
-    DEV/RPTY/_config.h \
     GUI/mainwindow.h \
     GUI/gui_includes.h \
     DEV/TCP_con.h \
