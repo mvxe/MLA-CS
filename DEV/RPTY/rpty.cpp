@@ -138,22 +138,11 @@ int RPTY::A2F_loop(uint8_t queue, bool loop){
     return TCP_con::write(command,8);
 }
 
-void RPTY::executeQueue(cqueue& cq, uint8_t queue){
-    A2F_write(queue, cq.data(), cq.size());
-    cq.clear();
-    recheck_position=true;
-}
-
-void RPTY::motion(cqueue& cq, std::string axisID, double position, double velocity, double acceleration, bool relativeMove, bool blocking){
-    _motionDeviceThrowExc(axisID,"motion");
-    std::lock_guard<std::mutex>lock(motionAxes[axisID].dev->mux);
-    motionAxes[axisID].dev->motion(cq, position, velocity, acceleration, relativeMove, blocking);
-}
-void RPTY::motion(std::string axisID, double position, double velocity, double acceleration, bool relativeMove, bool blocking){
+void RPTY::motion(std::string axisID, double position, double velocity, double acceleration, motionFlags flags){
     cqueue cq;
     _motionDeviceThrowExc(axisID,"motion");
     std::lock_guard<std::mutex>lock(motionAxes[axisID].dev->mux);
-    motionAxes[axisID].dev->motion(cq, position, velocity, acceleration, relativeMove, blocking);
+    motionAxes[axisID].dev->motion(cq, position, velocity, acceleration, flags);
     executeQueue(cq, main_cq);
 }
 
@@ -203,6 +192,9 @@ void RPTY::setMotionDeviceType(std::string axisID, std::string type){
     motionAxes[axisID].dev->parent=this;
     motionAxes[axisID].conf.load();
 }
+void RPTY::addGPIOEvent(std::string GPIOID){
+
+}
 void RPTY::initMotionDevices(){
     if(axesInited) throw std::runtime_error(util::toString("In RPTY::initMotionDevices: axes already initialized."));
     A2F_loop(helper_cq, false);
@@ -237,6 +229,7 @@ void RPTY::retraceMotionDevices(){
         std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
         motionAxes[dev.first].dev->motion(cq, motionAxes[dev.first].dev->lastPosition, motionAxes[dev.first].dev->maximumVelocity, motionAxes[dev.first].dev->maximumAcceleration);
     }
+    for(auto& dev : motionAxes) _addHold(cq, util::toString(dev.first,"_MOTION_ONTARGET"));
     executeQueue(cq, main_cq);
     for(auto& dev : motionAxes){
         std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
@@ -256,7 +249,7 @@ void RPTY::deinitMotionDevices(){
         std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
         motionAxes[dev.first].dev->motion(cq, motionAxes[dev.first].dev->restPosition, motionAxes[dev.first].dev->maximumVelocity, motionAxes[dev.first].dev->maximumAcceleration);
     }
-
+    for(auto& dev : motionAxes) _addHold(cq, util::toString(dev.first,"_MOTION_ONTARGET"));
     for(auto& dev : motionAxes){
         std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
         motionAxes[dev.first].dev->deinitMotionDevice(cq);
@@ -269,3 +262,68 @@ inline void RPTY::_motionDeviceThrowExc(std::string axisID, std::string function
     if(!motionAxes.count(axisID)) throw std::runtime_error(util::toString("In RPTY::",function,", axis ",axisID," has not been defined."));
     else if(!axesInited) throw std::runtime_error(util::toString("In RPTY::",function,", axes have not been initialized."));
 }
+
+
+void RPTY::executeQueue(cqueue& cq, uint8_t queue){
+    A2F_write(queue, cq.data(), cq.size());
+    cq.clear();
+    recheck_position=true;
+}
+
+// command object related functions
+
+void RPTY::CO_init(CO* a){
+    commandObjects[a];
+}
+void RPTY::CO_delete(CO* a){
+    commandObjects.erase(a);
+}
+void RPTY::CO_execute(CO* a){
+    executeQueue(commandObjects[a], main_cq);
+}
+void RPTY::CO_addMotion(CO* a, std::string axisID, double position, double velocity, double acceleration, motionFlags flags){
+    _motionDeviceThrowExc(axisID,"motion");
+    std::lock_guard<std::mutex>lock(motionAxes[axisID].dev->mux);
+    motionAxes[axisID].dev->motion(commandObjects[a], position, velocity, acceleration, flags);
+}
+void RPTY::CO_addDelay(CO* a, double delay){
+    commandObjects[a].push_back(CQF::WAIT(delay*125000000));
+}
+void RPTY::_addHold(cqueue& cq, std::string condition){
+    bool w4tfound=false;
+    for(auto& commnd: holdEvents[condition].commands){
+        // first we find last non-W4TRIG command in queue and we place the non-W4TRIG commands from condition there
+        // in this way we can silmultaneously start polling multiple axes, saving time
+        if((commnd&0xF0000000)==(2<<28)) w4tfound=true;     //is a W4TRIG
+
+        if(w4tfound){       //is a W4TRIG
+            cq.push_back(commnd);
+        }else{
+            cqueue::iterator it;
+            if(!cq.empty()){
+                it=cq.end();
+                while(1){
+                    if(((*(it-1))&0xF0000000)!=(2<<28)){    //is not a W4TRIG
+                        it=cq.insert(it, commnd);
+                        break;
+                    }else if(it!=cq.begin()){
+                        it--;
+                    }else{
+                        it=cq.insert(it, commnd);
+                        break;
+                    }
+                }
+            }else cq.push_back(commnd);
+        }
+    }
+}
+void RPTY::CO_addHold(CO* a, std::string condition){
+    _addHold(commandObjects[a], condition);
+}
+void RPTY::CO_addGPIOEvent(CO* a, std::string GPIOID, bool state){
+
+}
+void RPTY::CO_clear(CO* a){
+    commandObjects[a].clear();
+}
+

@@ -153,9 +153,9 @@ void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov, bool fo
     double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;    //this correction should change with skewCorrection, but implementing that would be annoying (dont want to add more configuration) and its negligible anyway, just recalibrate autoadjXZ,YZ with skewCorrection if its a problem
     double _Fmov=Fmov-_Zmov;
     //go.pXPS->MoveRelative(XPS::mgroup_XYZF,_Xmov,_Ymov,_Zmov,_Fmov);
-    go.pRPTY->motion("X",_Xmov,0,0,true, false);
-    go.pRPTY->motion("Y",_Ymov,0,0,true, false);
-    go.pRPTY->motion("Z",_Zmov,0,0,true, false);
+    go.pRPTY->motion("X",_Xmov,0,0,CTRL::MF_RELATIVE);
+    go.pRPTY->motion("Y",_Ymov,0,0,CTRL::MF_RELATIVE);
+    go.pRPTY->motion("Z",_Zmov,0,0,CTRL::MF_RELATIVE);
 }
 
 void pgMoveGUI::corPvt(PVTobj* po, double time, double Xmov, double Xspd, double Ymov, double Yspd, double Zmov, double Zspd, double Fmov, double Fspd, bool forceSkewCorrection){

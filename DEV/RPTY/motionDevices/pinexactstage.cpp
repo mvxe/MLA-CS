@@ -30,11 +30,11 @@ void rpMotionDevice_PINEXACTStage::_modesetAltNs(std::vector<uint32_t>& cq, bool
         serial.string_to_command(util::toString("SPA 1 0x7001A00 ",_alternating?"1":"0","\n"), cq);
     }
 }
-void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double position, double velocity, double acceleration, bool relativeMove, bool blocking){
+void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double position, double velocity, double acceleration, CTRL::motionFlags flags){
     cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));    // wait for all flags to clear
 //    double tpos=relativeMove?lastPosition+position:position;
 //    if(tpos>maxPosition || tpos<minPosition)  throw std::invalid_argument(util::toString("In rpMotionDevice_PINEXACTStage::motion for axis ",axisID,", target position is not within min/max: target poisition=",tpos,", min=",minPosition,", max=", maxPosition));
-    if(relativeMove && position==0) return;
+    if((flags&CTRL::MF_RELATIVE) && position==0) return;
     if(velocity==0) velocity=defaultVelocity;
     if(acceleration==0) acceleration=defaultAcceleration;
     if(velocity>maximumVelocity) throw std::invalid_argument(util::toString("In rpMotionDevice_PINEXACTStage::motion for axis ",axisID,", velocity>maximumVelocity"));
@@ -47,7 +47,7 @@ void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double posi
         serial.string_to_command(util::toString("ACC 1 ",acceleration,"\n"), cq);
         last_acceleration=acceleration;
     }
-    std::string com=relativeMove?"MVR":"MOV";
+    std::string com=(flags&CTRL::MF_RELATIVE)?"MVR":"MOV";
 //    if(relativeMove) lastPosition+=position;
 //    else lastPosition=position;
     switch(mType){
@@ -55,10 +55,10 @@ void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double posi
         //_modesetAltNs(cq, false);
         serial.string_to_command(util::toString(com," 1 ",position,"\n"), cq);
         //TODO relative move boundary tracking
-        if(blocking){
-            cq.push_back(CQF::FLAGS_MASK(ontFlag));
-            cq.push_back(CQF::FLAGS_SHARED_SET(ontFlag));
-        }
+//        if((flags&CTRL::MF_HOLD)){
+//            cq.push_back(CQF::FLAGS_MASK(ontFlag));
+//            cq.push_back(CQF::FLAGS_SHARED_SET(ontFlag));
+//        }
         break;
     case mt_nanostepping_ontarget:;
         //_modesetAltNs(cq, false);
@@ -151,6 +151,12 @@ void rpMotionDevice_PINEXACTStage::initMotionDevice(std::vector<uint32_t>& cq, s
 
     _wait4rdy(hq);
     _wait4ont(hq);
+
+    // add event
+    parent->holdEvents[util::toString(axisID,"_MOTION_ONTARGET")].commands.clear();
+    parent->holdEvents[util::toString(axisID,"_MOTION_ONTARGET")].commands.push_back(CQF::FLAGS_MASK(ontFlag));
+    parent->holdEvents[util::toString(axisID,"_MOTION_ONTARGET")].commands.push_back(CQF::FLAGS_SHARED_SET(ontFlag));
+    parent->holdEvents[util::toString(axisID,"_MOTION_ONTARGET")].commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
 }
 void rpMotionDevice_PINEXACTStage::referenceMotionDevice(std::vector<uint32_t>& cq){
     cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));

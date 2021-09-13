@@ -10,7 +10,7 @@
 #include "rpmotion.h"
 #include "DEV/controller.h"
 
-class RPTY : public TCP_con, public protooth, public controller<std::vector<uint32_t>>{
+class RPTY : public TCP_con, public protooth, public CTRL{
 public:
     RPTY();
     ~RPTY();
@@ -30,19 +30,30 @@ public:
     int A2F_loop(uint8_t queue, bool loop);                         //queue is 0-3
 
 
+        // higher level for internal use
+
+    typedef std::vector<uint32_t> cqueue;
+    void executeQueue(cqueue& cq, uint8_t queue);
+
+private:
+    //functions that are accessed by the command object (CO)
+    void CO_init(CO* a);
+    void CO_delete(CO* a);
+    void CO_execute(CO* a);
+    void CO_addMotion(CO* a, std::string axisID, double position, double velocity=0, double acceleration=0, motionFlags flags=0);
+    void CO_addDelay(CO* a, double delay);
+    void CO_addHold(CO* a, std::string condition);
+    void CO_addGPIOEvent(CO* a, std::string GPIOID, bool state);
+    void CO_clear(CO* a);
+    std::map<CO*, cqueue> commandObjects;
+public:
+
         // ## higher level functions: ##
 
-    void executeQueue(cqueue& cq, uint8_t queue);     // execute only one queue, and clears it
-
-    // move commands: if cq is given append the commands to cq, otherwise just execute immediately (force=false)
-    // commands go to main_command_queue, for others use the motion(cqueue& cq...) overload
-    // multiple axes can be addressed silmultaneously, whether the moves themselves are silmultaneous depends on the axes/controller/implementation
-    void motion(cqueue& cq, std::string axisID, double position, double velocity=0, double acceleration=0, bool relativeMove=false, bool blocking=true);
-    void motion(std::string axisID, double position, double velocity=0, double acceleration=0, bool relativeMove=false, bool blocking=true);
+    void motion(std::string axisID, double position, double velocity=0, double acceleration=0, motionFlags flags=0);
 
     double getMotionSetting(std::string axisID, mst setting);
     int getMotionError(std::string axisID);             // returns error code if the motion device supports it, 0=no erro, this will throw an exception if main_command_queue is in use
-
 
         // ## aditional higher level functions: ##
 
@@ -56,6 +67,7 @@ public:
         // ## device initialization ##          // just name them, the devices themselves are configured via the GUI/TOML configuration
     void addMotionDevice(std::string axisID);
     void setMotionDeviceType(std::string axisID, std::string type);     // useful for GUI config
+    void addGPIOEvent(std::string GPIOID);
 
     void initMotionDevices();                   // inits all non-inited devices
     void referenceMotionDevices();
@@ -65,6 +77,7 @@ public:
 private:
     unsigned _free_flag=1;
     inline void _motionDeviceThrowExc(std::string axisID, std::string function);
+    void _addHold(cqueue& cq, std::string condition);
     void run();
     std::mutex mux;
     std::atomic<bool> recheck_position{true};
@@ -89,8 +102,17 @@ public:
         rtoml::vsr conf;
         rpMotionDevice* dev{nullptr};
     };
+    struct gpioEvent{
+        uint8_t  gpioN, gpioP, gpioLED;
+        bool default_status=false;
+    };
+    struct holdEvent{       // for RPTY, holdEvent is a one or more commands
+        std::vector<uint32_t> commands;
+    };
     bool axesInited=false;
     std::map<std::string, motionAxis> motionAxes;
+    std::map<std::string, gpioEvent> gpioEvents;
+    std::map<std::string, holdEvent> holdEvents;
 
     // ## command queue class ##
 

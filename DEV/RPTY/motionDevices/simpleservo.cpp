@@ -3,7 +3,7 @@
 rpMotionDevice_SimpleServo::rpMotionDevice_SimpleServo(){}
 rpMotionDevice_SimpleServo::~rpMotionDevice_SimpleServo(){}
 
-void rpMotionDevice_SimpleServo::motion(std::vector<uint32_t>& cq, double position, double velocity, double acceleration, bool relativeMove, bool blocking){}
+void rpMotionDevice_SimpleServo::motion(std::vector<uint32_t>& cq, double position, double velocity, double acceleration, CTRL::motionFlags flags){}
 
 void rpMotionDevice_SimpleServo::updatePosition(){}
 int rpMotionDevice_SimpleServo::getMotionError(){}

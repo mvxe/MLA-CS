@@ -3,6 +3,7 @@
 
 #include <UTIL/.rtoml/rtoml.hpp>
 #include <mutex>
+#include "DEV/controller.h" // for flags
 class RPTY;
 
 class rpMotionDevice {
@@ -10,7 +11,7 @@ public:
     rpMotionDevice();
     virtual ~rpMotionDevice(){};
 
-    virtual void motion(std::vector<uint32_t>& cq, double position, double velocity=0, double acceleration=0, bool relativeMove=false, bool blocking=true)=0;
+    virtual void motion(std::vector<uint32_t>& cq, double position, double velocity=0, double acceleration=0, CTRL::motionFlags flags=0)=0;
         // cq - queue to put the commands into
         // position - the absolute (or relative if relativeMove==true) motion position, in mm (or radian if rotational)
         // velocity - velocity override if >0, otherwise default velocity will be used (note: overrides to not persist)
