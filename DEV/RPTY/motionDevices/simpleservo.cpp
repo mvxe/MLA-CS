@@ -11,3 +11,5 @@ int rpMotionDevice_SimpleServo::getMotionError(){}
 void rpMotionDevice_SimpleServo::initMotionDevice(std::vector<uint32_t>& cq, std::vector<uint32_t> &hq, unsigned &free_flag){}
 void rpMotionDevice_SimpleServo::referenceMotionDevice(std::vector<uint32_t>& cq){}
 void rpMotionDevice_SimpleServo::deinitMotionDevice(std::vector<uint32_t>& cq){}
+
+void rpMotionDevice_SimpleServo::holdOnTarget(std::vector<uint32_t>& cq){}

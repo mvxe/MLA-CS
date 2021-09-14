@@ -35,49 +35,49 @@ public:
     typedef std::vector<uint32_t> cqueue;
     void executeQueue(cqueue& cq, uint8_t queue);
 
+
+    // following functions are standatd CTRL interface; see CTRL class for more details
+
+        // #### device initialization ####
+
+    void registerDevice(std::string ID, devType type);
+    void initDevices();
+    void deinitDevices();
+    void referenceMotionDevices();
+    std::vector<std::string> getMotionDevices();
+    std::vector<std::string> getDevices();
+
+        // #### higher level functions: ####
+
+    double getMotionSetting(std::string ID, mst setting);
+    void motion(std::string ID, double position, double velocity=0, double acceleration=0, motionFlags flags=0);
+    int getError(std::string ID);
+    void setGPIO(std::string ID, bool state);
+    void pulseGPIO(std::string ID, double duration);
+
 private:
-    //functions that are accessed by the command object (CO)
     void CO_init(CO* a);
     void CO_delete(CO* a);
     void CO_execute(CO* a);
-    void CO_addMotion(CO* a, std::string axisID, double position, double velocity=0, double acceleration=0, motionFlags flags=0);
+    void CO_addMotion(CO* a, std::string ID, double position, double velocity=0, double acceleration=0, motionFlags flags=0);
     void CO_addDelay(CO* a, double delay);
-    void CO_addHold(CO* a, std::string condition);
-    void CO_addGPIOEvent(CO* a, std::string GPIOID, bool state);
+    void CO_setGPIO(CO* a, std::string ID, bool state);
+    void CO_pulseGPIO(CO* a, std::string ID, double duration);
+    void CO_addHold(CO* a, std::string ID, _holdCondition condition);
+    void CO_startTimer(CO* a, std::string ID, double duration);
     void CO_clear(CO* a);
-    std::map<CO*, cqueue> commandObjects;
-public:
 
-        // ## higher level functions: ##
-
-    void motion(std::string axisID, double position, double velocity=0, double acceleration=0, motionFlags flags=0);
-
-    double getMotionSetting(std::string axisID, mst setting);
-    int getMotionError(std::string axisID);             // returns error code if the motion device supports it, 0=no erro, this will throw an exception if main_command_queue is in use
-
-        // ## aditional higher level functions: ##
-
-    // OPERATING PROCEDURE:
-    //      1. add devices
-    //      2. change settings via either GUI or TOML
-    //      3. init devices
-    //      4. use
-    //      5. uninit devices
-
-        // ## device initialization ##          // just name them, the devices themselves are configured via the GUI/TOML configuration
-    void addMotionDevice(std::string axisID);
-    void setMotionDeviceType(std::string axisID, std::string type);     // useful for GUI config
-    void addGPIOEvent(std::string GPIOID);
-
-    void initMotionDevices();                   // inits all non-inited devices
-    void referenceMotionDevices();
-    void retraceMotionDevices();                // moves all motion devices to the last saved position (RPTY::motion overrides last saved positions)
-    void deinitMotionDevices();                 // inits all non-inited devices
+    struct cqus{
+        cqueue main;
+        cqueue timer;
+    };
+    std::map<CO*, cqus> commandObjects;
 
 private:
-    unsigned _free_flag=1;
+    unsigned _free_flag;
     inline void _motionDeviceThrowExc(std::string axisID, std::string function);
-    void _addHold(cqueue& cq, std::string condition);
+    void setMotionDeviceType(std::string axisID);
+    void _addHold(cqueue& cq, cqueue& cqhold);
     void run();
     std::mutex mux;
     std::atomic<bool> recheck_position{true};
@@ -93,28 +93,43 @@ public:
     unsigned main_cq{0};                        // main command queue
     unsigned helper_cq{1};
     unsigned serial_cq{2};                      // serial command queue (for acquisition)
+    unsigned timer_cq{3};
     unsigned main_aq{0};                        // main acquisition queue
     unsigned serial_aq{1};                      // serial acquisition queue
 
 
-    struct motionAxis{
+    class motionAxis{       // devices of type dt_motion
+    public:
         std::string type{"md_none"};
         rtoml::vsr conf;
         rpMotionDevice* dev{nullptr};
     };
-    struct gpioEvent{
-        uint8_t  gpioN, gpioP, gpioLED;
-        bool default_status=false;
+    class gpioDevice{       // devices of type dt_gpio
+    public:
+        gpioDevice();
+        void initGPIO(cqueue& cq);
+        void setGPIO(cqueue& cq, bool state);
+        void pulseGPIO(cqueue& cq, double duration);
+        void w4trig(cqueue& cq, bool state);
+        int gpio;
+        uint8_t gpioN, gpioP, gpioLED;
+        bool isInput{false};
+        bool defaultState{false};
+        bool inverted{false};
+        rtoml::vsr conf;
     };
-    struct holdEvent{       // for RPTY, holdEvent is a one or more commands
-        std::vector<uint32_t> commands;
+    class timerDevice{      // devices of type dt_timer
+    public:
+        void initTimer(unsigned& free_flag);
+        void addTimer(cqueue& cq, cqueue& cq_timer, double duration);
+        void holdTimer(cqueue& cq);
+        uint16_t timerFlag;
     };
-    bool axesInited=false;
-    std::map<std::string, motionAxis> motionAxes;
-    std::map<std::string, gpioEvent> gpioEvents;
-    std::map<std::string, holdEvent> holdEvents;
 
-    // ## command queue class ##
+    bool devicesInited=false;
+    std::map<std::string, motionAxis> motionAxes;       // devices of type dt_motion
+    std::map<std::string, gpioDevice> gpioDevices;      // devices of type dt_gpio
+    std::map<std::string, timerDevice> timerDevices;    // devices of type dt_timer
 
 
 

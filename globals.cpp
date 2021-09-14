@@ -48,9 +48,9 @@ void globals::startup(int argc, char *argv[]){
     conf["RPTY"]=pRPTY->conf;
     conf["CNC"]=pCNC->conf;
 
-    pRPTY->addMotionDevice("X");
-    pRPTY->addMotionDevice("Y");
-    pRPTY->addMotionDevice("Z");
+    pRPTY->registerDevice("X", CTRL::dt_motion);
+    pRPTY->registerDevice("Y", CTRL::dt_motion);
+    pRPTY->registerDevice("Z", CTRL::dt_motion);
     conf.load();
 
     qapp = new QApplicationQN(argc, argv);

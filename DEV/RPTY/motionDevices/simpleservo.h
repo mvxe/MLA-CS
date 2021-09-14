@@ -17,6 +17,8 @@ public:
     void referenceMotionDevice(std::vector<uint32_t>& cq);
     void deinitMotionDevice(std::vector<uint32_t>& cq);
 
+    void holdOnTarget(std::vector<uint32_t>& cq);
+
     const std::string type{"md_SimpleServo"};
 };
 

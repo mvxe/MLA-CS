@@ -118,6 +118,7 @@ SOURCES += \
     DEV/RPTY/motionDevices/pinexactstage.cpp \
     DEV/RPTY/motionDevices/simpleservo.cpp \
     DEV/RPTY/rpbbserial.cpp \
+    DEV/RPTY/rpdevices.cpp \
     DEV/RPTY/rpmotion.cpp \
     DEV/XPS/xps.cpp \
     main.cpp \

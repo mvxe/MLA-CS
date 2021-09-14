@@ -29,6 +29,9 @@ public:
         // reference the axes
     virtual void deinitMotionDevice(std::vector<uint32_t>& cq)=0;
 
+    virtual void holdOnTarget(std::vector<uint32_t>& cq)=0;
+        // block cq execution until onTarget
+
     rtoml::vsr conf;
     const std::string type{"md_none"};
     std::string axisID;

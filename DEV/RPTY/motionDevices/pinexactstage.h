@@ -18,6 +18,8 @@ public:
     void referenceMotionDevice(std::vector<uint32_t>& cq);
     void deinitMotionDevice(std::vector<uint32_t>& cq);
 
+    void holdOnTarget(std::vector<uint32_t>& cq);
+
     const std::string type{"md_PINEXACTStage"};
 
     enum motionType{mt_nanostepping_delay, mt_nanostepping_ontarget, mt_alternating_delay, mt_alternating_ontarget};
