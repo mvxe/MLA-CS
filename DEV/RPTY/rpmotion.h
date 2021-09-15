@@ -48,7 +48,6 @@ public:
     double maximumAcceleration;
 
     RPTY* parent;
-    std::mutex mux;
 };
 
 #endif // RPMOTION_H

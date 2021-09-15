@@ -36,12 +36,7 @@ void RPTY::run(){
                     //connecting...
                 connect(keepalive.get());
                 if (connected) {
-                    /*TODO RPTY init*/
-//                    for(int i=0;i!=4;i++){
-//                        std::cerr<<"bufn:"<<i<<" lost="<<getNum(F2A_lostN, i)<<" inqueue="<<getNum(F2A_RSCur, i)<<" max="<<getNum(F2A_RSMax, i)<<"\n";
-//                        std::cerr<<"bufn:"<<i<<" bufw: lost="<<getNum(A2F_lostN, i)<<" inqueue="<<getNum(A2F_RSCur, i)<<" max="<<getNum(A2F_RSMax, i)<<"\n";
-//                    }
-                    FIFOreset();
+                    /* RPTY init */
                     initDevices();
                     referenceMotionDevices();
                     motionDevicesToLastPosition();
@@ -55,18 +50,19 @@ void RPTY::run(){
         std::this_thread::sleep_for (std::chrono::milliseconds(1));
         if (connected){ /*TODO: RPTY do work here*/
             if(recheck_position)
+                std::lock_guard<std::recursive_mutex>lock(mux);
                 if(getNum(A2F_RSCur, main_cq)!=0){
                     for(auto& dev : motionAxes){
-                        std::lock_guard<std::mutex>lock(motionAxes[dev.first].dev->mux);
                         motionAxes[dev.first].dev->updatePosition();
+                        int err=motionAxes[dev.first].dev->getMotionError();
+                        if(err) std::cerr<<"Got motion error: "<<err<<"\n";
                     }
                     recheck_position=false;
                 }
-            // TODO add error check
         }
         if(end){
             if (connected){
-                /*TODO RPTY disco*/
+                /* RPTY disconnect */
                 motionDevicesToRestPosition();
                 deinitDevices();
                 disconnect();
@@ -80,7 +76,6 @@ void RPTY::run(){
 }
 
 int RPTY::F2A_read(uint8_t queue, uint32_t *data, uint32_t size4){
-    std::lock_guard<std::mutex>lock(mux);
     uint32_t command[3]={0,queue,size4};
     TCP_con::write(command,12);
     uint32_t index_read=0;
@@ -93,13 +88,11 @@ int RPTY::F2A_read(uint8_t queue, uint32_t *data, uint32_t size4){
     return index_read;  //allways should =size4 else infinite loop, TODO fix maybe?
 }
 int RPTY::A2F_write(uint8_t queue, uint32_t *data, uint32_t size4){
-    std::lock_guard<std::mutex>lock(mux);
     uint32_t command[3]={1,queue,size4};
     TCP_con::write(command,12);
     return TCP_con::write(data,4*size4);
 }
 int RPTY::getNum(getNumType statID, uint8_t queue){
-    std::lock_guard<std::mutex>lock(mux);
     uint32_t command[2]={2,queue};
     command[0]+=(int)statID;
     TCP_con::write(command,8);
@@ -109,37 +102,32 @@ int RPTY::getNum(getNumType statID, uint8_t queue){
     return ret;
 }
 int RPTY::A2F_trig(uint8_t queue){
-    std::lock_guard<std::mutex>lock(mux);
     uint32_t command[2]={8,(uint32_t)(queue)};
     return TCP_con::write(command,8);
 }
 int RPTY::FIFOreset(uint8_t A2Fqueues, uint8_t F2Aqueues){
-    std::lock_guard<std::mutex>lock(mux);
     uint32_t command[2]={9,(uint32_t)((A2Fqueues&0xF)|((F2Aqueues&0xF)<<4))};
     return TCP_con::write(command,8);
 }
 int RPTY::FIFOreset(){
-    std::lock_guard<std::mutex>lock(mux);
     uint32_t command[2]={9,0x100};
     return TCP_con::write(command,8);
 }
 int RPTY::PIDreset(uint8_t PIDN){
-    std::lock_guard<std::mutex>lock(mux);
     uint32_t command[2]={100,(uint32_t)(PIDN&0x3)};
     return TCP_con::write(command,8);
 }
 int RPTY::PIDreset(){
-    std::lock_guard<std::mutex>lock(mux);
     uint32_t command[2]={100,0x4};
     return TCP_con::write(command,8);
 }
 int RPTY::A2F_loop(uint8_t queue, bool loop){
-    std::lock_guard<std::mutex>lock(mux);
     uint32_t command[2]={10,(uint32_t)(queue)|(loop?0x10000:0)};
     return TCP_con::write(command,8);
 }
 
 void RPTY::registerDevice(std::string ID, devType type){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     if(devicesInited) throw std::runtime_error(util::toString("In RPTY::registerDevice: cannot add new devices after running RPTY::initDevices. Deinitialize first."));
     switch(type){
     case dt_motion:
@@ -158,6 +146,7 @@ void RPTY::registerDevice(std::string ID, devType type){
     }
 }
 void RPTY::setMotionDeviceType(std::string axisID){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     if("md_PINEXACTStage"==motionAxes[axisID].type){
             motionAxes[axisID].dev=new rpMotionDevice_PINEXACTStage;
             motionAxes[axisID].conf["rpMotionDevice_PINEXACTStage"]=motionAxes[axisID].dev->conf;
@@ -175,16 +164,15 @@ void RPTY::setMotionDeviceType(std::string axisID){
 }
 
 void RPTY::initDevices(){
+    std::lock_guard<std::recursive_mutex>lock(mux);
+    FIFOreset();
     if(devicesInited) throw std::runtime_error(util::toString("In RPTY::initDevices: devices already initialized."));
-    A2F_loop(helper_cq, false);
-    FIFOreset(1<<helper_cq);
     _free_flag=1;
     cqueue hq, cq;
 
         // dt_motion
     hq.push_back(CQF::W4TRIG_INTR());
     for(auto& [key, dev] : motionAxes){
-        std::lock_guard<std::mutex>lock(dev.dev->mux);
         dev.dev->initMotionDevice(cq, hq, _free_flag);
     }
 
@@ -207,24 +195,21 @@ void RPTY::initDevices(){
 }
 
 void RPTY::deinitDevices(){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     if(!devicesInited) throw std::runtime_error(util::toString("In RPTY::deinitDevices: devices not initialized."));
     cqueue cq;
 
         // dt_motion
 
-    for(auto& [key, dev] : motionAxes){
-        std::lock_guard<std::mutex>lock(dev.dev->mux);
+    for(auto& [key, dev] : motionAxes)
         dev.dev->lastPosition=dev.dev->position;
-    }
     for(auto& [key, dev] : motionAxes) {
         cqueue tmp;
         motionAxes[key].dev->holdOnTarget(tmp);
         _addHold(cq, tmp);
     }
-    for(auto& [key, dev] : motionAxes){
-        std::lock_guard<std::mutex>lock(dev.dev->mux);
+    for(auto& [key, dev] : motionAxes)
         dev.dev->deinitMotionDevice(cq);
-    }
 
     // dt_gpio
     for(auto& [key, dev] : gpioDevices){
@@ -239,23 +224,24 @@ void RPTY::deinitDevices(){
 }
 
 void RPTY::referenceMotionDevices(){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     if(!devicesInited) throw std::runtime_error(util::toString("In RPTY::referenceMotionDevices: devices not initialized."));
     cqueue cq;
     cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,_free_flag-1,false));   // lock main until all flags are low
-    for(auto& [key, dev] : motionAxes){
-        std::lock_guard<std::mutex>lock(dev.dev->mux);
+    for(auto& [key, dev] : motionAxes)
         dev.dev->referenceMotionDevice(cq);
-    }
     cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,_free_flag-1,false));
     executeQueue(cq, main_cq);
 }
 
 std::vector<std::string> RPTY::getMotionDevices(){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     std::vector<std::string> ret;
     for(auto& [key, dev] : motionAxes) ret.push_back(key);
     return ret;
 }
 std::vector<std::string> RPTY::getDevices(){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     std::vector<std::string> ret;
     for(auto& [key, dev] : motionAxes) ret.push_back(key);
     for(auto& [key, dev] : gpioDevices) ret.push_back(key);
@@ -264,8 +250,8 @@ std::vector<std::string> RPTY::getDevices(){
 }
 
 double RPTY::getMotionSetting(std::string ID, mst setting){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     _motionDeviceThrowExc(ID,"getMotionSetting");
-    std::lock_guard<std::mutex>lock(motionAxes[ID].dev->mux);
     switch (setting){
     case mst_position: return motionAxes[ID].dev->position;
     case mst_minPosition: return motionAxes[ID].dev->minPosition;
@@ -280,17 +266,17 @@ double RPTY::getMotionSetting(std::string ID, mst setting){
 }
 
 void RPTY::motion(std::string ID, double position, double velocity, double acceleration, motionFlags flags){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     cqueue cq;
     _motionDeviceThrowExc(ID,"motion");
-    std::lock_guard<std::mutex>lock(motionAxes[ID].dev->mux);
     motionAxes[ID].dev->motion(cq, position, velocity, acceleration, flags);
     executeQueue(cq, main_cq);
 }
 
 int RPTY::getError(std::string ID){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     if(motionAxes.find(ID)!=motionAxes.end()){
         _motionDeviceThrowExc(ID,"getMotionError");
-        std::lock_guard<std::mutex>lock(motionAxes[ID].dev->mux);
         return motionAxes[ID].dev->getMotionError();
     }else if (gpioDevices.find(ID)!=gpioDevices.end()){
         return 0;
@@ -300,22 +286,26 @@ int RPTY::getError(std::string ID){
 }
 
 void RPTY::setGPIO(std::string ID, bool state){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     cqueue cq;
     gpioDevices[ID].setGPIO(cq, state);
     executeQueue(cq, main_cq);
 }
 void RPTY::pulseGPIO(std::string ID, double duration){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     cqueue cq;
     gpioDevices[ID].pulseGPIO(cq, duration);
     executeQueue(cq, main_cq);
 }
 
 inline void RPTY::_motionDeviceThrowExc(std::string ID, std::string function){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     if(!motionAxes.count(ID)) throw std::runtime_error(util::toString("In RPTY::",function,", axis ",ID," has not been defined."));
     else if(!devicesInited) throw std::runtime_error(util::toString("In RPTY::",function,", devices have not been initialized."));
 }
 
 void RPTY::executeQueue(cqueue& cq, uint8_t queue){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     A2F_write(queue, cq.data(), cq.size());
     cq.clear();
     recheck_position=true;
@@ -326,32 +316,39 @@ void RPTY::executeQueue(cqueue& cq, uint8_t queue){
 // command object related functions
 
 void RPTY::CO_init(CO* a){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     commandObjects[a];
 }
 void RPTY::CO_delete(CO* a){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     commandObjects.erase(a);
 }
 void RPTY::CO_execute(CO* a){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     if(!commandObjects[a].timer.empty())
         executeQueue(commandObjects[a].timer, timer_cq);
     executeQueue(commandObjects[a].main, main_cq);
 }
 void RPTY::CO_addMotion(CO* a, std::string axisID, double position, double velocity, double acceleration, motionFlags flags){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     _motionDeviceThrowExc(axisID,"motion");
-    std::lock_guard<std::mutex>lock(motionAxes[axisID].dev->mux);
     motionAxes[axisID].dev->motion(commandObjects[a].main, position, velocity, acceleration, flags);
 }
 void RPTY::CO_addDelay(CO* a, double delay){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     commandObjects[a].main.push_back(CQF::WAIT(delay*125000000));
 }
 
 void RPTY::CO_setGPIO(CO* a, std::string ID, bool state){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     gpioDevices[ID].setGPIO(commandObjects[a].main, state);
 }
 void RPTY::CO_pulseGPIO(CO* a, std::string ID, double duration){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     gpioDevices[ID].pulseGPIO(commandObjects[a].main, duration);
 }
 void RPTY::CO_addHold(CO* a, std::string ID, _holdCondition condition){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     cqueue cq;
     switch(condition){
     case he_gpio_low:
@@ -370,10 +367,12 @@ void RPTY::CO_addHold(CO* a, std::string ID, _holdCondition condition){
     _addHold(commandObjects[a].main, cq);
 }
 void RPTY::CO_startTimer(CO* a, std::string ID, double duration){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     timerDevices[ID].addTimer(commandObjects[a].main, commandObjects[a].timer, duration);
 }
 
 void RPTY::_addHold(cqueue& cq, cqueue &cqhold){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     bool w4tfound=false;
     for(auto& commnd: cqhold){
         // first we find last non-W4TRIG command in queue and we place the non-W4TRIG commands from condition there
@@ -403,6 +402,7 @@ void RPTY::_addHold(cqueue& cq, cqueue &cqhold){
 }
 
 void RPTY::CO_clear(CO* a){
+    std::lock_guard<std::recursive_mutex>lock(mux);
     commandObjects[a].main.clear();
     commandObjects[a].timer.clear();
 }

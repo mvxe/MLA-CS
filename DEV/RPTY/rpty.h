@@ -17,6 +17,8 @@ public:
 
         // ## lower level functions: - thread safe##
 
+// TODO make private
+
     int F2A_read(uint8_t queue, uint32_t *data, uint32_t size4);    //queue is 0-3; note: size4 is number of uint32_t (4 bytes each), not bytes; return 0 if success, else -1
     int A2F_write(uint8_t queue, uint32_t *data, uint32_t size4);   //queue is 0-3; note: size4 is number of uint32_t (4 bytes each), not bytes; return 0 if success, else -1
     enum getNumType{F2A_RSMax=0, F2A_RSCur=1, F2A_lostN=2, A2F_RSMax=3, A2F_RSCur=4, A2F_lostN=5};  //maximum number of elements, number of elemenst currently in queue, number of lost elements
@@ -37,6 +39,8 @@ public:
 
 
     // following functions are standatd CTRL interface; see CTRL class for more details
+
+public:
 
         // #### device initialization ####
 
@@ -79,13 +83,14 @@ private:
     void setMotionDeviceType(std::string axisID);
     void _addHold(cqueue& cq, cqueue& cqhold);
     void run();
-    std::mutex mux;
+    std::recursive_mutex mux;
     std::atomic<bool> recheck_position{true};
 
 
 private:
-    std::mutex smx;
+    std::mutex smx; // TODO remove this
 public:
+    // TODO change these:
     tsvar_ip IP{&smx, "192.168.1.2"};
     tsvar_port port{&smx, 32};
     tsvar<unsigned> keepalive{&smx, 500};                   //keepalive and connect timeout, in ms
