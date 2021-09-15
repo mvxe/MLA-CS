@@ -31,9 +31,9 @@ void rpMotionDevice_PINEXACTStage::_modesetAltNs(std::vector<uint32_t>& cq, bool
     }
 }
 void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double position, double velocity, double acceleration, CTRL::motionFlags flags){
+    if((flags&CTRL::MF_RELATIVE) && position==0) return;
     cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));    // wait for all flags to clear
     if((!(flags&CTRL::MF_RELATIVE)) && (position<minPosition || position>maxPosition))  throw std::invalid_argument(util::toString("In rpMotionDevice_PINEXACTStage::motion for axis ",axisID,", target position is not within min/max: target position=",position,", min=",minPosition,", max=", maxPosition));
-    if((flags&CTRL::MF_RELATIVE) && position==0) return;
     if(velocity==0) velocity=defaultVelocity;
     if(acceleration==0) acceleration=defaultAcceleration;
     if(velocity>maximumVelocity) throw std::invalid_argument(util::toString("In rpMotionDevice_PINEXACTStage::motion for axis ",axisID,", velocity>maximumVelocity"));

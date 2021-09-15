@@ -83,9 +83,9 @@ private:
     void setMotionDeviceType(std::string axisID);
     void _addHold(cqueue& cq, cqueue& cqhold);
     void run();
-    std::recursive_mutex mux;
     std::atomic<bool> recheck_position{true};
-
+public:
+    std::recursive_mutex mux;
 
 private:
     std::mutex smx; // TODO remove this

@@ -10,14 +10,19 @@ pgPosRepGUI::pgPosRepGUI(){
 }
 
 void pgPosRepGUI::update(){
-    if(go.pXPS->connected){ if(go.pXPS->isQueueEmpty()){
-        XPS::raxis ret = go.pXPS->getPos(XPS::mgroup_XYZF);
-        if(ret.pos[0]!=old[0] || ret.pos[1]!=old[1] || ret.pos[2]!=old[2] || ret.pos[3]!=old[3]){
-            for(int i=0;i!=4;i++) old[i]=ret.pos[i];
-            this->setText(QString::fromStdString(util::toString("  X=", std::fixed, std::setprecision(6), ret.pos[0], "mm , Y=", ret.pos[1], "mm\n  Z=", ret.pos[2], "mm , F=", ret.pos[3], "mm")));
-            Q_EMIT changed(old[0], old[1], old[2], old[3]);
+    if(go.pRPTY->connected){
+        double pos[3];
+        if(go.pRPTY->mux.try_lock()){
+            pos[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
+            pos[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
+            pos[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
+            go.pRPTY->mux.unlock();
         }
-    }}
-    else this->setText(QString::fromStdString(util::toString("Position: NC")));
+        if(pos[0]!=old[0] || pos[1]!=old[1] || pos[2]!=old[2]){
+            for(int i=0;i!=3;i++) old[i]=pos[i];
+            this->setText(QString::fromStdString(util::toString("  X=", std::fixed, std::setprecision(6), pos[0], "mm , Y=", pos[1], "mm\n  Z=", pos[2], "mm")));
+            Q_EMIT changed(old[0], old[1], old[2]);
+        }
+    }else this->setText(QString::fromStdString(util::toString("Position: NC")));
 }
 

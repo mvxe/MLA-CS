@@ -14,7 +14,7 @@ public:
     pgPosRepGUI();
     QTimer *timer;
     constexpr static unsigned timer_delay=250;      //we refresh position every 250 ms
-    double old[4]{0,0,0,0};
+    double old[3]{0,0,0};
 
 private Q_SLOTS:
     void update();
@@ -22,7 +22,7 @@ private Q_SLOTS:
     void hideEvent(QHideEvent *){timer->stop();}    //overriden
 
 Q_SIGNALS:
-    void changed(double X, double Y, double Z, double F);
+    void changed(double X, double Y, double Z);
 };
 
 
