@@ -3,6 +3,7 @@
 
 #include "PROCEDURES/procedure.h"
 #include "UTIL/img_util.h"
+#include "DEV/controller.h"
 class QVBoxLayout;
 class QHBoxLayout;
 class val_selector;
@@ -11,7 +12,7 @@ class QPushButton;
 class moveDial;
 class QLabel;
 class checkbox_gs;
-class PVTobj;
+//class PVTobj;
 
 class pgMoveGUI: public QObject{
     Q_OBJECT
@@ -28,19 +29,18 @@ public:
     double getNmPPx();
     double getAngCamToXMot();
     double getYMotToXMot();
-    std::atomic<double>& FZdifference{FZdifCur};
+    std::atomic<double>& FZdifference{ZZdifCur};
 
 public Q_SLOTS:
-    void moveZF(double difference);                                                                 //in mm
-    void move(double Xmov, double Ymov, double Zmov, double Fmov, bool forceSkewCorrection=false);  //in mm, corrects ZF on X and Y move
+    void chooseObj(bool useMirau);                                                     // switches between the two objectives
+    void move(double Xmov, double Ymov, double Zmov, bool forceSkewCorrection=false);  // in mm, corrects Z on X and Y move
 
     void scaledMoveX(double magnitude);
     void scaledMoveY(double magnitude);
     void scaledMoveZ(double magnitude);
-    void scaledMoveF(double magnitude);
 
-    void corPvt(PVTobj* po, double time, double Xmov, double Xspd, double Ymov, double Yspd, double Zmov=0, double Zspd=0, double Fmov=0, double Fspd=0, bool forceSkewCorrection=false);
-                                // for adding corrected pvt segments. NOTE: this corrects ZF on X and Y move, and moving Z also moves F, i.e. the Fmov, Fspd are actually (F-Z) movements
+    void corCOMove(CTRL::CO& co, double Xmov, double Ymov, double Zmov, bool forceSkewCorrection=false);
+
 private:
 
     void init_gui_activation();
@@ -52,8 +52,7 @@ private:
     eadScrlBar* xMove;
     eadScrlBar* yMove;
     eadScrlBar* zMove;
-    eadScrlBar* fMove;
-    val_selector* FZdif;
+    val_selector* ZZdif;
     val_selector* mpow;    //to speed up movement by 10 to the power
     std::vector<moveDial*> moveDials;
     QPushButton* addDial;
@@ -64,7 +63,6 @@ private:
     val_selector* xMoveScale;
     val_selector* yMoveScale;
     val_selector* zMoveScale;
-    val_selector* fMoveScale;
     val_selector* autoadjXZ;        //how much is the Z adjusted per X movement
     val_selector* autoadjYZ;
     QPushButton* calib_autoadjXZ;   //autocalibrates the focus adjustment
@@ -85,20 +83,9 @@ private:
     std::vector<dpoint> p4calib;
     checkbox_gs* skewCorrection;
 
-    val_selector* selVeloc[4];
-    val_selector* selAccel[4];
-
-    std::atomic<double> FZdifCur{-9999};
-
-    static constexpr char coords[4]={'X','Y','Z','F'};
-    static constexpr double maxVel[4]={300,25,300,300};
-    static constexpr double maxAcl[4]={2500,100,2500,2500};
-    static constexpr double minTJerk[4]={0.005,0.005,0.005,0.005};
-    static constexpr double maxTJerk[4]={0.05,0.05,0.05,0.05};
+    std::atomic<double> ZZdifCur{-9999};
 
 private Q_SLOTS:
-    void onLockF(bool locked);
-    void onFZdifChange(double X, double Y, double Z, double F);
     void onCalibrate(bool isStart, bool isX);
     void _onCalibrate_X(bool isStart){onCalibrate(isStart, true);}
     void _onCalibrate_Y(bool isStart){onCalibrate(isStart, false);}
@@ -107,9 +94,6 @@ private Q_SLOTS:
     void onDialMove(double x,double y);
     void onMarkPointForCalib(bool state);
     void onCalculateCalib();
-public Q_SLOTS:
-    void updateXPSVelAcc();
-    void updateXPSVelAcc(int N);
 };
 
 #endif // MOVE_H

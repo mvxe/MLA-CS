@@ -178,6 +178,9 @@ void pgWrite::onLoadImg(){
     writeFrame->setEnabled(true);
 }
 void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double override_imgUmPPx, double override_pointSpacing, double override_duration, double override_focus, double ov_fxcor, double ov_fycor){
+//TODO!
+    throw std::invalid_argument("onWriteDM still needs to be transitioned to CTRL");
+//TODO!
     cv::Mat tmpWrite, resizedWrite;
     cv::Mat* src;
     double vdepthMaxval, vimgUmPPx, vpointSpacing, vduration, vfocus, vfocusXcor, vfocusYcor;
@@ -227,7 +230,7 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
     exec_ret ret;
     PVTobj* po=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pgWrite.txt");
     std::vector<uint32_t> commands;
-    pgMGUI->corPvt(po,0.1, vfocusXcor/1000, 0, vfocusYcor/1000, 0, 0, 0,vfocus/1000,0);
+//TODO!    pgMGUI->corPvt(po,0.1, vfocusXcor/1000, 0, vfocusYcor/1000, 0, 0, 0,vfocus/1000,0);
     commands.push_back(CQF::GPIO_MASK(0x40,0,0));
     commands.push_back(CQF::GPIO_DIR (0x40,0,0));
     commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
@@ -252,10 +255,10 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
         }
         time=(ceil(time/servoCycle)*servoCycle);    // we round time up to XPS servo cycle to prevent rounding (relative) errors later
         if(time>0){
-            pgMGUI->corPvt(po,time, (nextpos.x-lastpos.x)/1000, 0, (nextpos.y-lastpos.y)/1000, 0, 0, 0,0,0);
+//TODO!            pgMGUI->corPvt(po,time, (nextpos.x-lastpos.x)/1000, 0, (nextpos.y-lastpos.y)/1000, 0, 0, 0,0,0);
             commands.push_back(CQF::WAIT(time/8e-9));
         }
-        pgMGUI->corPvt(po,pulseWaitTime/1000, 0, 0, 0, 0, 0, 0,0,0);
+//TODO!        pgMGUI->corPvt(po,pulseWaitTime/1000, 0, 0, 0, 0, 0, 0,0,0);
         commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //for debugging purposes
         commands.push_back(CQF::SG_SAMPLE(CQF::O0td, ints.at<uint16_t>(j,ii), 0));
         commands.push_back(CQF::WAIT((vduration)/8e-6 - 3));
@@ -263,7 +266,7 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
         if(pulseWaitTime!=vduration) commands.push_back(CQF::WAIT((pulseWaitTime-vduration)/8e-6));
         lastpos=nextpos;
     }
-    pgMGUI->corPvt(po,0.1, -lastpos.x/1000-vfocusXcor/1000, 0, -lastpos.y/1000-vfocusYcor/1000, 0, 0, 0,-vfocus/1000,0);
+//TODO!    pgMGUI->corPvt(po,0.1, -lastpos.x/1000-vfocusXcor/1000, 0, -lastpos.y/1000-vfocusYcor/1000, 0, 0, 0,-vfocus/1000,0);
     po->addAction(XPS::writingLaser,false);
 
     if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";go.pXPS->destroyPVTobj(po);return;}

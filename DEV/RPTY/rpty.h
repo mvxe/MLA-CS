@@ -116,7 +116,7 @@ public:
         void setGPIO(cqueue& cq, bool state);
         void pulseGPIO(cqueue& cq, double duration);
         void w4trig(cqueue& cq, bool state);
-        int gpio;
+        int gpio{0};
         uint8_t gpioN, gpioP, gpioLED;
         bool isInput{false};
         bool defaultState{false};

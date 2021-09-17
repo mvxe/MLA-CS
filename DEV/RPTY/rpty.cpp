@@ -49,9 +49,9 @@ void RPTY::run(){
 
         std::this_thread::sleep_for (std::chrono::milliseconds(1));
         if (connected){ /*TODO: RPTY do work here*/
-            if(recheck_position)
+            if(recheck_position){
                 std::lock_guard<std::recursive_mutex>lock(mux);
-                if(getNum(A2F_RSCur, main_cq)!=0){
+                if(getNum(A2F_RSCur, main_cq)==0){
                     for(auto& dev : motionAxes){
                         motionAxes[dev.first].dev->updatePosition();
                         int err=motionAxes[dev.first].dev->getMotionError();
@@ -59,6 +59,7 @@ void RPTY::run(){
                     }
                     recheck_position=false;
                 }
+            }
         }
         if(end){
             if (connected){

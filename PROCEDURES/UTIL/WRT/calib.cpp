@@ -323,6 +323,10 @@ void pgCalib::saveConfMain(std::string filename, double focus, double extraFocus
 }
 
 void pgCalib::WCFFindNearest(){
+//TODO!
+    throw std::invalid_argument("WCFFindNearest still needs to be transitioned to CTRL");
+//TODO!
+
     if(goToNearestFree(selWriteCalibFocusRadDil->val,selWriteCalibFocusRadSpr->val)) {QMessageBox::critical(this, "Error", "No free nearby, stopping."); btnWriteCalib->setChecked(false); return;}
     varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
     QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
@@ -355,7 +359,7 @@ void pgCalib::WCFFindNearest(){
     std::cerr<<"wrFocusOffs is: "<<wrFocusOffs<<" um\n";
     double focus=pgMGUI->FZdifference;
     std::cerr<<"Focus is: "<<focus<<" mm\n";
-    pgMGUI->moveZF(focus+wrFocusOffs/1000);
+//TODO!    pgMGUI->moveZF(focus+wrFocusOffs/1000);
     QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait a bit for movement to complete and stabilize
     std::cerr<<"new focus is: "<<focus+wrFocusOffs/1000<<" mm\n";
 
@@ -369,7 +373,7 @@ void pgCalib::WCFFindNearest(){
     uchar selectedavg;
     writePulse(selWriteCalibFocusPulseIntensity->val, selWriteCalibFocusPulseDuration->val, util::toString(folder,"/laser.dat"), &selectedavg);
 
-    pgMGUI->moveZF(focus);
+//TODO!    pgMGUI->moveZF(focus);
 
     saveConf(util::toString(folder,"/settings.txt"), focus+wrFocusOffs/1000, selWriteCalibFocusRadDil->val, selWriteCalibFocusPulseIntensity->val, selWriteCalibFocusPulseDuration->val, selectedavg);
 
@@ -388,6 +392,9 @@ void pgCalib::WCFFindNearest(){
 }
 
 void pgCalib::WCFArray(){
+//TODO!
+    throw std::invalid_argument("WCFArray still needs to be transitioned to CTRL");
+//TODO!
     varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
     cv::Mat WArray(selArrayYsize->val,selArrayXsize->val,CV_64FC4,cv::Scalar(0,0,0,0));   //Intensity, Duration(ms), Focus(um)
     int arraySizeInt{1}, arraySizeDur{1}, arraySizeFoc{1};
@@ -506,12 +513,12 @@ void pgCalib::WCFArray(){
         for(int i=0;i!=WArray.cols; i++){
             if(!btnWriteCalib->isChecked()){   //abort
                 std::cerr<<"Aborting calibration.\n";
-                pgMGUI->moveZF(focus);
+//TODO!                pgMGUI->moveZF(focus);
                 delete scanRes;
                 return;
             }
 
-            pgMGUI->moveZF(focus+WArray.at<cv::Vec3d>(j,i)[2]/1000);
+//TODO!            pgMGUI->moveZF(focus+WArray.at<cv::Vec3d>(j,i)[2]/1000);
             while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
 
             uchar selectedavg;
@@ -547,7 +554,7 @@ void pgCalib::WCFArray(){
         if(j!=WArray.rows-1) pgMGUI->move(2*xOfs,-selArraySpacing->val/1000,0,0);
     }
     pgMGUI->move(xOfs,yOfs,0,0);
-    pgMGUI->moveZF(focus);
+//TODO!    pgMGUI->moveZF(focus);
     while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
 
     if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement

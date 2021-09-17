@@ -88,7 +88,7 @@ tab_camera::tab_camera(QWidget* parent){
     pageMotion=new twd_selector;
         pageMotion->addWidget(addInfo);
         pageMotion->addWidget(pgSGUI->gui_activation);
-        pageMotion->addWidget(pgMGUI->gui_activation);  connect(pgPRGUI, SIGNAL(changed(double,double,double,double)), pgMGUI, SLOT(onFZdifChange(double,double,double,double)));
+        pageMotion->addWidget(pgMGUI->gui_activation);
         pageMotion->addWidget(pgTGUI->gui_activation);
         pageMotion->addWidget(pgFGUI->gui_activation);
         pageMotion->addWidget(pgPRGUI);
@@ -189,6 +189,7 @@ tab_camera::~tab_camera(){
     delete pgTGUI;
     delete pgFGUI;
     delete pgPRGUI;
+    go.pRPTY->setGPIO("ilumLED", 0);
     onRedLaserToggle(false);
     onGreenLaserToggle(false);
 }
@@ -331,9 +332,9 @@ void tab_camera::tab_entered(){
 
     framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeueDisp->setUserFps(30,5);
+    go.pRPTY->setGPIO("ilumLED", 1);
 
     timer->start(work_call_time);
-    Q_EMIT pgMGUI->updateXPSVelAcc();
 }
 void tab_camera::tab_exited(){
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeueDisp);
@@ -434,7 +435,7 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
             double DX, DY;
             DX=(pxW/2+parent->pgBeAn->writeBeamCenterOfsX-xcoord)*parent->pgMGUI->getNmPPx()/1000000;     //we also correct for real writing beam offset from center
             DY=(pxH/2+parent->pgBeAn->writeBeamCenterOfsY-ycoord)*parent->pgMGUI->getNmPPx()/1000000;
-            parent->pgMGUI->move(DX,DY,0,0,true);
+            parent->pgMGUI->move(DX,DY,0,true);
             if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(pxW/2-xcoord, pxH/2-ycoord);
         }else if(event->button()==Qt::RightButton){
             parent->clickMenu->popup(QCursor::pos());

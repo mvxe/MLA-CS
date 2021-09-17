@@ -22,8 +22,8 @@ public:
     const double& writeBeamCenterOfsX{_writeBeamCenterOfsX};
     const double& writeBeamCenterOfsY{_writeBeamCenterOfsY};
     const std::atomic<double>* extraFocusOffsetVal;
-public Q_SLOTS:
-    bool correctWritingBeamFocus(bool reCenter=true);   //does getCalibWritingBeamRange twice/thrice, using the parameters in settings. Corrects focus. reCenter also corrects the center, return 0 on success
+//public Q_SLOTS:
+//    bool correctWritingBeamFocus(bool reCenter=true);   //does getCalibWritingBeamRange twice/thrice, using the parameters in settings. Corrects focus. reCenter also corrects the center, return 0 on success
 private:
     mesLockProg& MLP;
     pgMoveGUI* pgMGUI;
@@ -63,7 +63,7 @@ private:
 
     QVBoxLayout* alayout;
 //    QPushButton* btnGetCenter;
-    QPushButton* btnGetCenterFocus;
+//    QPushButton* btnGetCenterFocus;
     double X_start, Y_start;
 
     struct spot{

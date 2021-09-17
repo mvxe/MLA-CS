@@ -103,9 +103,9 @@ pgBeamAnalysis::pgBeamAnalysis(mesLockProg& MLP, pgMoveGUI* pgMGUI, pgScanGUI* p
 //    btnGetCenter=new QPushButton("Get Writing Beam Center");
 //    connect(btnGetCenter, SIGNAL(released()), this, SLOT(getWritingBeamCenter()));
 //    alayout->addWidget(new twid(btnGetCenter));
-    btnGetCenterFocus=new QPushButton("Get Writing Beam Focus");
-    connect(btnGetCenterFocus, SIGNAL(released()), this, SLOT(correctWritingBeamFocus()));
-    alayout->addWidget(new twid(btnGetCenterFocus));
+//    btnGetCenterFocus=new QPushButton("Get Writing Beam Focus");
+//    connect(btnGetCenterFocus, SIGNAL(released()), this, SLOT(correctWritingBeamFocus()));
+//    alayout->addWidget(new twid(btnGetCenterFocus));
 }
 //void pgBeamAnalysis::onBtnSaveNextDebug(){
 //    saveNext=QFileDialog::getExistingDirectory(this, "Select Folder for Debug. Images of Every Step of the Process Will be Saved For the Next 'Get Writing Beam Center'.").toStdString();
@@ -513,39 +513,39 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, double *xMin, dou
     go.pXPS->destroyPVTobj(PVTScan);
 }
 
-bool pgBeamAnalysis::correctWritingBeamFocus(bool reCenter){
-    double r{9999},x,y;
-    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
-    getCalibWritingBeamRange(&r, &x, &y, wideFrames->val, wideRange->val);
-    std::cerr<<"it. 1: Red Beam Focus difference is "<<r<<"\n";
-    if(r!=9999) pgMGUI->moveZF(r);
-    else return true;
-    getCalibWritingBeamRange(&r, &x, &y, accuFrames->val, accuRange->val);                    //changing the direction does not affect the result much
-    std::cerr<<"it. 2: Red Beam Focus difference is "<<r<<"\n";
-    if(r==9999) return true;
-    double ro=r, xo=x, yo=y;
-    if(doExtraFocusMesDifDir->val){
-        getCalibWritingBeamRange(&ro, &xo, &yo, accuFrames->val, accuRange->val,true);
-        std::cerr<<"it. 3: Red Beam Focus difference is "<<ro<<"\n";
-        if(ro==9999) return true;
-    }
+//bool pgBeamAnalysis::correctWritingBeamFocus(bool reCenter){
+//    double r{9999},x,y;
+//    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
+//    getCalibWritingBeamRange(&r, &x, &y, wideFrames->val, wideRange->val);
+//    std::cerr<<"it. 1: Red Beam Focus difference is "<<r<<"\n";
+//    if(r!=9999) pgMGUI->moveZF(r);
+//    else return true;
+//    getCalibWritingBeamRange(&r, &x, &y, accuFrames->val, accuRange->val);                    //changing the direction does not affect the result much
+//    std::cerr<<"it. 2: Red Beam Focus difference is "<<r<<"\n";
+//    if(r==9999) return true;
+//    double ro=r, xo=x, yo=y;
+//    if(doExtraFocusMesDifDir->val){
+//        getCalibWritingBeamRange(&ro, &xo, &yo, accuFrames->val, accuRange->val,true);
+//        std::cerr<<"it. 3: Red Beam Focus difference is "<<ro<<"\n";
+//        if(ro==9999) return true;
+//    }
 
-    if(r!=9999){
-        pgMGUI->moveZF((r+ro)/2-extraFocusOffset->val);
-        if(reCenter){
-            double ol[2]{_writeBeamCenterOfsX,_writeBeamCenterOfsY};
-            _writeBeamCenterOfsX=(x+xo)/2+extraOffsX->val*1000/pgMGUI->getNmPPx();
-            _writeBeamCenterOfsY=(y+yo)/2+extraOffsY->val*1000/pgMGUI->getNmPPx();
-            pgMGUI->move((_writeBeamCenterOfsX-ol[0])*pgMGUI->getNmPPx()/1000000,(_writeBeamCenterOfsY-ol[1])*pgMGUI->getNmPPx()/1000000,0,0);
-        }
-    }
-    else return true;
-    std::cerr<<"Calibration Beam Focus: "<<(r+ro)/2<<" mm\nX offset: "<<(x+xo)/2*pgMGUI->getNmPPx()/1000<<" um\nY offset: "<<(y+yo)/2*pgMGUI->getNmPPx()/1000<<" um\n";
-    std::cerr<<"New Focus (Corrected for Ref/Wr laser offset) "<<(r+ro)/2-extraFocusOffset->val<<" mm\n";
-    std::cerr<<"New X offset (Corrected for Ref/Wr laser offset) "<<_writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000<<" um\n";
-    std::cerr<<"New Y offset (Corrected for Ref/Wr laser offset) "<<_writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000<<" um\n";
+//    if(r!=9999){
+//        pgMGUI->moveZF((r+ro)/2-extraFocusOffset->val);
+//        if(reCenter){
+//            double ol[2]{_writeBeamCenterOfsX,_writeBeamCenterOfsY};
+//            _writeBeamCenterOfsX=(x+xo)/2+extraOffsX->val*1000/pgMGUI->getNmPPx();
+//            _writeBeamCenterOfsY=(y+yo)/2+extraOffsY->val*1000/pgMGUI->getNmPPx();
+//            pgMGUI->move((_writeBeamCenterOfsX-ol[0])*pgMGUI->getNmPPx()/1000000,(_writeBeamCenterOfsY-ol[1])*pgMGUI->getNmPPx()/1000000,0,0);
+//        }
+//    }
+//    else return true;
+//    std::cerr<<"Calibration Beam Focus: "<<(r+ro)/2<<" mm\nX offset: "<<(x+xo)/2*pgMGUI->getNmPPx()/1000<<" um\nY offset: "<<(y+yo)/2*pgMGUI->getNmPPx()/1000<<" um\n";
+//    std::cerr<<"New Focus (Corrected for Ref/Wr laser offset) "<<(r+ro)/2-extraFocusOffset->val<<" mm\n";
+//    std::cerr<<"New X offset (Corrected for Ref/Wr laser offset) "<<_writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000<<" um\n";
+//    std::cerr<<"New Y offset (Corrected for Ref/Wr laser offset) "<<_writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000<<" um\n";
 
-    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
-    std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::milliseconds>(B - A).count()<<" milliseconds\n";
-    return false;
-}
+//    std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
+//    std::cerr<<"getWritingBeamCenter took "<<std::chrono::duration_cast<std::chrono::milliseconds>(B - A).count()<<" milliseconds\n";
+//    return false;
+//}

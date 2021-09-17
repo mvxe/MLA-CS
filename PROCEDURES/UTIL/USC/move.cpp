@@ -22,16 +22,11 @@ void pgMoveGUI::init_gui_activation(){
     zMove=new eadScrlBar("Move Z: ", 200,20,false);
     connect(zMove->abar, SIGNAL(change(double)), this, SLOT(scaledMoveZ(double)));
     alayout->addWidget(zMove);
-    fMove=new eadScrlBar("Move F: ", 200,20,true);
-    connect(fMove->abar, SIGNAL(change(double)), this, SLOT(scaledMoveF(double)));
-    alayout->addWidget(fMove);
 
-    FZdif=new val_selector(0, "F-Z= ", -200, 200, 6, 0, {"mm"});
-    FZdif->setEnabled(false);
-    connect(FZdif, SIGNAL(changed(double)), this, SLOT(moveZF(double)));
-    connect(fMove, SIGNAL(lock(bool)), this, SLOT(onLockF(bool)));
+    ZZdif=new val_selector(0, "Zm-Zp= ", -200, 200, 6, 0, {"mm"});
+    ZZdif->setEnabled(false);
     mpow=new val_selector(0, "Move X10^", 0, 6, 0);
-    alayout->addWidget(new twid(FZdif, mpow));
+    alayout->addWidget(new twid(ZZdif, mpow));
 
     addDial=new QPushButton;
     connect(addDial, SIGNAL(released()), this, SLOT(onAddDial()));
@@ -43,8 +38,6 @@ void pgMoveGUI::init_gui_activation(){
     rmDial->setMaximumSize(20,20);
     alayout->addWidget(new twid(addDial, rmDial, new QLabel("Dis./Ang. Ctrl.")));
 }
-
-void pgMoveGUI::onLockF(bool locked){FZdif->setEnabled(!locked);}
 
 void pgMoveGUI::init_gui_settings(){
     gui_settings=new QWidget;
@@ -60,9 +53,6 @@ void pgMoveGUI::init_gui_settings(){
     zMoveScale=new val_selector(0.001, "Z move multiplier: ", 0, 100, 6);
     conf["zMoveScale"]=zMoveScale;
     slayout->addWidget(zMoveScale);
-    fMoveScale=new val_selector(0.001, "F move multiplier: ", 0, 100, 6);
-    conf["fMoveScale"]=fMoveScale;
-    slayout->addWidget(fMoveScale);
 
     autoadjXZ=new val_selector(0, "Focus adjustment for X: ", -100, 100, 12);
     conf["autoadjXZ"]=autoadjXZ;
@@ -96,53 +86,21 @@ void pgMoveGUI::init_gui_settings(){
     calibNmPPx=new val_selector(10, "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
     conf["calibNmPPx"]=calibNmPPx;
     slayout->addWidget(calibNmPPx);
-    calibAngCamToXMot=new val_selector(0, "Camera/Xmot angle: ", -M_PI/2, M_PI/2, 6, 0, {"rad"});
+    calibAngCamToXMot=new val_selector(0, "Camera/Xmot angle: ", -M_PI, M_PI, 6, 0, {"rad"});
     conf["calibAngCamToXMot"]=calibAngCamToXMot;
     slayout->addWidget(calibAngCamToXMot);
-    calibAngYMotToXMot=new val_selector(0, "Xmot/Ymot angle ofs: ", -M_PI/2, M_PI/2, 6, 0, {"rad"});
+    calibAngYMotToXMot=new val_selector(0, "Xmot/Ymot angle ofs: ", -M_PI, M_PI, 6, 0, {"rad"});
     conf["calibAngYMotToXMot"]=calibAngYMotToXMot;
     slayout->addWidget(calibAngYMotToXMot);
     skewCorrection=new checkbox_gs(false,"Correct XY skew and camera angle for all move commands through this function.");
     conf["skewCorrection"]=skewCorrection;
     slayout->addWidget(skewCorrection);
-
-    slayout->addWidget(new hline);
-
-    slayout->addWidget(new QLabel("Non PVT move velocities and accelerations (valid only for this tab):"));
-
-    for (int i=0;i!=4;i++){
-        selVeloc[i]=new val_selector(maxVel[i]/10, util::toString(coords[i]," stage max move velocity: ").c_str(), 1e-3, maxVel[i], 3, 0, {"mm/s"});
-        conf[util::toString("selVeloc",coords[i])]=selVeloc[i];
-        selAccel[i]=new val_selector(maxAcl[i]/10, util::toString(coords[i]," stage max move acceleration: ").c_str(), 1e-3, maxAcl[i], 3, 0, {"mm/s^2"});
-        conf[util::toString("selAccel",coords[i])]=selAccel[i];
-        slayout->addWidget(selVeloc[i]);
-        slayout->addWidget(selAccel[i]);
-        connect(selVeloc[i], qOverload<>(&val_selector::changed), [=]{this->updateXPSVelAcc(i);});
-        connect(selAccel[i], qOverload<>(&val_selector::changed), [=]{this->updateXPSVelAcc(i);});
-    }
-}
-constexpr char pgMoveGUI::coords[4];
-constexpr double pgMoveGUI::maxVel[4];
-constexpr double pgMoveGUI::maxAcl[4];
-constexpr double pgMoveGUI::minTJerk[4];
-constexpr double pgMoveGUI::maxTJerk[4];
-
-void pgMoveGUI::updateXPSVelAcc(){
-    for (int i=0;i!=4;i++){
-        updateXPSVelAcc(i);
-    }
-}
-void pgMoveGUI::updateXPSVelAcc(int N){
-    if(!go.pXPS->connected) return;
-    go.pXPS->execCommand("PositionerSGammaParametersSet",util::toString(go.pXPS->groupGetName(XPS::mgroup_XYZF),'.',coords[N]),selVeloc[N]->val,selAccel[N]->val,minTJerk[N],maxTJerk[N]);
 }
 
 void pgMoveGUI::scaledMoveX(double magnitude){move(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0,0);}
 void pgMoveGUI::scaledMoveY(double magnitude){move(0,magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0);}
 void pgMoveGUI::scaledMoveZ(double magnitude){move(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val),0);}
-void pgMoveGUI::scaledMoveF(double magnitude){move(0,0,0,magnitude*fMoveScale->val/1000*pow(10,mpow->val));}
-void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov, bool forceSkewCorrection){
-    //if(!go.pXPS->connected) return;
+void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, bool forceSkewCorrection){
     double _Xmov=Xmov;
     double _Ymov=Ymov;
     if(skewCorrection->val || forceSkewCorrection){
@@ -151,57 +109,37 @@ void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, double Fmov, bool fo
     }
 
     double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;    //this correction should change with skewCorrection, but implementing that would be annoying (dont want to add more configuration) and its negligible anyway, just recalibrate autoadjXZ,YZ with skewCorrection if its a problem
-    double _Fmov=Fmov-_Zmov;
-    //go.pXPS->MoveRelative(XPS::mgroup_XYZF,_Xmov,_Ymov,_Zmov,_Fmov);
     go.pRPTY->motion("X",_Xmov,0,0,CTRL::MF_RELATIVE);
     go.pRPTY->motion("Y",_Ymov,0,0,CTRL::MF_RELATIVE);
     go.pRPTY->motion("Z",_Zmov,0,0,CTRL::MF_RELATIVE);
 }
 
-void pgMoveGUI::corPvt(PVTobj* po, double time, double Xmov, double Xspd, double Ymov, double Yspd, double Zmov, double Zspd, double Fmov, double Fspd, bool forceSkewCorrection){
-    if(po==nullptr) return;
+void pgMoveGUI::corCOMove(CTRL::CO& co, double Xmov, double Ymov, double Zmov, bool forceSkewCorrection){
     double _Xmov=Xmov;
     double _Ymov=Ymov;
-    double _Xspd=Xspd;
-    double _Yspd=Yspd;
     if(skewCorrection->val || forceSkewCorrection){
         _Xmov=Xmov*cos(calibAngCamToXMot->val)+Ymov*sin(calibAngCamToXMot->val+calibAngYMotToXMot->val);
         _Ymov=Xmov*sin(calibAngCamToXMot->val)+Ymov*cos(calibAngCamToXMot->val+calibAngYMotToXMot->val);
-        _Xspd=Xspd*cos(calibAngCamToXMot->val)+Yspd*sin(calibAngCamToXMot->val+calibAngYMotToXMot->val);
-        _Yspd=Xspd*sin(calibAngCamToXMot->val)+Yspd*cos(calibAngCamToXMot->val+calibAngYMotToXMot->val);
     }
     double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;
-    double _Zspd=Zspd+_Xspd*autoadjXZ->val+_Yspd*autoadjYZ->val;
-    double _Fmov=Fmov-_Zmov;
-    double _Fspd=Fspd-_Zspd;
-
-    po->add(time, _Xmov, _Xspd, _Ymov, _Yspd, _Zmov,_Zspd,_Fmov,_Fspd);
+    co.addMotion("X",_Xmov,0,0,CTRL::MF_RELATIVE);
+    co.addMotion("Y",_Ymov,0,0,CTRL::MF_RELATIVE);
+    co.addMotion("Z",_Zmov,0,0,CTRL::MF_RELATIVE);
 }
 
-void pgMoveGUI::onFZdifChange(double X, double Y, double Z, double F){
-    if(FZdifCur==F+Z) return;
-    FZdifCur=F+Z;
-    FZdif->setValue(F+Z);
-}
-
-void pgMoveGUI::moveZF(double difference){
-    if(!go.pXPS->connected) return;
-    if(difference==FZdifCur || FZdifCur==-9999) return;
-    go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,0,difference-FZdifCur);
-    FZdifCur=difference;
-    while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //This fixes some sync issues
-    FZdif->setValue(FZdifCur);
+void pgMoveGUI::chooseObj(bool useMirau){
+    // TODO
 }
 
 void pgMoveGUI::onCalibrate(bool isStart, bool isX){
     if(isStart){
-        if(isX) X_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[0];
-        else    Y_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[1];
-        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[2];
+        if(isX) X_cum=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
+        else    Y_cum=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
+        Z_cum=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
     }else{
-        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[2]-Z_cum;
-        if(isX) autoadjXZ->setValue(Z_cum/(go.pXPS->getPos(XPS::mgroup_XYZF).pos[0]-X_cum));
-        else    autoadjYZ->setValue(Z_cum/(go.pXPS->getPos(XPS::mgroup_XYZF).pos[1]-Y_cum));
+        Z_cum=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);-Z_cum;
+        if(isX) autoadjXZ->setValue(Z_cum/(go.pRPTY->getMotionSetting("X",CTRL::mst_position)-X_cum));
+        else    autoadjYZ->setValue(Z_cum/(go.pRPTY->getMotionSetting("Y",CTRL::mst_position)-Y_cum));
     }
 }
 
@@ -229,14 +167,12 @@ void pgMoveGUI::delvrNextClickPixDiff(double Dx, double Dy){
 void pgMoveGUI::onMarkPointForCalib(bool state){
     if(state){
         reqstNextClickPixDiff=true;
-        XPS::raxis temp=go.pXPS->getPos(XPS::mgroup_XYZF);
-        curP4calib.DXmm=-temp.pos[0];
-        curP4calib.DYmm=-temp.pos[1];
+        curP4calib.DXmm=-go.pRPTY->getMotionSetting("X",CTRL::mst_position);
+        curP4calib.DYmm=-go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
     }else{
         if(reqstNextClickPixDiff==true) return;
-        XPS::raxis temp=go.pXPS->getPos(XPS::mgroup_XYZF);
-        curP4calib.DXmm+=temp.pos[0];
-        curP4calib.DYmm+=temp.pos[1];
+        curP4calib.DXmm+=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
+        curP4calib.DYmm+=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
         p4calib.push_back(curP4calib);
         ptFeedback->setText(QString::fromStdString(util::toString("Have ",p4calib.size()," points.")));
     }
@@ -271,13 +207,13 @@ void pgMoveGUI::onCalculateCalib(){
         res(0)*=-1;
         res(1)*=-1;
     }
-    while(res(0)<=-M_PI/2) res(0)+=M_PI;
-    while(res(0) > M_PI/2) res(0)-=M_PI;
-    while(res(1)<=-M_PI/2) res(1)+=M_PI;
-    while(res(1) > M_PI/2) res(1)-=M_PI;
+    while(res(1)<=-M_PI) res(1)+=2*M_PI;
+    while(res(1) > M_PI) res(1)-=2*M_PI;
+    while(res(2)<=-M_PI) res(2)+=2*M_PI;
+    while(res(2) > M_PI) res(2)-=2*M_PI;
     calibNmPPx->setValue(res(0)*1000000);
-    calibAngCamToXMot->setValue(-res(1));
-    calibAngYMotToXMot->setValue(-res(2));
+    calibAngCamToXMot->setValue(res(1));
+    calibAngYMotToXMot->setValue(res(2));
 }
 double pgMoveGUI::getNmPPx(){return calibNmPPx->val;}
 double pgMoveGUI::getAngCamToXMot(){return calibAngCamToXMot->val;}
