@@ -55,6 +55,7 @@ HEADERS += \
     DEV/XPS/xps.h \
     DEV/controller.h \
     UTIL/.rtoml/rtoml.hpp \
+    UTIL/motioncalc.h \
     includes.h \
     globals.h \
     GUI/slots_baseclass.h \

@@ -16,6 +16,7 @@
 #include "UTIL/img_util.h"
 #include "UTIL/threadpool.h"
 #include "UTIL/measurement.h"
+#include "UTIL/motioncalc.h"
 #include <iostream>
 #include <fstream>
 

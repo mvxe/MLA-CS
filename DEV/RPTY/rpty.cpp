@@ -308,7 +308,6 @@ inline void RPTY::_motionDeviceThrowExc(std::string ID, std::string function){
 void RPTY::executeQueue(cqueue& cq, uint8_t queue){
     std::lock_guard<std::recursive_mutex>lock(mux);
     A2F_write(queue, cq.data(), cq.size());
-    cq.clear();
     recheck_position=true;
 }
 

@@ -17,6 +17,7 @@
 #include <UTIL/utility.h>
 #include <UTIL/threadpool.h>
 #include <UTIL/.rtoml/rtoml.hpp>
+#include "DEV/controller.h"
 
 class XPS;
 class GCAM;

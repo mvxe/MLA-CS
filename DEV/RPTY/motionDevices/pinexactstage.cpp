@@ -84,8 +84,17 @@ void rpMotionDevice_PINEXACTStage::_readQS(unsigned num){
 }
 void rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr, char breakChar){
     std::vector<uint32_t> read;
+    const double timeout=1;
+    double time;
     while(1){
-        while(parent->getNum(RPTY::F2A_RSCur,parent->serial_aq)<8)  std::this_thread::sleep_for (std::chrono::milliseconds(10));
+        time=0;
+        while(parent->getNum(RPTY::F2A_RSCur,parent->serial_aq)<8){
+            std::this_thread::sleep_for (std::chrono::milliseconds(10));
+            time+=0.010;
+            if(time>=timeout){
+                std::cerr<<"timeout in _readTillChar; got string: "<<readStr<<"\n";
+            }
+        }
         unsigned toread=parent->getNum(RPTY::F2A_RSCur,parent->serial_aq)/8;
         read.reserve(toread*8);
         parent->F2A_read(parent->serial_aq, read.data(), toread*8);

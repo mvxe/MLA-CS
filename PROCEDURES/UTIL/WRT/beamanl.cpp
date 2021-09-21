@@ -397,10 +397,10 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, double *xMin, dou
 
     double readTime=frames/maxFPS;
     double readVelocity=2*range/readTime;
-    double readAccelTime=readVelocity/pgSGUI->vsConv(pgSGUI->max_acc);
-    double readAccelDis=pgSGUI->vsConv(pgSGUI->max_acc)/2*readAccelTime*readAccelTime;
+    double readAccelTime=0;//readVelocity/pgSGUI->vsConv(pgSGUI->max_acc);
+    double readAccelDis=0;//pgSGUI->vsConv(pgSGUI->max_acc)/2*readAccelTime*readAccelTime;
     double Offset=range+readAccelDis;
-    double movTime=2*sqrt(2*Offset/pgSGUI->vsConv(pgSGUI->max_acc));
+    double movTime=0;//2*sqrt(2*Offset/pgSGUI->vsConv(pgSGUI->max_acc));
 
     int dir=flipDir?(-1):1;
     PVTScan->add(movTime, 0,0, 0,0, 0,0, -dir*Offset,0);

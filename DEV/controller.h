@@ -83,6 +83,12 @@ public:
 public:
     //functions that are accessed by the command object (CO)
     class CO;
+
+    // block execution until condition is met
+    enum _holdCondition{he_gpio_low, he_gpio_high,      // for dt_gpio
+                    he_timer_done,                  // for dt_timer
+                    he_motion_ontarget              // for dt_motion
+                   };
 protected:
 
     // construct command object
@@ -108,11 +114,6 @@ protected:
     virtual void CO_pulseGPIO(CO* a, std::string ID, double duration)=0;
     // ID has to be a device of type dt_gpio and configured as output, sets GPIO high, and after duration it sets it to low (blocking)
 
-    // block execution until condition is met
-    enum _holdCondition{he_gpio_low, he_gpio_high,      // for dt_gpio
-                    he_timer_done,                  // for dt_timer
-                    he_motion_ontarget              // for dt_motion
-                   };
     virtual void CO_addHold(CO* a, std::string ID, _holdCondition condition)=0;
     // ID has to be of the right type (see _holdEvent)
 
@@ -144,6 +145,7 @@ public:
         {ctrl->CO_startTimer(this, GPIOID, duration);}
         void clear()
         {ctrl->CO_clear(this);}
+        CTRL* const& _ctrl{ctrl};
     private:
         CTRL* ctrl;
     };

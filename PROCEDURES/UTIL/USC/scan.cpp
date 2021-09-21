@@ -21,7 +21,6 @@ void pScan::run(){
 //GUI
 
 pgScanGUI::pgScanGUI(mesLockProg& MLP): MLP(MLP){
-    PVTmeasure=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, util::toString("camera_PVTmeasure.txt").c_str());
     init_gui_activation();
     init_gui_settings();
     timer = new QTimer(this);
@@ -32,6 +31,10 @@ pgScanGUI::pgScanGUI(mesLockProg& MLP): MLP(MLP){
     timerCM->setInterval(timerCM_delay);
     timerCM->setSingleShot(true);
     connect(timerCM, SIGNAL(timeout()), this, SLOT(onBScan()));
+}
+
+pgScanGUI::~pgScanGUI(){
+    if(COmeasure!=nullptr) delete COmeasure;
 }
 
 void pgScanGUI::init_gui_activation(){
@@ -124,14 +127,6 @@ scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
     parent->conf[parent->selectScanSetting->getLabel(num)]["ppwl"]=ppwl;
     connect(ppwl, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(ppwl);
-    max_vel=new val_selector(300., "UScope stage max velocity: ", 1e-9, 300., 2, 0, {"mm/s"});
-    parent->conf[parent->selectScanSetting->getLabel(num)]["max_vel"]=max_vel;
-    connect(max_vel, SIGNAL(changed()), parent, SLOT(recalculate()));
-    slayout->addWidget(max_vel);
-    max_acc=new val_selector(2500., "UScope stage max acceleration: ", 1e-9, 2500., 2, 0, {"mm/s^2"});
-    parent->conf[parent->selectScanSetting->getLabel(num)]["max_acc"]=max_acc;
-    connect(max_acc, SIGNAL(changed()), parent, SLOT(recalculate()));
-    slayout->addWidget(max_acc);
     dis_thresh=new val_selector(0.9, "Peak Discard Threshold: ", 0.1, 1, 2);
     parent->conf[parent->selectScanSetting->getLabel(num)]["dis_thresh"]=dis_thresh;
     slayout->addWidget(dis_thresh);
@@ -159,8 +154,6 @@ void pgScanGUI::onMenuChange(int index){
     coh_len=settingWdg[index]->coh_len;
     range=settingWdg[index]->range;
     ppwl=settingWdg[index]->ppwl;
-    max_vel=settingWdg[index]->max_vel;
-    max_acc=settingWdg[index]->max_acc;
     dis_thresh=settingWdg[index]->dis_thresh;
     calcL=settingWdg[index]->calcL;
     exclDill=settingWdg[index]->exclDill;
@@ -175,7 +168,7 @@ void pgScanGUI::recalculate() {
     if(MLP._lock_meas.try_lock()){
         if(MLP._lock_comp.try_lock()){
             std::string report;
-            updatePVTs(report);
+            updateCO(report);
             calcL->setText(report.c_str());
             MLP._lock_comp.unlock();
         }
@@ -185,36 +178,48 @@ void pgScanGUI::recalculate() {
     else timer->start();
 }
 
-void pgScanGUI::updatePVTs(std::string &report){
-    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
-    double minFPS,maxFPS;
+void pgScanGUI::updateCO(std::string &report){
+    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
+    double minFPS,maxFPS, expo;
     go.pGCAM->iuScope->get_frame_rate_bounds (&minFPS, &maxFPS);
-    double readTime=vsConv(range)*vsConv(ppwl)/vsConv(led_wl)/maxFPS*2;   //s
-    double readRangeDis=vsConv(range)/1000000;
-    double readVelocity=readRangeDis/readTime;                          //mm/s
-    report+=util::toString("Read Time =",readTime," s\nRead Range Distance:",readRangeDis," mm\nRead Velocity:",readVelocity," m/s\n");
-    if(readVelocity>vsConv(max_vel)) {
-        report+="Error: Read Velocity is higher than set max Velocity!\n";
-        return;
+    maxFPS=200; // TODO fix this; basler cameras return 1000000 always for some reason
+    expo=go.pGCAM->iuScope->expo*0.0000001; // in s
+    if(COmeasure==nullptr){
+        COmeasure=new CTRL::CO(go.pRPTY);
+    }else if(COmeasure->_ctrl!=go.pRPTY){
+        delete COmeasure;
+        COmeasure=new CTRL::CO(go.pRPTY);
     }
-    double readAccelTime=readVelocity/vsConv(max_acc);
-    double readAccelDis=vsConv(max_acc)/2*readAccelTime*readAccelTime;
-    double Offset=readRangeDis/2+readAccelDis;
-    PVTsRdy=false;
-    PVTmeasure->clear();
 
-    double movTime=2*sqrt(2*Offset/vsConv(max_acc));
-    double movMaxVelocity=vsConv(max_acc)*movTime;
+    double readRangeDis=vsConv(range)/1000000;  // in mm
+    double velocity=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultVelocity);
+    double acceleration=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultAcceleration);
+    double displacementOneFrame=vsConv(led_wl)/2/vsConv(ppwl)/1000000;       // in mm
+    report+=util::toString("One frame displacement =",displacementOneFrame*1000000," nm.\n");
+    totalFrameNum=readRangeDis/displacementOneFrame;   // for simplicity no image taken on one edge
+    double timeOneFrame=1./maxFPS;
+    double motionTimeOneFrame;
+    bool hasConstantVelocitySegment;
+    mcutil::evalAccMotion(displacementOneFrame, acceleration, velocity, &motionTimeOneFrame, &hasConstantVelocitySegment);
 
-    report+=util::toString("Read Acceleration Time :",readAccelTime," s\nRead Acceleration Distance:",readAccelDis," mm\nOffset:",Offset," mm\nMovement Time:",movTime," s\nMovement Max Velocity:",movMaxVelocity," m/s\n");
-    report+=util::toString("Total movement Time:",movTime," s\n");
-    if(movMaxVelocity > vsConv(max_vel)){report+="Error: Max move Velocity is higher than set max Velocity (did not implement workaround it cus it was unlikely)!\n"; return;}
+    report+=util::toString("One frame time =",motionTimeOneFrame+expo," s (ideal minimum), as limited by motion time.\n");
+    report+=util::toString("One frame time =",timeOneFrame," s, as limited by framerate.\n");
+    if(motionTimeOneFrame>timeOneFrame-expo)
+        timeOneFrame=motionTimeOneFrame+expo;
+    report+=util::toString("One frame movement has ",hasConstantVelocitySegment?"a":"no"," constant speed component.\n");
 
-    double darkFrameTime=darkFrameNum/maxFPS;
-    report+=util::toString("Putting ",darkFrameNum," dark frames after end, lasting: ",darkFrameTime," s\n");
-    totalFrameNum=readTime*maxFPS;
+    double timeToEdge;  // the time it takes to move from center(initial position) to edge(scan starting position)
+    mcutil::evalAccMotion(readRangeDis/2, acceleration, velocity, &timeToEdge, &hasConstantVelocitySegment);
+    report+=util::toString("To scan edge movement time= ",timeToEdge," s.\n");
+    report+=util::toString("Total read time (if limited by framerate)= ",2*timeToEdge+timeOneFrame*totalFrameNum," s.\n");
+    report+=util::toString("Total number of frames= ",totalFrameNum,".\n");
+    report+=util::toString("Read Range Distance:",readRangeDis," mm.\n");
+
+    CORdy=false;
+    COmeasure->clear();
+
     report+=util::toString("\nTotal expected number of useful frames for FFT: ",totalFrameNum,"\n");
-    int optimalDFTsize = cv::getOptimalDFTSize((int)(readTime*maxFPS));
+    unsigned optimalDFTsize = cv::getOptimalDFTSize(totalFrameNum);
     report+=util::toString("Optimal number of frames (get as close to this as possible): ",optimalDFTsize,"\n");
 
     double NLambda=vsConv(range)/vsConv(led_wl)*2;
@@ -224,33 +229,33 @@ void pgScanGUI::updatePVTs(std::string &report){
     report+=util::toString("Expecting the peak to be at i=",totalFrameNum/vsConv(ppwl)," in the FFT.\n");
     if(peakLoc+peakLocRange>=totalFrameNum || peakLoc-peakLocRange<=0){report+=util::toString("Error: PeakLoc+-",peakLocRange," should be between 0 and totalFrameNum!\n"); return;}
 
-    PVTmeasure->addAction(XPS::iuScopeLED,true);
-    PVTmeasure->add(movTime, 0,0, 0,0, Offset,0, 0,0);
-    PVTmeasure->add(readAccelTime,  0,0, 0,0, -readAccelDis,-readVelocity, 0,0);
-    PVTmeasure->add(readTime, 0,0, 0,0, -readRangeDis,-readVelocity, 0,0);
-    PVTmeasure->addAction(XPS::iuScopeLED,false);
-    PVTmeasure->add(readAccelTime,  0,0, 0,0, -readAccelDis,0, 0,0);
-    if(darkFrameTime>movTime+readAccelTime)
-        PVTmeasure->add(darkFrameTime-movTime-readAccelTime,  0,0, 0,0, 0,0, 0,0);
-    PVTmeasure->add(movTime, 0,0, 0,0, Offset,0, 0,0);
-    PVTmeasure->addAction(XPS::iuScopeLED,true);
-    total_meas_time=2*movTime+2*readAccelTime+readTime+((darkFrameTime>movTime+readAccelTime)?(darkFrameTime-movTime-readAccelTime):0);
+    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
+    COmeasure->addHold("Z",CTRL::he_motion_ontarget);
+    double rndErr=0; // to fix rounding errors
+    for(int i=0;i!=totalFrameNum;i++){
+        COmeasure->startTimer("timer",1./maxFPS);   // in case motion is completed before the camera is ready for another frame
+        COmeasure->pulseGPIO("trigCam",0.0001);             // 100us
+        COmeasure->addDelay(expo-0.0001);                   // keep stationary during exposure
+        double disp=displacementOneFrame+rndErr;
+        rndErr=disp-std::round(disp*1000000)/1000000;
+        disp-=rndErr;
+        COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);
+        COmeasure->addHold("Z",CTRL::he_motion_ontarget);
+        COmeasure->addHold("timer",CTRL::he_timer_done);
+    }
+    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
 
-    exec_dat ret;
-    ret=go.pXPS->verifyPVTobj(PVTmeasure);
-    if(ret.retval!=0) {report+=util::toString("Error: Verify PVTmeasure failed, retval was",ret.retstr,"\n"); return;}
-
-    PVTsRdy=true;
+    CORdy=true;
 }
 int NA=0;
 void pgScanGUI::doOneRound(char cbAvg_override, char cbTilt_override, char cbRefl_override){
-    if(!PVTsRdy) recalculate();
+    if(!CORdy) recalculate();
     measurementInProgress=true;
     go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,cbAvg_override, cbTilt_override, cbRefl_override));
 }
 
 void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect roi, char cbTilt_override, char cbRefl_override){
-    if(!PVTsRdy) recalculate();
+    if(!CORdy) recalculate();
     varShareClient<pgScanGUI::scanRes>* scanRes=result.getClient();
 
     int doneN=0;
@@ -355,34 +360,49 @@ void pgScanGUI::_correctTilt(scanRes* res){
 }
 
 void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRefl_override){
+    typedef cv::Mat tUMat;//cv::UMat    // TODO fix; use conditional on if opencl was detected
     MLP._lock_meas.lock();                       //wait for other measurements to complete
-    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
-    if(!PVTsRdy) return;
+    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
+    if(!CORdy) return;
     scanRes* res=new scanRes;
 
-    int nFrames=totalFrameNum;
+    unsigned nFrames=totalFrameNum;
     FQ* framequeue;
+    go.pGCAM->iuScope->set_trigger("Line1");
+    std::this_thread::sleep_for(std::chrono::milliseconds(10)); // let it switch to trigger
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-    framequeue->setUserFps(99999);
+    framequeue->setUserFps(9999);
+    COmeasure->execute();
+    unsigned cframes, lcframes=0;
+    unsigned time=0;
+    while(1) {
+        cframes=framequeue->getFullNumber();
+        if(cframes>=nFrames){
+            MLP.progress_meas=100;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if(lcframes==cframes){
+            if(cframes==0) time+=10;    // for first frame we put 10x timeout
+            else time+=100;
+        }else time=0;
+        lcframes=cframes;
+        if(time>=timeout) break;
 
-    go.pXPS->execPVTobj(PVTmeasure, &PVTret);
-
-    for(int i=0;i!=95;i++){
-        std::this_thread::sleep_for(std::chrono::milliseconds((int)(total_meas_time*1000/100)));
-        MLP.progress_meas=i+1;
-        if(PVTret.check_if_done()) break;
+        MLP.progress_meas=100./nFrames*cframes;
     }
-    PVTret.block_till_done();
-    MLP.progress_meas=100;
-    framequeue->setUserFps(0);
 
-    XPS::raxis poss=go.pXPS->getPos(XPS::mgroup_XYZF);
-    for(int i=0;i!=3;i++) res->pos[i]=poss.pos[i];
+    framequeue->setUserFps(0);
+    go.pGCAM->iuScope->set_trigger("none");
+
+    res->pos[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
+    res->pos[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
+    res->pos[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
 
     std::lock_guard<std::mutex>lock(MLP._lock_comp);    // wait till other processing is done
     MLP._lock_meas.unlock();                             // allow new measurement to start
 
-    if(framequeue->getFullNumber()<nFrames) {std::cerr<<"ERROR: took "<<framequeue->getFullNumber()<<" frames, expected at least "<<nFrames<<".\n";go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);return;}
+    if(framequeue->getFullNumber()<nFrames) {std::cerr<<"ERROR: took "<<framequeue->getFullNumber()<<" frames, expected "<<nFrames<<".\n";go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);return;}
     double mean=0;
     for(int i=0;i!=10;i++)
         mean+= cv::mean(*framequeue->getUserMat(i))[0];
@@ -402,11 +422,11 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
     int nCols=framequeue->getUserMat(0)->cols;
 
     cv::Mat mat2D(nFrames, nCols, CV_32F);
-    cv::UMat maskUMat(nRows, nCols, CV_8U);
-    cv::UMat maskUMatNot(nRows, nCols, CV_8U);
+    tUMat maskUMat(nRows, nCols, CV_8U);
+    tUMat maskUMatNot(nRows, nCols, CV_8U);
 
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
-    cv::UMat resultFinalPhase(nCols, nRows, CV_32F);    //rows and cols flipped for convenience, transpose it after main loop!
+    tUMat resultFinalPhase(nCols, nRows, CV_32F);    //rows and cols flipped for convenience, transpose it after main loop!
 
     int savePixX{-1}, savePixY{-1}; //writing pixel to file: for selected pixel
     std::string savePixFname;
@@ -422,9 +442,9 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
         clickDataLock.unlock();
     }
 
-    cv::UMat refl;
+    tUMat refl;
     bool fillRefl=((cbGetRefl->val && cbRefl_override==0) || cbRefl_override==1);
-    if(fillRefl) refl=cv::UMat(nRows, nCols, CV_32F);
+    if(fillRefl) refl=tUMat(nRows, nCols, CV_32F);
 
     MLP.progress_comp=0;
     for(int k=0;k!=nRows;k++){      //Processing row by row
@@ -433,7 +453,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
             framequeue->getUserMat(i)->row(k).copyTo(mat2D.row(i));
         //sending the matrix to the GPU, transposing and preforming an DFT
         //Umat2D=mat2D.getUMat(cv::ACCESS_READ);
-        cv::UMat Umat2D;
+        tUMat Umat2D;
         mat2D.copyTo(Umat2D);
         cv::transpose(Umat2D,Umat2D);
 
@@ -451,8 +471,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
 
         //getting phase and magnitude, phase at the LED wavelength/2 goes to final matrix, magnitude(2*peakLocRange+1 rows) goes for further eval
 
-        cv::UMat magn;
-        std::vector<cv::UMat> planes{2};
+        tUMat magn;
+        std::vector<tUMat> planes{2};
         cv::split(Umat2D.colRange(peakLoc-peakLocRange,peakLoc+peakLocRange+1), planes);
         cv::magnitude(planes[0], planes[1], magn);
         cv::phase(planes[0].col(peakLocRange), planes[1].col(peakLocRange), resultFinalPhase.col(k));       //only the actual peak
@@ -460,8 +480,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
         //checking if the magnitudes of peakLocRange number of points around the LED wavelength/2 are higher than it, if so, measurement is unreliable
         bool first=true;
         cv::multiply((double)dis_thresh->val,magn.col(peakLocRange),magn.col(peakLocRange));
-        cv::UMat cmpRes;
-        cv::UMat cmpFinRes;
+        tUMat cmpRes;
+        tUMat cmpFinRes;
         for(int j=1;j<=peakLocRange;j++){
             if(first) {compare(magn.col(peakLocRange), magn.col(peakLocRange+j), cmpFinRes, cv::CMP_LT); first=false;}
             else{

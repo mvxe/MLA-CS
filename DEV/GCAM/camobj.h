@@ -33,6 +33,7 @@ public:
     tsvar<std::string> selected_ID;                         //thread safe access to select camera ID
     const std::atomic<bool>& connected{_connected};         //thread safe access to camera status
     std::atomic<bool> checkID{true};
+    //std::string triggerSrc;
 
     FQsPC FQsPCcam;                                         //use this to get frame queue from camera, see frame_queues.h for commands
 

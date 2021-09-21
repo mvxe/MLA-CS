@@ -1,7 +1,11 @@
 #include "DEV/GCAM/gcam.h"
 
 camobj::camobj(std::string strID) : camobj_config(strID), selected_ID(&mkmx,strID){
+    //triggerSrc="Line1";
+
     conf["selected_ID"]=selected_ID;
+    //conf["triggerSrc"]=triggerSrc;
+    //conf["triggerSrc"].comments.push_back("Typical values for source are \"Line1\" or \"Line2\". See the camera documentation for the allowed values. Activation is set to rising edge.");
 }
 GCAM *camobj::cobj;
 
@@ -50,6 +54,7 @@ void camobj::start(){
     arv_camera_get_sensor_size(cam,&Xsize,&Ysize, NULL);
     arv_camera_set_region(cam,0,0,Xsize,Ysize, NULL);
     format=arv_camera_get_pixel_format_as_string(cam, NULL);
+    set_trigger("none");
 
     std::cerr<<"payload="<<payload<<"\n";
     std::cerr<<"Xsize="<<Xsize<<"\n";
@@ -207,10 +212,16 @@ void camobj::run(std::string atr){
 
 void camobj::set_trigger(std::string trig){
     std::lock_guard<std::mutex>lock(mtx);
-    if(trig=="none"){
+    if(ackstatus) arv_camera_stop_acquisition(cam, NULL);
+    if(trig=="none") {
         arv_camera_clear_triggers(cam, NULL);
+        arv_camera_set_string(cam, "TriggerMode", "Off", NULL);
     }
-    else arv_camera_set_trigger(cam, trig.c_str(), NULL); //Typical values for source are "Line1" or "Line2". See the camera documentation for the allowed values. Activation is set to rising edge. It can be changed by accessing the underlying device object.
+    else {
+        arv_camera_set_trigger(cam, trig.c_str(), NULL);    //Typical values for source are "Line1" or "Line2". See the camera documentation for the allowed values. Activation is set to rising edge. It can be changed by accessing the underlying device object.
+        arv_camera_set_string(cam, "TriggerMode", "On", NULL);
+    }
+    if(ackstatus) arv_camera_start_acquisition(cam, NULL);
 }
 
 void camobj::get_frame_rate_bounds (double *min, double *max){

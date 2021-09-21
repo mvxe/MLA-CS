@@ -34,6 +34,7 @@ class pgScanGUI: public QObject{
     //GUI
 public:
     pgScanGUI(mesLockProg& MLP);
+    ~pgScanGUI();
     rtoml::vsr conf;                                //configuration map
     twid* gui_activation;
     QWidget* gui_settings;
@@ -101,8 +102,6 @@ private:
     QVBoxLayout* slayout;
 public:
     val_selector* led_wl;       //LED wavelength
-    val_selector* max_vel;      //maximum microscope axis velocity
-    val_selector* max_acc;      //maximum microscope axis acceleration
     constexpr static int darkFrameNum=10;
 
     //save pixel to file
@@ -134,19 +133,20 @@ private:
     val_selector* findBaselineHistStep;
     smp_selector* debugDisplayModeSelect;
     val_selector* avgDiscardCriteria;
+    unsigned timeout{500};    // we hardcode a timeout (in ms) for waiting for frames, in case something goes wrong with trigger
     QPushButton* saveAvgMess;
     QPushButton* saveNextMirrorBaselineHist;
     std::string fnameSaveNextMirrorBaselineHist;
 
-    int totalFrameNum;
-    int peakLoc;        //the expected peak position in the FFT spectrum
-    constexpr static int peakLocRange=2;    //we check this many peaks from each side of peakLoc
-    int i2NLambda;       //the number of expected wavelengths x2 (ie number of expected maxima and minima)
+    unsigned totalFrameNum;
+    unsigned peakLoc;           //the expected peak position in the FFT spectrum
+    constexpr static unsigned peakLocRange=2;       //we check this many peaks from each side of peakLoc
+    unsigned i2NLambda;         //the number of expected wavelengths x2 (ie number of expected maxima and minima)
 
-    PVTobj* PVTmeasure;
     exec_ret PVTret;
-    std::atomic<bool> PVTsRdy{false};
-    void updatePVTs(std::string &report);   // update PVTs whenever measurement paramaters are changed, returns true if PVT fails or accels/speeds are to high
+    CTRL::CO* COmeasure{nullptr};
+    std::atomic<bool> CORdy{false};
+    void updateCO(std::string &report);
 
     std::atomic<bool> keepMeasuring{false};
 

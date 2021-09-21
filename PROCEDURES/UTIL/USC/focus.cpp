@@ -107,18 +107,19 @@ void pgFocusGUI::updatePVT(std::string &report){
     double readRangeDis=vsConv(range)/1000000;
     double readVelocity=readRangeDis/readTime;                          //mm/s
     report+=util::toString("Read Time =",readTime," s\nRead Range Distance:",readRangeDis," mm\nRead Velocity:",readVelocity," m/s\n");
-    if(readVelocity>vsConv(pgSGUI->max_vel)) {report+="Error: Read Velocity is higher than set max Velocity!\n"; return;}
-    double readAccelTime=readVelocity/vsConv(pgSGUI->max_acc);
-    double readAccelDis=vsConv(pgSGUI->max_acc)/2*readAccelTime*readAccelTime;
+//    if(readVelocity>vsConv(pgSGUI->max_vel)) {report+="Error: Read Velocity is higher than set max Velocity!\n"; return;}
+    double readAccelTime=0;//readVelocity/vsConv(pgSGUI->max_acc);
+    double readAccelDis=0;//vsConv(pgSGUI->max_acc)/2*readAccelTime*readAccelTime;
+
     double Offset=readRangeDis/2+readAccelDis;
     PVTsRdy=false;
     PVTScan->clear();
 
 
-    double movTime=2*sqrt(2*Offset/vsConv(pgSGUI->max_acc));
-    double movMaxVelocity=vsConv(pgSGUI->max_acc)*movTime;
+    double movTime=0;//2*sqrt(2*Offset/vsConv(pgSGUI->max_acc));
+    double movMaxVelocity=0;//vsConv(pgSGUI->max_acc)*movTime;
 
-    if(movMaxVelocity > vsConv(pgSGUI->max_vel)){report+="Error: Max move Velocity is higher than set max Velocity (did not implement workaround it cus it was unlikely)!\n"; return;}
+    //if(movMaxVelocity > vsConv(pgSGUI->max_vel)){report+="Error: Max move Velocity is higher than set max Velocity (did not implement workaround it cus it was unlikely)!\n"; return;}
 
     double darkFrameTime=pgSGUI->darkFrameNum/maxFPS;
     totalFrameNum=readTime*maxFPS;

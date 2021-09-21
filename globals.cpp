@@ -54,6 +54,7 @@ void globals::startup(int argc, char *argv[]){
     pRPTY->registerDevice("trigCam", CTRL::dt_gpio);
     pRPTY->registerDevice("wrLaser", CTRL::dt_gpio);
     pRPTY->registerDevice("ilumLED", CTRL::dt_gpio);
+    pRPTY->registerDevice("timer", CTRL::dt_timer);
     conf.load();
 
     qapp = new QApplicationQN(argc, argv);
