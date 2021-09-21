@@ -86,6 +86,11 @@ void pgScanGUI::init_gui_settings(){
     conf["avgDiscardCriteria"]=avgDiscardCriteria;
     avgDiscardCriteria->setToolTip("If the difference in the number of excluded element between the current measurement and the avg measurement (which combines all previous exclusions(or)) is larger than this percentage times the total num of pixels, the measurement is discarded.");
     slayout->addWidget(avgDiscardCriteria);
+    connect(avgDiscardCriteria, SIGNAL(changed()), parent, SLOT(recalculate()));
+    triggerAdditionalDelay=new val_selector(0., "Additional trigger delay:", 0., 1000., 2, 1, {"ms"});
+    conf["triggerAdditionalDelay"]=triggerAdditionalDelay;
+    triggerAdditionalDelay->setToolTip("If scan drops frames, it might be that the returned max FPS is incorrect. Use this parameter to compensate (try 1 ms).");
+    slayout->addWidget(triggerAdditionalDelay);
     saveAvgMess=new QPushButton("Autosave raw measurements"); saveAvgMess->setCheckable(true);
     saveAvgMess->setToolTip("Select folder for saving all subsequent individual raw measurements. Last ROI applies (ie you must try saving something raw by selection first), else whole image is saved. Click again to disable further saving.");
     slayout->addWidget(new twid(saveAvgMess));
@@ -207,8 +212,6 @@ void pgScanGUI::updateCO(std::string &report){
 
     report+=util::toString("One frame time =",motionTimeOneFrame+expo," s (ideal minimum), as limited by motion time.\n");
     report+=util::toString("One frame time =",timeOneFrame," s, as limited by framerate.\n");
-    if(motionTimeOneFrame>timeOneFrame-expo)
-        timeOneFrame=motionTimeOneFrame+expo;
     report+=util::toString("One frame movement has ",hasConstantVelocitySegment?"a":"no"," constant speed component.\n");
 
     double timeToEdge;  // the time it takes to move from center(initial position) to edge(scan starting position)
@@ -233,7 +236,7 @@ void pgScanGUI::updateCO(std::string &report){
     COmeasure->addHold("Z",CTRL::he_motion_ontarget);
     double rndErr=0; // to fix rounding errors
     for(int i=0;i!=totalFrameNum;i++){
-        COmeasure->startTimer("timer",1./COfps);            // in case motion is completed before the camera is ready for another frame
+        COmeasure->startTimer("timer",1./COfps+triggerAdditionalDelay->val*0.001);      // in case motion is completed before the camera is ready for another frame
         COmeasure->pulseGPIO("trigCam",0.0001);             // 100us
         if(expo>0.0001) COmeasure->addDelay(expo-0.0001);   // keep stationary during exposure
         double disp=displacementOneFrame+rndErr;

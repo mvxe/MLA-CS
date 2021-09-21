@@ -109,6 +109,8 @@ void rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr, char brea
 void rpMotionDevice_PINEXACTStage::updatePosition(){
     _readQS(0);
     std::vector<uint32_t> commands;
+    commands.push_back(CQF::FLAGS_MASK(rdyFlag));
+    commands.push_back(CQF::FLAGS_SHARED_SET(rdyFlag));
     commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
     commands.push_back(CQF::WAIT(serial.cyclesPerBit*8*5));
     commands.push_back(CQF::FLAGS_MASK(serialFlag));
@@ -123,6 +125,8 @@ void rpMotionDevice_PINEXACTStage::updatePosition(){
 int rpMotionDevice_PINEXACTStage::getMotionError(){
     _readQS(0);
     std::vector<uint32_t> commands;
+    commands.push_back(CQF::FLAGS_MASK(rdyFlag));
+    commands.push_back(CQF::FLAGS_SHARED_SET(rdyFlag));
     commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
     commands.push_back(CQF::WAIT(serial.cyclesPerBit*8*5));
     commands.push_back(CQF::FLAGS_MASK(serialFlag));

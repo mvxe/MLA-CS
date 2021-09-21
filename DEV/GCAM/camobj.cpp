@@ -116,6 +116,7 @@ void camobj::work(){
                 std::cerr<<"Actual resulting camera FPS: "<<actualAckFPS<<"\n";
             }
             if(!ackstatus){
+                std::cerr<<"FQ interest, starting camera ack.\n";
                 arv_camera_start_acquisition(cam, NULL);
                 ackstatus=true;
             }
@@ -123,6 +124,7 @@ void camobj::work(){
             if(ackstatus){
                 arv_camera_stop_acquisition(cam, NULL);
                 ackstatus=false;
+                std::cerr<<"No more interest, stopping camera ack.\n";
             }
         }
         std::this_thread::sleep_for (std::chrono::milliseconds(1));
@@ -216,14 +218,11 @@ void camobj::run(std::string atr){
 void camobj::set_trigger(std::string trig){
     std::lock_guard<std::mutex>lock(mtx);
     if(trig=="none") {
-        arv_camera_clear_triggers(cam, NULL);
         arv_camera_set_string(cam, "TriggerMode", "Off", NULL);
-        triggerEnabled=false;
     }
     else {
         arv_camera_set_trigger(cam, trig.c_str(), NULL);    //Typical values for source are "Line1" or "Line2". See the camera documentation for the allowed values. Activation is set to rising edge. It can be changed by accessing the underlying device object.
         arv_camera_set_string(cam, "TriggerMode", "On", NULL);
-        triggerEnabled=true;
     }
 }
 

@@ -50,7 +50,6 @@ private:
     static void control_lost_cb (ArvDevice *ldev);
     static void new_frame_ready (ArvStream *stream, camobj* camm);
     std::atomic<bool> control_lost{false};
-    bool triggerEnabled{false};
 
     void start();
     void work();                                //call this periodically
