@@ -10,7 +10,7 @@
 const int FRAMEBUFFER_INITIAL_SIZE = 10;   //starting size of framebuffer
 class GCAM;
 
-class camobj: public camobj_config{
+class camobj: public camobj_config{     // note: currently this tagets features implemented by Basler, as the default setFPS from aravis didnt work. This means genicams other than Basler may not work properly.
     friend class GCAM;
     friend class gcam_config;
     friend class FrameObserver;
@@ -33,7 +33,6 @@ public:
     tsvar<std::string> selected_ID;                         //thread safe access to select camera ID
     const std::atomic<bool>& connected{_connected};         //thread safe access to camera status
     std::atomic<bool> checkID{true};
-    //std::string triggerSrc;
 
     FQsPC FQsPCcam;                                         //use this to get frame queue from camera, see frame_queues.h for commands
 
@@ -51,6 +50,7 @@ private:
     static void control_lost_cb (ArvDevice *ldev);
     static void new_frame_ready (ArvStream *stream, camobj* camm);
     std::atomic<bool> control_lost{false};
+    bool triggerEnabled{false};
 
     void start();
     void work();                                //call this periodically
@@ -77,6 +77,7 @@ private:
     int Xsize;
     int Ysize;
     double ackFPS;
+    double actualAckFPS;
     std::string format;
 
     bool ackstatus{false};                                     //acquisition status

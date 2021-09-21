@@ -180,16 +180,19 @@ void pgScanGUI::recalculate() {
 
 void pgScanGUI::updateCO(std::string &report){
     if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
-    double minFPS,maxFPS, expo;
-    go.pGCAM->iuScope->get_frame_rate_bounds (&minFPS, &maxFPS);
-    maxFPS=200; // TODO fix this; basler cameras return 1000000 always for some reason
-    expo=go.pGCAM->iuScope->expo*0.0000001; // in s
+    CORdy=false;
     if(COmeasure==nullptr){
         COmeasure=new CTRL::CO(go.pRPTY);
     }else if(COmeasure->_ctrl!=go.pRPTY){
         delete COmeasure;
         COmeasure=new CTRL::CO(go.pRPTY);
-    }
+    }else COmeasure->clear();
+
+
+    double minFPS, expo;
+    go.pGCAM->iuScope->get_frame_rate_bounds (&minFPS, &COfps);
+    expo=go.pGCAM->iuScope->expo*0.0000001; // in s
+
 
     double readRangeDis=vsConv(range)/1000000;  // in mm
     double velocity=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultVelocity);
@@ -197,7 +200,7 @@ void pgScanGUI::updateCO(std::string &report){
     double displacementOneFrame=vsConv(led_wl)/2/vsConv(ppwl)/1000000;       // in mm
     report+=util::toString("One frame displacement =",displacementOneFrame*1000000," nm.\n");
     totalFrameNum=readRangeDis/displacementOneFrame;   // for simplicity no image taken on one edge
-    double timeOneFrame=1./maxFPS;
+    double timeOneFrame=1./COfps;
     double motionTimeOneFrame;
     bool hasConstantVelocitySegment;
     mcutil::evalAccMotion(displacementOneFrame, acceleration, velocity, &motionTimeOneFrame, &hasConstantVelocitySegment);
@@ -215,9 +218,6 @@ void pgScanGUI::updateCO(std::string &report){
     report+=util::toString("Total number of frames= ",totalFrameNum,".\n");
     report+=util::toString("Read Range Distance:",readRangeDis," mm.\n");
 
-    CORdy=false;
-    COmeasure->clear();
-
     report+=util::toString("\nTotal expected number of useful frames for FFT: ",totalFrameNum,"\n");
     unsigned optimalDFTsize = cv::getOptimalDFTSize(totalFrameNum);
     report+=util::toString("Optimal number of frames (get as close to this as possible): ",optimalDFTsize,"\n");
@@ -233,9 +233,9 @@ void pgScanGUI::updateCO(std::string &report){
     COmeasure->addHold("Z",CTRL::he_motion_ontarget);
     double rndErr=0; // to fix rounding errors
     for(int i=0;i!=totalFrameNum;i++){
-        COmeasure->startTimer("timer",1./maxFPS);   // in case motion is completed before the camera is ready for another frame
+        COmeasure->startTimer("timer",1./COfps);            // in case motion is completed before the camera is ready for another frame
         COmeasure->pulseGPIO("trigCam",0.0001);             // 100us
-        COmeasure->addDelay(expo-0.0001);                   // keep stationary during exposure
+        if(expo>0.0001) COmeasure->addDelay(expo-0.0001);   // keep stationary during exposure
         double disp=displacementOneFrame+rndErr;
         rndErr=disp-std::round(disp*1000000)/1000000;
         disp-=rndErr;
@@ -371,7 +371,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
     go.pGCAM->iuScope->set_trigger("Line1");
     std::this_thread::sleep_for(std::chrono::milliseconds(10)); // let it switch to trigger
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-    framequeue->setUserFps(9999);
+    framequeue->setUserFps(COfps);
     COmeasure->execute();
     unsigned cframes, lcframes=0;
     unsigned time=0;

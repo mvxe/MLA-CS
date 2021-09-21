@@ -1,11 +1,7 @@
 #include "DEV/GCAM/gcam.h"
 
 camobj::camobj(std::string strID) : camobj_config(strID), selected_ID(&mkmx,strID){
-    //triggerSrc="Line1";
-
     conf["selected_ID"]=selected_ID;
-    //conf["triggerSrc"]=triggerSrc;
-    //conf["triggerSrc"].comments.push_back("Typical values for source are \"Line1\" or \"Line2\". See the camera documentation for the allowed values. Activation is set to rising edge.");
 }
 GCAM *camobj::cobj;
 
@@ -66,15 +62,11 @@ void camobj::start(){
     std::cerr<<"exposure(us)="<<expo.get()<<"\n";
 
     double fmin,fmax;
-    arv_camera_get_frame_rate_bounds (cam, &fmin, &fmax, NULL);   //TODO this function returns weird massive fmax for basler cameras, and then they dont work
-    std::cerr<<"curFPS="<< arv_camera_get_frame_rate(cam, NULL)<<"\n";
+    arv_camera_set_boolean(cam, "AcquisitionFrameRateEnable", true, NULL);  // these settings were made to work with Basler cameras, and may be problematic for other genicam cameras
+    get_frame_rate_bounds(&fmin, &fmax);
+
     std::cerr<<"maxFPS="<<fmax<<"\n";
     std::cerr<<"minFPS="<<fmin<<"\n";
-    fmax=30;    //TODO override
-    arv_camera_set_frame_rate(cam, fmax, NULL);
-    ackFPS=fmax;
-    FQsPCcam.setCamFPS(ackFPS);
-    std::cerr<<"ackFPS="<<ackFPS<<"\n";
 
     for (int i=0;i!=FRAMEBUFFER_INITIAL_SIZE;i++) pushFrameIntoStream();
 }
@@ -110,9 +102,19 @@ void camobj::work(){
         checkID=false;
     }
 
+    double maxReqFPS;
     if(_connected){
             /*work part start*/
-        if(FQsPCcam.isThereInterest()){
+        maxReqFPS=FQsPCcam.isThereInterest();
+        if(maxReqFPS!=0){
+            if(maxReqFPS!=ackFPS){
+                ackFPS=maxReqFPS;
+                arv_camera_set_float(cam, "AcquisitionFrameRate", ackFPS, NULL);
+                actualAckFPS=arv_camera_get_float(cam, "ResultingFrameRate", NULL);
+                FQsPCcam.setActualFps(actualAckFPS);
+                std::cerr<<"Set new camera FPS: "<<ackFPS<<"\n";
+                std::cerr<<"Actual resulting camera FPS: "<<actualAckFPS<<"\n";
+            }
             if(!ackstatus){
                 arv_camera_start_acquisition(cam, NULL);
                 ackstatus=true;
@@ -123,6 +125,7 @@ void camobj::work(){
                 ackstatus=false;
             }
         }
+        std::this_thread::sleep_for (std::chrono::milliseconds(1));
         /*work part end*/
     }
 
@@ -212,19 +215,23 @@ void camobj::run(std::string atr){
 
 void camobj::set_trigger(std::string trig){
     std::lock_guard<std::mutex>lock(mtx);
-    if(ackstatus) arv_camera_stop_acquisition(cam, NULL);
     if(trig=="none") {
         arv_camera_clear_triggers(cam, NULL);
         arv_camera_set_string(cam, "TriggerMode", "Off", NULL);
+        triggerEnabled=false;
     }
     else {
         arv_camera_set_trigger(cam, trig.c_str(), NULL);    //Typical values for source are "Line1" or "Line2". See the camera documentation for the allowed values. Activation is set to rising edge. It can be changed by accessing the underlying device object.
         arv_camera_set_string(cam, "TriggerMode", "On", NULL);
+        triggerEnabled=true;
     }
-    if(ackstatus) arv_camera_start_acquisition(cam, NULL);
 }
 
 void camobj::get_frame_rate_bounds (double *min, double *max){
     std::lock_guard<std::mutex>lock(mtx);
     arv_camera_get_frame_rate_bounds(cam, min, max, NULL);
+    arv_camera_set_float(cam, "AcquisitionFrameRate", *max, NULL);
+    double tmpMax=arv_camera_get_float(cam, "ResultingFrameRate", NULL);
+    arv_camera_set_float(cam, "AcquisitionFrameRate", ackFPS, NULL);
+    if(tmpMax<*max) *max=tmpMax;
 }

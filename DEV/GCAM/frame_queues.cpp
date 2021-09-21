@@ -11,17 +11,19 @@ FQsPC::~FQsPC(){
         mat_ptr_full.pop_front();
     }
 }
-bool FQsPC::isThereInterest(){
+double FQsPC::isThereInterest(){
     std::lock_guard<std::mutex>lock(qmx);
     std::list<FQ>::iterator it=user_queues.begin();
+    double maxReqFPS=0;
     for (int i=0;i!=user_queues.size();i++){
         if(it->umx!=nullptr){
             std::lock_guard<std::mutex>lock(*it->umx);
-            if (it->fps!=0) return true;
+            if (it->fps>maxReqFPS) maxReqFPS=it->fps;
         }
         it++;
     }
-    return false;
+    actualFps=maxReqFPS;
+    return maxReqFPS;
 }
 cv::Mat* FQsPC::getAFreeMatPtr(){
     std::lock_guard<std::mutex>lock(qmx);
@@ -35,9 +37,7 @@ cv::Mat* FQsPC::getAFreeMatPtr(){
     return ret;
 }
 void FQsPC::enqueueMat(cv::Mat* mat, unsigned int timestamp){
-    unsigned camfps;
     std::lock_guard<std::mutex>lock(qmx);
-    camfps=fps;
     mat_ptr_full.push_front({mat,0,timestamp});
     if ((mat)->rows==0){
         std::cerr<<"ERROR: FQ::enqueueMat says rows are 0. Will not enqueue, returning.\n";
@@ -48,7 +48,7 @@ void FQsPC::enqueueMat(cv::Mat* mat, unsigned int timestamp){
     for (int i=0;i!=user_queues.size();i++){
         if(it->umx!=nullptr)(it->umx->lock());
         if (it->fps!=0){
-            if (it->maxfr==0 || it->full.size()<it->maxfr) it->div=round(camfps/it->fps);
+            if (it->maxfr==0 || it->full.size()<it->maxfr) it->div=round(actualFps/it->fps);
             else {it->div=0; if(it->umx!=nullptr)it->umx->unlock(); std::advance(it,1); continue;}
 
             if (it->i>=it->div){
@@ -76,7 +76,6 @@ unsigned FQsPC::getFullNumber(){
     return mat_ptr_full.size();
 }
 FQ* FQsPC::getNewFQ(){
-    FQ* ret;
     std::lock_guard<std::mutex>lock(qmx);
     user_queues.emplace_back();
     return &user_queues.back();
@@ -89,10 +88,6 @@ void FQsPC::deleteFQ(FQ* fq){
     delete fq->umx;
     fq->umx=nullptr;  //actual deleting done in FQsPC::reclaim()
     fq=nullptr;
-}
-void FQsPC::setCamFPS(double nfps){
-    std::lock_guard<std::mutex>lock(qmx);
-    fps=nfps;
 }
 void FQsPC::reclaim(){
     std::list<FQ>::iterator it=user_queues.begin();

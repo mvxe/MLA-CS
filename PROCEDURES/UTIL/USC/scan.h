@@ -145,6 +145,7 @@ private:
 
     exec_ret PVTret;
     CTRL::CO* COmeasure{nullptr};
+    double COfps;
     std::atomic<bool> CORdy{false};
     void updateCO(std::string &report);
 

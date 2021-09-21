@@ -9,22 +9,27 @@
 #include "opencv2/opencv.hpp"
 
 class FQ;
+class camobj;
 
 class FQsPC      //this class should let threads exchange images safely (Frame Queues Per Camera)
 {
+        friend class camobj;
 public:
     FQsPC();
     ~FQsPC();
-    bool isThereInterest();         //if this returns false dont bother filling a new matrix, nobody is interested in frames
+
     unsigned getFreeNumber();       //get the number of free matrices
     unsigned getFullNumber();       //get the number of full matrices
 
     FQ* getNewFQ();                 //returns a pointer to a new frame queue
-    void setCamFPS(double nfps);    //set the camera framerate, essential of proper image sorting into queues (this is thread safe)
     void deleteFQ(FQ* fq);
+    double getActualFps(){std::lock_guard<std::mutex>lock(qmx); return actualFps;}
 
-    cv::Mat* getAFreeMatPtr();      //these two functions are used by the vimba api observer to put new frames into the queue           //TODO these two functions should not be exposed to the user, just FrameObserver::FrameReceived
+protected:
+    cv::Mat* getAFreeMatPtr();
     void enqueueMat(cv::Mat* mat, unsigned int timestamp);
+    double isThereInterest();       //this returns the highest requested FPS, 0 if no interest
+    void setActualFps(double fps){std::lock_guard<std::mutex>lock(qmx); actualFps=fps;}
 
 private:
     struct _used{
@@ -39,7 +44,7 @@ private:
     std::list<FQ> user_queues;             //contains of the user queues
     std::mutex qmx;
 
-    double fps{30};
+    double actualFps{0};
 };
 
 /*########## FQ ##########*/
@@ -49,7 +54,7 @@ class FQ      //frame queue,        this should be accessed from  the user threa
     friend class FQsPC;
 public:
     FQ();
-    void setUserFps(double nfps, unsigned maxframes = 0);   //sets the framerate, set to zero if not in use to avoid piling up of data, see below, the optional parameter maxframes doesnt add new frames untill the total number is smaller than maxframes
+    void setUserFps(double nfps, unsigned maxframes = 0);   //sets the framerate, set to zero if not in use to avoid piling up of data, see below, the optional parameter maxframes doesnt add new frames until the total number is smaller than maxframes
     cv::Mat const* getUserMat(unsigned N=0);                //gets the pointer to the N-th (oldest if no argument) matrix, if non existant, return nullptr (the larger the N, the newer the matrix)
     unsigned int getUserTimestamp(unsigned N=0);            //gets the timestamp of the N-th (oldest if no argument) matrix
     void freeUserMat(unsigned N=0);                         //tells the class its safe to free N-th (oldest if no argument) matrix (if this isnt called, the above call will return the pointer to the same old matrix)
