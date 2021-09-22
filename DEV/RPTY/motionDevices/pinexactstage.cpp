@@ -20,6 +20,8 @@ rpMotionDevice_PINEXACTStage::rpMotionDevice_PINEXACTStage(){
     conf["settleWindow"].comments.push_back("Settle window for on target, 1 count is 0.5nm.");
     conf["settleTime"]=settleTime;
     conf["settleTime"].comments.push_back("Settle time for on target, in seconds.");
+    conf["serialTimeout"]=serialTimeout;
+    conf["serialTimeout"].comments.push_back("Timeout for serial acquisition, in seconds. Some commands will be resent after no response.");
 }
 rpMotionDevice_PINEXACTStage::~rpMotionDevice_PINEXACTStage(){
 }
@@ -82,17 +84,19 @@ void rpMotionDevice_PINEXACTStage::_readQS(unsigned num){
     if(num==0) parent->A2F_loop(parent->serial_cq, true);
     if(num==0) parent->A2F_trig(parent->serial_cq);
 }
-void rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr, char breakChar){
+bool rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr, char breakChar){
     std::vector<uint32_t> read;
-    const double timeout=1;
     double time;
     while(1){
         time=0;
         while(parent->getNum(RPTY::F2A_RSCur,parent->serial_aq)<8){
             std::this_thread::sleep_for (std::chrono::milliseconds(10));
             time+=0.010;
-            if(time>=timeout){
+            if(time>=serialTimeout){
                 std::cerr<<"timeout in _readTillChar; got string: "<<readStr<<"\n";
+                parent->A2F_loop(parent->serial_cq, false);
+                parent->FIFOreset(1<<parent->serial_cq, 1<<parent->serial_aq);
+                return true;
             }
         }
         unsigned toread=parent->getNum(RPTY::F2A_RSCur,parent->serial_aq)/8;
@@ -105,36 +109,39 @@ void rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr, char brea
     }
     parent->A2F_loop(parent->serial_cq, false);
     parent->FIFOreset(1<<parent->serial_cq, 1<<parent->serial_aq);
+    return false;
 }
 void rpMotionDevice_PINEXACTStage::updatePosition(){
-    _readQS(0);
-    std::vector<uint32_t> commands;
-    commands.push_back(CQF::FLAGS_MASK(rdyFlag));
-    commands.push_back(CQF::FLAGS_SHARED_SET(rdyFlag));
-    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
-    commands.push_back(CQF::WAIT(serial.cyclesPerBit*8*5));
-    commands.push_back(CQF::FLAGS_MASK(serialFlag));
-    commands.push_back(CQF::FLAGS_SHARED_SET(serialFlag));
-    serial.string_to_command("MOV?\n", commands);
-    //serial.string_to_command("POS?\n", commands); // POS returns the actual position - not what we want
-    parent->executeQueue(commands, parent->main_cq);
     std::string readStr;
-    _readTillChar(readStr,'\n');
+    do{
+        _readQS(0);
+        std::vector<uint32_t> commands;
+        commands.push_back(CQF::FLAGS_MASK(rdyFlag));
+        commands.push_back(CQF::FLAGS_SHARED_SET(rdyFlag));
+        commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
+        commands.push_back(CQF::WAIT(serial.cyclesPerBit*8*5));
+        commands.push_back(CQF::FLAGS_MASK(serialFlag));
+        commands.push_back(CQF::FLAGS_SHARED_SET(serialFlag));
+        serial.string_to_command("MOV?\n", commands);
+        //serial.string_to_command("POS?\n", commands); // POS returns the actual position - not what we want
+        parent->executeQueue(commands, parent->main_cq);
+    }while(_readTillChar(readStr,'\n'));
     position=std::stod(readStr.substr(readStr.find("=")+1));
 }
 int rpMotionDevice_PINEXACTStage::getMotionError(){
-    _readQS(0);
-    std::vector<uint32_t> commands;
-    commands.push_back(CQF::FLAGS_MASK(rdyFlag));
-    commands.push_back(CQF::FLAGS_SHARED_SET(rdyFlag));
-    commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
-    commands.push_back(CQF::WAIT(serial.cyclesPerBit*8*5));
-    commands.push_back(CQF::FLAGS_MASK(serialFlag));
-    commands.push_back(CQF::FLAGS_SHARED_SET(serialFlag));
-    serial.string_to_command("ERR?\n", commands);
-    parent->executeQueue(commands, parent->main_cq);
     std::string readStr;
-    _readTillChar(readStr,'\n');
+    do{
+        _readQS(0);
+        std::vector<uint32_t> commands;
+        commands.push_back(CQF::FLAGS_MASK(rdyFlag));
+        commands.push_back(CQF::FLAGS_SHARED_SET(rdyFlag));
+        commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));
+        commands.push_back(CQF::WAIT(serial.cyclesPerBit*8*5));
+        commands.push_back(CQF::FLAGS_MASK(serialFlag));
+        commands.push_back(CQF::FLAGS_SHARED_SET(serialFlag));
+        serial.string_to_command("ERR?\n", commands);
+        parent->executeQueue(commands, parent->main_cq);
+    }while(_readTillChar(readStr,'\n'));
     return std::stoi(readStr);
 }
 

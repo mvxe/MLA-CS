@@ -496,6 +496,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
         }
         cmpFinRes=cmpFinRes.reshape(0,1);
         cmpFinRes.copyTo(maskUMat.row(k));
+        //maskUMat.row(k)=tUMat(nRows, 1, CV_8U, 255);  // override
 
         if(fillRefl){
             cv::split(Umat2D.col(0), planes);
@@ -557,7 +558,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
         saveIter++;
     }
 
-    if((cbAvg->val && cbAvg_override==0) || cbAvg_override==1){
+    if((cbAvg->val && cbAvg_override==0) || cbAvg_override==1){         // averaging multiple measurements
         varShareClient<pgScanGUI::scanRes>* temp=result.getClient();
         const scanRes* oldScanRes=temp->get();
         if(oldScanRes==nullptr);

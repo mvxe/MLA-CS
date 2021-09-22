@@ -47,7 +47,7 @@ void RPTY::run(){
         if(connected && (IP.changed() || port.changed())) {/*TODO RPTY disco*/
             disconnect();}  //if the user changes the IP or port setting we disconnect
 
-        std::this_thread::sleep_for (std::chrono::milliseconds(1));
+        std::this_thread::sleep_for (std::chrono::milliseconds(10));
         if (connected){ /*TODO: RPTY do work here*/
             if(recheck_position){
                 std::lock_guard<std::recursive_mutex>lock(mux);

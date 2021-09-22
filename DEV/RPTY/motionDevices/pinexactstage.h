@@ -33,11 +33,12 @@ public:
     double last_acceleration=-1;
     int settleWindow{6};
     double settleTime{0.001};
+    double serialTimeout{1};
 
 private:
     unsigned serialFlag;
     void _readQS(unsigned num=0);   // for num=0 it loops, otherwise it will setup reading num chars
-    void _readTillChar(std::string& readStr, char breakChar='\n');
+    bool _readTillChar(std::string& readStr, char breakChar='\n');  // returns true on timeout failure
     void _modesetAltNs(std::vector<uint32_t>& cq, bool alternating);
     enum _wevent{_ev_wait4rdy, _ev_wait4ont};
     unsigned rdyFlag;
