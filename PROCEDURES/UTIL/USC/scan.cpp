@@ -449,6 +449,14 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
     bool fillRefl=((cbGetRefl->val && cbRefl_override==0) || cbRefl_override==1);
     if(fillRefl) refl=tUMat(nRows, nCols, CV_32F);
 
+
+    // make mat for applying Hann function windowing :
+    cv::Mat windowMat=cv::Mat::zeros(nFrames, 1, CV_32F);
+    for(int i=0;i<nFrames;i++)
+        windowMat.at<float>(i)=pow(sin(M_PI*i/nFrames),2);
+    cv::Mat windowMat2D=cv::repeat(windowMat, 1, nCols);
+
+
     MLP.progress_comp=0;
     for(int k=0;k!=nRows;k++){      //Processing row by row
         //first copy the matrices such that time becomes a column
@@ -457,7 +465,10 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
         //sending the matrix to the GPU, transposing and preforming an DFT
         //Umat2D=mat2D.getUMat(cv::ACCESS_READ);
         tUMat Umat2D;
-        mat2D.copyTo(Umat2D);
+        //mat2D.copyTo(Umat2D);
+        //apply Hann function windowing :
+        cv::multiply(mat2D, windowMat2D, Umat2D);
+
         cv::transpose(Umat2D,Umat2D);
 
         cv::dft(Umat2D, Umat2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
