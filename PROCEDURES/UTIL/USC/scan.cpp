@@ -83,7 +83,9 @@ void pgScanGUI::init_gui_settings(){
     scanWl=new QPushButton;
     scanWl->setText("Correct Wavelength (performs scan!)");
     connect(scanWl, SIGNAL(released()), this, SLOT(onBScanCW()));
-    slayout->addWidget(new twid(scanWl));
+    scanWlNxNpixels=new val_selector(10, "NxN, Select N", 1, 100, 0);
+    conf["scanWlNxNpixels"]=scanWlNxNpixels;
+    slayout->addWidget(new twid(scanWl,scanWlNxNpixels));
     coh_len=new val_selector(20., "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)});
     conf["coh_len"]=coh_len;
     connect(coh_len, SIGNAL(changed()), this, SLOT(recalculate()));
@@ -433,48 +435,62 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
     unsigned nCols=framequeue->getUserMat(0)->cols;
 
     // this block is for determining wavelength (when scan is called from settings)
+
     if(getWl){
         getWl=false;
-        unsigned maxIter=vsConv(pphwl)/2;   // max number of moves while finding the max
-        unsigned Nperiods=DFTrange->val-1;  // == peakloc
+        unsigned npix=scanWlNxNpixels->val;
+        std::vector<double> results;
+        for(unsigned i=0;i<npix;i++) for(unsigned j=0;j<npix;j++){
+            unsigned maxIter=vsConv(pphwl)/2;   // max number of moves while finding the max
+            unsigned Nperiods=DFTrange->val-1;  // == peakloc
 
-        unsigned X=nCols/2;
-        unsigned Y=nRows/2;
-        unsigned nDFTFrames=Nperiods*vsConv(pphwl);
-        double amp[3];
-        for(unsigned k=0;k!=3;k++){
-            unsigned frames=nDFTFrames+k-1;
-            std::complex<double> res(0,0);
-            for(unsigned n=0;n!=frames;n++){    // its one pixel, no point optimizing
-                res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*cos(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
-                res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*sin(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
-            }
-            amp[k]=1./frames*std::abs(res);
-        }
-        bool found=false;
-        bool direction;
-        nDFTFrames+=(amp[0]>amp[1])?-1:1;
-        while(!found){
-            if(amp[0]>amp[1] || amp[2]>amp[1]){
-                direction=(amp[0]>amp[1]);
-                nDFTFrames+=direction?-1:1;
-                maxIter--;
-                amp[1]=amp[direction?0:2];
-                if(!maxIter) QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("ERROR: failed to correct wavelength.")));
+            unsigned X=nCols/2-npix/2+i;
+            unsigned Y=nRows/2-npix/2+j;
+            unsigned nDFTFrames=Nperiods*vsConv(pphwl);
+            double amp[3];
+            for(unsigned k=0;k!=3;k++){
+                unsigned frames=nDFTFrames+k-1;
                 std::complex<double> res(0,0);
-                for(unsigned n=0;n!=nDFTFrames;n++){
-                    res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*cos(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
-                    res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*sin(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                for(unsigned n=0;n!=frames;n++){    // its one pixel, no point optimizing
+                    res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*cos(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
+                    res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*sin(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
                 }
-                amp[direction?0:2]=1./nDFTFrames*std::abs(res);
-                if(amp[direction?0:2]<=amp[1]){
-                    nDFTFrames-=direction?-1:1;
-                    found=true;
-                }
-            }else found=true;
+                amp[k]=1./frames*std::abs(res);
+            }
+            bool found=false;
+            bool direction;
+            nDFTFrames+=(amp[0]>amp[1])?-1:1;
+            while(!found){
+                if(amp[0]>amp[1] || amp[2]>amp[1]){
+                    direction=(amp[0]>amp[1]);
+                    nDFTFrames+=direction?-1:1;
+                    maxIter--;
+                    amp[1]=amp[direction?0:2];
+                    if(!maxIter) goto next;
+                    std::complex<double> res(0,0);
+                    for(unsigned n=0;n!=nDFTFrames;n++){
+                        res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*cos(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                        res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*sin(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                    }
+                    amp[direction?0:2]=1./nDFTFrames*std::abs(res);
+                    if(amp[direction?0:2]<=amp[1]){
+                        nDFTFrames-=direction?-1:1;
+                        found=true;
+                    }
+                }else found=true;
+            }
+            results.push_back(2.*nDFTFrames*displacementOneFrame*1000000/Nperiods);
+            MLP.progress_comp=100*(j+i*npix)/(npix*npix);
+            next:;
         }
-        led_wl->setValue(2.*nDFTFrames*displacementOneFrame*1000000/Nperiods,0);
-
+        MLP.progress_comp=100;
+        if(results.empty()) QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("ERROR: failed to correct wavelength.")));
+        else{
+            double mean=0;
+            for(auto& res: results) mean+=res;
+            mean/=results.size();
+            led_wl->setValue(mean,0);
+        }
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
         return;
     }

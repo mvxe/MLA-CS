@@ -103,6 +103,7 @@ private:
 public:
     val_selector* led_wl;       // LED wavelength
     QPushButton* scanWl;        // performs a scan and calculates the wavelength
+    val_selector* scanWlNxNpixels;
     bool getWl{false};
     val_selector* triggerAdditionalDelay;
     constexpr static int darkFrameNum=10;
