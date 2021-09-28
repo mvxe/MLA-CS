@@ -101,7 +101,9 @@ private:
     //settings
     QVBoxLayout* slayout;
 public:
-    val_selector* led_wl;       //LED wavelength
+    val_selector* led_wl;       // LED wavelength
+    QPushButton* scanWl;        // performs a scan and calculates the wavelength
+    bool getWl{false};
     val_selector* triggerAdditionalDelay;
     constexpr static int darkFrameNum=10;
 
@@ -140,8 +142,9 @@ private:
     QPushButton* saveNextMirrorBaselineHist;
     std::string fnameSaveNextMirrorBaselineHist;
 
-    unsigned totalFrameNum;
-    unsigned expectedDFTFrameNum;
+    std::atomic<unsigned> totalFrameNum;
+    std::atomic<unsigned> expectedDFTFrameNum;
+    std::atomic<double> displacementOneFrame;
     unsigned peakLoc;           //the expected peak position in the FFT spectrum
     constexpr static unsigned peakLocRange=2;       //we check this many peaks from each side of peakLoc
 
@@ -169,6 +172,7 @@ public Q_SLOTS:
     void recalculate();
 private Q_SLOTS:
     void onBScan();
+    void onBScanCW();
     void onBScanContinuous(bool status);
     void onMenuChange(int index);
     void onBSaveAvgMess();

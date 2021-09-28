@@ -68,6 +68,9 @@ void pgScanGUI::onBScan(){
     else if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();doOneRound();}
     if(bScan->isCheckable() && bScan->isChecked()) timerCM->start();
 }
+void pgScanGUI::onBScanCW(){
+    if(MLP._lock_meas.try_lock()){getWl=true; MLP._lock_meas.unlock();doOneRound();}
+}
 void pgScanGUI::init_gui_settings(){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
@@ -77,6 +80,10 @@ void pgScanGUI::init_gui_settings(){
     conf["led_wl"]=led_wl;
     connect(led_wl, SIGNAL(changed()), this, SLOT(recalculate()));
     slayout->addWidget(led_wl);
+    scanWl=new QPushButton;
+    scanWl->setText("Correct Wavelength (performs scan!)");
+    connect(scanWl, SIGNAL(released()), this, SLOT(onBScanCW()));
+    slayout->addWidget(new twid(scanWl));
     coh_len=new val_selector(20., "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)});
     conf["coh_len"]=coh_len;
     connect(coh_len, SIGNAL(changed()), this, SLOT(recalculate()));
@@ -212,10 +219,10 @@ void pgScanGUI::updateCO(std::string &report){
     report+=util::toString("Total scan range = ",readRangeDis," mm.\n");
     double velocity=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultVelocity);
     double acceleration=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultAcceleration);
-    double displacementOneFrame=vsConv(led_wl)/2/vsConv(pphwl)/1000000;       // in mm
+    displacementOneFrame=vsConv(led_wl)/2/vsConv(pphwl)/1000000;       // in mm
     report+=util::toString("One frame displacement = ",displacementOneFrame*1000000," nm.\n");
     totalFrameNum=readRangeDis/displacementOneFrame;   // for simplicity no image taken on one edge
-    expectedDFTFrameNum=DFTrange->val*led_wl->val/2/displacementOneFrame/1000000;
+    expectedDFTFrameNum=DFTrange->val*vsConv(pphwl);
     double timeOneFrame=1./COfps;
     double motionTimeOneFrame;
     bool hasConstantVelocitySegment;
@@ -424,6 +431,55 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
 
     unsigned nRows=framequeue->getUserMat(0)->rows;
     unsigned nCols=framequeue->getUserMat(0)->cols;
+
+    // this block is for determining wavelength (when scan is called from settings)
+    if(getWl){
+        getWl=false;
+        unsigned maxIter=vsConv(pphwl)/2;   // max number of moves while finding the max
+        unsigned Nperiods=DFTrange->val-1;  // == peakloc
+
+        unsigned X=nCols/2;
+        unsigned Y=nRows/2;
+        unsigned nDFTFrames=Nperiods*vsConv(pphwl);
+        double amp[3];
+        for(unsigned k=0;k!=3;k++){
+            unsigned frames=nDFTFrames+k-1;
+            std::complex<double> res(0,0);
+            for(unsigned n=0;n!=frames;n++){    // its one pixel, no point optimizing
+                res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*cos(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
+                res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*sin(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
+            }
+            amp[k]=1./frames*std::abs(res);
+        }
+        bool found=false;
+        bool direction;
+        nDFTFrames+=(amp[0]>amp[1])?-1:1;
+        while(!found){
+            if(amp[0]>amp[1] || amp[2]>amp[1]){
+                direction=(amp[0]>amp[1]);
+                nDFTFrames+=direction?-1:1;
+                maxIter--;
+                amp[1]=amp[direction?0:2];
+                if(!maxIter) QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("ERROR: failed to correct wavelength.")));
+                std::complex<double> res(0,0);
+                for(unsigned n=0;n!=nDFTFrames;n++){
+                    res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*cos(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                    res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*sin(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                }
+                amp[direction?0:2]=1./nDFTFrames*std::abs(res);
+                if(amp[direction?0:2]<=amp[1]){
+                    nDFTFrames-=direction?-1:1;
+                    found=true;
+                }
+            }else found=true;
+        }
+        led_wl->setValue(2.*nDFTFrames*displacementOneFrame*1000000/Nperiods,0);
+
+        go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
+        return;
+    }
+
+
 
     // TODO handle longer scans here
 
