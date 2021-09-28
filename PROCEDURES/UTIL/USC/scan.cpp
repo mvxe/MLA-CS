@@ -196,7 +196,7 @@ void pgScanGUI::updateCO(std::string &report){
 
     double minFPS, expo;
     go.pGCAM->iuScope->get_frame_rate_bounds (&minFPS, &COfps);
-    expo=go.pGCAM->iuScope->expo*0.0000001; // in s
+    expo=go.pGCAM->iuScope->expo*0.000001; // in s
 
 
     double readRangeDis=vsConv(range)/1000000;  // in mm

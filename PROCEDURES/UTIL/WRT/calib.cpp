@@ -336,7 +336,6 @@ void pgCalib::WCFFindNearest(){
     if((int)(selWriteCalibFocusReFocusNth->val)!=0)
     if(!(measCounter%((int)(selWriteCalibFocusReFocusNth->val)))){
         pgFGUI->refocus();
-        while(!pgFGUI->focusingDone) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     }
 
     //this seams to be useless

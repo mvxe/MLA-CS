@@ -30,7 +30,6 @@ public:
 
     mesLockProg& MLP;
     void refocus();
-    const std::atomic<bool>& focusingDone{_focusingDone};
  private:
     smp_selector* selectFocusSetting;
     std::vector<focusSettings*> settingWdg;
@@ -42,36 +41,29 @@ public:
 
     //activation
     QPushButton* bFocus;
-    val_selector* times;
 
     //settings
     QVBoxLayout* slayout;
     val_selector* range;        //scan range
     val_selector* ppwl;         //points per wavelength
     QLabel* calcL;
-    double mmPerFrame;
+    double displacementOneFrame;
+    double readRangeDis;
     val_selector* gaussianBlur;
     QPushButton* btnSaveNextDebugFocus;
 
     int totalFrameNum;
     constexpr static unsigned timer_delay=500;
-    PVTobj* PVTScan;
-    exec_ret PVTret;
-    bool PVTsRdy=false;
-    void updatePVT(std::string &report);
+    CTRL::CO* COmeasure{nullptr};
+    double COfps;
+    std::atomic<bool> CORdy{false};
+    void updateCO(std::string &report);
+    unsigned const timeout{500};        // we hardcode a timeout (in ms) for waiting for frames, in case something goes wrong with trigger
 
     double total_meas_time;
     std::string saveNextFocus{""};
 
-    void _refocus();
-    std::atomic<bool> _focusingDone{false};
     double vsConv(val_selector* vs);
-
-    // for doing multiple focuses: measure and process in the same time
-    std::mutex fociLock;
-    std::vector<double> foci;
-    std::atomic<unsigned> todo;
-    std::atomic<unsigned> todoTotal;
 
 public Q_SLOTS:
     void recalculate();

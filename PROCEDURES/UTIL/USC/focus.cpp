@@ -8,7 +8,6 @@
 //GUI
 
 pgFocusGUI::pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI): MLP(MLP), pgSGUI(pgSGUI){
-    PVTScan=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, util::toString("camera_PVTfocus.txt").c_str());
     init_gui_activation();
     init_gui_settings();
     timer = new QTimer(this);
@@ -23,20 +22,14 @@ void pgFocusGUI::init_gui_activation(){
     bFocus->setText("ReFocus");
     connect(bFocus, SIGNAL(released()), this, SLOT(onRefocus()));
     gui_activation->addWidget(bFocus);
-    times=new val_selector(1, "x", 1, 100, 0);
-    gui_activation->addWidget(times);
 }
-void pgFocusGUI::onRefocus(){if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();refocus();}}
-void pgFocusGUI::refocus(){
-    if(!PVTsRdy) recalculate();
-    _focusingDone=false;
-    std::lock_guard<std::mutex>lock(fociLock);
-    foci.clear();
-    todo=times->val;
-    todoTotal=times->val;
-    for(int i=0;i<=(todoTotal>1);i++) {todo--; go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::_refocus,this));}          // make two threads if todoTotal>1
+void pgFocusGUI::onRefocus(){
+    if(MLP._lock_meas.try_lock()){
+        MLP._lock_meas.unlock();
+        if(!CORdy) recalculate();
+        go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this));
+    }
 }
-
 void pgFocusGUI::init_gui_settings(){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
@@ -88,7 +81,7 @@ void pgFocusGUI::recalculate() {
     if(MLP._lock_meas.try_lock()){
         if(MLP._lock_comp.try_lock()){
             std::string report;
-            updatePVT(report);
+            updateCO(report);
             calcL->setText(report.c_str());
             MLP._lock_comp.unlock();
         }
@@ -99,92 +92,106 @@ void pgFocusGUI::recalculate() {
 }
 
 double pgFocusGUI::vsConv(val_selector* vs){return pgSGUI->vsConv(vs);}
-void pgFocusGUI::updatePVT(std::string &report){
-    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
-    double minFPS,maxFPS;
-    go.pGCAM->iuScope->get_frame_rate_bounds (&minFPS, &maxFPS);
-    double readTime=vsConv(range)*vsConv(ppwl)/vsConv(pgSGUI->led_wl)/maxFPS*2;   //s
-    double readRangeDis=vsConv(range)/1000000;
-    double readVelocity=readRangeDis/readTime;                          //mm/s
-    report+=util::toString("Read Time =",readTime," s\nRead Range Distance:",readRangeDis," mm\nRead Velocity:",readVelocity," m/s\n");
-//    if(readVelocity>vsConv(pgSGUI->max_vel)) {report+="Error: Read Velocity is higher than set max Velocity!\n"; return;}
-    double readAccelTime=0;//readVelocity/vsConv(pgSGUI->max_acc);
-    double readAccelDis=0;//vsConv(pgSGUI->max_acc)/2*readAccelTime*readAccelTime;
 
-    double Offset=readRangeDis/2+readAccelDis;
-    PVTsRdy=false;
-    PVTScan->clear();
+void pgFocusGUI::updateCO(std::string &report){
+    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
+    CORdy=false;
+    if(COmeasure==nullptr){
+        COmeasure=new CTRL::CO(go.pRPTY);
+    }else if(COmeasure->_ctrl!=go.pRPTY){
+        delete COmeasure;
+        COmeasure=new CTRL::CO(go.pRPTY);
+    }else COmeasure->clear();
 
 
-    double movTime=0;//2*sqrt(2*Offset/vsConv(pgSGUI->max_acc));
-    double movMaxVelocity=0;//vsConv(pgSGUI->max_acc)*movTime;
+    double minFPS, expo;
+    go.pGCAM->iuScope->get_frame_rate_bounds (&minFPS, &COfps);
+    expo=go.pGCAM->iuScope->expo*0.000001; // in s
 
-    //if(movMaxVelocity > vsConv(pgSGUI->max_vel)){report+="Error: Max move Velocity is higher than set max Velocity (did not implement workaround it cus it was unlikely)!\n"; return;}
 
-    double darkFrameTime=pgSGUI->darkFrameNum/maxFPS;
-    totalFrameNum=readTime*maxFPS;
-    mmPerFrame=readRangeDis/totalFrameNum;
-    report+=util::toString("\nTotal expected number of useful frames for focusing: ",totalFrameNum,"\n");
-    report+=util::toString("\nTotal time needed for focusing (+computation): ",2*movTime+2*readAccelTime+darkFrameTime+readTime," s\n");
+    readRangeDis=vsConv(range)/1000000;  // in mm
+    double velocity=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultVelocity);
+    double acceleration=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultAcceleration);
+    displacementOneFrame=vsConv(pgSGUI->led_wl)/2/vsConv(ppwl)/1000000;       // in mm
+    report+=util::toString("One frame displacement =",displacementOneFrame*1000000," nm.\n");
+    totalFrameNum=readRangeDis/displacementOneFrame;   // for simplicity no image taken on one edge
+    double timeOneFrame=1./COfps;
+    double motionTimeOneFrame;
+    bool hasConstantVelocitySegment;
+    mcutil::evalAccMotion(displacementOneFrame, acceleration, velocity, &motionTimeOneFrame, &hasConstantVelocitySegment);
 
-    PVTScan->addAction(XPS::iuScopeLED,true);
-    PVTScan->add(movTime, 0,0, 0,0, -Offset,0, 0,0);
-    PVTScan->add(readAccelTime,  0,0, 0,0, readAccelDis,readVelocity, 0,0);
-    PVTScan->add(readTime, 0,0, 0,0, readRangeDis,readVelocity, 0,0);
-    PVTScan->addAction(XPS::iuScopeLED,false);
-    PVTScan->add(readAccelTime,  0,0, 0,0, readAccelDis,0, 0,0);
-    if(darkFrameTime>movTime+readAccelTime)
-        PVTScan->add(darkFrameTime-movTime-readAccelTime,  0,0, 0,0, 0,0, 0,0);
-    PVTScan->add(movTime, 0,0, 0,0, -Offset,0, 0,0);
-    PVTScan->addAction(XPS::iuScopeLED,true);
-    total_meas_time=2*movTime+2*readAccelTime+readTime+((darkFrameTime>movTime+readAccelTime)?(darkFrameTime-movTime-readAccelTime):0);
+    report+=util::toString("One frame time = ",motionTimeOneFrame+expo," s (ideal minimum), as limited by motion time.\n");
+    report+=util::toString("One frame time = ",timeOneFrame," s, as limited by framerate.\n");
+    report+=util::toString("One frame movement has ",hasConstantVelocitySegment?"a":"no"," constant speed component.\n");
 
-    exec_dat ret;
-    ret=go.pXPS->verifyPVTobj(PVTScan);
-    if(ret.retval!=0) {report+=util::toString("Error: Verify PVTScan failed, retval was",ret.retstr,"\n"); return;}
+    double timeToEdge;  // the time it takes to move from center(initial position) to edge(scan starting position)
+    mcutil::evalAccMotion(readRangeDis/2, acceleration, velocity, &timeToEdge, &hasConstantVelocitySegment);
+    report+=util::toString("To scan edge movement time= ",timeToEdge," s.\n");
+    report+=util::toString("Total read time (if limited by framerate)= ",2*timeToEdge+timeOneFrame*totalFrameNum," s.\n");
+    report+=util::toString("Total number of frames= ",totalFrameNum,".\n");
+    report+=util::toString("Read Range Distance: ",readRangeDis," mm.\n");
 
-    PVTsRdy=true;
+    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
+    COmeasure->addHold("Z",CTRL::he_motion_ontarget);
+    double rndErr=0; // to fix rounding errors
+    for(int i=0;i!=totalFrameNum;i++){
+        COmeasure->startTimer("timer",1./COfps+pgSGUI->triggerAdditionalDelay->val*0.001);      // in case motion is completed before the camera is ready for another frame
+        COmeasure->pulseGPIO("trigCam",0.0001);             // 100us
+        if(expo>0.0001) COmeasure->addDelay(expo-0.0001);   // keep stationary during exposure
+        double disp=displacementOneFrame+rndErr;
+        rndErr=disp-std::round(disp*1000000)/1000000;
+        disp-=rndErr;
+        COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);
+        COmeasure->addHold("Z",CTRL::he_motion_ontarget);
+        COmeasure->addHold("timer",CTRL::he_timer_done);
+    }
+    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
+
+    CORdy=true;
 }
 
-void pgFocusGUI::_refocus(){
-    if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
-    if(!PVTsRdy) return;
+void pgFocusGUI::refocus(){
+    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
+    if(!CORdy) return;
     int nFrames=totalFrameNum;
     FQ* framequeue;
     {   std::lock_guard<std::mutex>lock(MLP._lock_meas);    //wait for other measurements to complete
 
+        go.pGCAM->iuScope->set_trigger("Line1");
+        std::this_thread::sleep_for(std::chrono::milliseconds(10)); // let it switch to trigger
         framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-        framequeue->setUserFps(99999);
+        framequeue->setUserFps(COfps);
+        COmeasure->execute();
 
-        go.pXPS->execPVTobj(PVTScan, &PVTret);
-        for(int i=0;i!=95;i++){
-            std::this_thread::sleep_for(std::chrono::milliseconds((int)(total_meas_time*1000/100)));
-            MLP.progress_meas=i+1;
-            if(PVTret.check_if_done()) break;
+        unsigned cframes, lcframes=0;
+        unsigned time=0;
+        while(1) {
+            cframes=framequeue->getFullNumber();
+            if(cframes>=nFrames){
+                MLP.progress_meas=100;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            if(lcframes==cframes){
+                if(cframes==0) time+=10;    // for first frame we put 10x timeout
+                else time+=100;
+            }else time=0;
+            lcframes=cframes;
+            if(time>=timeout) break;
+
+            MLP.progress_meas=100./nFrames*cframes;
         }
-        PVTret.block_till_done();
-        MLP.progress_meas=100;
 
         framequeue->setUserFps(0);
+        go.pGCAM->iuScope->set_trigger("none");
     }
     {   std::lock_guard<std::mutex>lock(MLP._lock_comp);    //wait till other processing is done
 
-        //TODO: this is copy paste from scan, maybe join them in a function to reuse code?
-        if(framequeue->getFullNumber()<nFrames) {std::cerr<<"ERROR: took "<<framequeue->getFullNumber()<<" frames, expected at least "<<nFrames<<".\n";return;}
-        double mean=0;
-        for(int i=0;i!=10;i++)
-            mean+= cv::mean(*framequeue->getUserMat(i))[0];
-        mean/=10;
-        for(int i=0;i!=framequeue->getFullNumber();i++){
-            double iMean= cv::mean(*framequeue->getUserMat(framequeue->getFullNumber()-1-i))[0];
-            if(iMean<4*mean/5 && framequeue->getFullNumber()>nFrames){
-                framequeue->freeUserMat(framequeue->getFullNumber()-1-i);
-                i--;
-            } else break;
+        if(framequeue->getFullNumber()!=nFrames){
+            QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
+            go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
+            return;
         }
-        if(framequeue->getFullNumber()<nFrames) {std::cerr<<"ERROR: after removing dark frames left with "<<framequeue->getFullNumber()<<" frames, expected at least "<<nFrames<<".\n";return;}
-        while(framequeue->getFullNumber()>nFrames)
-            framequeue->freeUserMat(0);
 
         int nRows=framequeue->getUserMat(0)->rows;
         int nCols=framequeue->getUserMat(0)->cols;
@@ -231,35 +238,9 @@ void pgFocusGUI::_refocus(){
 
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
-        {   std::lock_guard<std::mutex>lock(fociLock);
-            foci.push_back((maxLoc.x-nFrames/2.)*mmPerFrame);
-            if(todo==0 && todoTotal==foci.size()){
-                double sum=0;
-                for (auto& val : foci){
-                    sum+=val;
-                }
-                double focus=sum/foci.size();
-                std::cerr<<"Corrected focus by "<<focus<<" mm\n";
-                if(foci.size()>1){  //calc SE
-                    double SE=0;
-                    for (auto& val : foci){
-                        SE+=pow(val-focus,2);
-                    }
-                    SE=sqrt(SE/(foci.size()-1));
-                    std::cerr<<"The SE for the focus correction after "<<foci.size()<<" refocuses is ±"<<SE<<" mm\n";
-                }
-
-                go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,focus,-focus);
-                foci.clear();
-                todoTotal=0;
-                _focusingDone=true;
-            }else{
-                std::cerr<<todoTotal-foci.size()<<" more to go.\n";
-            }
-        }
-    }
-    if(todo>0) {
-        todo--;
-        go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::_refocus,this));
+        double Zcor=(maxLoc.x-nFrames/2.)*displacementOneFrame;
+        if(abs(Zcor)>readRangeDis/2)
+            QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("ERROR: abs of the calculated correction is larger than half the read range distance: ",Zcor," vs ",readRangeDis/2," . Did not apply correction.")));
+        else go.pRPTY->motion("Z",Zcor,0,0,CTRL::MF_RELATIVE);
     }
 }

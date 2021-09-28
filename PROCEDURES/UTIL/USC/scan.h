@@ -102,6 +102,7 @@ private:
     QVBoxLayout* slayout;
 public:
     val_selector* led_wl;       //LED wavelength
+    val_selector* triggerAdditionalDelay;
     constexpr static int darkFrameNum=10;
 
     //save pixel to file
@@ -133,8 +134,7 @@ private:
     val_selector* findBaselineHistStep;
     smp_selector* debugDisplayModeSelect;
     val_selector* avgDiscardCriteria;
-    val_selector* triggerAdditionalDelay;
-    unsigned timeout{500};    // we hardcode a timeout (in ms) for waiting for frames, in case something goes wrong with trigger
+    unsigned const timeout{500};        // we hardcode a timeout (in ms) for waiting for frames, in case something goes wrong with trigger
     QPushButton* saveAvgMess;
     QPushButton* saveNextMirrorBaselineHist;
     std::string fnameSaveNextMirrorBaselineHist;
