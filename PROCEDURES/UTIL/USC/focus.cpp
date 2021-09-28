@@ -65,15 +65,15 @@ focusSettings::focusSettings(uint num, pgFocusGUI* parent): parent(parent){
     parent->conf[parent->selectFocusSetting->getLabel(num)]["range"]=range;
     connect(range, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(range);
-    ppwl=new val_selector(10., "Points Per Wavelength: ", 0.001, 500., 3);
-    parent->conf[parent->selectFocusSetting->getLabel(num)]["ppwl"]=ppwl;
-    connect(ppwl, SIGNAL(changed()), parent, SLOT(recalculate()));
-    slayout->addWidget(ppwl);
+    pphwl=new val_selector(10., "Points Per Period (= half wavelength): ", 0.001, 500., 3);
+    parent->conf[parent->selectFocusSetting->getLabel(num)]["pphwl"]=pphwl;
+    connect(pphwl, SIGNAL(changed()), parent, SLOT(recalculate()));
+    slayout->addWidget(pphwl);
 }
 void pgFocusGUI::onMenuChange(int index){
     for(int i=0;i!=Nset;i++) settingWdg[i]->setVisible(i==index?true:false);
     range=settingWdg[index]->range;
-    ppwl=settingWdg[index]->ppwl;
+    pphwl=settingWdg[index]->pphwl;
     recalculate();
 }
 
@@ -112,8 +112,8 @@ void pgFocusGUI::updateCO(std::string &report){
     readRangeDis=vsConv(range)/1000000;  // in mm
     double velocity=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultVelocity);
     double acceleration=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultAcceleration);
-    displacementOneFrame=vsConv(pgSGUI->led_wl)/2/vsConv(ppwl)/1000000;       // in mm
-    report+=util::toString("One frame displacement =",displacementOneFrame*1000000," nm.\n");
+    displacementOneFrame=vsConv(pgSGUI->led_wl)/2/vsConv(pphwl)/1000000;       // in mm
+    report+=util::toString("One frame displacement = ",displacementOneFrame*1000000," nm.\n");
     totalFrameNum=readRangeDis/displacementOneFrame;   // for simplicity no image taken on one edge
     double timeOneFrame=1./COfps;
     double motionTimeOneFrame;
@@ -126,26 +126,32 @@ void pgFocusGUI::updateCO(std::string &report){
 
     double timeToEdge;  // the time it takes to move from center(initial position) to edge(scan starting position)
     mcutil::evalAccMotion(readRangeDis/2, acceleration, velocity, &timeToEdge, &hasConstantVelocitySegment);
-    report+=util::toString("To scan edge movement time= ",timeToEdge," s.\n");
-    report+=util::toString("Total read time (if limited by framerate)= ",2*timeToEdge+timeOneFrame*totalFrameNum," s.\n");
-    report+=util::toString("Total number of frames= ",totalFrameNum,".\n");
-    report+=util::toString("Read Range Distance: ",readRangeDis," mm.\n");
+    report+=util::toString("To scan edge movement time = ",timeToEdge," s.\n");
+    report+=util::toString("Total read time (if limited by framerate) = ",2*timeToEdge+timeOneFrame*totalFrameNum," s.\n");
+    report+=util::toString("Total number of frames = ",totalFrameNum,".\n");
+    report+=util::toString("Read Range Distance = ",readRangeDis," mm.\n");
 
-    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
-    COmeasure->addHold("Z",CTRL::he_motion_ontarget);
     double rndErr=0; // to fix rounding errors
-    for(int i=0;i!=totalFrameNum;i++){
+    double disp=-readRangeDis/2+rndErr;
+    rndErr=disp-std::round(disp*1000000)/1000000;
+    disp-=rndErr;
+    COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
+    COmeasure->addHold("Z",CTRL::he_motion_ontarget);
+    for(unsigned i=0;i!=totalFrameNum;i++){
         COmeasure->startTimer("timer",1./COfps+pgSGUI->triggerAdditionalDelay->val*0.001);      // in case motion is completed before the camera is ready for another frame
         COmeasure->pulseGPIO("trigCam",0.0001);             // 100us
         if(expo>0.0001) COmeasure->addDelay(expo-0.0001);   // keep stationary during exposure
-        double disp=displacementOneFrame+rndErr;
+        disp=displacementOneFrame+rndErr;
         rndErr=disp-std::round(disp*1000000)/1000000;
         disp-=rndErr;
         COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);
         COmeasure->addHold("Z",CTRL::he_motion_ontarget);
         COmeasure->addHold("timer",CTRL::he_timer_done);
     }
-    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
+    disp=-readRangeDis/2+rndErr;
+    rndErr=disp-std::round(disp*1000000)/1000000;
+    disp-=rndErr;
+    COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
 
     CORdy=true;
 }

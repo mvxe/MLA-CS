@@ -122,8 +122,9 @@ private:
     constexpr static unsigned Nset{5};
 
     val_selector* coh_len;      //coherence length
-    val_selector* range;        //scan range
-    val_selector* ppwl;         //points per wavelength
+    val_selector* DFTrange;     //DFT range
+    val_selector* range;        //scan range (TODO)
+    val_selector* pphwl;        //points per half wavelength
     val_selector* dis_thresh;   //if the checked peaks within peakLocRange of the freq peak are higher than peakThresh x the main peak the pixel is added to the mask (of bad pixels)
     QLabel* calcL;
     constexpr static unsigned timer_delay=500;  //if the program is busy measuring we cannot update the variables, so wait for this ammount and try again
@@ -140,9 +141,9 @@ private:
     std::string fnameSaveNextMirrorBaselineHist;
 
     unsigned totalFrameNum;
+    unsigned expectedDFTFrameNum;
     unsigned peakLoc;           //the expected peak position in the FFT spectrum
     constexpr static unsigned peakLocRange=2;       //we check this many peaks from each side of peakLoc
-    unsigned i2NLambda;         //the number of expected wavelengths x2 (ie number of expected maxima and minima)
 
     exec_ret PVTret;
     CTRL::CO* COmeasure{nullptr};
@@ -182,10 +183,9 @@ class scanSettings: public QWidget{
 public:
     scanSettings(uint num, pgScanGUI* parent);
     QVBoxLayout* slayout;
-    val_selector* led_wl;
-    val_selector* coh_len;
+    val_selector* DFTrange;
     val_selector* range;
-    val_selector* ppwl;
+    val_selector* pphwl;
     val_selector* max_vel;
     val_selector* max_acc;
     val_selector* dis_thresh;

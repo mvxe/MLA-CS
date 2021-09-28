@@ -72,6 +72,15 @@ void pgScanGUI::init_gui_settings(){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
+    led_wl=new val_selector(470., "LED Wavelength:", 0.001, 2000., 2, 0, {"nm","um"});
+    led_wl->setToolTip("The LED central wavelength. NOTE: the wavelength of the measured sine is actually half this wavelength.");
+    conf["led_wl"]=led_wl;
+    connect(led_wl, SIGNAL(changed()), this, SLOT(recalculate()));
+    slayout->addWidget(led_wl);
+    coh_len=new val_selector(20., "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)});
+    conf["coh_len"]=coh_len;
+    connect(coh_len, SIGNAL(changed()), this, SLOT(recalculate()));
+    slayout->addWidget(coh_len);
     selectScanSetting=new smp_selector("Select scan setting: ", 0, {"Standard", "Precise", "Set2", "Set3", "Set4"});    //should have Nset strings
     conf["selectScanSetting"]=selectScanSetting;
     slayout->addWidget(selectScanSetting);
@@ -86,7 +95,7 @@ void pgScanGUI::init_gui_settings(){
     conf["avgDiscardCriteria"]=avgDiscardCriteria;
     avgDiscardCriteria->setToolTip("If the difference in the number of excluded element between the current measurement and the avg measurement (which combines all previous exclusions(or)) is larger than this percentage times the total num of pixels, the measurement is discarded.");
     slayout->addWidget(avgDiscardCriteria);
-    connect(avgDiscardCriteria, SIGNAL(changed()), parent, SLOT(recalculate()));
+    connect(avgDiscardCriteria, SIGNAL(changed()), this, SLOT(recalculate()));
     triggerAdditionalDelay=new val_selector(0., "Additional trigger delay:", 0., 1000., 2, 1, {"ms"});
     conf["triggerAdditionalDelay"]=triggerAdditionalDelay;
     triggerAdditionalDelay->setToolTip("If scan drops frames, it might be that the returned max FPS is incorrect. Use this parameter to compensate (try 1 ms).");
@@ -116,23 +125,19 @@ void pgScanGUI::scanRes::copyTo(scanRes& dst) const{
 scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
     slayout=new QVBoxLayout;
     this->setLayout(slayout);
-    led_wl=new val_selector(470., "LED Wavelength:", 0.001, 2000., 2, 0, {"nm","um"});
-    parent->conf[parent->selectScanSetting->getLabel(num)]["led_wl"]=led_wl;
-    connect(led_wl, SIGNAL(changed()), parent, SLOT(recalculate()));
-    slayout->addWidget(led_wl);
-    coh_len=new val_selector(20., "Coherence Length L:", 1., 2000., 2, 2, {"nm","um",QChar(0x03BB)});
-    parent->conf[parent->selectScanSetting->getLabel(num)]["coh_len"]=coh_len;
-    connect(coh_len, SIGNAL(changed()), parent, SLOT(recalculate()));
-    slayout->addWidget(coh_len);
-    range=new val_selector(10., "Scan Range:", 0.01, 2000., 5, 3 , {"nm","um",QChar(0x03BB),"L"});
+    DFTrange=new val_selector(10., "DFT Range:", 1, 100, 0, 0 , {QChar(0x03BB)+QString{"/2"}});
+    parent->conf[parent->selectScanSetting->getLabel(num)]["DFTrange"]=DFTrange;
+    connect(DFTrange, SIGNAL(changed()), parent, SLOT(recalculate()));
+    slayout->addWidget(DFTrange);
+    range=new val_selector(0, "(Optional, longer ranges) Scan Range:", 0.0, 2000., 5, 3 , {"nm","um",QChar(0x03BB),"L"});
     parent->conf[parent->selectScanSetting->getLabel(num)]["range"]=range;
     connect(range, SIGNAL(changed()), parent, SLOT(recalculate()));
     slayout->addWidget(range);
-    ppwl=new val_selector(20., "Points Per Wavelength: ", 6, 2000., 2);
-    parent->conf[parent->selectScanSetting->getLabel(num)]["ppwl"]=ppwl;
-    connect(ppwl, SIGNAL(changed()), parent, SLOT(recalculate()));
-    slayout->addWidget(ppwl);
-    dis_thresh=new val_selector(0.9, "Peak Discard Threshold: ", 0.1, 1, 2);
+    pphwl=new val_selector(20., "Points Per Period (= half wavelength): ", 6, 2000., 2);
+    parent->conf[parent->selectScanSetting->getLabel(num)]["pphwl"]=pphwl;
+    connect(pphwl, SIGNAL(changed()), parent, SLOT(recalculate()));
+    slayout->addWidget(pphwl);
+    dis_thresh=new val_selector(255./16, "Peak Discard Threshold (1/8 of signal amplitude): ", 0.01, 255./8, 2);
     parent->conf[parent->selectScanSetting->getLabel(num)]["dis_thresh"]=dis_thresh;
     slayout->addWidget(dis_thresh);
     calcL=new QLabel;
@@ -155,10 +160,9 @@ scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
 }
 void pgScanGUI::onMenuChange(int index){
     for(int i=0;i!=Nset;i++) settingWdg[i]->setVisible(i==index?true:false);
-    led_wl=settingWdg[index]->led_wl;
-    coh_len=settingWdg[index]->coh_len;
+    DFTrange=settingWdg[index]->DFTrange;
     range=settingWdg[index]->range;
-    ppwl=settingWdg[index]->ppwl;
+    pphwl=settingWdg[index]->pphwl;
     dis_thresh=settingWdg[index]->dis_thresh;
     calcL=settingWdg[index]->calcL;
     exclDill=settingWdg[index]->exclDill;
@@ -198,55 +202,60 @@ void pgScanGUI::updateCO(std::string &report){
     go.pGCAM->iuScope->get_frame_rate_bounds (&minFPS, &COfps);
     expo=go.pGCAM->iuScope->expo*0.000001; // in s
 
+    double totalScanRange=DFTrange->val*led_wl->val/2;    // in nm
+    if(vsConv(range)>totalScanRange){
+        //totalScanRange=vsConv(range);
+        report+=util::toString("Doing wider scan, total scan range set to Scan range. (TODO implement)\n");
+    }else report+=util::toString("Total scan range set to DFT range.\n");
 
-    double readRangeDis=vsConv(range)/1000000;  // in mm
+    double readRangeDis=totalScanRange/1000000;  // in mm
+    report+=util::toString("Total scan range = ",readRangeDis," mm.\n");
     double velocity=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultVelocity);
     double acceleration=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultAcceleration);
-    double displacementOneFrame=vsConv(led_wl)/2/vsConv(ppwl)/1000000;       // in mm
-    report+=util::toString("One frame displacement =",displacementOneFrame*1000000," nm.\n");
+    double displacementOneFrame=vsConv(led_wl)/2/vsConv(pphwl)/1000000;       // in mm
+    report+=util::toString("One frame displacement = ",displacementOneFrame*1000000," nm.\n");
     totalFrameNum=readRangeDis/displacementOneFrame;   // for simplicity no image taken on one edge
+    expectedDFTFrameNum=DFTrange->val*led_wl->val/2/displacementOneFrame/1000000;
     double timeOneFrame=1./COfps;
     double motionTimeOneFrame;
     bool hasConstantVelocitySegment;
     mcutil::evalAccMotion(displacementOneFrame, acceleration, velocity, &motionTimeOneFrame, &hasConstantVelocitySegment);
 
-    report+=util::toString("One frame time =",motionTimeOneFrame+expo," s (ideal minimum), as limited by motion time.\n");
-    report+=util::toString("One frame time =",timeOneFrame," s, as limited by framerate.\n");
+    report+=util::toString("Total number of frames = ",totalFrameNum,".\n");
+    report+=util::toString("Expected number of frames for DFT = ",expectedDFTFrameNum,".\n");
+    report+=util::toString("One frame time = ",motionTimeOneFrame+expo," s (ideal minimum), as limited by motion time.\n");
+    report+=util::toString("One frame time = ",timeOneFrame," s, as limited by framerate.\n");
     report+=util::toString("One frame movement has ",hasConstantVelocitySegment?"a":"no"," constant speed component.\n");
 
     double timeToEdge;  // the time it takes to move from center(initial position) to edge(scan starting position)
     mcutil::evalAccMotion(readRangeDis/2, acceleration, velocity, &timeToEdge, &hasConstantVelocitySegment);
-    report+=util::toString("To scan edge movement time= ",timeToEdge," s.\n");
-    report+=util::toString("Total read time (if limited by framerate)= ",2*timeToEdge+timeOneFrame*totalFrameNum," s.\n");
-    report+=util::toString("Total number of frames= ",totalFrameNum,".\n");
-    report+=util::toString("Read Range Distance:",readRangeDis," mm.\n");
+    report+=util::toString("To scan edge movement time = ",timeToEdge," s.\n");
+    report+=util::toString("Total read time (if limited by framerate) = ",2*timeToEdge+timeOneFrame*totalFrameNum," s.\n");
 
-    report+=util::toString("\nTotal expected number of useful frames for FFT: ",totalFrameNum,"\n");
-    unsigned optimalDFTsize = cv::getOptimalDFTSize(totalFrameNum);
-    report+=util::toString("Optimal number of frames (get as close to this as possible): ",optimalDFTsize,"\n");
+    peakLoc=expectedDFTFrameNum/vsConv(pphwl);
+    report+=util::toString("Expecting the peak to be at i = ", peakLoc," in the FFT.\n");
 
-    double NLambda=vsConv(range)/vsConv(led_wl)*2;
-    i2NLambda=2*NLambda;    //we want it to round down
-    report+=util::toString("Total of ",NLambda," wavelengths (for best precision, should be an integer)\n");
-    peakLoc=std::nearbyint(totalFrameNum/vsConv(ppwl));
-    report+=util::toString("Expecting the peak to be at i=",totalFrameNum/vsConv(ppwl)," in the FFT.\n");
-    if(peakLoc+peakLocRange>=totalFrameNum || peakLoc-peakLocRange<=0){report+=util::toString("Error: PeakLoc+-",peakLocRange," should be between 0 and totalFrameNum!\n"); return;}
-
-    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
-    COmeasure->addHold("Z",CTRL::he_motion_ontarget);
     double rndErr=0; // to fix rounding errors
-    for(int i=0;i!=totalFrameNum;i++){
+    double disp=-readRangeDis/2+rndErr;
+    rndErr=disp-std::round(disp*1000000)/1000000;
+    disp-=rndErr;
+    COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
+    COmeasure->addHold("Z",CTRL::he_motion_ontarget);
+    for(unsigned i=0;i!=totalFrameNum;i++){
         COmeasure->startTimer("timer",1./COfps+triggerAdditionalDelay->val*0.001);      // in case motion is completed before the camera is ready for another frame
         COmeasure->pulseGPIO("trigCam",0.0001);             // 100us
         if(expo>0.0001) COmeasure->addDelay(expo-0.0001);   // keep stationary during exposure
-        double disp=displacementOneFrame+rndErr;
+        disp=displacementOneFrame+rndErr;
         rndErr=disp-std::round(disp*1000000)/1000000;
         disp-=rndErr;
         COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);
         COmeasure->addHold("Z",CTRL::he_motion_ontarget);
         COmeasure->addHold("timer",CTRL::he_timer_done);
     }
-    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
+    disp=-readRangeDis/2+rndErr;
+    rndErr=disp-std::round(disp*1000000)/1000000;
+    disp-=rndErr;
+    COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
 
     CORdy=true;
 }
@@ -370,6 +379,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
     scanRes* res=new scanRes;
 
     unsigned nFrames=totalFrameNum;
+    unsigned nDFTFrames=expectedDFTFrameNum;
     FQ* framequeue;
     go.pGCAM->iuScope->set_trigger("Line1");
     std::this_thread::sleep_for(std::chrono::milliseconds(10)); // let it switch to trigger
@@ -404,154 +414,102 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
 
     std::lock_guard<std::mutex>lock(MLP._lock_comp);    // wait till other processing is done
     MLP._lock_meas.unlock();                             // allow new measurement to start
-
-    if(framequeue->getFullNumber()<nFrames) {std::cerr<<"ERROR: took "<<framequeue->getFullNumber()<<" frames, expected "<<nFrames<<".\n";go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);return;}
-    double mean=0;
-    for(int i=0;i!=10;i++)
-        mean+= cv::mean(*framequeue->getUserMat(i))[0];
-    mean/=10;
-    for(int i=0;i!=framequeue->getFullNumber();i++){
-        double iMean= cv::mean(*framequeue->getUserMat(framequeue->getFullNumber()-1-i))[0];
-        if(iMean<4*mean/5 && framequeue->getFullNumber()>nFrames){
-            framequeue->freeUserMat(framequeue->getFullNumber()-1-i);
-            i--;
-        } else break;
-    }
-    if(framequeue->getFullNumber()<nFrames) {std::cerr<<"ERROR: after removing dark frames left with "<<framequeue->getFullNumber()<<" frames, expected at least "<<nFrames<<".\n";go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);return;}
-    while(framequeue->getFullNumber()>nFrames)
-        framequeue->freeUserMat(0);
-
-    int nRows=framequeue->getUserMat(0)->rows;
-    int nCols=framequeue->getUserMat(0)->cols;
-
-    cv::Mat mat2D(nFrames, nCols, CV_32F);
-    tUMat maskUMat(nRows, nCols, CV_8U);
-    tUMat maskUMatNot(nRows, nCols, CV_8U);
-
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
-    tUMat resultFinalPhase(nCols, nRows, CV_32F);    //rows and cols flipped for convenience, transpose it after main loop!
 
-    int savePixX{-1}, savePixY{-1}; //writing pixel to file: for selected pixel
-    std::string savePixFname;
-    if(clickDataLock.try_lock()){
+    if(framequeue->getFullNumber()!=nFrames){
+        QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
+        go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
+        return;
+    }
+
+    unsigned nRows=framequeue->getUserMat(0)->rows;
+    unsigned nCols=framequeue->getUserMat(0)->cols;
+
+    // TODO handle longer scans here
+
+    // real and imaginary accumulation matrices
+    tUMat mReal=tUMat::zeros(nRows, nCols, CV_32F);
+    tUMat mImag=tUMat::zeros(nRows, nCols, CV_32F);
+    // helper matrix:
+    tUMat mTmp(nRows, nCols, CV_32F);
+    // matrix containing amplitude
+    tUMat mAmp(nRows, nCols, CV_32F);
+    // matrix containing phase
+    tUMat mPhs(nRows, nCols, CV_32F);
+    // matrix with mask (1 means bad pixel - invalid mPhs)
+    tUMat mask(nRows, nCols, CV_8U);
+    tUMat maskNot(nRows, nCols, CV_8U);
+
+    for(unsigned n=0;n!=nDFTFrames;n++){
+        cv::multiply(*framequeue->getUserMat(n), sin(2*M_PI*n*peakLoc/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2), mTmp, 1, CV_32F);
+        cv::add(mReal,mTmp,mReal);
+        cv::multiply(*framequeue->getUserMat(n), cos(2*M_PI*n*peakLoc/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2), mTmp, 1, CV_32F);
+        cv::add(mImag,mTmp,mImag);
+        MLP.progress_comp=90*(n+1)/nDFTFrames;
+    }
+    cv::phase(mImag, mReal, mPhs);  // atan2(y,x)
+    cv::magnitude(mReal, mImag, mAmp);
+    cv::multiply(mAmp, 1./nDFTFrames, mAmp);
+    cv::compare(mAmp, (double)dis_thresh->val, mask, cv::CMP_LT);
+
+    std::cerr<<"done with dfts\n";
+
+    if((cbGetRefl->val && cbRefl_override==0) || cbRefl_override==1){
+        mAmp.convertTo(res->refl,CV_8U,1,0);        // is amplitude ~ reflectivity of the less reflective mirror of the interferometer
+    }
+
+    int dilation_size=exclDill->val;
+    if(dilation_size>0){
+        cv::Mat element=cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dilation_size+1,2*dilation_size+1), cv::Point(dilation_size,dilation_size));
+        cv::dilate(mask, mask, element);
+    }
+    bitwise_not(mask, maskNot);
+    mask.copyTo(res->mask);
+    maskNot.copyTo(res->maskN);
+    mPhs.copyTo(res->depth);
+
+    if(clickDataLock.try_lock()){   //writing pixel to file: for selected pixel
         if(savePix){
             if(clickCoordX>=0 && clickCoordX<nCols && clickCoordY>=0 && clickCoordY<nRows){
-                savePixX=clickCoordX;
-                savePixY=clickCoordY;
-                savePixFname=clickFilename;
+                std::ofstream wfile(clickFilename);
+                unsigned col=clickCoordX;
+                unsigned row=clickCoordY;
+
+                // TODO handle longer scans here too
+                for(unsigned k=0;k!=nDFTFrames;k++){
+                    std::complex<double> res(0,0);
+                    for(unsigned n=0;n!=nDFTFrames;n++){    // its one pixel, no point optimizing
+                        res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(col,row)*cos(2*M_PI*n*k/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                        res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(col,row)*sin(2*M_PI*n*k/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                    }
+                    wfile<<k<<" "<<(int)framequeue->getUserMat(k)->at<uint8_t>(col,row)<<" "<<std::abs(res)<<" "<<std::arg(res)<<"\n";
+                }
+                wfile.close();
             }
             savePix=false;
         }
         clickDataLock.unlock();
     }
 
-    tUMat refl;
-    bool fillRefl=((cbGetRefl->val && cbRefl_override==0) || cbRefl_override==1);
-    if(fillRefl) refl=tUMat(nRows, nCols, CV_32F);
-
-
-    // make mat for applying Hann function windowing :
-    cv::Mat windowMat=cv::Mat::zeros(nFrames, 1, CV_32F);
-    for(int i=0;i<nFrames;i++)
-        windowMat.at<float>(i)=pow(sin(M_PI*i/nFrames),2);
-    cv::Mat windowMat2D=cv::repeat(windowMat, 1, nCols);
-
-
-    MLP.progress_comp=0;
-    for(int k=0;k!=nRows;k++){      //Processing row by row
-        //first copy the matrices such that time becomes a column
-        for(int i=0;i!=nFrames;i++)
-            framequeue->getUserMat(i)->row(k).copyTo(mat2D.row(i));
-        //sending the matrix to the GPU, transposing and preforming an DFT
-        //Umat2D=mat2D.getUMat(cv::ACCESS_READ);
-        tUMat Umat2D;
-        //mat2D.copyTo(Umat2D);
-        //apply Hann function windowing :
-        cv::multiply(mat2D, windowMat2D, Umat2D);
-
-        cv::transpose(Umat2D,Umat2D);
-
-        cv::dft(Umat2D, Umat2D, cv::DFT_COMPLEX_OUTPUT+cv::DFT_ROWS);
-        //Umat2D.copyTo(fft2D); //no need to copy the whole matrix
-
-        //writing pixel to file: for selected pixel
-        if(k==savePixY){
-            std::ofstream wfile(savePixFname);
-            cv::Mat fft2D;
-            Umat2D.copyTo(fft2D);
-            for(int i=0;i!=nFrames;i++) wfile<<i<<" "<<mat2D.at<float>(i,savePixX)<<" "<<std::abs(fft2D.at<std::complex<float>>(savePixX, i))<<" "<<std::arg(fft2D.at<std::complex<float>>(savePixX, i))<<"\n";
-            wfile.close();
-        }
-
-        //getting phase and magnitude, phase at the LED wavelength/2 goes to final matrix, magnitude(2*peakLocRange+1 rows) goes for further eval
-
-        tUMat magn;
-        std::vector<tUMat> planes{2};
-        cv::split(Umat2D.colRange(peakLoc-peakLocRange,peakLoc+peakLocRange+1), planes);
-        cv::magnitude(planes[0], planes[1], magn);
-        cv::phase(planes[0].col(peakLocRange), planes[1].col(peakLocRange), resultFinalPhase.col(k));       //only the actual peak
-
-        //checking if the magnitudes of peakLocRange number of points around the LED wavelength/2 are higher than it, if so, measurement is unreliable
-        bool first=true;
-        cv::multiply((double)dis_thresh->val,magn.col(peakLocRange),magn.col(peakLocRange));
-        tUMat cmpRes;
-        tUMat cmpFinRes;
-        for(int j=1;j<=peakLocRange;j++){
-            if(first) {compare(magn.col(peakLocRange), magn.col(peakLocRange+j), cmpFinRes, cv::CMP_LT); first=false;}
-            else{
-                compare(magn.col(peakLocRange), magn.col(peakLocRange+j), cmpRes, cv::CMP_LT);
-                add(cmpFinRes, cmpRes, cmpFinRes);
-            }
-            compare(magn.col(peakLocRange), magn.col(peakLocRange-j), cmpRes, cv::CMP_LT);
-            add(cmpFinRes, cmpRes, cmpFinRes);
-        }
-        cmpFinRes=cmpFinRes.reshape(0,1);
-        cmpFinRes.copyTo(maskUMat.row(k));
-        //maskUMat.row(k)=tUMat(nRows, 1, CV_8U, 255);  // override
-
-        if(fillRefl){
-            cv::split(Umat2D.col(0), planes);
-            cv::magnitude(planes[0], planes[1], magn);
-            cv::transpose(magn,magn);
-            cv::divide(magn,nFrames,magn);
-            magn.copyTo(refl.row(k));
-        }
-
-        //std::cerr<<"done with dft"<<k<<"\n";
-        MLP.progress_comp=60*(k+1)/nRows;
-    }
-    std::cerr<<"done with dfts\n";
-    int dilation_size=exclDill->val;
-    if(dilation_size>0){
-        cv::Mat element=cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dilation_size+1,2*dilation_size+1), cv::Point(dilation_size,dilation_size));
-        cv::dilate(maskUMat, maskUMat, element);
-    }
-
-    bitwise_not(maskUMat, maskUMatNot);
-    maskUMat.copyTo(res->mask);
-    maskUMatNot.copyTo(res->maskN);
-
-    cv::transpose(resultFinalPhase,resultFinalPhase);   //now its the same rows,cols as the camera images
-    resultFinalPhase.copyTo(res->depth);
 
     if(getExpMinMax) calcExpMinMax(framequeue, &res->maskN);
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
     if(debugDisplayModeSelect->index==0){   // if debug no unwrap is off
-        resultFinalPhase.copyTo(res->depth);
+        mPhs.copyTo(res->depth);
         cv::phase_unwrapping::HistogramPhaseUnwrapping::Params params;
         params.width=nCols;
         params.height=nRows;
         cv::Ptr<cv::phase_unwrapping::HistogramPhaseUnwrapping> phaseUnwrapping = cv::phase_unwrapping::HistogramPhaseUnwrapping::create(params);
         phaseUnwrapping->unwrapPhaseMap(res->depth, res->depth,res->maskN);    //unfortunately this does not work for UMat (segfaults for ocv 4.1.2), thats why we shuffle the mat back and forth
-        res->depth.copyTo(resultFinalPhase);
+        res->depth.copyTo(mPhs);
     }
-    resultFinalPhase.convertTo(resultFinalPhase,-1,vsConv(led_wl)/4/M_PI);
+    mPhs.convertTo(mPhs,-1,vsConv(led_wl)/4/M_PI);
 
-    MLP.progress_comp=90;
+    MLP.progress_comp=95;
 
-    resultFinalPhase.setTo(std::numeric_limits<float>::max() , maskUMat);
-    resultFinalPhase.copyTo(res->depth);
+    mPhs.setTo(std::numeric_limits<float>::max() , mask);
+    mPhs.copyTo(res->depth);
     if(useCorr->try_lock()){
         if(cor==nullptr)std::cerr<<"Correction was nullptr!\n";
         else if(cor->depth.empty())std::cerr<<"Correction depthmap was empty!\n";
@@ -645,10 +603,6 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
     else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
 
     cv::minMaxLoc(res->depth, &res->min, &res->max, nullptr, nullptr, res->maskN);  //the ignored mask values will be <min , everything is in nm
-
-    if(fillRefl){
-        refl.convertTo(res->refl,CV_8U,2,-127.5);
-    }
 
     result.put(res);
 

@@ -45,14 +45,14 @@ public:
     //settings
     QVBoxLayout* slayout;
     val_selector* range;        //scan range
-    val_selector* ppwl;         //points per wavelength
+    val_selector* pphwl;         //points per wavelength
     QLabel* calcL;
     double displacementOneFrame;
     double readRangeDis;
     val_selector* gaussianBlur;
     QPushButton* btnSaveNextDebugFocus;
 
-    int totalFrameNum;
+    unsigned totalFrameNum;
     constexpr static unsigned timer_delay=500;
     CTRL::CO* COmeasure{nullptr};
     double COfps;
@@ -80,7 +80,7 @@ public:
     focusSettings(uint num, pgFocusGUI* parent);
     QVBoxLayout* slayout;
     val_selector* range;        //scan range
-    val_selector* ppwl;         //points per wavelength
+    val_selector* pphwl;         //points per wavelength
     pgFocusGUI* parent;
 };
 
