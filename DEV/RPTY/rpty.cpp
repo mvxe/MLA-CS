@@ -263,6 +263,7 @@ double RPTY::getMotionSetting(std::string ID, mst setting){
     case mst_maximumVelocity: return motionAxes[ID].dev->maximumVelocity;
     case mst_defaultAcceleration: return motionAxes[ID].dev->defaultAcceleration;
     case mst_maximumAcceleration: return motionAxes[ID].dev->maximumAcceleration;
+    case mst_mininumStep: return motionAxes[ID].dev->minimumStep;
     }
 }
 
@@ -332,7 +333,9 @@ void RPTY::CO_execute(CO* a){
 void RPTY::CO_addMotion(CO* a, std::string axisID, double position, double velocity, double acceleration, motionFlags flags){
     std::lock_guard<std::recursive_mutex>lock(mux);
     _motionDeviceThrowExc(axisID,"motion");
-    motionAxes[axisID].dev->motion(commandObjects[a].main, position, velocity, acceleration, flags);
+    if(commandObjects[a].motionRemainders.find(axisID) != commandObjects[a].motionRemainders.end())
+        position+=commandObjects[a].motionRemainders[axisID];
+    commandObjects[a].motionRemainders[axisID]=motionAxes[axisID].dev->motion(commandObjects[a].main, position, velocity, acceleration, flags);
 }
 void RPTY::CO_addDelay(CO* a, double delay){
     std::lock_guard<std::recursive_mutex>lock(mux);
@@ -405,5 +408,6 @@ void RPTY::CO_clear(CO* a){
     std::lock_guard<std::recursive_mutex>lock(mux);
     commandObjects[a].main.clear();
     commandObjects[a].timer.clear();
+    commandObjects[a].motionRemainders.clear();
 }
 

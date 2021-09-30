@@ -42,7 +42,7 @@ public:
             // #### higher level functions: ####
 
     // motion settings:
-    enum mst{mst_position, mst_minPosition, mst_maxPosition, mst_lastPosition, mst_restPosition, mst_defaultVelocity, mst_maximumVelocity, mst_defaultAcceleration, mst_maximumAcceleration};
+    enum mst{mst_position, mst_minPosition, mst_maxPosition, mst_lastPosition, mst_restPosition, mst_defaultVelocity, mst_maximumVelocity, mst_defaultAcceleration, mst_maximumAcceleration, mst_mininumStep};
 
     virtual double getMotionSetting(std::string ID, mst setting)=0;
     // ID has to be a device of type dt_motion
@@ -55,6 +55,7 @@ public:
 
     virtual void motion(std::string ID, double position, double velocity=0, double acceleration=0, motionFlags flags=0)=0;
     // ID has to be a device of type dt_motion
+    // position gets rounded within mst_mininumStep
 
     virtual int getError(std::string ID)=0;
     // returns error code, 0 is no error; other codes very much depend on the type of device
@@ -104,6 +105,7 @@ protected:
     // add singe axis move to command object (for multi axis movements just call for each axis)
     virtual void CO_addMotion(CO* a, std::string ID, double position, double velocity=0, double acceleration=0, motionFlags flags=0)=0;
     // ID has to be a device of type dt_motion
+    // the object should handle rounding errors, the final resulting position gets rounded within mst_mininumStep
 
     // add delay to command object : blocks the execution for a certain ammount of time
     virtual void CO_addDelay(CO* a, double delay)=0;
@@ -126,7 +128,7 @@ protected:
 public:
 
     class CO{       // command object - defines a specific procedure (such as a motion 'trajectory' combined with gpio triggering) attached to a specific controller
-    public:         // for more info on each function, see comments above (CO_function)
+    public:         // for more info on each function, see comments above (CO_function)  
         CO(CTRL* ctrl):ctrl(ctrl){ctrl->CO_init(this);}
         ~CO(){ctrl->CO_delete(this);}
         void execute()

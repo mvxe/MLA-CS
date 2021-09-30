@@ -10,6 +10,7 @@ class QPushButton;
 class pgMoveGUI;
 class QCheckBox;
 class checkbox_gs;
+class QLabel;
 
 class pgCorrection: public QObject{
     Q_OBJECT
@@ -35,6 +36,7 @@ private:
     QCheckBox* preserveResult;
     QPushButton* startCalib;
     QPushButton* recalcCalib;
+    QLabel* report;
 
     QPushButton* setAsCalib;
     checkbox_gs* enableCorrection;

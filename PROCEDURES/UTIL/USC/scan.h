@@ -178,8 +178,11 @@ private Q_SLOTS:
     void onMenuChange(int index);
     void onBSaveAvgMess();
     void onBSaveNextMirrorBaselineHist();
+    void slotQMessageBoxWarning(QString title, QString text);
 Q_SIGNALS:
     void doneExpMinmax(int min, int max);
+    void recalculateCOs();  // for other procedures that might use some settings from this one (eg. focus)
+    void signalQMessageBoxWarning(QString title, QString text);
 };
 
 class scanSettings: public QWidget{

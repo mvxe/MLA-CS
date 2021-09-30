@@ -74,6 +74,7 @@ private:
     struct cqus{
         cqueue main;
         cqueue timer;
+        std::map<std::string, double> motionRemainders;
     };
     std::map<CO*, cqus> commandObjects;
 

@@ -31,10 +31,15 @@ pgScanGUI::pgScanGUI(mesLockProg& MLP): MLP(MLP){
     timerCM->setInterval(timerCM_delay);
     timerCM->setSingleShot(true);
     connect(timerCM, SIGNAL(timeout()), this, SLOT(onBScan()));
+    connect(this, SIGNAL(signalQMessageBoxWarning(QString, QString)), this, SLOT(slotQMessageBoxWarning(QString, QString)));
 }
 
 pgScanGUI::~pgScanGUI(){
     if(COmeasure!=nullptr) delete COmeasure;
+}
+
+void pgScanGUI::slotQMessageBoxWarning(QString title, QString text){
+    QMessageBox::critical(gui_activation, title, text);
 }
 
 void pgScanGUI::init_gui_activation(){
@@ -108,6 +113,7 @@ void pgScanGUI::init_gui_settings(){
     triggerAdditionalDelay=new val_selector(0., "Additional trigger delay:", 0., 1000., 2, 1, {"ms"});
     conf["triggerAdditionalDelay"]=triggerAdditionalDelay;
     triggerAdditionalDelay->setToolTip("If scan drops frames, it might be that the returned max FPS is incorrect. Use this parameter to compensate (try 1 ms).");
+    connect(triggerAdditionalDelay, SIGNAL(changed()), this, SLOT(recalculate()));
     slayout->addWidget(triggerAdditionalDelay);
     saveAvgMess=new QPushButton("Autosave raw measurements"); saveAvgMess->setCheckable(true);
     saveAvgMess->setToolTip("Select folder for saving all subsequent individual raw measurements. Last ROI applies (ie you must try saving something raw by selection first), else whole image is saved. Click again to disable further saving.");
@@ -183,6 +189,7 @@ void pgScanGUI::onMenuChange(int index){
 }
 
 void pgScanGUI::recalculate() {
+    Q_EMIT recalculateCOs();
     if(MLP._lock_meas.try_lock()){
         if(MLP._lock_comp.try_lock()){
             std::string report;
@@ -244,27 +251,17 @@ void pgScanGUI::updateCO(std::string &report){
     peakLoc=expectedDFTFrameNum/vsConv(pphwl);
     report+=util::toString("Expecting the peak to be at i = ", peakLoc," in the FFT.\n");
 
-    double rndErr=0; // to fix rounding errors
-    double disp=-readRangeDis/2+rndErr;
-    rndErr=disp-std::round(disp*1000000)/1000000;
-    disp-=rndErr;
-    COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
+    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
     COmeasure->addHold("Z",CTRL::he_motion_ontarget);
     for(unsigned i=0;i!=totalFrameNum;i++){
-        COmeasure->startTimer("timer",1./COfps+triggerAdditionalDelay->val*0.001);      // in case motion is completed before the camera is ready for another frame
+        COmeasure->startTimer("timer",1./COfps+triggerAdditionalDelay->val*0.001);          // in case motion is completed before the camera is ready for another frame
         COmeasure->pulseGPIO("trigCam",0.0001);             // 100us
         if(expo>0.0001) COmeasure->addDelay(expo-0.0001);   // keep stationary during exposure
-        disp=displacementOneFrame+rndErr;
-        rndErr=disp-std::round(disp*1000000)/1000000;
-        disp-=rndErr;
-        COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);
+        COmeasure->addMotion("Z",displacementOneFrame,0,0,CTRL::MF_RELATIVE);
         COmeasure->addHold("Z",CTRL::he_motion_ontarget);
         COmeasure->addHold("timer",CTRL::he_timer_done);
     }
-    disp=-readRangeDis/2+rndErr;
-    rndErr=disp-std::round(disp*1000000)/1000000;
-    disp-=rndErr;
-    COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
+    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
 
     CORdy=true;
 }
@@ -426,8 +423,9 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
 
     if(framequeue->getFullNumber()!=nFrames){
-        QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
+        Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
+        if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();measurementInProgress=false;}
         return;
     }
 
@@ -484,7 +482,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
             next:;
         }
         MLP.progress_comp=100;
-        if(results.empty()) QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("ERROR: failed to correct wavelength.")));
+        if(results.empty()) Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: failed to correct wavelength.")));
         else{
             double mean=0;
             for(auto& res: results) mean+=res;

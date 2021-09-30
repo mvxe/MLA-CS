@@ -14,8 +14,12 @@ pgFocusGUI::pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI): MLP(MLP), pgSGUI(pg
     timer->setInterval(timer_delay);
     timer->setSingleShot(true);
     connect(timer, SIGNAL(timeout()), this, SLOT(recalculate()));
+    connect(pgSGUI, SIGNAL(recalculateCOs()), this, SLOT(recalculate()));
+    connect(this, SIGNAL(signalQMessageBoxWarning(QString, QString)), this, SLOT(slotQMessageBoxWarning(QString, QString)));
 }
-
+void pgFocusGUI::slotQMessageBoxWarning(QString title, QString text){
+    QMessageBox::critical(gui_activation, title, text);
+}
 void pgFocusGUI::init_gui_activation(){
     gui_activation=new twid(false);
     bFocus=new QPushButton;
@@ -131,27 +135,17 @@ void pgFocusGUI::updateCO(std::string &report){
     report+=util::toString("Total number of frames = ",totalFrameNum,".\n");
     report+=util::toString("Read Range Distance = ",readRangeDis," mm.\n");
 
-    double rndErr=0; // to fix rounding errors
-    double disp=-readRangeDis/2+rndErr;
-    rndErr=disp-std::round(disp*1000000)/1000000;
-    disp-=rndErr;
-    COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
+    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
     COmeasure->addHold("Z",CTRL::he_motion_ontarget);
     for(unsigned i=0;i!=totalFrameNum;i++){
         COmeasure->startTimer("timer",1./COfps+pgSGUI->triggerAdditionalDelay->val*0.001);      // in case motion is completed before the camera is ready for another frame
         COmeasure->pulseGPIO("trigCam",0.0001);             // 100us
         if(expo>0.0001) COmeasure->addDelay(expo-0.0001);   // keep stationary during exposure
-        disp=displacementOneFrame+rndErr;
-        rndErr=disp-std::round(disp*1000000)/1000000;
-        disp-=rndErr;
-        COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);
+        COmeasure->addMotion("Z",displacementOneFrame,0,0,CTRL::MF_RELATIVE);
         COmeasure->addHold("Z",CTRL::he_motion_ontarget);
         COmeasure->addHold("timer",CTRL::he_timer_done);
     }
-    disp=-readRangeDis/2+rndErr;
-    rndErr=disp-std::round(disp*1000000)/1000000;
-    disp-=rndErr;
-    COmeasure->addMotion("Z",disp,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
+    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
 
     CORdy=true;
 }
@@ -159,7 +153,7 @@ void pgFocusGUI::updateCO(std::string &report){
 void pgFocusGUI::refocus(){
     if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
     if(!CORdy) return;
-    int nFrames=totalFrameNum;
+    unsigned nFrames=totalFrameNum;
     FQ* framequeue;
     {   std::lock_guard<std::mutex>lock(MLP._lock_meas);    //wait for other measurements to complete
 
@@ -194,7 +188,7 @@ void pgFocusGUI::refocus(){
     {   std::lock_guard<std::mutex>lock(MLP._lock_comp);    //wait till other processing is done
 
         if(framequeue->getFullNumber()!=nFrames){
-            QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
+            Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
             go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
             return;
         }
@@ -246,7 +240,7 @@ void pgFocusGUI::refocus(){
 
         double Zcor=(maxLoc.x-nFrames/2.)*displacementOneFrame;
         if(abs(Zcor)>readRangeDis/2)
-            QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("ERROR: abs of the calculated correction is larger than half the read range distance: ",Zcor," vs ",readRangeDis/2," . Did not apply correction.")));
+            Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: abs of the calculated correction is larger than half the read range distance: ",Zcor," vs ",readRangeDis/2," . Did not apply correction.")));
         else go.pRPTY->motion("Z",Zcor,0,0,CTRL::MF_RELATIVE);
     }
 }

@@ -54,10 +54,10 @@ void pgMoveGUI::init_gui_settings(){
     conf["zMoveScale"]=zMoveScale;
     slayout->addWidget(zMoveScale);
 
-    autoadjXZ=new val_selector(0, "Focus adjustment for X: ", -100, 100, 12);
+    autoadjXZ=new val_selector(0, "Z adjustment for X: ", -100, 100, 12);
     conf["autoadjXZ"]=autoadjXZ;
     slayout->addWidget(autoadjXZ);
-    autoadjYZ=new val_selector(0, "Focus adjustment for Y: ", -100, 100, 12);
+    autoadjYZ=new val_selector(0, "Z adjustment for Y: ", -100, 100, 12);
     conf["autoadjYZ"]=autoadjYZ;
     slayout->addWidget(autoadjYZ);
     calib_autoadjXZ=new QPushButton;
@@ -69,7 +69,7 @@ void pgMoveGUI::init_gui_settings(){
     calib_autoadjYZ->setCheckable(true);
     connect(calib_autoadjYZ, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_Y(bool)));
     slayout->addWidget(new twid(calib_autoadjXZ, calib_autoadjYZ));
-    slayout->addWidget(new QLabel("(Click -> move X/Y -> focus -> Click)"));
+    slayout->addWidget(new QLabel("(Click -> move X/Y -> focus -> Click) (make sure to first disable Correct XY skew)"));
 
     slayout->addWidget(new hline);
 
@@ -137,7 +137,7 @@ void pgMoveGUI::onCalibrate(bool isStart, bool isX){
         else    Y_cum=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
         Z_cum=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
     }else{
-        Z_cum=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);-Z_cum;
+        Z_cum=go.pRPTY->getMotionSetting("Z",CTRL::mst_position)-Z_cum;
         if(isX) autoadjXZ->setValue(Z_cum/(go.pRPTY->getMotionSetting("X",CTRL::mst_position)-X_cum));
         else    autoadjYZ->setValue(Z_cum/(go.pRPTY->getMotionSetting("Y",CTRL::mst_position)-Y_cum));
     }

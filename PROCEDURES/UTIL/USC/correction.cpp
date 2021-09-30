@@ -32,7 +32,8 @@ pgCorrection::pgCorrection(pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI): pgSGUI(pgSGUI)
     startCalib->setCheckable(true);
     recalcCalib=new QPushButton("Recalculate");
     recalcCalib->setEnabled(false);
-    slayout->addWidget(new twid(startCalib,recalcCalib));
+    report=new QLabel;
+    slayout->addWidget(new twid(startCalib,recalcCalib,report));
     connect(startCalib, SIGNAL(toggled(bool)), this, SLOT(onStartCalib(bool)));
     connect(preserveResult, SIGNAL(toggled(bool)), this, SLOT(onToggle(bool)));
     connect(recalcCalib, SIGNAL(released()), this, SLOT(onStartRecalc()));
@@ -74,24 +75,23 @@ void pgCorrection::onStartCalib(bool state){
     preserveResult->setEnabled(false);
     if(scans!=nullptr) {recalcCalib->setEnabled(false); delete scans; scans=nullptr;}
     scans=new std::vector<pgScanGUI::scanRes>;
-
+    report->setText(QString::fromStdString(util::toString("Done 0/",selArrayYsize->val*selArrayXsize->val,".")));
     double xOfs=((selArrayXsize->val-1)*selArraySpacing->val)/2000;         //in mm
     double yOfs=((selArrayYsize->val-1)*selArraySpacing->val)/2000;
     pgMGUI->move(xOfs,yOfs,0,0);
     for(int j=0;j<selArrayYsize->val; j++){
         for(int i=0;i<selArrayXsize->val; i++){
             if(!startCalib->isChecked()){   //abort
-                std::cerr<<"Aborting calibration.\n";
+                QMessageBox::critical(gui_settings, "Aborted.", "Calibration aborted.");
                 preserveResult->setEnabled(true);
                 return;
             }
-            while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
             if(!useCorrLocked)useCorr.lock();   //disabling correction temporarily
-            pgSGUI->doNRounds((int)selAvgNum->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(0,0,0,0), -1);
+            pgSGUI->doNRounds((int)selAvgNum->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(0,0,0,0), -1);  // this does QT process events
             if(!useCorrLocked)useCorr.unlock();
             scans->emplace_back(*scanResC->get());
 
-            std::cerr<<"\nDone "<<1+i+j*selArrayXsize->val<<"/"<<selArrayYsize->val*selArrayXsize->val<<"\n\n";
+            report->setText(QString::fromStdString(util::toString("Done ",1+i+j*selArrayXsize->val,"/",selArrayYsize->val*selArrayXsize->val,".")));
             if(i<selArrayXsize->val-1) pgMGUI->move(-selArraySpacing->val/1000,0,0,0);
         }
         if(j<selArrayYsize->val-1) pgMGUI->move(2*xOfs,-selArraySpacing->val/1000,0,0);

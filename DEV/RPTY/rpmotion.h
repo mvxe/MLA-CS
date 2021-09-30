@@ -11,13 +11,14 @@ public:
     rpMotionDevice();
     virtual ~rpMotionDevice(){};
 
-    virtual void motion(std::vector<uint32_t>& cq, double position, double velocity=0, double acceleration=0, CTRL::motionFlags flags=0)=0;
+    virtual double motion(std::vector<uint32_t>& cq, double position, double velocity=0, double acceleration=0, CTRL::motionFlags flags=0)=0;
         // cq - queue to put the commands into
         // position - the absolute (or relative if relativeMove==true) motion position, in mm (or radian if rotational)
         // velocity - velocity override if >0, otherwise default velocity will be used (note: overrides to not persist)
         // acceleration - acceleration override if >0, otherwise default acceleration will be used
         // blocking - if true, consequent moves will wait for this one to finish (only applicable to some devices)
         // NOTE : for relative moves, the program does not check if the move is within minPosition/maxPosition (for some devices a soft limit is set on the device firmware though, so the error will be returned via getMotionError)
+        // returns position error remainder, due to rounding to minimumStep
 
     virtual void updatePosition()=0;
     virtual int getMotionError()=0;
@@ -46,6 +47,7 @@ public:
     double maximumVelocity;
     double defaultAcceleration;
     double maximumAcceleration;
+    double minimumStep;
 
     RPTY* parent;
 };

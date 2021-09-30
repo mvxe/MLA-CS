@@ -10,6 +10,17 @@ rpMotionDevice_PINEXACTStage::rpMotionDevice_PINEXACTStage(){
     maximumVelocity=10;
     defaultAcceleration=50;
     maximumAcceleration=50;
+    minimumStep=0.0000005;
+    conf["minPosition"]=minPosition;
+    conf["maxPosition"]=maxPosition;
+    conf["lastPosition"]=lastPosition;
+    conf["restPosition"]=restPosition;
+    conf["defaultVelocity"]=defaultVelocity;
+    //conf["maximumVelocity"]=maximumVelocity;
+    conf["defaultAcceleration"]=defaultAcceleration;
+    //conf["maximumAcceleration"]=maximumAcceleration;
+    //conf["minimumStep"]=minimumStep;
+
     conf["serial_gpio_o"]=serial_gpio_o;
     conf["serial_gpio_o"].comments.push_back("N (0-7), P (8-15)");
     conf["serial_gpio_i"]=serial_gpio_i;
@@ -32,8 +43,11 @@ void rpMotionDevice_PINEXACTStage::_modesetAltNs(std::vector<uint32_t>& cq, bool
         serial.string_to_command(util::toString("SPA 1 0x7001A00 ",_alternating?"1":"0","\n"), cq);
     }
 }
-void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double position, double velocity, double acceleration, CTRL::motionFlags flags){
-    if((flags&CTRL::MF_RELATIVE) && position==0) return;
+double rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double position, double velocity, double acceleration, CTRL::motionFlags flags){
+    double posRemainder=position;
+    position=std::round(position/minimumStep)*minimumStep;
+    posRemainder-=position;
+    if((flags&CTRL::MF_RELATIVE) && position==0) return posRemainder;
     cq.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::LOW,true,ontFlag|rdyFlag,false));    // wait for all flags to clear
     if((!(flags&CTRL::MF_RELATIVE)) && (position<minPosition || position>maxPosition))  throw std::invalid_argument(util::toString("In rpMotionDevice_PINEXACTStage::motion for axis ",axisID,", target position is not within min/max: target position=",position,", min=",minPosition,", max=", maxPosition));
     if(velocity==0) velocity=defaultVelocity;
@@ -66,6 +80,7 @@ void rpMotionDevice_PINEXACTStage::motion(std::vector<uint32_t>& cq, double posi
         //_modesetAltNs(cq, true);
         //TODO
     }
+    return posRemainder;
 }
 //void rpMotionDevice_PINEXACTStage::motion(movEv mEv){
 //    std::vector<uint32_t> commands;
@@ -76,30 +91,31 @@ void rpMotionDevice_PINEXACTStage::_readQS(unsigned num){
     std::vector<uint32_t> commands;
     commands.push_back(CQF::FLAGS_MASK(serialFlag));
     commands.push_back(CQF::FLAGS_SHARED_SET(0x0000));
-    if(num==0) commands.push_back(CQF::W4TRIG_INTR());
+    if(num==0) commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,true,serialFlag,false));
     commands.push_back(CQF::W4TRIG_FLAGS_SHARED(CQF::HIGH,true,serialFlag,false));
-    serial.serial_ack(commands, parent->serial_aq, 0);
+    serial.serial_ack(commands, parent->serial_aq, num);
     parent->FIFOreset(1<<parent->serial_cq, 1<<parent->serial_aq);
     parent->executeQueue(commands, parent->serial_cq);
     if(num==0) parent->A2F_loop(parent->serial_cq, true);
-    if(num==0) parent->A2F_trig(parent->serial_cq);
 }
 bool rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr, char breakChar){
     std::vector<uint32_t> read;
     double time;
     while(1){
         time=0;
-        while(parent->getNum(RPTY::F2A_RSCur,parent->serial_aq)<8){
+        unsigned toread=parent->getNum(RPTY::F2A_RSCur,parent->serial_aq)/8;
+        while(toread<1){
             std::this_thread::sleep_for (std::chrono::milliseconds(10));
             time+=0.010;
             if(time>=serialTimeout){
                 std::cerr<<"timeout in _readTillChar; got string: "<<readStr<<"\n";
-                parent->A2F_loop(parent->serial_cq, false);
                 parent->FIFOreset(1<<parent->serial_cq, 1<<parent->serial_aq);
+                parent->A2F_trig(parent->main_cq);
                 return true;
             }
+            toread=parent->getNum(RPTY::F2A_RSCur,parent->serial_aq)/8;
         }
-        unsigned toread=parent->getNum(RPTY::F2A_RSCur,parent->serial_aq)/8;
+        //std::cerr<<"toread="<<toread<<" bytes\n";
         read.reserve(toread*8);
         parent->F2A_read(parent->serial_aq, read.data(), toread*8);
         readStr+=serial.convert_data_to_string(read.data(), toread*8);
@@ -107,14 +123,14 @@ bool rpMotionDevice_PINEXACTStage::_readTillChar(std::string& readStr, char brea
         read.clear();
         if(readStr.back()==breakChar) break;
     }
-    parent->A2F_loop(parent->serial_cq, false);
     parent->FIFOreset(1<<parent->serial_cq, 1<<parent->serial_aq);
+    parent->A2F_trig(parent->main_cq);
     return false;
 }
 void rpMotionDevice_PINEXACTStage::updatePosition(){
     std::string readStr;
     do{
-        _readQS(0);
+        _readQS(32);
         std::vector<uint32_t> commands;
         commands.push_back(CQF::FLAGS_MASK(rdyFlag));
         commands.push_back(CQF::FLAGS_SHARED_SET(rdyFlag));
@@ -124,6 +140,7 @@ void rpMotionDevice_PINEXACTStage::updatePosition(){
         commands.push_back(CQF::FLAGS_SHARED_SET(serialFlag));
         serial.string_to_command("MOV?\n", commands);
         //serial.string_to_command("POS?\n", commands); // POS returns the actual position - not what we want
+        commands.push_back(CQF::W4TRIG_INTR());
         parent->executeQueue(commands, parent->main_cq);
     }while(_readTillChar(readStr,'\n'));
     position=std::stod(readStr.substr(readStr.find("=")+1));
@@ -131,7 +148,7 @@ void rpMotionDevice_PINEXACTStage::updatePosition(){
 int rpMotionDevice_PINEXACTStage::getMotionError(){
     std::string readStr;
     do{
-        _readQS(0);
+        _readQS(5);
         std::vector<uint32_t> commands;
         commands.push_back(CQF::FLAGS_MASK(rdyFlag));
         commands.push_back(CQF::FLAGS_SHARED_SET(rdyFlag));
@@ -142,7 +159,8 @@ int rpMotionDevice_PINEXACTStage::getMotionError(){
         serial.string_to_command("ERR?\n", commands);
         parent->executeQueue(commands, parent->main_cq);
     }while(_readTillChar(readStr,'\n'));
-    return std::stoi(readStr);
+    int error=std::stoi(readStr);
+    return error;
 }
 
 void rpMotionDevice_PINEXACTStage::initMotionDevice(std::vector<uint32_t>& cq, std::vector<uint32_t>& hq, unsigned& free_flag){
