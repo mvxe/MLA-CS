@@ -148,11 +148,13 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
         nticks=0;
         for(int i=0;;i++){
             double tickn=sah?(minRnd+i*tick):(i*tick);
-            if(tickn>max) break;
+            if(tickn>(sah?max:range)) break;
             nticks++;
             cv::Size size=cv::getTextSize(util::toString(tickn), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
             if(textMaxWidth<size.width) textMaxWidth=size.width;
             if(textMaxHeight<size.height) textMaxHeight=size.height;
+
+
         }
     }
     int marginY=textMaxHeight;  //we make it twice the text max height
