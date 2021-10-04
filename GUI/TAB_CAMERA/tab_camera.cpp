@@ -30,6 +30,8 @@ tab_camera::tab_camera(QWidget* parent){
     conf["dispScale"]=dispScale;
     connect(dispScale, SIGNAL(changed()), this, SLOT(updateImgF()));
     layoutTBarW->addWidget(new twid(selDisp,dispScale));
+    selObjective=new smp_selector("Objective:", 0, {"Mirau","Writing"});
+    layoutTBarW->addWidget(new twid(selObjective));
 
     TWCtrl=new QTabWidget;
     TWCtrl->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Expanding);
@@ -38,7 +40,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgSGUI=new pgScanGUI(MLP);
     conf["pgScan"]=pgSGUI->conf;
     scanRes=pgSGUI->result.getClient();
-    pgMGUI=new pgMoveGUI;
+    pgMGUI=new pgMoveGUI(selObjective);
     conf["pgMove"]=pgMGUI->conf;
     pgTGUI=new pgTiltGUI;
     conf["pgTilt"]=pgTGUI->conf;
@@ -252,14 +254,14 @@ void tab_camera::work_fun(){
                 cv::Mat display;
                 if(selDisp->index==1 || (selDisp->index==2 && res->depthSS.empty()) || (selDisp->index==3 && res->refl.empty())){  //show Depth Map
                     pgHistGUI->updateImg(res, &min, &max);
-                    cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR);
+                    cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->outOfRangeToExcl->val);
                 }else if(selDisp->index==2){                //show SD
                     cv::divide(res->depthSS,res->avgNum-1,display);
                     double _min,_max;
                     cv::sqrt(display,display);
                     cv::minMaxLoc(display, &_min, &_max, nullptr, nullptr, res->maskN);
                     pgHistGUI->updateImg(res, &min, &max, 0, _max, &display);
-                    cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, false, "SD (nm)");
+                    cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->outOfRangeToExcl->val, false, "SD (nm)");
                 }else if(selDisp->index==3){                //show reflectivity
                     res->refl.copyTo(display);
                     double min,max; cv::minMaxIdx(display,&min,&max);
@@ -495,9 +497,9 @@ void tab_camera::onSaveDepthMap(void){
                 cv::Mat temp2; bitwise_not(temp1, temp2);
                 double minr, maxr;
                 cv::minMaxLoc(temp0, &minr, &maxr, nullptr, nullptr, temp2);
-                cMap->colormappize(&temp0, &display, &temp1, std::min(std::max(min,minr), std::min(max,maxr)), std::max(std::min(max,maxr),std::max(min,minr)), res->XYnmppx, pgHistGUI->ExclOOR, true);
+                cMap->colormappize(&temp0, &display, &temp1, std::min(std::max(min,minr), std::min(max,maxr)), std::max(std::min(max,maxr),std::max(min,minr)), res->XYnmppx, pgHistGUI->outOfRangeToExcl->val, true);
             }
-            else cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->ExclOOR, !*cMap->exportSet4WholeVal);
+            else cMap->colormappize(&res->depth, &display, &res->mask, min, max, res->XYnmppx, pgHistGUI->outOfRangeToExcl->val, !*cMap->exportSet4WholeVal);
         }else if(selDisp->index==2){
             cv::divide(res->depthSS,res->avgNum-1,display);
             double _min,_max; cv::Point ignore;
@@ -510,9 +512,9 @@ void tab_camera::onSaveDepthMap(void){
                 cv::Mat temp2; bitwise_not(temp1, temp2);
                 double minr, maxr;
                 cv::minMaxLoc(temp0, &minr, &maxr, nullptr, nullptr, temp2);
-                cMap->colormappize(&temp0, &display, &temp1, 0, maxr, res->XYnmppx, pgHistGUI->ExclOOR, true, "SD (nm)");
+                cMap->colormappize(&temp0, &display, &temp1, 0, maxr, res->XYnmppx, pgHistGUI->outOfRangeToExcl->val, true, "SD (nm)");
             }
-            else cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->ExclOOR, !*cMap->exportSet4WholeVal, "SD (nm)");
+            else cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->outOfRangeToExcl->val, !*cMap->exportSet4WholeVal, "SD (nm)");
         }else if(selDisp->index==3){                //show reflectivity
             cv::Mat temp0(res->refl,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
             cv::Mat tempMask(temp0.rows, temp0.cols, CV_8U, cv::Scalar(0));
@@ -596,8 +598,8 @@ void tab_camera::onCombineMes(){
         if(combineUseRefl->isChecked()){
             double min,max; cv::minMaxIdx(scans[i].refl,&min, &max);
             cv::Mat tmpMask(scans[i].refl.size(), CV_8U, cv::Scalar(0));
-            cMap->colormappize(&scans[i].refl, &res, &tmpMask, min, max, scans[i].XYnmppx, pgHistGUI->ExclOOR);
-        }else cMap->colormappize(&scans[i].depth, &res, &scans[i].mask, scans[i].min, scans[i].max, scans[i].XYnmppx, pgHistGUI->ExclOOR);
+            cMap->colormappize(&scans[i].refl, &res, &tmpMask, min, max, scans[i].XYnmppx, pgHistGUI->outOfRangeToExcl->val);
+        }else cMap->colormappize(&scans[i].depth, &res, &scans[i].mask, scans[i].min, scans[i].max, scans[i].XYnmppx, pgHistGUI->outOfRangeToExcl->val);
         res(cv::Rect(1,(res.rows-scans[i].depth.rows)/2,scans[i].depth.cols,scans[i].depth.rows)).copyTo(outMat(cv::Rect(sX,sY,scans[i].depth.cols,scans[i].depth.rows)));
     }
     std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving Depth Map (wtih border, scalebar and colorbar).", "","Images (*.png)").toStdString();

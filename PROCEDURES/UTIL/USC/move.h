@@ -12,13 +12,14 @@ class QPushButton;
 class moveDial;
 class QLabel;
 class checkbox_gs;
+class smp_selector;
 //class PVTobj;
 
 class pgMoveGUI: public QObject{
     Q_OBJECT
     //GUI
 public:
-    pgMoveGUI();
+    pgMoveGUI(smp_selector* selObjective);
     rtoml::vsr conf;            //configuration map
     QWidget* gui_activation;
     QWidget* gui_settings;
@@ -29,10 +30,9 @@ public:
     double getNmPPx();
     double getAngCamToXMot();
     double getYMotToXMot();
-    std::atomic<double>& FZdifference{ZZdifCur};
 
 public Q_SLOTS:
-    void chooseObj(bool useMirau);                                                     // switches between the two objectives
+    void chooseObj(bool useMirau);
     void move(double Xmov, double Ymov, double Zmov, bool forceSkewCorrection=false);  // in mm, corrects Z on X and Y move
 
     void scaledMoveX(double magnitude);
@@ -42,7 +42,6 @@ public Q_SLOTS:
     void corCOMove(CTRL::CO& co, double Xmov, double Ymov, double Zmov, bool forceSkewCorrection=false);
 
 private:
-
     void init_gui_activation();
     void init_gui_settings();
 
@@ -52,7 +51,6 @@ private:
     eadScrlBar* xMove;
     eadScrlBar* yMove;
     eadScrlBar* zMove;
-    val_selector* ZZdif;
     val_selector* mpow;    //to speed up movement by 10 to the power
     std::vector<moveDial*> moveDials;
     QPushButton* addDial;
@@ -69,6 +67,11 @@ private:
     QPushButton* calib_autoadjYZ;
     double X_cum, Y_cum, Z_cum;
 
+    //in camera_tab
+    smp_selector* selObjective;
+    int currentObjective{-1};
+    double objectiveDisplacement[3]{0,0,0}; // this is Writing-Mirau {dX,dY,dZ}
+
     QPushButton* markPointForCalib;
     QLabel* ptFeedback;
     QPushButton* calculateCalib;
@@ -83,7 +86,6 @@ private:
     std::vector<dpoint> p4calib;
     checkbox_gs* skewCorrection;
 
-    std::atomic<double> ZZdifCur{-9999};
 
 private Q_SLOTS:
     void onCalibrate(bool isStart, bool isX);
@@ -94,6 +96,10 @@ private Q_SLOTS:
     void onDialMove(double x,double y);
     void onMarkPointForCalib(bool state);
     void onCalculateCalib();
+    void _chooseObj(int index);
+
+Q_SIGNALS:
+    void sigChooseObj(bool useMirau);
 };
 
 #endif // MOVE_H

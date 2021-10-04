@@ -443,7 +443,7 @@ void pgBeamAnalysis::getCalibWritingBeamRange(double* rMinLoc, double *xMin, dou
 
     //if(method_selector->index==0){        //only simple method is used here
 
-    double focus=pgMGUI->FZdifference;
+    double focus=0;// TODO fix,removed focus: pgMGUI->FZdifference;
 
     cv::Mat dataX(1,frames,CV_32F, cv::Scalar{0});
     cv::Mat dataY(1,frames,CV_32F, cv::Scalar{0});

@@ -132,7 +132,7 @@ public:
         uint16_t timerFlag;
     };
 
-    bool devicesInited=false;
+    std::atomic<bool> devicesInited=false;
     std::map<std::string, motionAxis> motionAxes;       // devices of type dt_motion
     std::map<std::string, gpioDevice> gpioDevices;      // devices of type dt_gpio
     std::map<std::string, timerDevice> timerDevices;    // devices of type dt_timer

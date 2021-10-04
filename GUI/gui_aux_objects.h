@@ -29,6 +29,9 @@ public:
 
     void set(std::string valueAndUnit);     // thread safe, for toml::vsr
     std::string get();                      // thread safe, for toml::vsr
+
+    void setMaximum(double max);
+    void setMinimum(double min);
 public Q_SLOTS:
     void setValue(double nvalue, int index=-1); // not thread safe, no change to index if index=-1
 private:
@@ -73,7 +76,6 @@ private:
     QLabel* _label;
     QScrollToolButton* _sBtn;
     std::vector<QString> labels;            // for get()/set()
-
 private Q_SLOTS:
     void on_menu_change();
     void setIndex(int index);

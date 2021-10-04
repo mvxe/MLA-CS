@@ -3,9 +3,15 @@
 #include "includes.h"
 #include <dlib/optimization.h>
 
-pgMoveGUI::pgMoveGUI(){
+pgMoveGUI::pgMoveGUI(smp_selector* _selObjective): selObjective(_selObjective){
     init_gui_activation();
     init_gui_settings();
+    connect(selObjective, SIGNAL(changed(int)), this, SLOT(_chooseObj(int)));
+    connect(this, SIGNAL(sigChooseObj(bool)), this, SLOT(chooseObj(bool)));
+    conf["selObjective"]=selObjective;
+    conf["objectiveDisplacement-X"]=objectiveDisplacement[0];
+    conf["objectiveDisplacement-Y"]=objectiveDisplacement[1];
+    conf["objectiveDisplacement-Z"]=objectiveDisplacement[2];
 }
 
 void pgMoveGUI::init_gui_activation(){
@@ -23,10 +29,8 @@ void pgMoveGUI::init_gui_activation(){
     connect(zMove->abar, SIGNAL(change(double)), this, SLOT(scaledMoveZ(double)));
     alayout->addWidget(zMove);
 
-    ZZdif=new val_selector(0, "Zm-Zp= ", -200, 200, 6, 0, {"mm"});
-    ZZdif->setEnabled(false);
     mpow=new val_selector(0, "Move X10^", 0, 6, 0);
-    alayout->addWidget(new twid(ZZdif, mpow));
+    alayout->addWidget(new twid(mpow));
 
     addDial=new QPushButton;
     connect(addDial, SIGNAL(released()), this, SLOT(onAddDial()));
@@ -127,8 +131,24 @@ void pgMoveGUI::corCOMove(CTRL::CO& co, double Xmov, double Ymov, double Zmov, b
     co.addMotion("Z",_Zmov,0,0,CTRL::MF_RELATIVE);
 }
 
+void pgMoveGUI::_chooseObj(int index){
+    if(currentObjective!=0 && currentObjective!=1){     // we ignore first signal (default -1) - likely to be configuration read
+        currentObjective=index;
+        return;
+    }else if(currentObjective==index) return;
+    bool useMirau=(index==0);
+    if(!go.pRPTY->connected){
+        Q_EMIT sigChooseObj(!useMirau);  // revert menu
+        return;
+    }
+    currentObjective=index;
+    std::cerr<<"moving vhooseobj\n";
+    go.pRPTY->motion("X",(useMirau?-1:1)*objectiveDisplacement[0],0,0,CTRL::MF_RELATIVE);
+    go.pRPTY->motion("Y",(useMirau?-1:1)*objectiveDisplacement[1],0,0,CTRL::MF_RELATIVE);
+    go.pRPTY->motion("Z",(useMirau?-1:1)*objectiveDisplacement[2],0,0,CTRL::MF_RELATIVE);
+}
 void pgMoveGUI::chooseObj(bool useMirau){
-    // TODO
+    selObjective->set(useMirau?"Mirau":"Writing");
 }
 
 void pgMoveGUI::onCalibrate(bool isStart, bool isX){

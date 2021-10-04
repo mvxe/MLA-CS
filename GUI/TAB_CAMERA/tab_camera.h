@@ -31,6 +31,7 @@ private:
     int oldIndex=-1;
     int oldCm=-1;
     val_selector* dispScale;
+    smp_selector* selObjective;
     QTabWidget* TWCtrl;
 
     twd_selector* pageMotion;

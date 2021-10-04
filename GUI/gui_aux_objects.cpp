@@ -34,6 +34,12 @@ void val_selector::init0(QString label, double min, double max, double precision
     connect(spinbox, SIGNAL(valueChanged(double)), this, SLOT(on_value_change(double)));
     connect(this, SIGNAL(_changed(double, int)), this, SLOT(setValue(double, int)));
 }
+void val_selector::setMaximum(double max){
+    spinbox->setMaximum(max);
+}
+void val_selector::setMinimum(double min){
+    spinbox->setMinimum(min);
+}
 
 void val_selector::init1(){
     unit = new QScrollToolButton();
@@ -159,9 +165,10 @@ void smp_selector::set(std::string label){
     }
 }
 std::string smp_selector::get(){
-    return labels[_index].toStdString();
+    return getLabel(_index);
 }
 std::string smp_selector::getLabel(int index){
+    if(index<0 || index>=labels.size()) return "n/a";
     return labels[index].toStdString();
 }
 

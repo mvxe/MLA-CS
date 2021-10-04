@@ -356,7 +356,7 @@ void pgCalib::WCFFindNearest(){
     double wrFocusOffs=dist(rnd);
     wrFocusOffs=round(wrFocusOffs*1000)/1000;   //we round it up to 1 nm precision
     std::cerr<<"wrFocusOffs is: "<<wrFocusOffs<<" um\n";
-    double focus=pgMGUI->FZdifference;
+    double focus=0;// TODO fix,removed focus: pgMGUI->FZdifference;
     std::cerr<<"Focus is: "<<focus<<" mm\n";
 //TODO!    pgMGUI->moveZF(focus+wrFocusOffs/1000);
     QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait a bit for movement to complete and stabilize
@@ -475,7 +475,7 @@ void pgCalib::WCFArray(){
 //    if(doRedFocusCenter->val)
 //        pgBeAn->correctWritingBeamFocus();
 
-    double focus=pgMGUI->FZdifference;
+    double focus=0;// TODO fix,removed focus: pgMGUI->FZdifference;
 
     saveConfMain(util::toString(folder,"/main-settings.txt"), focus, *pgBeAn->extraFocusOffsetVal);
 
