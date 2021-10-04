@@ -78,7 +78,7 @@ void pgCorrection::onStartCalib(bool state){
     report->setText(QString::fromStdString(util::toString("Done 0/",selArrayYsize->val*selArrayXsize->val,".")));
     double xOfs=((selArrayXsize->val-1)*selArraySpacing->val)/2000;         //in mm
     double yOfs=((selArrayYsize->val-1)*selArraySpacing->val)/2000;
-    pgMGUI->move(xOfs,yOfs,0,0);
+    pgMGUI->move(xOfs,yOfs,0);
     for(int j=0;j<selArrayYsize->val; j++){
         for(int i=0;i<selArrayXsize->val; i++){
             if(!startCalib->isChecked()){   //abort
@@ -92,11 +92,11 @@ void pgCorrection::onStartCalib(bool state){
             scans->emplace_back(*scanResC->get());
 
             report->setText(QString::fromStdString(util::toString("Done ",1+i+j*selArrayXsize->val,"/",selArrayYsize->val*selArrayXsize->val,".")));
-            if(i<selArrayXsize->val-1) pgMGUI->move(-selArraySpacing->val/1000,0,0,0);
+            if(i<selArrayXsize->val-1) pgMGUI->move(-selArraySpacing->val/1000,0,0);
         }
-        if(j<selArrayYsize->val-1) pgMGUI->move(2*xOfs,-selArraySpacing->val/1000,0,0);
+        if(j<selArrayYsize->val-1) pgMGUI->move(2*xOfs,-selArraySpacing->val/1000,0);
     }
-    pgMGUI->move(xOfs,yOfs,0,0);
+    pgMGUI->move(xOfs,yOfs,0);
     onStartRecalc();
     //pgScanGUI::saveScan(&avg);
     startCalib->setChecked(false);

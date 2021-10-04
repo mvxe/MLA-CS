@@ -15,6 +15,7 @@ class mesLockProg;
 class smp_selector;
 class focusSettings;
 class twid;
+class pgMoveGUI;
 
 namespace cv{class Mat;}
 
@@ -22,7 +23,7 @@ class pgFocusGUI: public QObject{
     Q_OBJECT
     //GUI
 public:
-    pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI);
+    pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI);
     rtoml::vsr conf;            //configuration map
     twid* gui_activation;
     QWidget* gui_settings;
@@ -38,6 +39,7 @@ public:
     void init_gui_activation();
     void init_gui_settings();
     pgScanGUI* pgSGUI;          //we share some settings with this
+    pgMoveGUI* pgMGUI;
 
     //activation
     QPushButton* bFocus;

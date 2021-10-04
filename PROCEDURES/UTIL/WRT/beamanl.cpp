@@ -115,7 +115,7 @@ void pgBeamAnalysis::onBtnSaveNextDebugFocus(){
     if(!saveNextFocus.empty()) numSave=2;
 }
 void pgBeamAnalysis::onBtnReset(){
-    pgMGUI->move(-_writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000,-_writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000,0,0);
+    pgMGUI->move(-_writeBeamCenterOfsX*pgMGUI->getNmPPx(1)/1000000,-_writeBeamCenterOfsY*pgMGUI->getNmPPx(1)/1000000,0);
     _writeBeamCenterOfsX=0;
     _writeBeamCenterOfsY=0;
 }

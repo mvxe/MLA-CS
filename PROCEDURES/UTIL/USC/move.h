@@ -27,13 +27,13 @@ public:
     std::atomic<bool> reqstNextClickPixDiff{false};
     void delvrNextClickPixDiff(double Dx, double Dy);
 
-    double getNmPPx();
-    double getAngCamToXMot();
+    double getNmPPx(int index=-1);          // -1 active microscope, 0 - force Mirau, 1 - force Writing
+    double getAngCamToXMot(int index=-1);
     double getYMotToXMot();
 
 public Q_SLOTS:
     void chooseObj(bool useMirau);
-    void move(double Xmov, double Ymov, double Zmov, bool forceSkewCorrection=false);  // in mm, corrects Z on X and Y move
+    void move(double Xmov, double Ymov, double Zmov);  // in mm, corrects Z on X and Y move
 
     void scaledMoveX(double magnitude);
     void scaledMoveY(double magnitude);
@@ -66,17 +66,30 @@ private:
     QPushButton* calib_autoadjXZ;   //autocalibrates the focus adjustment
     QPushButton* calib_autoadjYZ;
     double X_cum, Y_cum, Z_cum;
+    QPushButton* markObjDis;
+
 
     //in camera_tab
     smp_selector* selObjective;
-    int currentObjective{-1};
+    std::atomic<int> currentObjective{-1};
     double objectiveDisplacement[3]{0,0,0}; // this is Writing-Mirau {dX,dY,dZ}
+    double tmpOD[3];
 
     QPushButton* markPointForCalib;
     QLabel* ptFeedback;
     QPushButton* calculateCalib;
+    smp_selector* settingsObjective;
+
+    QWidget* calibMirauW;
+    QVBoxLayout* calibMirauL;
     val_selector* calibNmPPx;
     val_selector* calibAngCamToXMot;
+
+    QWidget* calibWritingW;
+    QVBoxLayout* calibWritingL;
+    val_selector* calibNmPPx_writing;
+    val_selector* calibAngCamToXMot_writing;
+
     val_selector* calibAngYMotToXMot;
     struct dpoint{
         double DXpx, DYpx;
@@ -84,9 +97,9 @@ private:
     };
     dpoint curP4calib;
     std::vector<dpoint> p4calib;
-    checkbox_gs* skewCorrection;
+    checkbox_gs* disableSkewCorrection;
 
-
+    bool lastindex;
 private Q_SLOTS:
     void onCalibrate(bool isStart, bool isX);
     void _onCalibrate_X(bool isStart){onCalibrate(isStart, true);}
@@ -97,9 +110,12 @@ private Q_SLOTS:
     void onMarkPointForCalib(bool state);
     void onCalculateCalib();
     void _chooseObj(int index);
+    void _onMarkObjDisY(bool isStart);
+    void onSettingsObjectiveChange(int index);
 
 Q_SIGNALS:
     void sigChooseObj(bool useMirau);
+    void sigChooseObjExpo(bool useMirau);
 };
 
 #endif // MOVE_H

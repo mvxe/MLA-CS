@@ -44,7 +44,7 @@ tab_camera::tab_camera(QWidget* parent){
     conf["pgMove"]=pgMGUI->conf;
     pgTGUI=new pgTiltGUI;
     conf["pgTilt"]=pgTGUI->conf;
-    pgFGUI=new pgFocusGUI(MLP, pgSGUI);
+    pgFGUI=new pgFocusGUI(MLP, pgSGUI, pgMGUI);
     conf["pgFocus"]=pgFGUI->conf;
     pgPRGUI=new pgPosRepGUI;
     cm_sel=new smp_selector("Select colormap: ", 0, OCV_CM::qslabels());
@@ -62,7 +62,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgSGUI->useCorr=&pgCor->useCorr;
     pgSGUI->cor=&pgCor->cor;
     connect(pgCor, SIGNAL(sendToDisplay(pgScanGUI::scanRes)), this, SLOT(showScan(pgScanGUI::scanRes)));
-    camSet=new cameraSett(pgSGUI->getExpMinMax); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
+    camSet=new cameraSett(pgSGUI->getExpMinMax, pgMGUI); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
     conf["camera_settings"]=camSet->conf;
 
     pgBeAn=new pgBeamAnalysis(MLP, pgMGUI, pgSGUI);
@@ -437,7 +437,7 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
             double DX, DY;
             DX=(pxW/2+parent->pgBeAn->writeBeamCenterOfsX-xcoord)*parent->pgMGUI->getNmPPx()/1000000;     //we also correct for real writing beam offset from center
             DY=(pxH/2+parent->pgBeAn->writeBeamCenterOfsY-ycoord)*parent->pgMGUI->getNmPPx()/1000000;
-            parent->pgMGUI->move(DX,DY,0,true);
+            parent->pgMGUI->move(DX,DY,0);
             if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(pxW/2-xcoord, pxH/2-ycoord);
         }else if(event->button()==Qt::RightButton){
             parent->clickMenu->popup(QCursor::pos());

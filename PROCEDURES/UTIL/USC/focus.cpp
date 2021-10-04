@@ -7,7 +7,7 @@
 
 //GUI
 
-pgFocusGUI::pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI): MLP(MLP), pgSGUI(pgSGUI){
+pgFocusGUI::pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI): MLP(MLP), pgSGUI(pgSGUI), pgMGUI(pgMGUI){
     init_gui_activation();
     init_gui_settings();
     timer = new QTimer(this);
@@ -156,6 +156,7 @@ void pgFocusGUI::refocus(){
     unsigned nFrames=totalFrameNum;
     FQ* framequeue;
     {   std::lock_guard<std::mutex>lock(MLP._lock_meas);    //wait for other measurements to complete
+        pgMGUI->chooseObj(true);    // switch to mirau
 
         go.pGCAM->iuScope->set_trigger("Line1");
         std::this_thread::sleep_for(std::chrono::milliseconds(10)); // let it switch to trigger

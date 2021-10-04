@@ -77,6 +77,14 @@ void pgMoveGUI::init_gui_settings(){
 
     slayout->addWidget(new hline);
 
+    markObjDis=new QPushButton("Mark");
+    markObjDis->setCheckable(true);
+    connect(markObjDis, SIGNAL(toggled(bool)), this, SLOT(_onMarkObjDisY(bool)));
+    slayout->addWidget(new twid(new QLabel("Mirau-Writing objective move calibration"), markObjDis));
+    slayout->addWidget(new QLabel("(Focus and center on feature with Mirau objective -> Check^\n-> focus and center on feature with Writing objective -> Uncheck)"));
+
+    slayout->addWidget(new hline);
+
     markPointForCalib=new QPushButton("Mark Point");
     markPointForCalib->setCheckable(true);
     connect(markPointForCalib, SIGNAL(toggled(bool)), this, SLOT(onMarkPointForCalib(bool)));
@@ -84,30 +92,56 @@ void pgMoveGUI::init_gui_settings(){
     ptFeedback=new QLabel("Have 0 points.");
     slayout->addWidget(new twid(markPointForCalib, ptFeedback));
     slayout->addWidget(new QLabel("(Check^ -> click on distinct feature -> move and center on it -> Uncheck)"));
-    calculateCalib=new QPushButton("Calculate Calibration Constants"); calculateCalib->setToolTip("The more points, the better!");
+    calculateCalib=new QPushButton("Calculate Calibration Constants"); calculateCalib->setToolTip("The more points, the better (min 5)!");
     connect(calculateCalib, SIGNAL(released()), this, SLOT(onCalculateCalib()));
     slayout->addWidget(new twid(calculateCalib));
-    calibNmPPx=new val_selector(10, "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
-    conf["calibNmPPx"]=calibNmPPx;
-    slayout->addWidget(calibNmPPx);
-    calibAngCamToXMot=new val_selector(0, "Camera/Xmot angle: ", -M_PI, M_PI, 6, 0, {"rad"});
-    conf["calibAngCamToXMot"]=calibAngCamToXMot;
-    slayout->addWidget(calibAngCamToXMot);
+
+    settingsObjective=new smp_selector("Settings for objective:", 0, {"Mirau","Writing"});
+    lastindex=0;
+    connect(settingsObjective, SIGNAL(changed(int)), this, SLOT(onSettingsObjectiveChange(int)));
+    slayout->addWidget(new twid(settingsObjective));
+    calibMirauW=new QWidget;
+    calibMirauL=new QVBoxLayout;
+    calibMirauW->setLayout(calibMirauL);
+    slayout->addWidget(calibMirauW);
+    calibWritingW=new QWidget;
+    calibWritingL=new QVBoxLayout;
+    calibWritingW->setLayout(calibWritingL);
+    slayout->addWidget(calibWritingW);
+    calibWritingW->setVisible(false);
+
+        calibNmPPx=new val_selector(10, "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
+        conf["calibNmPPx"]=calibNmPPx;
+        calibMirauL->addWidget(calibNmPPx);
+        calibAngCamToXMot=new val_selector(0, "Camera/Xmot angle: ", -M_PI, M_PI, 6, 0, {"rad"});
+        conf["calibAngCamToXMot"]=calibAngCamToXMot;
+        calibMirauL->addWidget(calibAngCamToXMot);
+        calibMirauL->addWidget(new QLabel("NOTE: these settings are used for most moves, including procedures."));
+
+        calibNmPPx_writing=new val_selector(10, "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
+        conf["calibNmPPx_writing"]=calibNmPPx_writing;
+        calibWritingL->addWidget(calibNmPPx_writing);
+        calibAngCamToXMot_writing=new val_selector(0, "Camera/Xmot angle: ", -M_PI, M_PI, 6, 0, {"rad"});
+        conf["calibAngCamToXMot_writing"]=calibAngCamToXMot_writing;
+        calibWritingL->addWidget(calibAngCamToXMot_writing);
+        calibWritingL->addWidget(new QLabel("NOTE: these settings are used only for Writing objective GUI click moves."));
+
     calibAngYMotToXMot=new val_selector(0, "Xmot/Ymot angle ofs: ", -M_PI, M_PI, 6, 0, {"rad"});
+    calibAngYMotToXMot->setToolTip("This setting is calibrated with Mirau objective, and should be independent of objective.");
     conf["calibAngYMotToXMot"]=calibAngYMotToXMot;
     slayout->addWidget(calibAngYMotToXMot);
-    skewCorrection=new checkbox_gs(false,"Correct XY skew and camera angle for all move commands through this function.");
-    conf["skewCorrection"]=skewCorrection;
-    slayout->addWidget(skewCorrection);
+    disableSkewCorrection=new checkbox_gs(true,"Disable skew correction.");
+    conf["disableSkewCorrection"]=disableSkewCorrection;
+    slayout->addWidget(disableSkewCorrection);
 }
 
-void pgMoveGUI::scaledMoveX(double magnitude){move(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0,0);}
-void pgMoveGUI::scaledMoveY(double magnitude){move(0,magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0);}
-void pgMoveGUI::scaledMoveZ(double magnitude){move(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val),0);}
-void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, bool forceSkewCorrection){
+void pgMoveGUI::scaledMoveX(double magnitude){move(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0);}
+void pgMoveGUI::scaledMoveY(double magnitude){move(0,magnitude*xMoveScale->val/1000*pow(10,mpow->val),0);}
+void pgMoveGUI::scaledMoveZ(double magnitude){move(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val));}
+void pgMoveGUI::move(double Xmov, double Ymov, double Zmov){
     double _Xmov=Xmov;
     double _Ymov=Ymov;
-    if(skewCorrection->val || forceSkewCorrection){
+    if(!disableSkewCorrection->val){
         _Xmov=Xmov*cos(calibAngCamToXMot->val)+Ymov*sin(calibAngCamToXMot->val+calibAngYMotToXMot->val);
         _Ymov=Xmov*sin(calibAngCamToXMot->val)+Ymov*cos(calibAngCamToXMot->val+calibAngYMotToXMot->val);
     }
@@ -121,7 +155,7 @@ void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, bool forceSkewCorrec
 void pgMoveGUI::corCOMove(CTRL::CO& co, double Xmov, double Ymov, double Zmov, bool forceSkewCorrection){
     double _Xmov=Xmov;
     double _Ymov=Ymov;
-    if(skewCorrection->val || forceSkewCorrection){
+    if(!disableSkewCorrection->val || forceSkewCorrection){
         _Xmov=Xmov*cos(calibAngCamToXMot->val)+Ymov*sin(calibAngCamToXMot->val+calibAngYMotToXMot->val);
         _Ymov=Xmov*sin(calibAngCamToXMot->val)+Ymov*cos(calibAngCamToXMot->val+calibAngYMotToXMot->val);
     }
@@ -132,6 +166,8 @@ void pgMoveGUI::corCOMove(CTRL::CO& co, double Xmov, double Ymov, double Zmov, b
 }
 
 void pgMoveGUI::_chooseObj(int index){
+    Q_EMIT sigChooseObjExpo(index==0);
+    if(!markObjDis->isChecked()) markObjDis->setEnabled(index==0);
     if(currentObjective!=0 && currentObjective!=1){     // we ignore first signal (default -1) - likely to be configuration read
         currentObjective=index;
         return;
@@ -142,13 +178,14 @@ void pgMoveGUI::_chooseObj(int index){
         return;
     }
     currentObjective=index;
-    std::cerr<<"moving vhooseobj\n";
     go.pRPTY->motion("X",(useMirau?-1:1)*objectiveDisplacement[0],0,0,CTRL::MF_RELATIVE);
     go.pRPTY->motion("Y",(useMirau?-1:1)*objectiveDisplacement[1],0,0,CTRL::MF_RELATIVE);
     go.pRPTY->motion("Z",(useMirau?-1:1)*objectiveDisplacement[2],0,0,CTRL::MF_RELATIVE);
 }
 void pgMoveGUI::chooseObj(bool useMirau){
+    if(currentObjective==(useMirau?0:1)) return;
     selObjective->set(useMirau?"Mirau":"Writing");
+    while(currentObjective!=(useMirau?0:1)) QCoreApplication::processEvents(QEventLoop::AllEvents, 10);   //wait till switch is done
 }
 
 void pgMoveGUI::onCalibrate(bool isStart, bool isX){
@@ -175,7 +212,7 @@ void pgMoveGUI::onRmDial(){
         moveDials.pop_back();
     }
 }
-void pgMoveGUI::onDialMove(double x,double y){move(-x/1000, -y/1000, 0, 0);}
+void pgMoveGUI::onDialMove(double x,double y){move(-x/1000, -y/1000, 0);}
 
 
 
@@ -185,6 +222,11 @@ void pgMoveGUI::delvrNextClickPixDiff(double Dx, double Dy){
     curP4calib.DYpx=Dy;
 }
 void pgMoveGUI::onMarkPointForCalib(bool state){
+    if(currentObjective!=settingsObjective->index){
+        QMessageBox::critical(gui_settings, "Cannot mark point", "Objective to be calibrated != current objective. Change objective before starting to calibrate.");
+        markPointForCalib->setChecked(false);
+        return;
+    }
     if(state){
         reqstNextClickPixDiff=true;
         curP4calib.DXmm=-go.pRPTY->getMotionSetting("X",CTRL::mst_position);
@@ -211,6 +253,10 @@ double residual(const std::pair<input_vector, double>& data, const parameter_vec
 }
 
 void pgMoveGUI::onCalculateCalib(){
+    if(p4calib.size()<5){
+        QMessageBox::critical(gui_settings, "Calibration aborted", "Fewer than 5 points selected! Select more points.");
+        return;
+    }
     std::vector<std::pair<input_vector, double>> data;
     while(!p4calib.empty()){
         std::cout<<"points: "<<p4calib.back().DXpx<<" "<<p4calib.back().DYpx<<" "<<p4calib.back().DXmm<<" "<<p4calib.back().DYmm<<"\n";
@@ -231,10 +277,46 @@ void pgMoveGUI::onCalculateCalib(){
     while(res(1) > M_PI) res(1)-=2*M_PI;
     while(res(2)<=-M_PI) res(2)+=2*M_PI;
     while(res(2) > M_PI) res(2)-=2*M_PI;
-    calibNmPPx->setValue(res(0)*1000000);
-    calibAngCamToXMot->setValue(res(1));
-    calibAngYMotToXMot->setValue(res(2));
+
+    if(settingsObjective->index==0){    // Mirau
+        calibNmPPx->setValue(res(0)*1000000);
+        calibAngCamToXMot->setValue(res(1));
+        calibAngYMotToXMot->setValue(res(2));
+    }else{  // Writing
+        calibNmPPx_writing->setValue(res(0)*1000000);
+        calibAngCamToXMot_writing->setValue(res(1));
+    }
 }
-double pgMoveGUI::getNmPPx(){return calibNmPPx->val;}
-double pgMoveGUI::getAngCamToXMot(){return calibAngCamToXMot->val;}
+double pgMoveGUI::getNmPPx(int index){
+    if(index==0 || (index!=1 && currentObjective==0)) return calibNmPPx->val;
+    else return calibNmPPx_writing->val;
+}
+double pgMoveGUI::getAngCamToXMot(int index){
+    if(index==0 || (index!=1 && currentObjective==0)) return calibAngCamToXMot->val;
+    else return calibAngCamToXMot_writing->val;
+}
 double pgMoveGUI::getYMotToXMot(){return calibAngYMotToXMot->val;}
+
+void pgMoveGUI::_onMarkObjDisY(bool isStart){
+    if(isStart){
+        tmpOD[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
+        tmpOD[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
+        tmpOD[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
+    }else{
+        for(unsigned i=0;i!=3;i++) objectiveDisplacement[i]=0;  // to prevent move
+        chooseObj(false);
+        objectiveDisplacement[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position)-tmpOD[0];
+        objectiveDisplacement[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position)-tmpOD[1];
+        objectiveDisplacement[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position)-tmpOD[2];
+    }
+}
+void pgMoveGUI::onSettingsObjectiveChange(int index){
+    if(lastindex!=index){
+        lastindex=index;
+        p4calib.clear();
+        markPointForCalib->setChecked(false);
+        ptFeedback->setText(QString::fromStdString(util::toString("Have 0 points.")));
+        calibWritingW->setVisible(index!=0);
+        calibMirauW->setVisible(index==0);
+    }
+}

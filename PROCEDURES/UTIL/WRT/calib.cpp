@@ -225,10 +225,10 @@ bool pgCalib::goToNearestFree(double radDilat, double radRandSpread){
     double dXumm, dYumm, dXmm, dYmm;
     dXumm=(ptX-res->depth.cols/2)*res->XYnmppx/1000000;
     dYumm=(ptY-res->depth.rows/2)*res->XYnmppx/1000000;
-    dXmm=dXumm*cos(pgMGUI->getAngCamToXMot())+dYumm*sin(pgMGUI->getAngCamToXMot()+pgMGUI->getYMotToXMot());
-    dYmm=dXumm*sin(pgMGUI->getAngCamToXMot())+dYumm*cos(pgMGUI->getAngCamToXMot()+pgMGUI->getYMotToXMot());
+    dXmm=dXumm*cos(pgMGUI->getAngCamToXMot(0))+dYumm*sin(pgMGUI->getAngCamToXMot(0)+pgMGUI->getYMotToXMot());
+    dYmm=dXumm*sin(pgMGUI->getAngCamToXMot(0))+dYumm*cos(pgMGUI->getAngCamToXMot(0)+pgMGUI->getYMotToXMot());
 
-    pgMGUI->move(-dXmm,-dYmm,0,0);
+    pgMGUI->move(-dXmm,-dYmm,0);
     delete scanRes;
     return false;
 }
@@ -481,8 +481,8 @@ void pgCalib::WCFArray(){
 
     double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;         //in mm
     double yOfs=((WArray.rows-1)*selArraySpacing->val)/2000;
-    double xSize=WArray.cols*selArraySpacing->val*1000/pgMGUI->getNmPPx();
-    double ySize=WArray.rows*selArraySpacing->val*1000/pgMGUI->getNmPPx();
+    double xSize=WArray.cols*selArraySpacing->val*1000/pgMGUI->getNmPPx(0);
+    double ySize=WArray.rows*selArraySpacing->val*1000/pgMGUI->getNmPPx(0);
     const pgScanGUI::scanRes* res;
     if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement
             //first we check if ROI is fine
@@ -501,12 +501,12 @@ void pgCalib::WCFArray(){
 
         for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
             cv::utils::fs::createDirectory(util::toString(folder,"/",i+j*WArray.cols));
-            pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(),
-                                                  selArraySpacing->val*1000/pgMGUI->getNmPPx(), selArraySpacing->val*1000/pgMGUI->getNmPPx()), util::toString(folder,"/",i+j*WArray.cols,"/before"), true, false);
+            pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(0), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(0),
+                                                  selArraySpacing->val*1000/pgMGUI->getNmPPx(0), selArraySpacing->val*1000/pgMGUI->getNmPPx(0)), util::toString(folder,"/",i+j*WArray.cols,"/before"), true, false);
         }
     }
 
-    pgMGUI->move(xOfs,yOfs,0,0);
+    pgMGUI->move(xOfs,yOfs,0);
 
     for(int j=0;j!=WArray.rows; j++){
         for(int i=0;i!=WArray.cols; i++){
@@ -548,11 +548,11 @@ void pgCalib::WCFArray(){
             saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), focus+WArray.at<cv::Vec3d>(j,i)[2]/1000, selArraySpacing->val, WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1], selectedavg);
 
             std::cerr<<"\nDone "<<1+i+j*WArray.cols<<"/"<<WArray.rows*WArray.cols<<"\n\n";
-            if(i!=WArray.cols-1) pgMGUI->move(-selArraySpacing->val/1000,0,0,0);
+            if(i!=WArray.cols-1) pgMGUI->move(-selArraySpacing->val/1000,0,0);
         }
-        if(j!=WArray.rows-1) pgMGUI->move(2*xOfs,-selArraySpacing->val/1000,0,0);
+        if(j!=WArray.rows-1) pgMGUI->move(2*xOfs,-selArraySpacing->val/1000,0);
     }
-    pgMGUI->move(xOfs,yOfs,0,0);
+    pgMGUI->move(xOfs,yOfs,0);
 //TODO!    pgMGUI->moveZF(focus);
     while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
 
@@ -562,8 +562,8 @@ void pgCalib::WCFArray(){
         pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/after"));
 
         for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++)   // separate them into individual scans
-            pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(),
-                                                  selArraySpacing->val*1000/pgMGUI->getNmPPx(), selArraySpacing->val*1000/pgMGUI->getNmPPx()), util::toString(folder,"/",i+j*WArray.cols,"/after"));
+            pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(0), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(0),
+                                                  selArraySpacing->val*1000/pgMGUI->getNmPPx(0), selArraySpacing->val*1000/pgMGUI->getNmPPx(0)), util::toString(folder,"/",i+j*WArray.cols,"/after"));
     }
 
     btnWriteCalib->setChecked(false);
@@ -628,7 +628,7 @@ redo:
     //std::cerr<<"Finally chose "<<validPtsW[chosen].it<<" "<<validPts[validPtsW[chosen].it]<<" with weight "<<validPtsW[chosen].weight<<"\n";
 
         //go to measurement point
-    pgMGUI->move((resPre->depth.cols/2+pgBeAn->writeBeamCenterOfsX-validPts[validPtsW[chosen].it].x)*resPre->XYnmppx/1000000,(resPre->depth.rows/2+pgBeAn->writeBeamCenterOfsY-validPts[validPtsW[chosen].it].y)*resPre->XYnmppx/1000000,0,0);
+    pgMGUI->move((resPre->depth.cols/2+pgBeAn->writeBeamCenterOfsX-validPts[validPtsW[chosen].it].x)*resPre->XYnmppx/1000000,(resPre->depth.rows/2+pgBeAn->writeBeamCenterOfsY-validPts[validPtsW[chosen].it].y)*resPre->XYnmppx/1000000,0);
     validPts.clear(); validPtsW.clear();
 
         //prepare Int/Dur matrix
@@ -647,16 +647,16 @@ redo:
 
     double xOfs=((WArray.cols-1)*selAArraySpacing->val)/2000;         //in mm
     double yOfs=((WArray.rows-1)*selAArraySpacing->val)/2000;
-    pgMGUI->move(xOfs,yOfs,0,0);
+    pgMGUI->move(xOfs,yOfs,0);
     for(int j=0;j!=WArray.rows; j++){
         for(int i=0;i!=WArray.cols; i++){
             while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
             writePulse(WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1]*1000);
-            if(i!=WArray.cols-1) pgMGUI->move(-selAArraySpacing->val/1000,0,0,0);
+            if(i!=WArray.cols-1) pgMGUI->move(-selAArraySpacing->val/1000,0,0);
         }
-        if(j!=WArray.rows-1) pgMGUI->move(2*xOfs,-selAArraySpacing->val/1000,0,0);
+        if(j!=WArray.rows-1) pgMGUI->move(2*xOfs,-selAArraySpacing->val/1000,0);
     }
-    pgMGUI->move(xOfs,yOfs,0,0);
+    pgMGUI->move(xOfs,yOfs,0);
     while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
 
         //do post writing measurements

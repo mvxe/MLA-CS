@@ -382,6 +382,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
     MLP._lock_meas.lock();                       //wait for other measurements to complete
     if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
     if(!CORdy) return;
+    pgMGUI->chooseObj(true);    // switch to mirau
     scanRes* res=new scanRes;
 
     unsigned nFrames=totalFrameNum;
@@ -589,7 +590,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
     }
 
     if(pgMGUI==nullptr) res->XYnmppx=0;
-    else res->XYnmppx=pgMGUI->getNmPPx();
+    else res->XYnmppx=pgMGUI->getNmPPx(0);
     res->avgNum=1;
 
     if(bSaveAvgMess){  // for autosaving raw data - for debug and bookeeping purposes - for saving individual measurements that are being averaged.
