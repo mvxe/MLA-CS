@@ -516,9 +516,12 @@ void tab_camera::onSaveDepthMap(void){
             }
             else cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->outOfRangeToExcl->val, !*cMap->exportSet4WholeVal, "SD (nm)");
         }else if(selDisp->index==3){                //show reflectivity
-            cv::Mat temp0(res->refl,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+            cv::Mat temp0;
+            if(width>1 && height>1) temp0=cv::Mat(res->refl,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+            else                    temp0=res->refl;
+            cv::minMaxIdx(temp0,&min,&max);
             cv::Mat tempMask(temp0.rows, temp0.cols, CV_8U, cv::Scalar(0));
-            cMap->colormappize(&temp0, &display, &tempMask, 0, 255, res->XYnmppx, false, !*cMap->exportSet4WholeVal, "Reflectivity");
+            cMap->colormappize(&temp0, &display, &tempMask, min, max, res->XYnmppx, false, !*cMap->exportSet4WholeVal, "Reflectivity");
         }
 
         cv::cvtColor(display, display, cv::COLOR_RGBA2BGRA);
