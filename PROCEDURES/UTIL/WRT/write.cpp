@@ -92,16 +92,13 @@ void pgWrite::onCorPPR(){
 }
 void pgWrite::onPulse(){
     if(!go.pRPTY->connected) return;
-    std::vector<uint32_t> commands;
-    commands.push_back(CQF::W4TRIG_INTR());
-    commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));
-    commands.push_back(CQF::SG_SAMPLE(CQF::O0td, pulseInt->val, 0));
-    long int dur=pulseDur->val/8e-6-1;
-    while(dur>100000000) {commands.push_back(CQF::WAIT(100000000)); dur-=100000000;}
-    commands.push_back(CQF::WAIT(dur));
-    commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
-    go.pRPTY->A2F_write(0,commands.data(),commands.size());
-    go.pRPTY->A2F_trig(0);
+    pgMGUI->chooseObj(false);    // switch to writing
+    CTRL::CO co(go.pRPTY);
+    co.addHold("X",CTRL::he_motion_ontarget);
+    co.addHold("Y",CTRL::he_motion_ontarget);
+    co.addHold("Z",CTRL::he_motion_ontarget);
+    co.pulseGPIO("wrLaser",pulseDur->val/1000);
+    co.execute();
 }
 void pgWrite::onMenuChange(int index){
     for(int i=0;i!=Nset;i++) settingWdg[i]->setVisible(i==index?true:false);

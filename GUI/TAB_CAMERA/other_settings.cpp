@@ -33,7 +33,6 @@ cameraSett::cameraSett(std::atomic<bool>& getExpMinMax, pgMoveGUI* pgMov): getEx
 
 void cameraSett::genReport(){
     if(!go.pGCAM->iuScope->connected) return;
-
     std::string rpt0=util::toString("Min pixel value: ",expMin,"\nMax pixel value: ",expMax,"\n");
     report0->setText(QString::fromStdString(rpt0));
 }

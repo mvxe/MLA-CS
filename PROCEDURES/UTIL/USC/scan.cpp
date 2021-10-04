@@ -95,6 +95,11 @@ void pgScanGUI::init_gui_settings(){
     conf["coh_len"]=coh_len;
     connect(coh_len, SIGNAL(changed()), this, SLOT(recalculate()));
     slayout->addWidget(coh_len);
+    direction=new checkbox_gs(false,"Flip Scan Direction");
+    direction->setToolTip("Change this if you measure inverted depth.");
+    conf["scanDirectionFlip"]=direction;
+    connect(direction, SIGNAL(changed()), this, SLOT(recalculate()));
+    slayout->addWidget(direction);
     selectScanSetting=new smp_selector("Select scan setting: ", 0, {"Standard", "Precise", "Set2", "Set3", "Set4"});    //should have Nset strings
     conf["selectScanSetting"]=selectScanSetting;
     slayout->addWidget(selectScanSetting);
@@ -251,17 +256,17 @@ void pgScanGUI::updateCO(std::string &report){
     peakLoc=expectedDFTFrameNum/vsConv(pphwl);
     report+=util::toString("Expecting the peak to be at i = ", peakLoc," in the FFT.\n");
 
-    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
+    COmeasure->addMotion("Z",(direction->val?-1:1)*readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
     COmeasure->addHold("Z",CTRL::he_motion_ontarget);
     for(unsigned i=0;i!=totalFrameNum;i++){
         COmeasure->startTimer("timer",1./COfps+triggerAdditionalDelay->val*0.001);          // in case motion is completed before the camera is ready for another frame
         COmeasure->pulseGPIO("trigCam",0.0001);             // 100us
         if(expo>0.0001) COmeasure->addDelay(expo-0.0001);   // keep stationary during exposure
-        COmeasure->addMotion("Z",displacementOneFrame,0,0,CTRL::MF_RELATIVE);
+        COmeasure->addMotion("Z",(direction->val?1:-1)*displacementOneFrame,0,0,CTRL::MF_RELATIVE);
         COmeasure->addHold("Z",CTRL::he_motion_ontarget);
         COmeasure->addHold("timer",CTRL::he_timer_done);
     }
-    COmeasure->addMotion("Z",-readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
+    COmeasure->addMotion("Z",(direction->val?-1:1)*readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
 
     CORdy=true;
 }
@@ -526,7 +531,9 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
     std::cerr<<"done with dfts\n";
 
     if((cbGetRefl->val && cbRefl_override==0) || cbRefl_override==1){
-        mAmp.convertTo(res->refl,CV_8U,1,0);        // is amplitude ~ reflectivity of the less reflective mirror of the interferometer
+        double min,max;
+        cv::minMaxIdx(mAmp,&min,&max);
+        mAmp.convertTo(res->refl,CV_8U,((1<<8)-1)/(max-min),-min*((1<<8)-1)/(max-min));        // is amplitude ~ reflectivity of the less reflective mirror of the interferometer
     }
 
     int dilation_size=exclDill->val;

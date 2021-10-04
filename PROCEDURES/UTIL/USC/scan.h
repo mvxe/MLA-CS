@@ -107,6 +107,7 @@ public:
     bool getWl{false};
     val_selector* triggerAdditionalDelay;
     constexpr static int darkFrameNum=10;
+    checkbox_gs* direction;
 
     //save pixel to file
     std::mutex clickDataLock;
