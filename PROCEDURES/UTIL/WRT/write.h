@@ -19,7 +19,6 @@ private:
     //activation
     QVBoxLayout* alayout;
     QPushButton* pulse;
-    val_selector* pulseInt;
     val_selector* pulseDur;
 
     QPushButton* importImg;

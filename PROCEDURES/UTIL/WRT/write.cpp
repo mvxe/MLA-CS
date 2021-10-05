@@ -14,12 +14,10 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
 
     pulse=new QPushButton("Pulse");
     connect(pulse, SIGNAL(released()), this, SLOT(onPulse()));
-    pulseInt=new val_selector(1000, "Int:", 1, 8192, 0);
-    conf["pulseInt"]=pulseInt;
     pulseDur=new val_selector(1, "Dur", 0.001, 10000, 3, 0, {"ms"});
     conf["pulseDur"]=pulseDur;
     alayout->addWidget(new hline);
-    alayout->addWidget(new twid(pulse, pulseInt, pulseDur));
+    alayout->addWidget(new twid(pulse, pulseDur));
     alayout->addWidget(new hline);
     importImg=new QPushButton("Import image");
     connect(importImg, SIGNAL(released()), this, SLOT(onLoadImg()));
