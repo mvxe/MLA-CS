@@ -60,7 +60,7 @@ private:
     checkbox_gs* main_show_scale;
     checkbox_gs* main_show_target;
     checkbox_gs* main_show_bounds;
-    checkbox_gs* main_antishake;
+    checkbox_gs* main_CLAHE_writing;
     QProgressBar* measPB;
     QProgressBar* compPB;
 
@@ -95,7 +95,6 @@ private:
 
     FQ* framequeueDisp;
     const cv::Mat* onDisplay;
-    cv::Mat* oldImg;
 
     constexpr static unsigned work_call_time=33;    //work_fun is called periodically via timer every this many milliseconds
     pgScanGUI::scanRes loadedScan; bool updateDisp{false}; bool loadedOnDisplay{false};

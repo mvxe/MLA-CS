@@ -147,9 +147,9 @@ tab_camera::tab_camera(QWidget* parent){
     conf["main_show_target"]=main_show_target;
     main_show_bounds=new checkbox_gs(false,"Write Bounds");
     conf["main_show_bounds"]=main_show_bounds;
-    main_antishake=new checkbox_gs(false,"Antishake");
-    conf["main_antishake"]=main_antishake;
-    layoutTBarW->addWidget(new twid(main_show_scale, main_show_target, main_show_bounds, main_antishake));
+    main_CLAHE_writing=new checkbox_gs(false,"CLAHE(WrObj)");
+    conf["main_CLAHE_writing"]=main_CLAHE_writing;
+    layoutTBarW->addWidget(new twid(main_show_scale, main_show_target, main_show_bounds, main_CLAHE_writing));
 
     measPB=new QProgressBar; measPB->setRange(0,100);
     compPB=new QProgressBar; compPB->setRange(0,100);
@@ -174,7 +174,6 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuDepthLeft->addAction("Plot Line (Gnuplot)", this, SLOT(onPlotLine()));
     clickMenuDepthLeft->addAction("Save Line (.txt)", this, SLOT(onSaveLine()));
 
-    oldImg=new cv::Mat;
     conf.load();    //TODO remove
 }
 
@@ -206,17 +205,9 @@ void tab_camera::work_fun(){
         if(onDisplay!=nullptr){
             if(main_show_target->isChecked() || main_show_scale->isChecked() || main_show_bounds->isChecked()){
                 cv::Mat temp=onDisplay->clone();
-                if(main_antishake->isChecked()){
-                    int histSize=256;
-                    float range[]={0,256};
-                    const float* histRange={range};
-                    cv::Mat hist;
-                    calcHist(&temp,1,0,cv::Mat(),hist,1,&histSize,&histRange,true,false);
-                    cv::Point mcv;
-                    cv::minMaxLoc(hist,nullptr,nullptr,nullptr,&mcv);
-                    cv::add(temp,128-mcv.y,temp);
-                    if(!oldImg->empty()) temp=0.25*temp+0.75**oldImg;
-                    temp.copyTo(*oldImg);
+                if(main_CLAHE_writing->isChecked() && !camSet->isMirau){
+                    auto CLAHE=cv::createCLAHE(camSet->CLAHE_clipLimit->val, {(int)camSet->CLAHE_tileGridSize->val,(int)camSet->CLAHE_tileGridSize->val});
+                    CLAHE->apply(temp,temp);
                 }
                 if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY);

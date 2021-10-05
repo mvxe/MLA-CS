@@ -24,6 +24,14 @@ cameraSett::cameraSett(std::atomic<bool>& getExpMinMax, pgMoveGUI* pgMov): getEx
     connect(LEDon, SIGNAL(toggled(bool)), this, SLOT(onLEDToggle(bool)));
     LEDon->setChecked(true);
     layout->addWidget(LEDon);
+    layout->addWidget(new hline);
+    layout->addWidget(new QLabel("CLAHE (only Writing Objective) settings (enable via checkbox)"));
+    CLAHE_tileGridSize=new val_selector(10, "Set titleGridSize (symmetric X==Y): ", 2, 100, 0);
+    conf["CLAHE_tileGridSize"]=CLAHE_tileGridSize;
+    layout->addWidget(CLAHE_tileGridSize);
+    CLAHE_clipLimit=new val_selector(2, "Set clipLimit: ", 0, 100, 2);
+    conf["CLAHE_clipLimit"]=CLAHE_clipLimit;
+    layout->addWidget(CLAHE_clipLimit);
 
     connect(expMirau, SIGNAL(changed()), this, SLOT(_changeObjectiveMirau()));
     connect(expWriting, SIGNAL(changed()), this, SLOT(_changeObjectiveWriting()));
@@ -46,9 +54,9 @@ void cameraSett::onLEDToggle(bool state){
     if(!go.pRPTY->connected) return;
     go.pRPTY->setGPIO("ilumLED", state);
 }
-void cameraSett::changeObjective(bool _isMirau){
-    isMirau=_isMirau;
+void cameraSett::changeObjective(bool __isMirau){
+    _isMirau=__isMirau;
     if(!go.pGCAM->iuScope->connected) return;
-    if(isMirau) go.pGCAM->iuScope->set("ExposureTime",expMirau->val);
+    if(_isMirau) go.pGCAM->iuScope->set("ExposureTime",expMirau->val);
     else        go.pGCAM->iuScope->set("ExposureTime",expWriting->val);
 }

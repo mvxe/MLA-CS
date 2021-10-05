@@ -13,6 +13,7 @@ class cameraSett: public QWidget{
 public:
     cameraSett(std::atomic<bool>& getExpMinMax, pgMoveGUI* pgMov);
     rtoml::vsr conf;                //configuration map
+    const bool& isMirau{_isMirau};
 private:
     QVBoxLayout* layout;
     QCheckBox* measureFlag;
@@ -22,7 +23,11 @@ private:
     std::atomic<bool>& getExpMinMax;
     int expMin{-1}, expMax{-1};
     QCheckBox* LEDon;
-    bool isMirau=true;
+    bool _isMirau=true;
+
+public:
+    val_selector* CLAHE_tileGridSize;
+    val_selector* CLAHE_clipLimit;
 public Q_SLOTS:
     void genReport();
     void onToggled(bool state);
