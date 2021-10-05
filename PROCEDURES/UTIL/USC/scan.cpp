@@ -62,8 +62,8 @@ void pgScanGUI::init_gui_activation(){
     conf["cbGetRefl"]=cbGetRefl;
     gui_activation->addWidget(cbGetRefl);
 
-    xDifShift=new QDoubleSpinBox(); xDifShift->setRange(-1000,1000); xDifShift->setSuffix(" px"); xDifShift->setDecimals(2);
-    yDifShift=new QDoubleSpinBox(); yDifShift->setRange(-1000,1000); yDifShift->setSuffix(" px"); xDifShift->setDecimals(2);
+    xDifShift=new val_selector(0, "", -1000, 1000, 1, 0, {"px"});
+    yDifShift=new val_selector(0, "", -1000, 1000, 1, 0, {"px"});
     gui_processing=new twid(new QLabel("dif. Shift (x,y): "),xDifShift,yDifShift);
     gui_processing->setToolTip("This applies to all functions that used dif. scans!");
 }
@@ -844,36 +844,45 @@ bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
 pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
     scanRes ret;
     if(scan0==nullptr || scan1==nullptr) {std::cerr<<"difScans got nullptr input\n"; return ret;}
-    if(scan0->depth.cols!=scan1->depth.cols || scan0->depth.rows!=scan1->depth.rows) {std::cerr<<"difScans got matrices with nonequal dimensions\n"; return ret;}
+
+    int nCols=std::max(scan0->depth.cols,scan1->depth.cols);
+    int nRows=std::max(scan0->depth.rows,scan1->depth.rows);
+    cv::Mat _mask0(nRows, nCols, CV_8U, cv::Scalar(255));
+    cv::Mat _mask1(nRows, nCols, CV_8U, cv::Scalar(255));
+    cv::Mat _depth0(nRows, nCols, CV_32F, cv::Scalar(0));
+    cv::Mat _depth1(nRows, nCols, CV_32F, cv::Scalar(0));
+
+    scan0->depth.copyTo(_depth0(cv::Rect(0,0,scan0->depth.cols,scan0->depth.rows)));
+    scan0->mask.copyTo(_mask0(cv::Rect(0,0,scan0->mask.cols,scan0->mask.rows)));
+    scan1->depth.copyTo(_depth1(cv::Rect(0,0,scan1->depth.cols,scan1->depth.rows)));
+    scan1->mask.copyTo(_mask1(cv::Rect(0,0,scan1->mask.cols,scan1->mask.rows)));
+
+    float xShft, yShft;
+    float xShiftFrac=modf(xDifShift->val, &xShft);
+    float yShiftFrac=modf(yDifShift->val, &yShft);
 
     cv::Mat depth0, depth1, mask0, mask1;
-    if(xDifShift->value()!=0 || yDifShift->value()!=0){
-        float xShft, yShft;
-        int nCols=scan0->depth.cols;    float xShiftFrac=modf(xDifShift->value(), &xShft);
-        int nRows=scan0->depth.rows;    float yShiftFrac=modf(yDifShift->value(), &yShft);
+    if(xShft>= nCols) xShft=nCols-1;
+    if(xShft<=-nCols) xShft=1-nCols;
+    if(yShft>= nRows) yShft=nRows-1;
+    if(yShft<=-nRows) yShft=1-nRows;
+    depth0=_depth0(cv::Rect(xShft>0?0:abs(xShft), yShft>0?0:abs(yShft), nCols-abs(xShft), nRows-abs(yShft)));
+    mask0 = _mask0(cv::Rect(xShft>0?0:abs(xShft), yShft>0?0:abs(yShft), nCols-abs(xShft), nRows-abs(yShft)));
+    depth1=_depth1(cv::Rect(xShft>0?abs(xShft):0, yShft>0?abs(yShft):0, nCols-abs(xShft), nRows-abs(yShft)));
+    mask1 = _mask1(cv::Rect(xShft>0?abs(xShft):0, yShft>0?abs(yShft):0, nCols-abs(xShft), nRows-abs(yShft)));
 
-        if(abs(xShft)>=nCols || abs(yShft)>=nRows) {std::cerr<<"difScans specified shift larger than mat dimensions\n"; return ret;}
-        depth0=scan0->depth(cv::Rect(xShft>0?0:abs(xShft), yShft>0?0:abs(yShft), nCols-abs(xShft), nRows-abs(yShft)));
-        mask0 =scan0->mask (cv::Rect(xShft>0?0:abs(xShft), yShft>0?0:abs(yShft), nCols-abs(xShft), nRows-abs(yShft)));
-        depth1=scan1->depth(cv::Rect(xShft>0?abs(xShft):0, yShft>0?abs(yShft):0, nCols-abs(xShft), nRows-abs(yShft)));
-        mask1 =scan1->mask (cv::Rect(xShft>0?abs(xShft):0, yShft>0?abs(yShft):0, nCols-abs(xShft), nRows-abs(yShft)));
-
-        if(xShiftFrac!=0 || yShiftFrac!=0){
-            cv::Mat trans=(cv::Mat_<double>(2,3) << 1, 0, xShiftFrac, 0, 1, yShiftFrac);
-            cv::warpAffine(depth0, depth0, trans, depth0.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-            cv::dilate(mask0,mask0,cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3,3), cv::Point(1,1)));
-            cv::Rect cut(cv::Rect(xShiftFrac>0?1:0, yShiftFrac>0?1:0, nCols-abs(xShft)-1, nRows-abs(yShft)-1));
-            depth0=depth0(cut); mask0 =mask0 (cut);
-            depth1=depth1(cut); mask1 =mask1 (cut);
-        }
-    }else{
-        depth0=scan0->depth; mask0=scan0->mask;
-        depth1=scan1->depth; mask1=scan1->mask;
+    if(xShiftFrac!=0 || yShiftFrac!=0){
+        cv::Mat trans=(cv::Mat_<double>(2,3) << 1, 0, xShiftFrac, 0, 1, yShiftFrac);
+        cv::warpAffine(depth0, depth0, trans, depth0.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+        cv::dilate(mask0,mask0,cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3,3), cv::Point(1,1)));
+        cv::Rect cut(cv::Rect(xShiftFrac>0?1:0, yShiftFrac>0?1:0, nCols-abs(xShft)-1, nRows-abs(yShft)-1));
+        depth0=depth0(cut); mask0 =mask0 (cut);
+        depth1=depth1(cut); mask1 =mask1 (cut);
     }
 
     cv::subtract(depth1, depth0, ret.depth);
-    int nCols=depth0.cols;
-    int nRows=depth0.rows;
+    nCols=depth0.cols;
+    nRows=depth0.rows;
     if(scan1->tiltCor[0]-scan0->tiltCor[0]!=0){
         cv::Mat slopeX1(1, nCols, CV_32F);
         cv::Mat slopeX(nRows, nCols, CV_32F);

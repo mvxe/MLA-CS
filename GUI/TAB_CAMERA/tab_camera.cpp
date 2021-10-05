@@ -62,6 +62,8 @@ tab_camera::tab_camera(QWidget* parent){
     pgSGUI->useCorr=&pgCor->useCorr;
     pgSGUI->cor=&pgCor->cor;
     connect(pgCor, SIGNAL(sendToDisplay(pgScanGUI::scanRes)), this, SLOT(showScan(pgScanGUI::scanRes)));
+    connect(pgSGUI->xDifShift, SIGNAL(changed()), this, SLOT(diff2RawCompute()));
+    connect(pgSGUI->yDifShift, SIGNAL(changed()), this, SLOT(diff2RawCompute()));
     camSet=new cameraSett(pgSGUI->getExpMinMax, pgMGUI); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
     conf["camera_settings"]=camSet->conf;
 
@@ -321,11 +323,10 @@ void tab_camera::onShowAbsHeightChanged(){
 }
 
 void tab_camera::tab_entered(){
-    //if(!go.pGCAM->iuScope->connected || !go.pXPS->connected) return;
-
     framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeueDisp->setUserFps(30,5);
-    go.pRPTY->setGPIO("ilumLED", 1);
+    if(go.pRPTY->connected)
+        go.pRPTY->setGPIO("ilumLED", 1);
 
     timer->start(work_call_time);
 }
@@ -550,15 +551,18 @@ void tab_camera::updateImgF(){
     updateDisp=true;
 }
 void tab_camera::onDiff2Raw(){
-    pgScanGUI::scanRes scanBefore, scanAfter;
-    if(pgScanGUI::loadScan(&scanBefore) && pgScanGUI::loadScan(&scanAfter)){
-        pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
-        if(scanDif.depth.empty()) return;
-        loadedScan=scanDif;
-        updateDisp=true;
-        loadedOnDisplay=true;
-    }
+    if(pgScanGUI::loadScan(&scanBefore) && pgScanGUI::loadScan(&scanAfter))
+        diff2RawCompute();
 }
+void tab_camera::diff2RawCompute(){
+    if(scanBefore.depth.empty() || scanAfter.depth.empty()) return;
+    pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
+    if(scanDif.depth.empty()) return;
+    loadedScan=scanDif;
+    updateDisp=true;
+    loadedOnDisplay=true;
+}
+
 void tab_camera::onCombineMes(){
     QStringList files=QFileDialog::getOpenFileNames(this,"Select depthmaps to combine (files with -SD are ignored)","","Depthmaps (*.pfm)");
     std::deque<pgScanGUI::scanRes> scans;

@@ -99,6 +99,8 @@ private:
     constexpr static unsigned work_call_time=33;    //work_fun is called periodically via timer every this many milliseconds
     pgScanGUI::scanRes loadedScan; bool updateDisp{false}; bool loadedOnDisplay{false};
 
+    pgScanGUI::scanRes scanBefore, scanAfter;   // for onDiff2Raw
+
     void scaleDisplay(cv::Mat img, QImage::Format format);
 private Q_SLOTS:
     void work_fun();
@@ -114,6 +116,7 @@ private Q_SLOTS:
     void onLoadDepthMapRaw();
     void onRotateDepthMap();
     void onDiff2Raw();
+    void diff2RawCompute();
     void onCombineMes();
     void onPlotLine();
     void onSaveLine();

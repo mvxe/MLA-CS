@@ -119,6 +119,8 @@ public:
     std::atomic<bool> getExpMinMax{false};
     pgMoveGUI* pgMGUI;
 
+    val_selector* xDifShift;
+    val_selector* yDifShift;
 private:
     smp_selector* selectScanSetting;    //scan setting
     std::vector<scanSettings*> settingWdg;
@@ -163,9 +165,6 @@ private:
     std::atomic<bool> bSaveAvgMess{false};    // for autosaving raw data - for debug and bookeeping purposes - for saving individual measurements that are being averaged.
     std::string stringSaveAvgMess;
     int saveIter;
-
-    QDoubleSpinBox* xDifShift;
-    QDoubleSpinBox* yDifShift;
 
     void _doOneRound(char cbAvg_override=0, char cbTilt_override=0, char cbRefl_override=0);
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
