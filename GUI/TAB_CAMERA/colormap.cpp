@@ -122,12 +122,19 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
     else if(displayANTicks->val!=0) div=range/displayANTicks->val;
     else nticks=0;
 
+    int tmp = cv::getTextSize("0", OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore).height+2;
+    double minDiv=(double)tmp/(src->rows-tmp)*range;
+    if(div<minDiv){
+        div=minDiv;
+    }
+
     bool sah;   //show abs height, else show relative starting from 0
     double minRnd;  //fist tick if abs height
 
     int textMaxWidth=1;
     int textMaxHeight=1;  //all should be the same though
     cv::Mat cblabel;
+
     if(nticks!=0){
         for(int mult=-2;mult!=100;mult++){
             for(auto& val:stdTicks){
@@ -138,7 +145,6 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
             }
             if(done)break;
         }
-        nticks=range/tick+1;  //rounds down
         cv::Size size=cv::getTextSize(label, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
         cblabel=cv::Mat(size.height*2,size.width+2,CV_8UC4,{0,0,0,0});
         cv::putText(cblabel,label, {0,4*size.height/3}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
@@ -153,8 +159,6 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
             cv::Size size=cv::getTextSize(util::toString(tickn), OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore);
             if(textMaxWidth<size.width) textMaxWidth=size.width;
             if(textMaxHeight<size.height) textMaxHeight=size.height;
-
-
         }
     }
     int marginY=textMaxHeight;  //we make it twice the text max height

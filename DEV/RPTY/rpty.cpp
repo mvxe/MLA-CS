@@ -25,7 +25,7 @@ void RPTY::run(){
     std::this_thread::sleep_for (std::chrono::seconds(1));  //TODO remove
     for (;;){
         while (!connected && !end){
-            std::cerr<<"not connected\n";
+            //std::cerr<<"not connected\n";
                 //resolving...
             std::string resname;    //this is when user enters hostname instead of ip
             if (resolve(IP.get(), port.get(), &resname)){
