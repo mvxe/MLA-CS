@@ -77,9 +77,6 @@ private:
     pgWrite* pgWrt;
     //pgWritePredictor* pgWrtPrd;
 
-    QCheckBox* redLaserOn;
-    QCheckBox* greenLaserOn;
-
     QMenu* clickMenu;
     QMenu* clickMenuDepthRight;
     QMenu* clickMenuDepthLeft;
@@ -124,9 +121,6 @@ private Q_SLOTS:
     void on2DFFT();
 
     void updateImgF();
-
-    void onRedLaserToggle(bool state);
-    void onGreenLaserToggle(bool state);
 
     void showScan(pgScanGUI::scanRes scan);
 };

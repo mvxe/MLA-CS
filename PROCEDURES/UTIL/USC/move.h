@@ -31,6 +31,27 @@ public:
     double getAngCamToXMot(int index=-1);
     double getYMotToXMot();
 
+    const std::atomic<int>& currentObj{currentObjective};   // 0-mirau, 1-writing, -1-not initialized
+    double objectiveDisplacement[3]{0,0,0};                 // this is Writing-Mirau {dX,dY,dZ}
+
+    // How it works; there are three(four) types of XY coordinates:
+    //      - stage X, Y (these are skewed)
+    //      - corrected X, Y (skew corrected and angle to (Mirau objective) camera corrected)
+    //                  move() and corCOMove() applies this correction to get raw movements
+    //                  you can also use Xcor(Xraw,Yraw) and Ycor(Xraw,Yraw)
+    //                  or for reverse Xraw(Xcor,Ycor) and Yraw(Xcor,Ycor)
+    //      - objective X, Y, in pixels
+    //                  to convert use mm2px(coord) and px2mm(coord), where coord is corrected X or Y
+    // for converting X,Y coordinates to/from mm from/to px
+    double Xraw(double Xcor, double Ycor, int objective_index_override=-1);    // to force using Mirau(Writing) objective settings,
+    double Yraw(double Xcor, double Ycor, int objective_index_override=-1);    //      set objective_index_override to 0(1)
+    double Xcor(double Xraw, double Yraw, int objective_index_override=-1);
+    double Ycor(double Xraw, double Yraw, int objective_index_override=-1);
+    double mm2px(double coord, int objective_index_override=-1, double nmppx=0);    // here you can also manually override nmppx
+    double px2mm(double coord, int objective_index_override=-1, double nmppx=0);
+
+    void getPos(double* X, double* Y=nullptr, double* Z=nullptr);       // returns current position, corrected by obj-obj difference
+
 public Q_SLOTS:
     void chooseObj(bool useMirau);
     void move(double Xmov, double Ymov, double Zmov);  // in mm, corrects Z on X and Y move
@@ -72,7 +93,6 @@ private:
     //in camera_tab
     smp_selector* selObjective;
     std::atomic<int> currentObjective{-1};
-    double objectiveDisplacement[3]{0,0,0}; // this is Writing-Mirau {dX,dY,dZ}
     double tmpOD[3];
 
     QPushButton* markPointForCalib;

@@ -14,7 +14,7 @@ public:
     pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn);
     ~pgBoundsGUI();
     rtoml::vsr conf;                //configuration map
-    bool isWithinBounds(double x, double y);
+    bool isWithinBounds();
     void drawBound(cv::Mat* img, double XYnmppx, bool isMask=false);    //if isMask, the values outside the zone are turned to 255
 private:
     pgMoveGUI* pgMGUI;
@@ -24,7 +24,6 @@ private:
 
     QVBoxLayout* layout;
     twd_selector* selector;
-    int index{0};
     QLabel* OOBLabel;
     QWidget* circRad;
     QWidget* circPts;

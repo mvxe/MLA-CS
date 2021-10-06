@@ -46,7 +46,7 @@ tab_camera::tab_camera(QWidget* parent){
     conf["pgTilt"]=pgTGUI->conf;
     pgFGUI=new pgFocusGUI(MLP, pgSGUI, pgMGUI);
     conf["pgFocus"]=pgFGUI->conf;
-    pgPRGUI=new pgPosRepGUI;
+    pgPRGUI=new pgPosRepGUI(pgMGUI);
     cm_sel=new smp_selector("Select colormap: ", 0, OCV_CM::qslabels());
     conf["cm_sel"]=cm_sel;
     showAbsHeight=new checkbox_gs(false,"Abs. height.");
@@ -67,7 +67,7 @@ tab_camera::tab_camera(QWidget* parent){
     camSet=new cameraSett(pgSGUI->getExpMinMax, pgMGUI); connect(pgSGUI, SIGNAL(doneExpMinmax(int,int)), camSet, SLOT(doneExpMinmax(int,int)));
     conf["camera_settings"]=camSet->conf;
 
-    pgBeAn=new pgBeamAnalysis(MLP, pgMGUI, pgSGUI);
+    pgBeAn=new pgBeamAnalysis(pgMGUI);
     conf["pgBeamAnalysis"]=pgBeAn->conf;
     pgBGUI=new pgBoundsGUI(pgMGUI,pgBeAn);
     conf["pgBounds"]=pgBGUI->conf;
@@ -78,13 +78,6 @@ tab_camera::tab_camera(QWidget* parent){
     pgWrt=new pgWrite(pgBeAn,pgMGUI);
     conf["pgWrite"]=pgWrt->conf;
     //pgWrtPrd=new pgWritePredictor(pgMGUI);
-
-    redLaserOn=new QCheckBox("Red Laser");
-    redLaserOn->setToolTip("This laser is turned on automatically when autocalibrating. You can hovewer turn it on for some manual operations.");
-    connect(redLaserOn, SIGNAL(toggled(bool)), this, SLOT(onRedLaserToggle(bool)));
-    greenLaserOn=new QCheckBox("Green Laser");
-    greenLaserOn->setToolTip("You have to activate this to turn on the writing laser before any writing can be done. Turned off automatically when closed.");
-    connect(greenLaserOn, SIGNAL(toggled(bool)), this, SLOT(onGreenLaserToggle(bool)));
 
     addInfo=new QLabel; addInfo->setMargin(10);
     addInfo->setVisible(false);
@@ -98,8 +91,6 @@ tab_camera::tab_camera(QWidget* parent){
         pageMotion->addWidget(pgPRGUI);
 
     pageWriting=new twd_selector;
-        pageWriting->addWidget(new twid(greenLaserOn,redLaserOn, false));
-        pageWriting->addWidget(pgBeAn->gui_activation);
         pageWriting->addWidget(pgCal->gui_activation);
         pageWriting->addWidget(pgWrt->gui_activation);
         pageWriting->addWidget(pgBGUI);
@@ -193,8 +184,6 @@ tab_camera::~tab_camera(){
     delete pgFGUI;
     delete pgPRGUI;
     go.pRPTY->setGPIO("ilumLED", 0);
-    onRedLaserToggle(false);
-    onGreenLaserToggle(false);
 }
 
 void tab_camera::work_fun(){
@@ -212,7 +201,7 @@ void tab_camera::work_fun(){
                     CLAHE->apply(temp,temp);
                 }
                 if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
-                if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY);
+                if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY));
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
                 pgCal->drawWriteArea(&temp);
                 pgWrt->drawWriteArea(&temp);
@@ -266,8 +255,8 @@ void tab_camera::work_fun(){
                 dispDepthMatCols=res->depth.cols;
 
                 if(selectingFlag){
-                    if(selectingFlagIsLine) cv::line(display, {selStartX+1,selStartY+(display.rows-res->depth.rows)/2},{selCurX+1,selCurY+(display.rows-res->depth.rows)/2}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, 1, cv::LINE_AA);
-                    else cv::rectangle(display, {selStartX+1,selStartY+(display.rows-res->depth.rows)/2},{selCurX+1,selCurY+(display.rows-res->depth.rows)/2}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, 1);
+                    if(selectingFlagIsLine) cv::line(display, {static_cast<int>(selStartX+1),static_cast<int>(selStartY+(display.rows-res->depth.rows)/2)},{static_cast<int>(selCurX+1),static_cast<int>(selCurY+(display.rows-res->depth.rows)/2)}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, 1, cv::LINE_AA);
+                    else cv::rectangle(display, {static_cast<int>(selStartX+1),static_cast<int>(selStartY+(display.rows-res->depth.rows)/2)},{static_cast<int>(selCurX+1),static_cast<int>(selCurY+(display.rows-res->depth.rows)/2)}, cv::Scalar{exclColor.val[2],exclColor.val[1],exclColor.val[0],255}, 1);
                 }
 
                 scaleDisplay(display, QImage::Format_RGBA8888);
@@ -291,9 +280,6 @@ void tab_camera::work_fun(){
     lastSelectingFlag=selectingFlag;
     redrawHistClrmap=false;
     updateDisp=false;
-
-    redLaserOn->setEnabled(go.pRPTY->connected);
-    greenLaserOn->setEnabled(go.pRPTY->connected);
 
     measPB->setValue(MLP.progress_meas);
     compPB->setValue(MLP.progress_comp);
@@ -325,8 +311,7 @@ void tab_camera::onShowAbsHeightChanged(){
 void tab_camera::tab_entered(){
     framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeueDisp->setUserFps(30,5);
-    if(go.pRPTY->connected)
-        go.pRPTY->setGPIO("ilumLED", 1);
+    go.pRPTY->setGPIO("ilumLED", 1);
 
     timer->start(work_call_time);
 }
@@ -427,8 +412,8 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
         if(xcoord<0 || xcoord>=pxW || ycoord<0 || ycoord>=pxH) return; //ignore events outside pixmap;
         if(event->button()==Qt::LeftButton){
             double DX, DY;
-            DX=(pxW/2+parent->pgBeAn->writeBeamCenterOfsX-xcoord)*parent->pgMGUI->getNmPPx()/1000000;     //we also correct for real writing beam offset from center
-            DY=(pxH/2+parent->pgBeAn->writeBeamCenterOfsY-ycoord)*parent->pgMGUI->getNmPPx()/1000000;
+            DX=parent->pgMGUI->px2mm(pxW/2.-xcoord)+parent->pgBeAn->writeBeamCenterOfsX;
+            DY=parent->pgMGUI->px2mm(pxH/2.-ycoord)+parent->pgBeAn->writeBeamCenterOfsY;
             parent->pgMGUI->move(DX,DY,0);
             if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(pxW/2-xcoord, pxH/2-ycoord);
         }else if(event->button()==Qt::RightButton){
@@ -463,7 +448,7 @@ void tab_camera::onSaveCameraPicture(void){
     while(fq->getUserMat()==nullptr);
     cv::Mat temp=onDisplay->clone();
     if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
-    if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY);
+    if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgMGUI->px2mm(pgBeAn->writeBeamCenterOfsX), pgMGUI->px2mm(pgBeAn->writeBeamCenterOfsY));
     if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
     imwrite(fileName, temp,{cv::IMWRITE_PNG_COMPRESSION,9});
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(fq);
@@ -484,8 +469,8 @@ void tab_camera::onSaveDepthMap(void){
         if(selDisp->index==1 || (selDisp->index==2 && res->depthSS.empty()) || (selDisp->index==3 && res->refl.empty())){
             pgHistGUI->updateImg(res, &min, &max);
             if(width>1 && height>1){
-                cv::Mat temp0(res->depth,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
-                cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+                cv::Mat temp0(res->depth,{static_cast<int>(selStartX<selEndX?selStartX:(selStartX-width)), static_cast<int>(selStartY<selEndY?selStartY:(selStartY-height)), width, height});
+                cv::Mat temp1(res->mask ,{static_cast<int>(selStartX<selEndX?selStartX:(selStartX-width)), static_cast<int>(selStartY<selEndY?selStartY:(selStartY-height)), width, height});
                 cv::Mat temp2; bitwise_not(temp1, temp2);
                 double minr, maxr;
                 cv::minMaxLoc(temp0, &minr, &maxr, nullptr, nullptr, temp2);
@@ -499,8 +484,8 @@ void tab_camera::onSaveDepthMap(void){
             cv::minMaxLoc(display, &_min, &_max, &ignore, &ignore, res->maskN);
             pgHistGUI->updateImg(res, &min, &max, 0, _max, &display);
             if(width>1 && height>1){
-                cv::Mat temp0(display,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
-                cv::Mat temp1(res->mask ,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+                cv::Mat temp0(display,{static_cast<int>(selStartX<selEndX?selStartX:(selStartX-width)), static_cast<int>(selStartY<selEndY?selStartY:(selStartY-height)), width, height});
+                cv::Mat temp1(res->mask ,{static_cast<int>(selStartX<selEndX?selStartX:(selStartX-width)), static_cast<int>(selStartY<selEndY?selStartY:(selStartY-height)), width, height});
                 cv::Mat temp2; bitwise_not(temp1, temp2);
                 double minr, maxr;
                 cv::minMaxLoc(temp0, &minr, &maxr, nullptr, nullptr, temp2);
@@ -509,7 +494,7 @@ void tab_camera::onSaveDepthMap(void){
             else cMap->colormappize(&display, &display, &res->mask, 0, max, res->XYnmppx, pgHistGUI->outOfRangeToExcl->val, !*cMap->exportSet4WholeVal, "SD (nm)");
         }else if(selDisp->index==3){                //show reflectivity
             cv::Mat temp0;
-            if(width>1 && height>1) temp0=cv::Mat(res->refl,{selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height});
+            if(width>1 && height>1) temp0=cv::Mat(res->refl,{static_cast<int>(selStartX<selEndX?selStartX:(selStartX-width)), static_cast<int>(selStartY<selEndY?selStartY:(selStartY-height)), width, height});
             else                    temp0=res->refl;
             cv::minMaxIdx(temp0,&min,&max);
             cv::Mat tempMask(temp0.rows, temp0.cols, CV_8U, cv::Scalar(0));
@@ -717,22 +702,4 @@ void tab_camera::on2DFFT(){
 
     updateDisp=true;
     loadedOnDisplay=true;
-}
-
-
-void tab_camera::onRedLaserToggle(bool state){
-    if(!go.pRPTY->connected) return;
-    std::vector<uint32_t> commands;
-    commands.push_back(CQF::GPIO_MASK(0x80,0,0x00));
-    commands.push_back(CQF::GPIO_DIR (0x00,0,0x00));
-    commands.push_back(CQF::GPIO_VAL (state?0x80:0x0,0,0x00));
-    go.pRPTY->A2F_write(1,commands.data(),commands.size());
-}
-void tab_camera::onGreenLaserToggle(bool state){
-    if(!go.pRPTY->connected) return;
-    std::vector<uint32_t> commands;
-    commands.push_back(CQF::GPIO_MASK(0x20,0,0x00));
-    commands.push_back(CQF::GPIO_DIR (0x00,0,0x00));
-    commands.push_back(CQF::GPIO_VAL (state?0x20:0x0,0,0x00));
-    go.pRPTY->A2F_write(1,commands.data(),commands.size());
 }

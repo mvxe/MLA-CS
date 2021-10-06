@@ -51,7 +51,6 @@ void cameraSett::doneExpMinmax(int min, int max){
     genReport();
 }
 void cameraSett::onLEDToggle(bool state){
-    if(!go.pRPTY->connected) return;
     go.pRPTY->setGPIO("ilumLED", state);
 }
 void cameraSett::changeObjective(bool __isMirau){

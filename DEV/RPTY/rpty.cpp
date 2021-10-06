@@ -165,6 +165,7 @@ void RPTY::setMotionDeviceType(std::string axisID){
 }
 
 void RPTY::initDevices(){
+    if(!connected) return;
     std::lock_guard<std::recursive_mutex>lock(mux);
     FIFOreset();
     if(devicesInited) throw std::runtime_error(util::toString("In RPTY::initDevices: devices already initialized."));
@@ -196,6 +197,7 @@ void RPTY::initDevices(){
 }
 
 void RPTY::deinitDevices(){
+    if(!connected) return;
     std::lock_guard<std::recursive_mutex>lock(mux);
     if(!devicesInited) throw std::runtime_error(util::toString("In RPTY::deinitDevices: devices not initialized."));
     cqueue cq;
@@ -225,6 +227,7 @@ void RPTY::deinitDevices(){
 }
 
 void RPTY::referenceMotionDevices(){
+    if(!connected) return;
     std::lock_guard<std::recursive_mutex>lock(mux);
     if(!devicesInited) throw std::runtime_error(util::toString("In RPTY::referenceMotionDevices: devices not initialized."));
     cqueue cq;
@@ -268,6 +271,7 @@ double RPTY::getMotionSetting(std::string ID, mst setting){
 }
 
 void RPTY::motion(std::string ID, double position, double velocity, double acceleration, motionFlags flags){
+    if(!connected) return;
     std::lock_guard<std::recursive_mutex>lock(mux);
     cqueue cq;
     _motionDeviceThrowExc(ID,"motion");
@@ -276,6 +280,7 @@ void RPTY::motion(std::string ID, double position, double velocity, double accel
 }
 
 int RPTY::getError(std::string ID){
+    if(!connected) return -1;
     std::lock_guard<std::recursive_mutex>lock(mux);
     if(motionAxes.find(ID)!=motionAxes.end()){
         _motionDeviceThrowExc(ID,"getMotionError");
@@ -288,12 +293,14 @@ int RPTY::getError(std::string ID){
 }
 
 void RPTY::setGPIO(std::string ID, bool state){
+    if(!connected) return;
     std::lock_guard<std::recursive_mutex>lock(mux);
     cqueue cq;
     gpioDevices[ID].setGPIO(cq, state);
     executeQueue(cq, main_cq);
 }
 void RPTY::pulseGPIO(std::string ID, double duration){
+    if(!connected) return;
     std::lock_guard<std::recursive_mutex>lock(mux);
     cqueue cq;
     gpioDevices[ID].pulseGPIO(cq, duration);
@@ -307,6 +314,7 @@ inline void RPTY::_motionDeviceThrowExc(std::string ID, std::string function){
 }
 
 void RPTY::executeQueue(cqueue& cq, uint8_t queue){
+    if(!connected) return;
     std::lock_guard<std::recursive_mutex>lock(mux);
     A2F_write(queue, cq.data(), cq.size());
     recheck_position=true;

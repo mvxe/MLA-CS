@@ -142,8 +142,8 @@ void pgMoveGUI::move(double Xmov, double Ymov, double Zmov){
     double _Xmov=Xmov;
     double _Ymov=Ymov;
     if(!disableSkewCorrection->val){
-        _Xmov=Xmov*cos(calibAngCamToXMot->val)+Ymov*sin(calibAngCamToXMot->val+calibAngYMotToXMot->val);
-        _Ymov=Xmov*sin(calibAngCamToXMot->val)+Ymov*cos(calibAngCamToXMot->val+calibAngYMotToXMot->val);
+        _Xmov=Xraw(Xmov,Ymov,0);
+        _Ymov=Yraw(Xmov,Ymov,0);
     }
 
     double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;    //this correction should change with skewCorrection, but implementing that would be annoying (dont want to add more configuration) and its negligible anyway, just recalibrate autoadjXZ,YZ with skewCorrection if its a problem
@@ -156,8 +156,8 @@ void pgMoveGUI::corCOMove(CTRL::CO& co, double Xmov, double Ymov, double Zmov, b
     double _Xmov=Xmov;
     double _Ymov=Ymov;
     if(!disableSkewCorrection->val || forceSkewCorrection){
-        _Xmov=Xmov*cos(calibAngCamToXMot->val)+Ymov*sin(calibAngCamToXMot->val+calibAngYMotToXMot->val);
-        _Ymov=Xmov*sin(calibAngCamToXMot->val)+Ymov*cos(calibAngCamToXMot->val+calibAngYMotToXMot->val);
+        _Xmov=Xraw(Xmov,Ymov,0);
+        _Ymov=Yraw(Xmov,Ymov,0);
     }
     double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;
     co.addMotion("X",_Xmov,0,0,CTRL::MF_RELATIVE);
@@ -296,6 +296,37 @@ double pgMoveGUI::getAngCamToXMot(int index){
     else return calibAngCamToXMot_writing->val;
 }
 double pgMoveGUI::getYMotToXMot(){return calibAngYMotToXMot->val;}
+
+
+double pgMoveGUI::Xraw(double Xcor, double Ycor, int index){
+    return Xcor*cos(getAngCamToXMot(index))+Ycor*sin(getAngCamToXMot(index)+getYMotToXMot());
+}
+double pgMoveGUI::Yraw(double Xcor, double Ycor, int index){
+    return Xcor*sin(getAngCamToXMot(index))+Ycor*cos(getAngCamToXMot(index)+getYMotToXMot());
+}
+double pgMoveGUI::Xcor(double Xraw, double Yraw, int index){
+    return (Xraw-Ycor(Xraw, Yraw, index)*sin(getAngCamToXMot(index)+getYMotToXMot()))/cos(getAngCamToXMot(index));
+}
+double pgMoveGUI::Ycor(double Xraw, double Yraw, int index){
+    return (Yraw-Xraw*tan(getAngCamToXMot(index)))/(cos(getAngCamToXMot(index)+getYMotToXMot())-sin(getAngCamToXMot(index)+getYMotToXMot())*tan(getAngCamToXMot(index)));
+}
+double pgMoveGUI::mm2px(double coord, int index, double nmppx){
+    if(nmppx==0) nmppx=getNmPPx(index);
+    return coord/nmppx*1000000;
+}
+double pgMoveGUI::px2mm(double coord, int index, double nmppx){
+    if(nmppx==0) nmppx=getNmPPx(index);
+    return coord*nmppx/1000000;
+}
+
+void pgMoveGUI::getPos(double* X, double* Y, double* Z){
+    double xr, yr;
+    xr=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
+    yr=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
+    *X=Xcor(xr-((currentObj==1)?objectiveDisplacement[0]:0),yr-((currentObj==1)?objectiveDisplacement[1]:0),0);
+    if(Y!=nullptr) *Y=Ycor(xr-((currentObj==1)?objectiveDisplacement[0]:0),yr-((currentObj==1)?objectiveDisplacement[1]:0),0);
+    if(Z!=nullptr) *Z=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
+}
 
 void pgMoveGUI::_onMarkObjDisY(bool isStart){
     if(isStart){

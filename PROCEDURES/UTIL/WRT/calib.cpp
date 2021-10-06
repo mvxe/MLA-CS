@@ -215,7 +215,7 @@ bool pgCalib::goToNearestFree(double radDilat, double radRandSpread){
     int dil=(radDilat*1000/res->XYnmppx-0.5); if(dil<0) dil=0;
     cv::Mat mask=pgDpEv->getMaskFlatness(res, dil, selWriteCalibFocusThresh->val, selWriteCalibFocusBlur->val);
     int ptX,ptY;
-    imgAux::getNearestFreePointToCenter(&mask, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY, ptX, ptY, radRandSpread);
+//TODO!        imgAux::getNearestFreePointToCenter(&mask, pgBeAn->writeBeamCenterOfsX, pgBeAn->writeBeamCenterOfsY, ptX, ptY, radRandSpread);
     if(ptX==-1){
         std::cerr<<"No free nearby!\n";
         delete scanRes;
@@ -366,8 +366,8 @@ void pgCalib::WCFFindNearest(){
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
     const pgScanGUI::scanRes* res=scanRes->get();
     int roiD=2*selWriteCalibFocusRadDil->val*1000/res->XYnmppx;
-    if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
-    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/before"), true, false);
+//TODO!        if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
+//TODO!        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/before"), true, false);
 
     uchar selectedavg;
     writePulse(selWriteCalibFocusPulseIntensity->val, selWriteCalibFocusPulseDuration->val, util::toString(folder,"/laser.dat"), &selectedavg);
@@ -379,8 +379,8 @@ void pgCalib::WCFFindNearest(){
     redoB:  pgSGUI->doOneRound();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
     res=scanRes->get();
-    if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}
-    pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/after"));
+//TODO!        if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD)))>roiD*roiD*(4-M_PI)/4){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}
+//TODO!        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/after"));
 
     if(btnWriteCalib->isChecked()){
         measCounter++;
@@ -477,7 +477,7 @@ void pgCalib::WCFArray(){
 
     double focus=0;// TODO fix,removed focus: pgMGUI->FZdifference;
 
-    saveConfMain(util::toString(folder,"/main-settings.txt"), focus, *pgBeAn->extraFocusOffsetVal);
+//TODO!                saveConfMain(util::toString(folder,"/main-settings.txt"), focus, *pgBeAn->extraFocusOffsetVal);
 
     double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;         //in mm
     double yOfs=((WArray.rows-1)*selArraySpacing->val)/2000;
@@ -486,23 +486,23 @@ void pgCalib::WCFArray(){
     const pgScanGUI::scanRes* res;
     if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement
             //first we check if ROI is fine
-        if(go.pGCAM->iuScope->camCols/2-xSize/2+pgBeAn->writeBeamCenterOfsX<0                                 || go.pGCAM->iuScope->camRows/2-ySize/2+pgBeAn->writeBeamCenterOfsY<0 ||          //we do not use res here because it may not be initialized, if the user has made no scans prior to this
-           go.pGCAM->iuScope->camCols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+xSize>=go.pGCAM->iuScope->camCols || go.pGCAM->iuScope->camRows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+ySize>=go.pGCAM->iuScope->camRows){
-            QMessageBox::critical(this, "Error", "The calibration ROI does not fit the viewport, aborting calibration.\n");
-            btnWriteCalib->setChecked(false);
-            delete scanRes;
-            return;
-        }
+ //TODO!           if(go.pGCAM->iuScope->camCols/2-xSize/2+pgBeAn->writeBeamCenterOfsX<0                                 || go.pGCAM->iuScope->camRows/2-ySize/2+pgBeAn->writeBeamCenterOfsY<0 ||          //we do not use res here because it may not be initialized, if the user has made no scans prior to this
+ //TODO!              go.pGCAM->iuScope->camCols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+xSize>=go.pGCAM->iuScope->camCols || go.pGCAM->iuScope->camRows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+ySize>=go.pGCAM->iuScope->camRows){
+ //TODO!               QMessageBox::critical(this, "Error", "The calibration ROI does not fit the viewport, aborting calibration.\n");
+ //TODO!               btnWriteCalib->setChecked(false);
+ //TODO!               delete scanRes;
+ //TODO!               return;
+ //TODO!           }
 
-        pgSGUI->doNRounds((int)selArrayOneScanN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(go.pGCAM->iuScope->camCols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, go.pGCAM->iuScope->camRows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize));
+ //TODO!           pgSGUI->doNRounds((int)selArrayOneScanN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(go.pGCAM->iuScope->camCols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, go.pGCAM->iuScope->camRows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize));
 
         res=scanRes->get();
-        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/before"), true, false);
+//TODO!            pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/before"), true, false);
 
         for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
             cv::utils::fs::createDirectory(util::toString(folder,"/",i+j*WArray.cols));
-            pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(0), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(0),
-                                                  selArraySpacing->val*1000/pgMGUI->getNmPPx(0), selArraySpacing->val*1000/pgMGUI->getNmPPx(0)), util::toString(folder,"/",i+j*WArray.cols,"/before"), true, false);
+//TODO!                pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(0), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(0),
+//TODO!                                                      selArraySpacing->val*1000/pgMGUI->getNmPPx(0), selArraySpacing->val*1000/pgMGUI->getNmPPx(0)), util::toString(folder,"/",i+j*WArray.cols,"/before"), true, false);
         }
     }
 
@@ -530,7 +530,7 @@ void pgCalib::WCFArray(){
                 const pgScanGUI::scanRes* res=scanRes->get();
                 int roiD=selArraySpacing->val*1000/res->XYnmppx;
                 if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*discardMaskRoiThresh && tryA<maxRedoScanTries){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoA;}      //this is (square-circle)/4
-                pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/before"), true, false);
+ //TODO!                   pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/before"), true, false);
             }
 
             writePulse(WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1]*1000, util::toString(folder,"/",i+j*WArray.cols,"/laser.dat"), &selectedavg);
@@ -542,7 +542,7 @@ void pgCalib::WCFArray(){
                 const pgScanGUI::scanRes* res=scanRes->get();
                 int roiD=selArraySpacing->val*1000/res->XYnmppx;
                 if(cv::countNonZero(cv::Mat(res->mask, cv::Rect(res->depth.cols/2-roiD/2, res->depth.rows/2-roiD/2, roiD, roiD)))>roiD*roiD*discardMaskRoiThresh && tryB<maxRedoScanTries){std::cerr<<"To much non zero mask in ROI; redoing measurement.\n";goto redoB;}      //this is (square-circle)/4
-                pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/after"));
+  //TODO!                  pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-roiD/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-roiD/2+pgBeAn->writeBeamCenterOfsY, roiD, roiD), util::toString(folder,"/",i+j*WArray.cols,"/after"));
             }
 
             saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), focus+WArray.at<cv::Vec3d>(j,i)[2]/1000, selArraySpacing->val, WArray.at<cv::Vec3d>(j,i)[0], WArray.at<cv::Vec3d>(j,i)[1], selectedavg);
@@ -556,15 +556,15 @@ void pgCalib::WCFArray(){
 //TODO!    pgMGUI->moveZF(focus);
     while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
 
-    if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement
-        pgSGUI->doNRounds((int)selArrayOneScanN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize),0,savePic->val?1:0);
+//TODO!                    if(selArrayScanType->index==0){ //single(or multiple averaged) mesurement
+//TODO!            pgSGUI->doNRounds((int)selArrayOneScanN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize),0,savePic->val?1:0);
         res=scanRes->get();
-        pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/after"));
+//TODO!            pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), util::toString(folder,"/after"));
 
         for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++)   // separate them into individual scans
-            pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(0), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(0),
-                                                  selArraySpacing->val*1000/pgMGUI->getNmPPx(0), selArraySpacing->val*1000/pgMGUI->getNmPPx(0)), util::toString(folder,"/",i+j*WArray.cols,"/after"));
-    }
+//TODO!                pgScanGUI::saveScan(res, cv::Rect(res->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selArraySpacing->val*1000/pgMGUI->getNmPPx(0), res->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selArraySpacing->val*1000/pgMGUI->getNmPPx(0),
+//TODO!                                                      selArraySpacing->val*1000/pgMGUI->getNmPPx(0), selArraySpacing->val*1000/pgMGUI->getNmPPx(0)), util::toString(folder,"/",i+j*WArray.cols,"/after"));
+//TODO!                }
 
     btnWriteCalib->setChecked(false);
     delete scanRes;
@@ -628,7 +628,7 @@ redo:
     //std::cerr<<"Finally chose "<<validPtsW[chosen].it<<" "<<validPts[validPtsW[chosen].it]<<" with weight "<<validPtsW[chosen].weight<<"\n";
 
         //go to measurement point
-    pgMGUI->move((resPre->depth.cols/2+pgBeAn->writeBeamCenterOfsX-validPts[validPtsW[chosen].it].x)*resPre->XYnmppx/1000000,(resPre->depth.rows/2+pgBeAn->writeBeamCenterOfsY-validPts[validPtsW[chosen].it].y)*resPre->XYnmppx/1000000,0);
+//TODO!        pgMGUI->move((resPre->depth.cols/2+pgBeAn->writeBeamCenterOfsX-validPts[validPtsW[chosen].it].x)*resPre->XYnmppx/1000000,(resPre->depth.rows/2+pgBeAn->writeBeamCenterOfsY-validPts[validPtsW[chosen].it].y)*resPre->XYnmppx/1000000,0);
     validPts.clear(); validPtsW.clear();
 
         //prepare Int/Dur matrix
@@ -642,7 +642,7 @@ redo:
 
         //do pre writing measurements and save int/dur
     std::string folder=makeDateTimeFolder(saveFolderName);
-    pgSGUI->doNRounds((int)selAArrayAvgN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(resPre->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, resPre->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize));
+//TODO!        pgSGUI->doNRounds((int)selAArrayAvgN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(resPre->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, resPre->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize));
     resPre=scanResPre->get();
 
     double xOfs=((WArray.cols-1)*selAArraySpacing->val)/2000;         //in mm
@@ -667,14 +667,14 @@ redo:
     std::ofstream wfile(util::toString(folder,"/params.txt"));      //has the following format: <int> <dur(ms)>, is plain text, separated by spaces
     int k=0;
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
-        if(cv::countNonZero(cv::Mat(resPre->mask,cv::Rect(resPre->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPre->XYnmppx, resPre->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPre->XYnmppx,
-                                                          selAArraySpacing->val*1000/resPre->XYnmppx, selAArraySpacing->val*1000/resPre->XYnmppx))) ||
-           cv::countNonZero(cv::Mat(resPost->mask,cv::Rect(resPost->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPost->XYnmppx, resPost->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPost->XYnmppx,
-                                                           selAArraySpacing->val*1000/resPost->XYnmppx, selAArraySpacing->val*1000/resPost->XYnmppx)))) continue;       //there were bad pixels so we skip
-        pgScanGUI::saveScan(resPre, cv::Rect(resPre->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPre->XYnmppx, resPre->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPre->XYnmppx,
-                                              selAArraySpacing->val*1000/resPre->XYnmppx, selAArraySpacing->val*1000/resPre->XYnmppx), util::toString(folder,"/",k,"-pre"),false,false);
-        pgScanGUI::saveScan(resPost, cv::Rect(resPost->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPost->XYnmppx, resPost->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPost->XYnmppx,
-                                              selAArraySpacing->val*1000/resPost->XYnmppx, selAArraySpacing->val*1000/resPost->XYnmppx), util::toString(folder,"/",k,"-post"),false,false);
+//TODO!            if(cv::countNonZero(cv::Mat(resPre->mask,cv::Rect(resPre->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPre->XYnmppx, resPre->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPre->XYnmppx,
+//TODO!                                                              selAArraySpacing->val*1000/resPre->XYnmppx, selAArraySpacing->val*1000/resPre->XYnmppx))) ||
+//TODO!               cv::countNonZero(cv::Mat(resPost->mask,cv::Rect(resPost->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPost->XYnmppx, resPost->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPost->XYnmppx,
+//TODO!                                                               selAArraySpacing->val*1000/resPost->XYnmppx, selAArraySpacing->val*1000/resPost->XYnmppx)))) continue;       //there were bad pixels so we skip
+//TODO!            pgScanGUI::saveScan(resPre, cv::Rect(resPre->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPre->XYnmppx, resPre->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPre->XYnmppx,
+//TODO!                                                  selAArraySpacing->val*1000/resPre->XYnmppx, selAArraySpacing->val*1000/resPre->XYnmppx), util::toString(folder,"/",k,"-pre"),false,false);
+//TODO!            pgScanGUI::saveScan(resPost, cv::Rect(resPost->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPost->XYnmppx, resPost->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPost->XYnmppx,
+//TODO!                                                  selAArraySpacing->val*1000/resPost->XYnmppx, selAArraySpacing->val*1000/resPost->XYnmppx), util::toString(folder,"/",k,"-post"),false,false);
         wfile<<WArray.at<cv::Vec2d>(j,i)[0]<<" "<<WArray.at<cv::Vec2d>(j,i)[1]<<"\n";
         k++;
     }
@@ -866,6 +866,6 @@ void pgCalib::drawWriteArea(cv::Mat* img){
             break;
     }
     double clr[2]={0,255}; int thck[2]={3,1};
-    for(int i=0;i!=2;i++)
-    cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, img->rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
+//TODO!        for(int i=0;i!=2;i++)
+//TODO!        cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, img->rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
 }

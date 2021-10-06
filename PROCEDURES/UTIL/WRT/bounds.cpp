@@ -21,7 +21,6 @@ pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMG
     conf["saveRectEdgeY1"]=rectEdge[1][1];
     conf["saveRectEdgeY2"]=rectEdge[2][1];
     conf["saveRectEdgeY3"]=rectEdge[3][1];
-    conf["saveIndex"]=index;
 
     layout=new QVBoxLayout;
     layout->setMargin(0);
@@ -49,7 +48,7 @@ pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMG
     selector->addWidget(circPts, "Circle: 3 points-clearence");
     selector->addWidget(rectDim, "Rectangle: center+width+height");
     selector->addWidget(rectPts, "Rectangle: 4 points-clearence");
-    selector->setIndex(index);
+    conf["activeBoundary"]=selector;
 
     setCircCenter=new QPushButton("Set");
     connect(setCircCenter, SIGNAL(released()), this, SLOT(onSetCircCenter()));
@@ -93,36 +92,31 @@ pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMG
     connect(timer, SIGNAL(timeout()), this, SLOT(update()));
 }
 pgBoundsGUI::~pgBoundsGUI(){
-    index=selector->index;
 }
 
 void pgBoundsGUI::onSetCircCenter(){
-    if(!go.pXPS->connected) return;
-    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
-    circCenter[0]=tmp.pos[0]-pgBeAn->writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000;  //-correct for noncentered write beam
-    circCenter[1]=tmp.pos[1]-pgBeAn->writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000;
+    pgMGUI->getPos(&circCenter[0], &circCenter[1]);
+    circCenter[0]-=pgBeAn->writeBeamCenterOfsX;  //-correct for noncentered write beam
+    circCenter[1]-=pgBeAn->writeBeamCenterOfsY;
     setCircCenterTxt->setText(QString::fromStdString(util::toString("Corrds: ",circCenter[0],", ",circCenter[1])));
 }
 void pgBoundsGUI::onSetCircEdge(){
-    if(!go.pXPS->connected) return;
-    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
-    circEdge[cIter][0]=tmp.pos[0]-pgBeAn->writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000;
-    circEdge[cIter][1]=tmp.pos[1]-pgBeAn->writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000;
+    pgMGUI->getPos(&circEdge[cIter][0], &circEdge[cIter][1]);
+    circEdge[cIter][0]-=pgBeAn->writeBeamCenterOfsX;
+    circEdge[cIter][1]-=pgBeAn->writeBeamCenterOfsY;
     cIter++; if(cIter>2) cIter=0;
     setCircEdgeTxt->setText(QString::fromStdString(util::toString(getStatCirc())));
 }
 void pgBoundsGUI::onSetRectCenter(){
-    if(!go.pXPS->connected) return;
-    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
-    rectCenter[0]=tmp.pos[0]-pgBeAn->writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000;
-    rectCenter[1]=tmp.pos[1]-pgBeAn->writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000;
+    pgMGUI->getPos(&rectCenter[0], &rectCenter[1]);
+    rectCenter[0]-=pgBeAn->writeBeamCenterOfsX;
+    rectCenter[1]-=pgBeAn->writeBeamCenterOfsY;
     setRectCenterTxt->setText(QString::fromStdString(util::toString("Corrds: ",rectCenter[0],", ",rectCenter[1])));
 }
 void pgBoundsGUI::onSetRectEdge(){
-    if(!go.pXPS->connected) return;
-    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
-    rectEdge[rIter][0]=tmp.pos[0]-pgBeAn->writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000;
-    rectEdge[rIter][1]=tmp.pos[1]-pgBeAn->writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000;
+    pgMGUI->getPos(&rectEdge[rIter][0], &rectEdge[rIter][1]);
+    rectEdge[rIter][0]-=pgBeAn->writeBeamCenterOfsX;
+    rectEdge[rIter][1]-=pgBeAn->writeBeamCenterOfsY;
     rIter++; if(rIter>3) rIter=0;
     setRectEdgeTxt->setText(QString::fromStdString(util::toString(getStatRect())));
 }
@@ -138,9 +132,11 @@ std::string pgBoundsGUI::getStatRect(){
     return ret;
 }
 
-bool pgBoundsGUI::isWithinBounds(double x, double y){
-    x-=pgBeAn->writeBeamCenterOfsX*pgMGUI->getNmPPx()/1000000;  //correct for noncentered write beam
-    y-=pgBeAn->writeBeamCenterOfsY*pgMGUI->getNmPPx()/1000000;
+bool pgBoundsGUI::isWithinBounds(){
+    double x, y;
+    pgMGUI->getPos(&x, &y);
+    x-=pgBeAn->writeBeamCenterOfsX;  //correct for noncentered write beam
+    y-=pgBeAn->writeBeamCenterOfsY;
     switch(selector->index){
         case 1: return (sqrt(pow(x-circCenter[0],2)+pow(y-circCenter[1],2))<selCircRadius->val/1000);
         case 2: double xx,yy,rad;
@@ -203,19 +199,14 @@ void pgBoundsGUI::getLineDisDir(double a, double b, double x, double y, bool* di
 
 
 void pgBoundsGUI::update(){
-    if(!go.pXPS->connected) return;
-    if(!go.pXPS->isQueueEmpty())  return;
-    double cur[2];
-    XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
-    for(int i=0;i!=2;i++) cur[i]=tmp.pos[i];
-    if(isWithinBounds(cur[0],cur[1])) OOBLabel->setPixmap(QPixmap(":/dialog-ok.svg"));
+    if(!go.pRPTY->connected) return;
+    if(isWithinBounds()) OOBLabel->setPixmap(QPixmap(":/dialog-ok.svg"));
     else OOBLabel->setPixmap(QPixmap(":/gtk-no.svg"));
 }
 
 void pgBoundsGUI::drawBound(cv::Mat* img, double XYnmppx, bool isMask){
-    if(go.pXPS->connected) if(go.pXPS->isQueueEmpty()){
-        XPS::raxis tmp=go.pXPS->getPos(XPS::mgroup_XYZF);
-        for(int i=0;i!=2;i++) cur[i]=tmp.pos[i];
+    if(go.pRPTY->connected){
+        pgMGUI->getPos(&cur[0], &cur[1]);
     }
     int ofsX=img->cols/2;
     int ofsY=img->rows/2;

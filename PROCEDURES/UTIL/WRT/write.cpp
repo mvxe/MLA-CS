@@ -365,5 +365,5 @@ void pgWrite::drawWriteArea(cv::Mat* img){
 
     double clr[2]={0,255}; int thck[2]={3,1};
     for(int i=0;i!=2;i++)
-        cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, img->rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
+        cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), img->rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY), xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
 }
