@@ -149,10 +149,6 @@ void MainWindow::on_pushButton_released(){
 void MainWindow::on_doubleSpinBox_2_editingFinished(){
     go.pCNC->execCommand("G0 X",ui->doubleSpinBox_2->value()," F",ui->doubleSpinBox->value(),"\n");
 }
-void MainWindow::on_checkBox_2_toggled(bool checked){
-    if(checked) go.pGCAM->utilCam->set_trigger("Line1");
-    else go.pGCAM->utilCam->set_trigger();
-}
 
 void MainWindow::on_pushButton_3_released(){
     {std::lock_guard<std::mutex>lock(matlk);

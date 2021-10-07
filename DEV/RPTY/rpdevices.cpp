@@ -32,7 +32,8 @@ void RPTY::gpioDevice::pulseGPIO(cqueue& cq, double duration){
     cq.push_back(CQF::GPIO_MASK(gpioN,gpioP,gpioLED));
     uint8_t tmp=(inverted)?0x00:0xFF;
     cq.push_back(CQF::GPIO_VAL (tmp,tmp,tmp));
-    cq.push_back(CQF::WAIT(duration*125000000-1));
+    long int cycles=duration*125000000-1;
+    cq.push_back(CQF::WAIT(cycles>=0?cycles:0));
     cq.push_back(CQF::GPIO_VAL (~tmp,~tmp,~tmp));
 }
 void RPTY::gpioDevice::w4trig(cqueue& cq, bool state){

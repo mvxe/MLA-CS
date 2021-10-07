@@ -73,8 +73,6 @@ private Q_SLOTS:
 
     void on_doubleSpinBox_2_editingFinished();
 
-    void on_checkBox_2_toggled(bool checked);
-
     void on_pushButton_3_released();
 
     void on_pushButton_4_released();

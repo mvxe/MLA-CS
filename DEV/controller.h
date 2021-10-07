@@ -66,6 +66,9 @@ public:
     virtual void pulseGPIO(std::string ID, double duration)=0;
     // ID has to be a device of type dt_gpio and configured as output, sets GPIO high, and after duration it sets it to low (blocking)
 
+    virtual double getPulsePrecision()=0;
+    // get pulse precision in seconds, ie. this usually equals to the clock
+
             // #### convenience functions: ####
 
     // after referencing, it might be convenient to move stages into last postition using
@@ -79,7 +82,6 @@ public:
         for(auto& md : getMotionDevices())
             motion(md, getMotionSetting(md,CTRL::mst_restPosition), getMotionSetting(md,CTRL::mst_maximumVelocity), getMotionSetting(md,CTRL::mst_maximumAcceleration));
     }
-
 
 public:
     //functions that are accessed by the command object (CO)
@@ -123,7 +125,8 @@ protected:
     // ID has to be a device of type dt_timer, a hold condition of "$ID_DONE" will bock until the timer expires
 
     // clear command object data
-    virtual void CO_clear(CO* a)=0;
+    virtual void CO_clear(CO* a, bool keepMotionRemainders)=0;
+    // set keepMotionRemainders to true if you want to use the same object sequentially while correcting for motion precision rounding errors
 
 public:
 
@@ -145,8 +148,8 @@ public:
         {ctrl->CO_addHold(this, ID, condition);}
         void startTimer(std::string GPIOID, double duration)
         {ctrl->CO_startTimer(this, GPIOID, duration);}
-        void clear()
-        {ctrl->CO_clear(this);}
+        void clear(bool keepMotionRemainders=false)
+        {ctrl->CO_clear(this, keepMotionRemainders);}
         CTRL* const& _ctrl{ctrl};
     private:
         CTRL* ctrl;

@@ -412,10 +412,13 @@ void RPTY::_addHold(cqueue& cq, cqueue &cqhold){
     }
 }
 
-void RPTY::CO_clear(CO* a){
+void RPTY::CO_clear(CO* a, bool keepMotionRemainders){
     std::lock_guard<std::recursive_mutex>lock(mux);
     commandObjects[a].main.clear();
     commandObjects[a].timer.clear();
-    commandObjects[a].motionRemainders.clear();
+    if(!keepMotionRemainders) commandObjects[a].motionRemainders.clear();
+}
+double RPTY::getPulsePrecision(){
+    return 8e-9;
 }
 

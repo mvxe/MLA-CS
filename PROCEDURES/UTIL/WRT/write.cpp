@@ -24,11 +24,11 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     depthMaxval=new val_selector(10, "(if 8/16bit)Maxval=", 0.1, 500, 3, 0, {"nm"});
     conf["depthMaxval"]=depthMaxval;
     alayout->addWidget(new twid(importImg,depthMaxval));
-    ICcor=new val_selector(1, "Intensity correction", 0.1, 3, 3);
-    conf["ICcor"]=ICcor;
-    corICor=new QPushButton("Correct Correction");
-    connect(corICor, SIGNAL(released()), this, SLOT(onCorICor()));
-    alayout->addWidget(new twid(ICcor,corICor));
+    dTCcor=new val_selector(1, "Pulse duration correction", 0.1, 3, 3);
+    conf["dTCcor"]=dTCcor;
+    corDTCor=new QPushButton("Correct Correction");
+    connect(corDTCor, SIGNAL(released()), this, SLOT(onCorDTCor()));
+    alayout->addWidget(new twid(dTCcor,corDTCor));
     imgUmPPx=new val_selector(10, "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
     conf["imgUmPPx"]=imgUmPPx;
     alayout->addWidget(imgUmPPx);
@@ -59,34 +59,27 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgM
     }
     connect(selectWriteSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     onMenuChange(0);
-    QLabel* textl=new QLabel("Predicting height change with formula:\n\u0394H=A(I-I\u2080)exp(-B/(I-I\u2080)),\nwhere I and I\u2080 are intensities.");
+    QLabel* textl=new QLabel("Predicting height change with formula:\n\u0394H=A(\u0394T-\u0394T\u2080\u2080)exp[-B/(\u0394T-\u0394T\u2080\u2080)],\nwhere \u0394T and \u0394T\u2080\u2080 are pulse durations.");
     textl->setWordWrap(true);
     slayout->addWidget(textl);
-
-    max_vel=new val_selector(25, "Max velocity: ", 0.001, 25, 3, 0, {"mm/s"});
-    conf["max_vel"]=max_vel;
-    slayout->addWidget(max_vel);
-    max_acc=new val_selector(100, "Max acceleration: ", 0.001, 100, 3, 0, {"mm/s^2"});
-    conf["max_acc"]=max_acc;
-    slayout->addWidget(max_acc);
 }
 
-void pgWrite::onCorICor(){
+void pgWrite::onCorDTCor(){
     bool ok;
-    float preH=QInputDialog::getDouble(gui_activation, "Correct intensity correction", "Input actual written plateau height for given expected height.", 0.001, 0, 1000, 3, &ok);
+    float preH=QInputDialog::getDouble(gui_activation, "Correct intensity correction", "Input actual written height (nm) for given expected height.", 0.001, 0, 1000, 3, &ok);
     if(!ok) return;
-    uint cInt=getInt(depthMaxval->val);
-    ICcor->setValue(1);
-    uint gInt=getInt(preH);
-    ICcor->setValue((double)cInt/gInt);
+    float cDT=getDT(depthMaxval->val/1000000);
+    dTCcor->setValue(1);
+    float gDT=getDT(preH/1000000);
+    dTCcor->setValue(cDT/gDT);
 }
 void pgWrite::onCorPPR(){
     bool ok;
-    float preH=QInputDialog::getDouble(gui_activation, "Correct plateau-peak ratio", "Input actual written plateau height for given expected peak height.", 0.001, 0, 1000, 3, &ok);
+    float preH=QInputDialog::getDouble(gui_activation, "Correct plateau-peak ratio", "Input actual written plateau height (nm) for given expected peak height.", 0.001, 0, 1000, 3, &ok);
     if(!ok) return;
-    uint cInt=getInt(depthMaxval->val);
-    uint gInt=getInt(preH);
-    plataeuPeakRatio->setValue(plataeuPeakRatio->val*gInt/cInt);
+    float cDT=getDT(depthMaxval->val/1000000);
+    float gDT=getDT(preH/1000000);
+    plataeuPeakRatio->setValue(plataeuPeakRatio->val*gDT/cDT);
 }
 void pgWrite::onPulse(){
     if(!go.pRPTY->connected) return;
@@ -103,7 +96,6 @@ void pgWrite::onMenuChange(int index){
     focus=settingWdg[index]->focus;
     focusXcor=settingWdg[index]->focusXcor;
     focusYcor=settingWdg[index]->focusYcor;
-    duration=settingWdg[index]->duration;
     constA=settingWdg[index]->constA;
     constB=settingWdg[index]->constB;
     constX0=settingWdg[index]->constX0;
@@ -113,7 +105,7 @@ void pgWrite::onMenuChange(int index){
 writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     slayout=new QVBoxLayout;
     this->setLayout(slayout);
-    focus=new val_selector(0, "Focus (in relation to green center)", -1000, 1000, 3, 0, {"um"});
+    focus=new val_selector(0, "Focus offset", -1000, 1000, 3, 0, {"um"});
     parent->conf[parent->selectWriteSetting->getLabel(num)]["focus"]=focus;
     slayout->addWidget(focus);
     focusXcor=new val_selector(0, "Focus X cor.", -1000, 1000, 3, 0, {"um"});
@@ -122,17 +114,14 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     focusYcor=new val_selector(0, "Focus Y cor", -1000, 1000, 3, 0, {"um"});
     parent->conf[parent->selectWriteSetting->getLabel(num)]["focusYcor"]=focusYcor;
     slayout->addWidget(focusYcor);
-    duration=new val_selector(1, "Pulse duration", 0.001, 1000, 3, 0, {"ms"});
-    parent->conf[parent->selectWriteSetting->getLabel(num)]["duration"]=duration;
-    slayout->addWidget(duration);
-    constA=new val_selector(1, "Constant A", 0, 1, 6, 0, {"nm"});
+    constA=new val_selector(100, "Constant A", 0, 100000, 3, 0, {"nm/ms"});
     parent->conf[parent->selectWriteSetting->getLabel(num)]["constA"]=constA;
     slayout->addWidget(constA);
-    constB=new val_selector(100, "Constant B", 0, 10000, 3);
+    constB=new val_selector(0, "Constant B", 0, 10000, 3, 0, {"ms"});
     parent->conf[parent->selectWriteSetting->getLabel(num)]["constB"]=constB;
     slayout->addWidget(constB);
-    constX0=new val_selector(1000, "Constant I\u2080\u2080", 0, 8192, 3, 0, {"a.u."});
-    parent->conf[parent->selectWriteSetting->getLabel(num)]["constI00"]=constX0;
+    constX0=new val_selector(0, "Constant \u0394T\u2080\u2080", 0, 1000, 5, 0, {"ms"});
+    parent->conf[parent->selectWriteSetting->getLabel(num)]["constT00"]=constX0;
     slayout->addWidget(constX0);
     plataeuPeakRatio=new val_selector(1, "Plataeu-Peak height ratio", 1, 10, 3);
     parent->conf[parent->selectWriteSetting->getLabel(num)]["plataeuPeakRatio"]=plataeuPeakRatio;
@@ -172,32 +161,27 @@ void pgWrite::onLoadImg(){
     writeDM->setEnabled(true);
     writeFrame->setEnabled(true);
 }
-void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double override_imgUmPPx, double override_pointSpacing, double override_duration, double override_focus, double ov_fxcor, double ov_fycor){
-//TODO!
-    throw std::invalid_argument("onWriteDM still needs to be transitioned to CTRL");
-//TODO!
+void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double override_imgmmPPx, double override_pointSpacing, double override_focus, double ov_fxcor, double ov_fycor){
     cv::Mat tmpWrite, resizedWrite;
     cv::Mat* src;
-    double vdepthMaxval, vimgUmPPx, vpointSpacing, vduration, vfocus, vfocusXcor, vfocusYcor;
+    double vdepthMaxval, vimgmmPPx, vpointSpacing, vfocus, vfocusXcor, vfocusYcor;
     if(override!=nullptr){
         src=override;
         vdepthMaxval=override_depthMaxval;
-        vimgUmPPx=override_imgUmPPx;
+        vimgmmPPx=override_imgmmPPx;
         vpointSpacing=override_pointSpacing;
-        vduration= override_duration;
         vfocus=override_focus;
         vfocusXcor=ov_fxcor;
         vfocusYcor=ov_fycor;
     }
     else{
         src=&WRImage;
-        vdepthMaxval=depthMaxval->val;
-        vimgUmPPx=imgUmPPx->val;
-        vpointSpacing=pointSpacing->val;
-        vduration=duration->val;
-        vfocus=focus->val;
-        vfocusXcor=focusXcor->val;
-        vfocusYcor=focusYcor->val;
+        vdepthMaxval=depthMaxval->val/1000000;
+        vimgmmPPx=imgUmPPx->val/1000;
+        vpointSpacing=pointSpacing->val/1000;
+        vfocus=focus->val/1000;
+        vfocusXcor=focusXcor->val/1000;
+        vfocusYcor=focusYcor->val/1000;
     }
 
     if(src->type()==CV_8U){
@@ -207,75 +191,56 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
     }else if(src->type()==CV_32F) src->copyTo(tmpWrite);
     else {QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n"); writeDM->setEnabled(false); return;}
 
-    double ratio=vimgUmPPx/vpointSpacing;
-    if(vimgUmPPx<vpointSpacing) cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_AREA);   //shrink
-    else cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_CUBIC);                                 //enlarge
+    double ratio=vimgmmPPx/vpointSpacing;
+    if(vimgmmPPx<vpointSpacing) cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_AREA);   //shrink
+    else cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_CUBIC);                         //enlarge
 
-    //now convert depths to a matrix of intensities;
-    cv::Mat ints(resizedWrite.rows,resizedWrite.cols,CV_16U);
-
-    for(int j=0;j!=ints.rows;j++) for(int i=0;i!=ints.cols;i++){
-        ints.at<uint16_t>(j,i)=getInt(resizedWrite.at<float>(j,i));
-    }
+    // at this point resizedWrite contains the desired depth at each point
 
     if(!go.pRPTY->connected) return;
-    go.pXPS->setGPIO(XPS::iuScopeLED,true);
-    go.pXPS->setGPIO(XPS::writingLaser,false);
+    pgMGUI->chooseObj(false);    // switch to writing
+    pulse_precision=go.pRPTY->getPulsePrecision();  // pulse duration unit
 
-    exec_ret ret;
-    PVTobj* po=go.pXPS->createNewPVTobj(XPS::mgroup_XYZF, "pgWrite.txt");
-    std::vector<uint32_t> commands;
-//TODO!    pgMGUI->corPvt(po,0.1, vfocusXcor/1000, 0, vfocusYcor/1000, 0, 0, 0,vfocus/1000,0);
-    commands.push_back(CQF::GPIO_MASK(0x40,0,0));
-    commands.push_back(CQF::GPIO_DIR (0x40,0,0));
-    commands.push_back(CQF::W4TRIG_GPIO(CQF::HIGH,false,0x40,0x00));
-    po->addAction(XPS::writingLaser,true);
+    double offsX,offsY;
+    offsX=(resizedWrite.cols-1)*vpointSpacing;
+    offsY=(resizedWrite.rows-1)*vpointSpacing;
+    CTRL::CO CO(go.pRPTY);
+        // move to target and correct for focus (this can happen simultaneously with objective switch)
+    pgMGUI->corCOMove(CO,vfocusXcor,vfocusYcor,vfocus);
+    pgMGUI->corCOMove(CO,-offsX/2,-offsY/2,0);
+        // wait till motion completes
+    CO.addHold("X",CTRL::he_motion_ontarget);
+    CO.addHold("Y",CTRL::he_motion_ontarget);
+    CO.addHold("Z",CTRL::he_motion_ontarget);
+    CO.execute();
+    CO.clear(true);
 
-    cv::Point2d lastpos{0,0};
-    cv::Point2d nextpos;
-    double vel;
-    double dist;
-    double time;    // in s
-    double pulseWaitTime=std::ceil(vduration);      //we round up pulse time to n ms, to make sure we dont have any XPS related timing rounding error
-    for(int j=0;j!=ints.rows;j++) for(int i=0;i!=ints.cols;i++){
-        int ii=(j%2)?i:(ints.cols-i-1);
-        if(ints.at<uint16_t>(j,ii)==0) continue;
-        nextpos={-round((ii-ints.cols/2.)*vpointSpacing*100)/100,-round((j-ints.rows/2.)*vpointSpacing*100)/100};          //in um, rounding to 0.01um precision (should be good enough for the stages) to avoid rounding error (with relative positions later on, thats why here we round absolute positions)
-        dist=cv::norm(lastpos-nextpos)/1000;//in mm
-        vel=sqrt(max_acc->val*dist);        // v=sqrt(2as) for half the distance -> max speed at constant acceleration
-        if(vel>max_vel->val){               // we must split the motion into three: acceleration -> constant -> deacceleration
-            time=2*max_vel->val/max_acc->val + (dist-pow(max_vel->val,2)/max_acc->val)/max_vel->val;       // accel+deaccel+(dist-2*(v^2/2a))
-        }else{                              // we must split the motion into two: acceleration -> deacceleration
-            time=2*sqrt(dist/max_acc->val); // t=sqrt(2s/a), twice the time (acc and deacc) and half the distance
+    unsigned nops;
+    double pulse;
+    bool xdir=0;
+    for(int j=0;j!=resizedWrite.rows;j++){   // write row by row (so that processing for the next row is done while writing the previous one, and the operation can be terminated more easily)
+        for(int i=0;i!=resizedWrite.cols;i++){
+            if(i!=0) pgMGUI->corCOMove(CO,(xdir?-1:1)*vpointSpacing,0,0);
+            CO.addHold("X",CTRL::he_motion_ontarget);
+            CO.addHold("Y",CTRL::he_motion_ontarget);
+            CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
+            pulse=getDT(resizedWrite.at<float>(j,xdir?(resizedWrite.cols-i-1):i));
+            if(pulse>1) pulse=1;
+            CO.pulseGPIO("wrLaser",pulse);
         }
-        time=(ceil(time/servoCycle)*servoCycle);    // we round time up to XPS servo cycle to prevent rounding (relative) errors later
-        if(time>0){
-//TODO!            pgMGUI->corPvt(po,time, (nextpos.x-lastpos.x)/1000, 0, (nextpos.y-lastpos.y)/1000, 0, 0, 0,0,0);
-            commands.push_back(CQF::WAIT(time/8e-9));
-        }
-//TODO!        pgMGUI->corPvt(po,pulseWaitTime/1000, 0, 0, 0, 0, 0, 0,0,0);
-        commands.push_back(CQF::TRIG_OTHER(1<<tab_monitor::RPTY_A2F_queue));    //for debugging purposes
-        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, ints.at<uint16_t>(j,ii), 0));
-        commands.push_back(CQF::WAIT((vduration)/8e-6 - 3));
-        commands.push_back(CQF::SG_SAMPLE(CQF::O0td, 0, 0));
-        if(pulseWaitTime!=vduration) commands.push_back(CQF::WAIT((pulseWaitTime-vduration)/8e-6));
-        lastpos=nextpos;
+        if (j!=resizedWrite.rows-1) pgMGUI->corCOMove(CO,0,vpointSpacing,0);
+        CO.execute();
+        CO.clear(true);
+        xdir^=1;
+
+        // wait till row half complete
+        //QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     }
-//TODO!    pgMGUI->corPvt(po,0.1, -lastpos.x/1000-vfocusXcor/1000, 0, -lastpos.y/1000-vfocusYcor/1000, 0, 0, 0,-vfocus/1000,0);
-    po->addAction(XPS::writingLaser,false);
 
-    if(go.pXPS->verifyPVTobj(po).retval!=0) {std::cout<<"retval was"<<go.pXPS->verifyPVTobj(po).retstr<<"\n";go.pXPS->destroyPVTobj(po);return;}
-    printf("Used %d of %d commands\n",commands.size(), go.pRPTY->getNum(RPTY::A2F_RSMax,0));
-    //if(go.pRPTY->getNum(RPTY::A2F_RSMax,0)<=commands.size()) {std::cerr<<"too many commands\n";go.pXPS->destroyPVTobj(po);return;}
-    go.pRPTY->A2F_write(0,commands.data(),commands.size());
-    commands.clear();
-
-    go.pXPS->execPVTobj(po, &ret);
-    while(!ret.check_if_done())QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
-
-    //TODO cap point number and reprogram for large number of points to be written
-    //TODO add calculation that takes into account measured depth as pre
-    go.pXPS->destroyPVTobj(po);
+    pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
+    pgMGUI->corCOMove(CO,(xdir?-1:1)*offsX/2,-offsY/2,0);
+    CO.execute();
+    CO.clear(true);
 }
 void pgWrite::onWriteFrame(){
     std::cerr<<"writing frame\n";
@@ -295,39 +260,39 @@ void pgWrite::onWriteFrame(){
             tagImage.at<uchar>(ySize-1-j,i*(xSize-1))=255;
         }
     }
-    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val, settingWdg[4]->pointSpacing->val,settingWdg[4]->duration->val,settingWdg[4]->focus->val,settingWdg[4]->focusXcor->val,settingWdg[4]->focusYcor->val);
+    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
 }
 void pgWrite::onWriteTag(){
     std::cerr<<"writing tag\n";
     cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
     tagImage=cv::Mat(size.height+4,size.width+4,CV_8U,cv::Scalar(0));
     cv::putText(tagImage,tagText->text().toStdString(), {0,size.height+1}, OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, cv::Scalar(255), settingWdg[4]->fontThickness->val, cv::LINE_AA);
-    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val, settingWdg[4]->pointSpacing->val,settingWdg[4]->duration->val,settingWdg[4]->focus->val,settingWdg[4]->focusXcor->val,settingWdg[4]->focusYcor->val);
+    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
 }
 
-uint pgWrite::getInt(float post, float pre){
-    const float precision=0.01;
-    float minI=constX0->val*ICcor->val/plataeuPeakRatio->val;
-    float retI=8192;
+float pgWrite::getDT(float H, float H0){
+    float min=(constX0->val/1000)*dTCcor->val/plataeuPeakRatio->val;
+    float ret=1;            // we limit pulse duration to 1 second
     float mid;
-    if(0>=post/*-pre*/) return 0;  //its already higher, dont need to write a pulse
-    while(retI-minI>precision){
-        mid=(minI+retI)/2;
-        if(calcH(mid,pre)>post-pre) retI=mid;
-        else minI=mid;
+    if(H<=H0) return 0;     //its already higher, dont need to write a pulse
+    while(ret-min>pulse_precision){
+        mid=(min+ret)/2;
+        if(calcH(mid,H0)>H-H0) ret=mid;
+        else min=mid;
     }
-    return roundf(retI);
+    return ret;
 }
-float pgWrite::calcH(float Int, float pre){
-    float DInt=Int-constX0->val*ICcor->val/plataeuPeakRatio->val;
-    return constA->val/ICcor->val*DInt*expf(-constB->val*ICcor->val/DInt);
+float pgWrite::calcH(float DT, float H0){   // we dont use H0 in this model though
+    float DDT=DT-(constX0->val/1000)*dTCcor->val/plataeuPeakRatio->val;
+    return (constA->val/1000)/dTCcor->val*DDT*expf(-(constB->val/1000)*dTCcor->val/DDT);
 }
-float pgWrite::gaussian(float x, float y, float a, float wx, float wy, float an){
-    float A=powf(cosf(an),2)/2/powf(wx,2)+powf(sinf(an),2)/2/powf(wy,2);
-    float B=sinf(2*an)/2/powf(wx,2)-sinf(2*an)/2/powf(wy,2);
-    float C=powf(sinf(an),2)/2/powf(wx,2)+powf(cosf(an),2)/2/powf(wy,2);
-    return a*expf(-A*powf(x,2)-B*(x)*(y)-C*powf(y,2));
-}
+
+//float pgWrite::gaussian(float x, float y, float a, float wx, float wy, float an){
+//    float A=powf(cosf(an),2)/2/powf(wx,2)+powf(sinf(an),2)/2/powf(wy,2);
+//    float B=sinf(2*an)/2/powf(wx,2)-sinf(2*an)/2/powf(wy,2);
+//    float C=powf(sinf(an),2)/2/powf(wx,2)+powf(cosf(an),2)/2/powf(wy,2);
+//    return a*expf(-A*powf(x,2)-B*(x)*(y)-C*powf(y,2));
+//}
 
 
 void pgWrite::onChangeDrawWriteAreaOn(bool status){

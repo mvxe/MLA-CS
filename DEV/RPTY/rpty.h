@@ -58,6 +58,7 @@ public:
     int getError(std::string ID);
     void setGPIO(std::string ID, bool state);
     void pulseGPIO(std::string ID, double duration);
+    double getPulsePrecision();
 
 private:
     void CO_init(CO* a);
@@ -69,7 +70,7 @@ private:
     void CO_pulseGPIO(CO* a, std::string ID, double duration);
     void CO_addHold(CO* a, std::string ID, _holdCondition condition);
     void CO_startTimer(CO* a, std::string ID, double duration);
-    void CO_clear(CO* a);
+    void CO_clear(CO* a, bool keepMotionRemainders);
 
     struct cqus{
         cqueue main;
