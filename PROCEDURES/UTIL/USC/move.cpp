@@ -115,6 +115,7 @@ void pgMoveGUI::init_gui_settings(){
         calibMirauL->addWidget(calibNmPPx);
         calibAngCamToXMot=new val_selector(0, "Camera/Xmot angle: ", -M_PI, M_PI, 6, 0, {"rad"});
         conf["calibAngCamToXMot"]=calibAngCamToXMot;
+        connect(calibAngCamToXMot, SIGNAL(changed()), this, SLOT(reCalcConstM()));
         calibMirauL->addWidget(calibAngCamToXMot);
         calibMirauL->addWidget(new QLabel("NOTE: these settings are used for most moves, including procedures."));
 
@@ -122,13 +123,16 @@ void pgMoveGUI::init_gui_settings(){
         conf["calibNmPPx_writing"]=calibNmPPx_writing;
         calibWritingL->addWidget(calibNmPPx_writing);
         calibAngCamToXMot_writing=new val_selector(0, "Camera/Xmot angle: ", -M_PI, M_PI, 6, 0, {"rad"});
+        connect(calibAngCamToXMot_writing, SIGNAL(changed()), this, SLOT(reCalcConstW()));
         conf["calibAngCamToXMot_writing"]=calibAngCamToXMot_writing;
         calibWritingL->addWidget(calibAngCamToXMot_writing);
         calibWritingL->addWidget(new QLabel("NOTE: these settings are used only for Writing objective GUI click moves."));
 
-    calibAngYMotToXMot=new val_selector(0, "Xmot/Ymot angle ofs: ", -M_PI, M_PI, 6, 0, {"rad"});
+    calibAngYMotToXMot=new val_selector(M_PI/2, "Xmot/Ymot angle ofs: ", -M_PI, M_PI, 6, 0, {"rad"});
     calibAngYMotToXMot->setToolTip("This setting is calibrated with Mirau objective, and should be independent of objective.");
     conf["calibAngYMotToXMot"]=calibAngYMotToXMot;
+    connect(calibAngYMotToXMot, SIGNAL(changed()), this, SLOT(reCalcConstM()));
+    connect(calibAngYMotToXMot, SIGNAL(changed()), this, SLOT(reCalcConstW()));
     slayout->addWidget(calibAngYMotToXMot);
     disableSkewCorrection=new checkbox_gs(true,"Disable skew correction.");
     conf["disableSkewCorrection"]=disableSkewCorrection;
@@ -212,7 +216,7 @@ void pgMoveGUI::onRmDial(){
         moveDials.pop_back();
     }
 }
-void pgMoveGUI::onDialMove(double x,double y){move(-x/1000, -y/1000, 0);}
+void pgMoveGUI::onDialMove(double x,double y){move(x/1000, y/1000, 0);}
 
 
 
@@ -248,7 +252,7 @@ double residual(const std::pair<input_vector, double>& data, const parameter_vec
     double DYpx=data.first(1);  double phi0=params(1);
     double DXmm=data.first(2);  double phi1=params(2);
     double DYmm=data.first(3);
-    double model=abs(DXmm*cos(phi0)+DYmm*sin(phi0+phi1)-mmPPx*DXpx)+abs(DXmm*sin(phi0)+DYmm*cos(phi0+phi1)-mmPPx*DYpx);
+    double model=(abs(DXpx*cos(phi0)+DYpx*sin(phi0)-DXmm/abs(mmPPx))+abs(DXpx*cos(phi1+phi0)+DYpx*sin(phi1)*cos(phi0)-DYmm/abs(mmPPx)))*abs(mmPPx);
     return model*model - data.second;
 }
 
@@ -266,13 +270,11 @@ void pgMoveGUI::onCalculateCalib(){
     }
     ptFeedback->setText("Have 0 points.");
     parameter_vector res;
-    res=1;
+    res={0.001,0.001,M_PI};
     dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-12).be_verbose(), residual, derivative(residual), data, res);
     std::cout << "inferred parameters: "<< dlib::trans(res) << "\n";
-    if(res(0)<0){
+    if(res(0)<0)
         res(0)*=-1;
-        res(1)*=-1;
-    }
     while(res(1)<=-M_PI) res(1)+=2*M_PI;
     while(res(1) > M_PI) res(1)-=2*M_PI;
     while(res(2)<=-M_PI) res(2)+=2*M_PI;
@@ -297,18 +299,31 @@ double pgMoveGUI::getAngCamToXMot(int index){
 }
 double pgMoveGUI::getYMotToXMot(){return calibAngYMotToXMot->val;}
 
-
+void pgMoveGUI::reCalcConst(bool isMirau){
+    a[!isMirau]=cos(getAngCamToXMot(!isMirau));
+    b[!isMirau]=sin(getAngCamToXMot(!isMirau));
+    c[!isMirau]=cos(getAngCamToXMot(!isMirau)+getYMotToXMot());
+    d[!isMirau]=sin(getYMotToXMot())*cos(getAngCamToXMot(!isMirau));
+    A[!isMirau]=d[!isMirau]/(a[!isMirau]*d[!isMirau]-b[!isMirau]*c[!isMirau]);
+    B[!isMirau]=b[!isMirau]/(b[!isMirau]*c[!isMirau]-a[!isMirau]*d[!isMirau]);
+    C[!isMirau]=(1.-a[!isMirau]*A[!isMirau])/b[!isMirau];
+    D[!isMirau]=-a[!isMirau]*B[!isMirau]/b[!isMirau];
+}
 double pgMoveGUI::Xraw(double Xcor, double Ycor, int index){
-    return Xcor*cos(getAngCamToXMot(index))+Ycor*sin(getAngCamToXMot(index)+getYMotToXMot());
+    if(index!=1) index=0;   // default to mirau (for index=-1)
+    return a[index]*Xcor+b[index]*Ycor;
 }
 double pgMoveGUI::Yraw(double Xcor, double Ycor, int index){
-    return Xcor*sin(getAngCamToXMot(index))+Ycor*cos(getAngCamToXMot(index)+getYMotToXMot());
+    if(index!=1) index=0;
+    return c[index]*Xcor+d[index]*Ycor;
 }
 double pgMoveGUI::Xcor(double Xraw, double Yraw, int index){
-    return (Xraw-Ycor(Xraw, Yraw, index)*sin(getAngCamToXMot(index)+getYMotToXMot()))/cos(getAngCamToXMot(index));
+    if(index!=1) index=0;
+    return A[index]*Xraw+B[index]*Yraw;
 }
 double pgMoveGUI::Ycor(double Xraw, double Yraw, int index){
-    return (Yraw-Xraw*tan(getAngCamToXMot(index)))/(cos(getAngCamToXMot(index)+getYMotToXMot())-sin(getAngCamToXMot(index)+getYMotToXMot())*tan(getAngCamToXMot(index)));
+    if(index!=1) index=0;
+    return C[index]*Xraw+D[index]*Yraw;
 }
 double pgMoveGUI::mm2px(double coord, int index, double nmppx){
     if(nmppx==0) nmppx=getNmPPx(index);

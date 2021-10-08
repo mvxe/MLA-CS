@@ -110,6 +110,8 @@ private:
     val_selector* calibNmPPx_writing;
     val_selector* calibAngCamToXMot_writing;
 
+    double a[2],b[2],c[2],d[2],A[2],B[2],C[2],D[2];
+
     val_selector* calibAngYMotToXMot;
     struct dpoint{
         double DXpx, DYpx;
@@ -132,6 +134,9 @@ private Q_SLOTS:
     void _chooseObj(int index);
     void _onMarkObjDisY(bool isStart);
     void onSettingsObjectiveChange(int index);
+    void reCalcConst(bool isMirau);
+    void reCalcConstM(){reCalcConst(true);};
+    void reCalcConstW(){reCalcConst(false);};
 
 Q_SIGNALS:
     void sigChooseObj(bool useMirau);

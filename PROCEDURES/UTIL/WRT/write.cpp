@@ -224,7 +224,7 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
             CO.addHold("X",CTRL::he_motion_ontarget);
             CO.addHold("Y",CTRL::he_motion_ontarget);
             CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
-            pulse=getDT(resizedWrite.at<float>(j,xdir?(resizedWrite.cols-i-1):i));
+            pulse=getDT(resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i));          // Y inverted because image formats have flipped Y
             if(pulse>1) pulse=1;
             CO.pulseGPIO("wrLaser",pulse);
         }

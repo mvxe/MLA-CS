@@ -249,7 +249,7 @@ void tab_camera::work_fun(){
                     double min,max; cv::minMaxIdx(display,&min,&max);
                     pgHistGUI->updateImg(res, nullptr, nullptr, min, max, &display);
                     cv::Mat tempMask(display.rows, display.cols, CV_8U, cv::Scalar(0));
-                    cMap->colormappize(&display, &display, &tempMask, min, max, res->XYnmppx, false, false, "Reflectivity");
+                    cMap->colormappize(&display, &display, &tempMask, min, max, res->XYnmppx, false, false, "Reflectivity", true);
                 }
                 dispDepthMatRows=res->depth.rows;
                 dispDepthMatCols=res->depth.cols;
@@ -412,10 +412,10 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
         if(xcoord<0 || xcoord>=pxW || ycoord<0 || ycoord>=pxH) return; //ignore events outside pixmap;
         if(event->button()==Qt::LeftButton){
             double DX, DY;
-            DX=parent->pgMGUI->px2mm(pxW/2.-xcoord)+parent->pgBeAn->writeBeamCenterOfsX;
+            DX=parent->pgMGUI->px2mm(xcoord-pxW/2.)+parent->pgBeAn->writeBeamCenterOfsX;
             DY=parent->pgMGUI->px2mm(pxH/2.-ycoord)+parent->pgBeAn->writeBeamCenterOfsY;
             parent->pgMGUI->move(DX,DY,0);
-            if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(pxW/2-xcoord, pxH/2-ycoord);
+            if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(xcoord-pxW/2, pxH/2-ycoord);
         }else if(event->button()==Qt::RightButton){
             parent->clickMenu->popup(QCursor::pos());
         }
@@ -498,7 +498,7 @@ void tab_camera::onSaveDepthMap(void){
             else                    temp0=res->refl;
             cv::minMaxIdx(temp0,&min,&max);
             cv::Mat tempMask(temp0.rows, temp0.cols, CV_8U, cv::Scalar(0));
-            cMap->colormappize(&temp0, &display, &tempMask, min, max, res->XYnmppx, false, !*cMap->exportSet4WholeVal, "Reflectivity");
+            cMap->colormappize(&temp0, &display, &tempMask, min, max, res->XYnmppx, false, !*cMap->exportSet4WholeVal, "Reflectivity", true);
         }
 
         cv::cvtColor(display, display, cv::COLOR_RGBA2BGRA);

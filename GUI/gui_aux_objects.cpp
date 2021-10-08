@@ -354,7 +354,7 @@ moveDial::moveDial(){
     dial->setRange(0,359);
     dial->setWrapping(true);
     dial->setValue(270);
-    connect(dial, SIGNAL(sliderMoved(int)), this, SLOT(onDialChanged(int)));
+    connect(dial, SIGNAL(valueChanged(int)), this, SLOT(onDialChanged(int)));
     dis=new QDoubleSpinBox;
     dis->setRange(0,10000);
     dis->setDecimals(3);
@@ -379,7 +379,7 @@ moveDial::moveDial(){
     connect(move, SIGNAL(released()), this, SLOT(onMove()));
 }
 void moveDial::onMove(){
-    Q_EMIT doMove(dis->value()*cos(ang->value()/180*M_PI), dis->value()*sin(ang->value()/180*M_PI));
+    Q_EMIT doMove(dis->value()*cos(ang->value()/180*M_PI), -dis->value()*sin(ang->value()/180*M_PI));
 }
 void moveDial::onDialChanged(int val){
     int res=val-270;

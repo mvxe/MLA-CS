@@ -47,6 +47,7 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, checkbox_gs* sho
     layout->addWidget(xysbar_txtoffset);
     xysbar_corner=new smp_selector("Select XY Scalebar reference position: ", 0, {"center","top","bottom","left","right","top-left","top-right","bottom-left","bottom-right"});
     conf["xysbar_corner"]=xysbar_corner;
+    connect(xysbar_corner, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(xysbar_corner);
     xysbar_xoffset=new val_selector(0, "Horizontal Offset for XY Scalebar: ", -10000, 10000, 0, 0, {"px"});
     conf["xysbar_xoffset"]=xysbar_xoffset;
@@ -108,7 +109,7 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, checkbox_gs* sho
     layout->addWidget(txt);
 }
 
-void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange, bool isForExport, std::string label){
+void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange, bool isForExport, std::string label, bool isReflectivity){
     int vsize=src->rows+2;
     int hsize=src->cols+2;
     double range=max-min;
@@ -149,7 +150,7 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
         cblabel=cv::Mat(size.height*2,size.width+2,CV_8UC4,{0,0,0,0});
         cv::putText(cblabel,label, {0,4*size.height/3}, OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, {0,0,0,255}, fontThickness->val, cv::LINE_AA);
         cv::rotate(cblabel,cblabel,cv::ROTATE_90_COUNTERCLOCKWISE);
-        sah=showAbsHeight->val;
+        sah=showAbsHeight->val|isReflectivity;
         if(sah) minRnd=ceil(min/tick)*tick;
         nticks=0;
         for(int i=0;;i++){
