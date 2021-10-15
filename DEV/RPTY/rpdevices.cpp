@@ -33,6 +33,10 @@ void RPTY::gpioDevice::pulseGPIO(cqueue& cq, double duration){
     uint8_t tmp=(inverted)?0x00:0xFF;
     cq.push_back(CQF::GPIO_VAL (tmp,tmp,tmp));
     long int cycles=duration*125000000-1;
+    while(cycles>125000000){
+        cq.push_back(CQF::WAIT(125000000));
+        cycles-=125000000;
+    }
     cq.push_back(CQF::WAIT(cycles>=0?cycles:0));
     cq.push_back(CQF::GPIO_VAL (~tmp,~tmp,~tmp));
 }
@@ -50,7 +54,12 @@ void RPTY::timerDevice::initTimer(unsigned& free_flag){
 void RPTY::timerDevice::addTimer(cqueue& cq, cqueue& cq_timer, double duration){
     cq_timer.push_back(CQF::FLAGS_MASK(timerFlag));
     cq_timer.push_back(CQF::W4TRIG_FLAGS_SHARED(true,false,timerFlag,false));
-    cq_timer.push_back(CQF::WAIT(duration*125000000-4));
+    long int cycles=duration*125000000-4;
+    while(cycles>125000000){
+        cq.push_back(CQF::WAIT(125000000));
+        cycles-=125000000;
+    }
+    cq_timer.push_back(CQF::WAIT(cycles>=0?cycles:0));
     cq_timer.push_back(CQF::FLAGS_SHARED_SET(0x0000));
     cq.push_back(CQF::FLAGS_MASK(timerFlag));
     cq.push_back(CQF::FLAGS_SHARED_SET(timerFlag));
