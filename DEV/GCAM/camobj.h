@@ -79,9 +79,12 @@ private:
     double actualAckFPS;
     std::string format;
 
-    bool ackstatus{false};                                     //acquisition status
+    bool ackstatus{false};                  //acquisition status
 
     std::mutex mtx;
+    bool trigMode{false};
+    std::chrono::time_point<std::chrono::system_clock> lastFrameTime;   // for timeout detection
+    std::mutex lastFrameTimeMux;
 };
 
 #endif // CAMOBJ_H

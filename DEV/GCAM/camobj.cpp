@@ -34,6 +34,9 @@ void camobj::new_frame_ready (ArvStream *stream, camobj* camm)
         if (imgfor::ocv_type_get(arv_buffer_get_image_pixel_format(buffer)).ccc!=(cv::ColorConversionCodes)-1) {std::cerr<<"converted color\n"; cvtColor(*freeMat, *freeMat, imgfor::ocv_type_get(arv_buffer_get_image_pixel_format(buffer)).ccc);}   //color conversion if img is not monochrome or bgr
         camm->FQsPCcam.enqueueMat(freeMat, arv_buffer_get_timestamp(buffer));
         camm->pushFrameIntoStream();
+
+        {std::lock_guard<std::mutex>lock(camm->lastFrameTimeMux);   // for timeout
+        camm->lastFrameTime=std::chrono::system_clock::now();}
     }
     else std::cerr<<"WARNING: this shouldnt happen, see camobj::new_frame_ready\n";
 }
@@ -118,7 +121,22 @@ void camobj::work(){
             if(!ackstatus){
                 std::cerr<<"FQ interest, starting camera ack.\n";
                 arv_camera_start_acquisition(cam, NULL);
+                {std::lock_guard<std::mutex>lock(lastFrameTimeMux);     // for timeout
+                lastFrameTime=std::chrono::system_clock::now();}
                 ackstatus=true;
+            }
+            if(ackstatus && !trigMode){     // check for camera timeout
+                std::chrono::time_point<std::chrono::system_clock> now=std::chrono::system_clock::now();
+                unsigned delayms;
+                {std::lock_guard<std::mutex>lock(lastFrameTimeMux);
+                delayms=std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFrameTime).count();}
+                if(delayms>100*(1000/ackFPS)){   // if more than 100 frames are lost reset camera
+                    arv_camera_execute_command(cam,"DeviceReset",NULL);
+                    std::cerr<<"Camera timeout! Camera has been reset.\n";
+                }
+            }else if(trigMode){
+                {std::lock_guard<std::mutex>lock(lastFrameTimeMux);
+                lastFrameTime=std::chrono::system_clock::now();}
             }
         }else{
             if(ackstatus){
@@ -219,10 +237,12 @@ void camobj::set_trigger(std::string trig){
     std::lock_guard<std::mutex>lock(mtx);
     if(trig=="none") {
         arv_camera_set_string(cam, "TriggerMode", "Off", NULL);
+        trigMode=false;
     }
     else {
         arv_camera_set_trigger(cam, trig.c_str(), NULL);    //Typical values for source are "Line1" or "Line2". See the camera documentation for the allowed values. Activation is set to rising edge. It can be changed by accessing the underlying device object.
         arv_camera_set_string(cam, "TriggerMode", "On", NULL);
+        trigMode=true;
     }
 }
 
