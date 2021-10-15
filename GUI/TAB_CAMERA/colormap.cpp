@@ -119,8 +119,15 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
     bool done=false; int ignore;
 
     int nticks=-1;
-    if(isForExport && exportANTicks->val!=0) div=range/exportANTicks->val;
-    else if(displayANTicks->val!=0) div=range/displayANTicks->val;
+    int maxNticks=0;
+    if(isForExport && exportANTicks->val!=0){
+        div=range/exportANTicks->val;
+        maxNticks=5*exportANTicks->val;
+    }
+    else if(displayANTicks->val!=0){
+        div=range/displayANTicks->val;
+        maxNticks=5*displayANTicks->val;
+    }
     else nticks=0;
 
     int tmp = cv::getTextSize("0", OCV_FF::ids[fontFace->index], isForExport?fontSizeExport->val:fontSize->val, fontThickness->val, &ignore).height+2;
@@ -153,7 +160,7 @@ void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mas
         sah=showAbsHeight->val|isReflectivity;
         if(sah) minRnd=ceil(min/tick)*tick;
         nticks=0;
-        for(int i=0;;i++){
+        for(int i=0;i!=maxNticks;i++){
             double tickn=sah?(minRnd+i*tick):(i*tick);
             if(tickn>(sah?max:range)) break;
             nticks++;

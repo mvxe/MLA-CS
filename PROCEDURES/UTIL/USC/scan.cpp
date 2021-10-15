@@ -874,8 +874,8 @@ pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
     if(xShiftFrac!=0 || yShiftFrac!=0){
         cv::Mat trans=(cv::Mat_<double>(2,3) << 1, 0, xShiftFrac, 0, 1, yShiftFrac);
         cv::warpAffine(depth0, depth0, trans, depth0.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-        cv::dilate(mask0,mask0,cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3,3), cv::Point(1,1)));
-        cv::Rect cut(cv::Rect(xShiftFrac>0?1:0, yShiftFrac>0?1:0, nCols-abs(xShft)-1, nRows-abs(yShft)-1));
+        cv::dilate(mask0,mask0,cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3,3), cv::Point(1,1)));
+        cv::Rect cut(cv::Rect(1, 1, depth0.cols-2, depth0.rows-2));
         depth0=depth0(cut); mask0 =mask0 (cut);
         depth1=depth1(cut); mask1 =mask1 (cut);
     }
