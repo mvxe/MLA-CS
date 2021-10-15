@@ -119,6 +119,7 @@ private Q_SLOTS:
     void onSaveLine();
     void onPlotRect();
     void on2DFFT();
+    void onCrop();
 
     void updateImgF();
 

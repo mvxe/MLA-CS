@@ -106,7 +106,6 @@ cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, int dil, dou
     if(!(ksize%2)) ksize++;
     mat.setTo(src->max+abs(src->max-src->min)/2,src->mask);
     cv::GaussianBlur(mat, mat, cv::Size(ksize, ksize), sigma, sigma);
-    cv::Point ignore;
     cv::Laplacian(mat, mat, CV_32F);
     cv::divide(mat,8,mat);  //should make the unit mm/mm, if its too slow remove this
     cv::Mat umask, umaskT;

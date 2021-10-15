@@ -723,8 +723,8 @@ void pgScanGUI::saveScan(const scanRes* scan, const cv::Rect &roi, std::string f
     if(fileName.find(".pfm")==std::string::npos) fileName+=".pfm";
 
     cv::imwrite(fileName, cv::Mat(scan->depth, roi));
-    double min, max; cv::Point ignore;
-    cv::minMaxLoc(cv::Mat(scan->depth, roi), &min, &max, &ignore, &ignore, cv::Mat(scan->maskN, roi));
+    double min, max;
+    cv::minMaxLoc(cv::Mat(scan->depth, roi), &min, &max, nullptr, nullptr, cv::Mat(scan->maskN, roi));
     std::ofstream wfile(fileName, std::ofstream::app);
     wfile.write(reinterpret_cast<const char*>(&min),sizeof(min));
     wfile.write(reinterpret_cast<const char*>(&max),sizeof(max));
@@ -764,8 +764,8 @@ void pgScanGUI::saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::strin
 
     std::ofstream wfile(fileName);
     cv::Mat display(scan->depth, roi);
-    double min, max; cv::Point ignore;
-    cv::minMaxLoc(cv::Mat(scan->depth, roi), &min, &max, &ignore, &ignore, cv::Mat(scan->maskN, roi));
+    double min, max;
+    cv::minMaxLoc(cv::Mat(scan->depth, roi), &min, &max, nullptr, nullptr, cv::Mat(scan->maskN, roi));
     wfile<<util::toString("# XY is in pixels, see below for conversion constant. Depth is in nm!\n");
     wfile<<util::toString("# For how to plot with gnuplot see http://www.gnuplotting.org/interpolation-of-heat-maps/\n");
     wfile<<util::toString("# Min value: ",min,"\n");
@@ -901,8 +901,7 @@ pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
     ret.mask.setTo(255, mask1);
     bitwise_not(ret.mask, ret.maskN);
     ret.depth.setTo(std::numeric_limits<float>::max(), ret.mask);
-    cv::Point ignore;
-    cv::minMaxLoc(ret.depth, &ret.min, &ret.max, &ignore, &ignore, ret.maskN);
+    cv::minMaxLoc(ret.depth, &ret.min, &ret.max, nullptr, nullptr, ret.maskN);
     for(int i=0;i!=3;i++) ret.pos[i]=scan0->pos[i];
     ret.XYnmppx=scan0->XYnmppx;
     ret.tiltCor[0]=0; ret.tiltCor[1]=0;

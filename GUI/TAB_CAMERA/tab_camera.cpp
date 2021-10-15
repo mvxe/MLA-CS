@@ -161,6 +161,7 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuDepthRight->addAction("Save DepthMap (txt, float) to file", this, SLOT(onSaveDepthMapTxt()));
     clickMenuDepthRight->addAction("Plot Rect (Gnuplot)", this, SLOT(onPlotRect()));
     clickMenuDepthRight->addAction("Rotate DepthMap", this, SLOT(onRotateDepthMap()));
+    clickMenuDepthRight->addAction("Crop", this, SLOT(onCrop()));
     clickMenuDepthRight->addAction("2D FFT", this, SLOT(on2DFFT()));
 
     clickMenuDepthLeft=new QMenu;
@@ -464,8 +465,8 @@ void tab_camera::onSaveDepthMap(void){
 
     if(res!=nullptr){
         cv::Mat display;
-        int width=abs(selEndX-selStartX);
-        int height=abs(selEndY-selStartY);
+        int width=abs(selEndX-selStartX+1);
+        int height=abs(selEndY-selStartY+1);
         if(selDisp->index==1 || (selDisp->index==2 && res->depthSS.empty()) || (selDisp->index==3 && res->refl.empty())){
             pgHistGUI->updateImg(res, &min, &max);
             if(width>1 && height>1){
@@ -506,8 +507,8 @@ void tab_camera::onSaveDepthMap(void){
     }
 }
 void tab_camera::onSaveDepthMapRaw(bool txt){
-    int width=abs(selEndX-selStartX);
-    int height=abs(selEndY-selStartY);
+    int width=abs(selEndX-selStartX+1);
+    int height=abs(selEndY-selStartY+1);
     const pgScanGUI::scanRes* res;
     if(loadedOnDisplay) res=&loadedScan;
     else res=scanRes->get();
@@ -608,7 +609,6 @@ void tab_camera::onRotateDepthMap(){
         double p=std::atan2(pt[i].y-center.y,pt[i].x-center.x);
         ptr[i]={static_cast<int>(r*cos(p+angleRad)+center.x),static_cast<int>(r*sin(p+angleRad)+center.y)};
     }
-        //ptr[i]={static_cast<int>(((pt[i].x-center.x)*cos(-angleRad))-((pt[i].y-center.y)*sin(-angleRad))+center.x), static_cast<int>(((pt[i].x-center.x)*sin(-angleRad))+((pt[i].y-center.y)*cos(-angleRad))+center.y)};
     int rowPadBtm=-std::min(ptr[0].y,std::min(ptr[1].y,std::min(ptr[2].y,ptr[3].y)));
     int rowPadTop=std::max(ptr[0].y,std::max(ptr[1].y,std::max(ptr[2].y,ptr[3].y)))-rows;
     int colPadBtm=-std::min(ptr[0].x,std::min(ptr[1].x,std::min(ptr[2].x,ptr[3].x)));
@@ -619,6 +619,16 @@ void tab_camera::onRotateDepthMap(){
     if(colPadTop<0) colPadTop=0;
     cv::copyMakeBorder(loadedScan.depth, loadedScan.depth, rowPadBtm, rowPadTop, colPadBtm, colPadTop, cv::BORDER_CONSTANT,cv::Scalar(loadedScan.min));
     cv::copyMakeBorder(loadedScan.mask, loadedScan.mask, rowPadBtm, rowPadTop, colPadBtm, colPadTop, cv::BORDER_CONSTANT,cv::Scalar(255));
+    double minSS,minRef;
+    if(!loadedScan.depthSS.empty()){
+        cv::minMaxLoc(loadedScan.depthSS, &minSS, nullptr, nullptr, nullptr, loadedScan.maskN);
+        cv::copyMakeBorder(loadedScan.depthSS, loadedScan.depthSS, rowPadBtm, rowPadTop, colPadBtm, colPadTop, cv::BORDER_CONSTANT,cv::Scalar(minSS));
+    }
+    if(!loadedScan.refl.empty()){
+        cv::minMaxLoc(loadedScan.refl, &minRef, nullptr, nullptr, nullptr, loadedScan.maskN);
+        cv::copyMakeBorder(loadedScan.refl, loadedScan.refl, rowPadBtm, rowPadTop, colPadBtm, colPadTop, cv::BORDER_CONSTANT,cv::Scalar(minRef));
+    }
+
     bitwise_not(loadedScan.mask, loadedScan.maskN);
     center.x+=colPadBtm;
     center.y+=rowPadBtm;
@@ -630,12 +640,53 @@ void tab_camera::onRotateDepthMap(){
     bitwise_not(loadedScan.mask, loadedScan.maskN);
     cv::warpAffine(loadedScan.depth, loadedScan.depth, TM, loadedScan.depth.size());
     loadedScan.depth.setTo(std::numeric_limits<float>::max(),loadedScan.mask);
-    if(!loadedScan.depthSS.empty()){
-        cv::warpAffine(loadedScan.depthSS, loadedScan.depthSS, TM, loadedScan.depthSS.size());
-        loadedScan.depth.setTo(std::numeric_limits<float>::max(),loadedScan.mask);
+    if(!loadedScan.depthSS.empty())
+        cv::warpAffine(loadedScan.depthSS, loadedScan.depthSS, TM, loadedScan.depthSS.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(minSS));
+    if(!loadedScan.refl.empty())
+        cv::warpAffine(loadedScan.refl, loadedScan.refl, TM, loadedScan.refl.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(minRef));
+    cv::minMaxLoc(loadedScan.depth, &loadedScan.min, &loadedScan.max, nullptr, nullptr, loadedScan.maskN);
+
+    selEndX=selStartX;  // auto crop
+    onCrop();
+
+    updateDisp=true;
+    loadedOnDisplay=true;
+}
+
+void tab_camera::onCrop(){
+    if(!loadedScan.depth.empty() && loadedOnDisplay);
+    else if(scanRes->get()!=nullptr) loadedScan=*scanRes->get();
+    else return;
+
+    if(selEndX==selStartX || selEndY==selStartY){
+        selStartX=0;
+        selStartY=0;
+        selEndX=loadedScan.depth.cols-1;
+        selEndY=loadedScan.depth.rows-1;
+
+        while((selStartX!=selEndX) && (cv::countNonZero(loadedScan.maskN.col(selStartX))<1)) selStartX++;
+        while((selStartY!=selEndY) && (cv::countNonZero(loadedScan.maskN.row(selStartY))<1)) selStartY++;
+        while((selEndX!=selStartX) && (cv::countNonZero(loadedScan.maskN.col(selEndX))<1)) selEndX--;
+        while((selEndY!=selStartY) && (cv::countNonZero(loadedScan.maskN.row(selEndY))<1)) selEndY--;
     }
-    cv::Point ignore;
-    cv::minMaxLoc(loadedScan.depth, &loadedScan.min, &loadedScan.max, &ignore, &ignore, loadedScan.maskN);
+
+    cv::Mat tmp;
+    int width=abs(selEndX-selStartX+1);
+    int height=abs(selEndY-selStartY+1);
+    loadedScan.depth(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height)).copyTo(tmp);
+    tmp.copyTo(loadedScan.depth);
+    loadedScan.mask(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height)).copyTo(tmp);
+    tmp.copyTo(loadedScan.mask);
+    bitwise_not(loadedScan.mask, loadedScan.maskN);
+    if(!loadedScan.depthSS.empty()){
+        loadedScan.depthSS(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height)).copyTo(tmp);
+        tmp.copyTo(loadedScan.depthSS);
+    }
+    if(!loadedScan.refl.empty()){
+        loadedScan.refl(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height)).copyTo(tmp);
+        tmp.copyTo(loadedScan.refl);
+    }
+    cv::minMaxLoc(loadedScan.depth, &loadedScan.min, &loadedScan.max, nullptr, nullptr, loadedScan.maskN);
     updateDisp=true;
     loadedOnDisplay=true;
 }
@@ -654,8 +705,8 @@ void tab_camera::onSaveLine(){
 }
 
 void tab_camera::onPlotRect(){
-    int width=abs(selEndX-selStartX);
-    int height=abs(selEndY-selStartY);
+    int width=abs(selEndX-selStartX+1);
+    int height=abs(selEndY-selStartY+1);
     const pgScanGUI::scanRes* res;
     if(loadedOnDisplay) res=&loadedScan;
     else res=scanRes->get();
@@ -669,8 +720,8 @@ void tab_camera::on2DFFT(){
     else return;
 
     if(selEndX!=selStartX && selEndY!=selStartY){
-        int width=abs(selEndX-selStartX);
-        int height=abs(selEndY-selStartY);
+        int width=abs(selEndX-selStartX+1);
+        int height=abs(selEndY-selStartY+1);
         loadedScan.depth=loadedScan.depth(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
         loadedScan.mask =loadedScan.mask (cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
         loadedScan.maskN=loadedScan.maskN(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
