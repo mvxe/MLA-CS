@@ -596,7 +596,33 @@ void tab_camera::onRotateDepthMap(){
     else if(scanRes->get()!=nullptr) loadedScan=*scanRes->get();
     else return;
 
+    int rows=loadedScan.depth.rows;
+    int cols=loadedScan.depth.cols;
     cv::Point2f center((selEndX+selStartX)/2, (selEndY+selStartY)/2);
+
+    cv::Point2i pt[4]{{0,0},{0,rows},{cols,0},{cols,rows}};
+    cv::Point2i ptr[4];
+    double angleRad=-angle*M_PI/180;
+    for(int i=0;i!=4;i++){
+        double r=sqrt(pow((pt[i].x-center.x),2)+pow((pt[i].y-center.y),2));
+        double p=std::atan2(pt[i].y-center.y,pt[i].x-center.x);
+        ptr[i]={static_cast<int>(r*cos(p+angleRad)+center.x),static_cast<int>(r*sin(p+angleRad)+center.y)};
+    }
+        //ptr[i]={static_cast<int>(((pt[i].x-center.x)*cos(-angleRad))-((pt[i].y-center.y)*sin(-angleRad))+center.x), static_cast<int>(((pt[i].x-center.x)*sin(-angleRad))+((pt[i].y-center.y)*cos(-angleRad))+center.y)};
+    int rowPadBtm=-std::min(ptr[0].y,std::min(ptr[1].y,std::min(ptr[2].y,ptr[3].y)));
+    int rowPadTop=std::max(ptr[0].y,std::max(ptr[1].y,std::max(ptr[2].y,ptr[3].y)))-rows;
+    int colPadBtm=-std::min(ptr[0].x,std::min(ptr[1].x,std::min(ptr[2].x,ptr[3].x)));
+    int colPadTop=std::max(ptr[0].x,std::max(ptr[1].x,std::max(ptr[2].x,ptr[3].x)))-cols;
+    if(rowPadBtm<0) rowPadBtm=0;
+    if(rowPadTop<0) rowPadTop=0;
+    if(colPadBtm<0) colPadBtm=0;
+    if(colPadTop<0) colPadTop=0;
+    cv::copyMakeBorder(loadedScan.depth, loadedScan.depth, rowPadBtm, rowPadTop, colPadBtm, colPadTop, cv::BORDER_CONSTANT,cv::Scalar(loadedScan.min));
+    cv::copyMakeBorder(loadedScan.mask, loadedScan.mask, rowPadBtm, rowPadTop, colPadBtm, colPadTop, cv::BORDER_CONSTANT,cv::Scalar(255));
+    bitwise_not(loadedScan.mask, loadedScan.maskN);
+    center.x+=colPadBtm;
+    center.y+=rowPadBtm;
+
     loadedScan.depth.setTo(loadedScan.min,loadedScan.mask);              // this is to get rid of infinite edges that are missed by the mask
     cv::Mat TM=cv::getRotationMatrix2D(center, angle, 1.0);
     cv::warpAffine(loadedScan.maskN, loadedScan.maskN, TM, loadedScan.maskN.size());        // this first so that the rest gets filled with zeros, ie bad pixels
