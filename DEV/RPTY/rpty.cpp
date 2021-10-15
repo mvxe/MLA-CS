@@ -336,7 +336,8 @@ void RPTY::CO_execute(CO* a){
     std::lock_guard<std::recursive_mutex>lock(mux);
     if(!commandObjects[a].timer.empty())
         executeQueue(commandObjects[a].timer, timer_cq);
-    executeQueue(commandObjects[a].main, main_cq);
+    if(!commandObjects[a].main.empty())
+        executeQueue(commandObjects[a].main, main_cq);
 }
 void RPTY::CO_addMotion(CO* a, std::string axisID, double position, double velocity, double acceleration, motionFlags flags){
     std::lock_guard<std::recursive_mutex>lock(mux);

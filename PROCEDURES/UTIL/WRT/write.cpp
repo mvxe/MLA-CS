@@ -101,6 +101,7 @@ void pgWrite::onMenuChange(int index){
     constX0=settingWdg[index]->constX0;
     plataeuPeakRatio=settingWdg[index]->plataeuPeakRatio;
     pointSpacing=settingWdg[index]->pointSpacing;
+    writeZeros=settingWdg[index]->writeZeros;
 }
 writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     slayout=new QVBoxLayout;
@@ -130,6 +131,10 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
     pointSpacing=new val_selector(1, "Point spacing", 0.01, 10, 3, 0, {"um"});
     parent->conf[parent->selectWriteSetting->getLabel(num)]["pointSpacing"]=pointSpacing;
     slayout->addWidget(pointSpacing);
+    writeZeros=new checkbox_gs(false,"Write zeros");
+    writeZeros->setToolTip("If enabled, areas that do not need extra height will be written at threshold duration anyway (slower writing but can give more consistent zero levels if calibration is a bit off).");
+    parent->conf[parent->selectWriteSetting->getLabel(num)]["writeZeros"]=writeZeros;
+    slayout->addWidget(writeZeros);
     if(num==4){ //tag settings
         fontFace=new smp_selector("Font ", 0, OCV_FF::qslabels());
         parent->conf[parent->selectWriteSetting->getLabel(num)]["fontFace"]=fontFace;
@@ -220,12 +225,12 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
     bool xdir=0;
     for(int j=0;j!=resizedWrite.rows;j++){   // write row by row (so that processing for the next row is done while writing the previous one, and the operation can be terminated more easily)
         for(int i=0;i!=resizedWrite.cols;i++){
+            pulse=getDT(resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i));          // Y inverted because image formats have flipped Y
             if(i!=0) pgMGUI->corCOMove(CO,(xdir?-1:1)*vpointSpacing,0,0);
+            if(pulse==0) continue;
             CO.addHold("X",CTRL::he_motion_ontarget);
             CO.addHold("Y",CTRL::he_motion_ontarget);
             CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
-            pulse=getDT(resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i));          // Y inverted because image formats have flipped Y
-            if(pulse>1) pulse=1;
             CO.pulseGPIO("wrLaser",pulse);
         }
         if (j!=resizedWrite.rows-1) pgMGUI->corCOMove(CO,0,vpointSpacing,0);
@@ -274,7 +279,7 @@ float pgWrite::getDT(float H, float H0){
     float min=(constX0->val/1000)*dTCcor->val/plataeuPeakRatio->val;
     float ret=1;            // we limit pulse duration to 1 second
     float mid;
-    if(H<=H0) return 0;     //its already higher, dont need to write a pulse
+    if(H<=H0) return writeZeros->val?min:0;         //its already higher, dont need to write a pulse (if writeZeros is false)
     while(ret-min>pulse_precision){
         mid=(min+ret)/2;
         if(calcH(mid,H0)>H-H0) ret=mid;

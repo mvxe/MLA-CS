@@ -46,6 +46,7 @@ private:
     val_selector* constX0;
     val_selector* plataeuPeakRatio;
     val_selector* pointSpacing;
+    checkbox_gs* writeZeros;
 
     cv::Mat WRImage;
     cv::Mat tagImage;
@@ -91,6 +92,7 @@ public:
     val_selector* plataeuPeakRatio;
     QPushButton* corPPR;
     val_selector* pointSpacing;
+    checkbox_gs* writeZeros;
 
     //tag:
     smp_selector* fontFace;
