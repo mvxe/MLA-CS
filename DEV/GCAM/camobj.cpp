@@ -133,6 +133,8 @@ void camobj::work(){
                 if(delayms>100*(1000/ackFPS)){   // if more than 100 frames are lost reset camera
                     arv_camera_execute_command(cam,"DeviceReset",NULL);
                     std::cerr<<"Camera timeout! Camera has been reset.\n";
+                    end();
+                    con_cam();
                 }
             }else if(trigMode){
                 {std::lock_guard<std::mutex>lock(lastFrameTimeMux);
