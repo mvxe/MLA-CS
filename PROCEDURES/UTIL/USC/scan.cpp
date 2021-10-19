@@ -225,8 +225,8 @@ void pgScanGUI::updateCO(std::string &report){
 
     double totalScanRange=DFTrange->val*led_wl->val/2;    // in nm
     if(vsConv(range)>totalScanRange){
-        //totalScanRange=vsConv(range);
-        report+=util::toString("Doing wider scan, total scan range set to Scan range. (TODO implement)\n");
+        totalScanRange=vsConv(range);
+        report+=util::toString("Doing wider scan, total scan range set to Scan range.\n");
     }else report+=util::toString("Total scan range set to DFT range.\n");
 
     double readRangeDis=totalScanRange/1000000;  // in mm
@@ -382,6 +382,36 @@ void pgScanGUI::_correctTilt(scanRes* res){
     }
 }
 
+void pgScanGUI::_savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames){
+    if(clickDataLock.try_lock()){
+        if(savePix){
+            unsigned nRows=framequeue->getUserMat(0)->rows;
+            unsigned nCols=framequeue->getUserMat(0)->cols;
+            if(clickCoordX>=0 && clickCoordX<nCols && clickCoordY>=0 && clickCoordY<nRows){
+                std::ofstream wfile(clickFilename);
+                unsigned col=clickCoordX;
+                unsigned row=clickCoordY;
+
+                for(unsigned k=0;k!=nFrames;k++){
+                    if(nFrames==nDFTFrames){
+                        std::complex<double> res(0,0);
+                        for(unsigned n=0;n!=nDFTFrames;n++){    // its one pixel, no point optimizing
+                            res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(row,col)*cos(2*M_PI*n*k/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                            res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(row,col)*sin(2*M_PI*n*k/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                        }
+                        wfile<<k<<" "<<(int)framequeue->getUserMat(k)->at<uint8_t>(row,col)<<" "<<std::abs(res)<<" "<<std::arg(res)<<"\n";
+                    }else{
+                        wfile<<k<<" "<<(int)framequeue->getUserMat(k)->at<uint8_t>(row,col)<<"\n";
+                    }
+                }
+                wfile.close();
+            }
+            savePix=false;
+        }
+        clickDataLock.unlock();
+    }
+}
+
 void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRefl_override){
     typedef cv::Mat tUMat;//cv::UMat    // TODO fix; use conditional on if opencl was detected
     MLP._lock_meas.lock();                       //wait for other measurements to complete
@@ -437,6 +467,65 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
 
     unsigned nRows=framequeue->getUserMat(0)->rows;
     unsigned nCols=framequeue->getUserMat(0)->cols;
+    _savePixel(framequeue, nFrames, nDFTFrames);    //writing pixel to file: for selected pixel
+
+    // for longer scans, here we separate the DFT frames from all taken frames
+    tUMat peakIndex;
+    if(nDFTFrames!=nFrames){
+        MLP.progress_comp=0;
+        // get I_0
+        tUMat I_0=tUMat::zeros(nRows, nCols, CV_32F);
+        for(unsigned n=0;n!=nFrames;n++) cv::add(I_0,*framequeue->getUserMat(n),I_0, cv::noArray(), CV_32F);
+        cv::divide(I_0,nFrames,I_0);
+        MLP.progress_comp=10;
+        // prepare mats
+        peakIndex=tUMat::zeros(nRows, nCols, CV_16U);
+        tUMat peakMax=tUMat::zeros(nRows, nCols, CV_32F);
+        tUMat avg=tUMat::zeros(nRows, nCols, CV_32F);
+        tUMat tmp(nRows, nCols, CV_32F);
+        tUMat mask(nRows, nCols, CV_8U);
+        tUMat mask2(nRows, nCols, CV_8U);
+        // calc initial avg
+        for(unsigned n=0;n!=nDFTFrames;n++){
+            cv::subtract(*framequeue->getUserMat(n),I_0,tmp, cv::noArray(), CV_32F);
+            cv::multiply(tmp,tmp,tmp);
+            cv::add(avg,tmp,avg);
+        }
+        MLP.progress_comp=20;
+        // calc rolling avg
+        for(unsigned n=nDFTFrames;n!=nFrames;n++){
+            if(n!=nDFTFrames){
+                cv::subtract(*framequeue->getUserMat(n),I_0,tmp, cv::noArray(), CV_32F);
+                cv::multiply(tmp,tmp,tmp);
+                cv::add(avg,tmp,avg);
+                cv::subtract(*framequeue->getUserMat(n-nDFTFrames),I_0,tmp, cv::noArray(), CV_32F);
+                cv::multiply(tmp,tmp,tmp);
+                cv::subtract(avg,tmp,avg);
+            }
+            cv::compare(avg, peakMax, mask, cv::CMP_GT);
+            avg.copyTo(peakMax, mask);
+            peakIndex.setTo(n-nDFTFrames,mask);
+        }
+        MLP.progress_comp=30;
+        tUMat data=tUMat::zeros(nFrames, nRows*nCols, CV_8U);
+        tUMat data2=tUMat::zeros(nDFTFrames, nRows*nCols, CV_8U);
+        MLP.progress_comp=40;
+        unsigned index;
+        for(unsigned n=0;n!=nFrames;n++) for(unsigned j=0;j!=nRows;j++)
+            framequeue->getUserMat(n)->row(j).copyTo(data.row(n).colRange(j*nCols,(j+1)*nCols));
+        MLP.progress_comp=50;
+        for(unsigned i=0;i!=nCols;i++) for(unsigned j=0;j!=nRows;j++){
+            index=peakIndex.at<uint16_t>(j,i);
+            data.col(j*nCols+i).rowRange(index,index+nDFTFrames).copyTo(data2.col(j*nCols+i));
+        }
+        MLP.progress_comp=60;
+        for(unsigned n=0;n!=nDFTFrames;n++) for(unsigned j=0;j!=nRows;j++)
+            data2.row(n).colRange(j*nCols,(j+1)*nCols).copyTo(framequeue->getUserMatNonConst(n)->row(j));
+        MLP.progress_comp=70;
+        for(unsigned n=nFrames-1;n!=nDFTFrames-1;n--)
+            framequeue->freeUserMat(n);
+        MLP.progress_comp=80;
+    }
 
     // this block is for determining wavelength (when scan is called from settings)
 
@@ -456,8 +545,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
                 unsigned frames=nDFTFrames+k-1;
                 std::complex<double> res(0,0);
                 for(unsigned n=0;n!=frames;n++){    // its one pixel, no point optimizing
-                    res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*cos(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
-                    res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*sin(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
+                    res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(Y,X)*cos(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
+                    res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(Y,X)*sin(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
                 }
                 amp[k]=1./frames*std::abs(res);
             }
@@ -473,8 +562,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
                     if(!maxIter) goto next;
                     std::complex<double> res(0,0);
                     for(unsigned n=0;n!=nDFTFrames;n++){
-                        res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*cos(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
-                        res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(X,Y)*sin(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                        res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(Y,X)*cos(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                        res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(Y,X)*sin(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
                     }
                     amp[direction?0:2]=1./nDFTFrames*std::abs(res);
                     if(amp[direction?0:2]<=amp[1]){
@@ -524,6 +613,16 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
         MLP.progress_comp=90*(n+1)/nDFTFrames;
     }
     cv::phase(mImag, mReal, mPhs);  // atan2(y,x)
+    if(nDFTFrames!=nFrames){
+        cv::multiply(peakIndex, 2*M_PI*peakLoc/nDFTFrames, mTmp, 1, CV_32F);
+        cv::add(mPhs,mTmp,mPhs);
+        tUMat mask(nRows, nCols, CV_8U);
+        while(1){
+            cv::compare(mPhs, 2*M_PI, mask, cv::CMP_GE);
+            if(cv::countNonZero(mask)==0) break;
+            cv::subtract(mPhs,2*M_PI,mPhs,mask);
+        }
+    }
     cv::magnitude(mReal, mImag, mAmp);
     cv::multiply(mAmp, 1./nDFTFrames, mAmp);
     cv::compare(mAmp, (double)dis_thresh->val, mask, cv::CMP_LT);
@@ -545,30 +644,6 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
     mask.copyTo(res->mask);
     maskNot.copyTo(res->maskN);
     mPhs.copyTo(res->depth);
-
-    if(clickDataLock.try_lock()){   //writing pixel to file: for selected pixel
-        if(savePix){
-            if(clickCoordX>=0 && clickCoordX<nCols && clickCoordY>=0 && clickCoordY<nRows){
-                std::ofstream wfile(clickFilename);
-                unsigned col=clickCoordX;
-                unsigned row=clickCoordY;
-
-                // TODO handle longer scans here too
-                for(unsigned k=0;k!=nDFTFrames;k++){
-                    std::complex<double> res(0,0);
-                    for(unsigned n=0;n!=nDFTFrames;n++){    // its one pixel, no point optimizing
-                        res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(col,row)*cos(2*M_PI*n*k/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
-                        res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(col,row)*sin(2*M_PI*n*k/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
-                    }
-                    wfile<<k<<" "<<(int)framequeue->getUserMat(k)->at<uint8_t>(col,row)<<" "<<std::abs(res)<<" "<<std::arg(res)<<"\n";
-                }
-                wfile.close();
-            }
-            savePix=false;
-        }
-        clickDataLock.unlock();
-    }
-
 
     if(getExpMinMax) calcExpMinMax(framequeue, &res->maskN);
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);

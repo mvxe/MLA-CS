@@ -127,6 +127,10 @@ cv::Mat const* FQ::getUserMat(unsigned N){
     std::lock_guard<std::mutex>lock(*umx);
     return (N>=full.size())?nullptr:(*full[N].ptr);
 }
+cv::Mat* FQ::getUserMatNonConst(unsigned N){
+    std::lock_guard<std::mutex>lock(*umx);
+    return (N>=full.size())?nullptr:(*full[N].ptr);
+}
 unsigned int FQ::getUserTimestamp(unsigned N){
     std::lock_guard<std::mutex>lock(*umx);
     return (N>=full.size())?0:(full[N].timestamp);

@@ -169,6 +169,7 @@ private:
     void _doOneRound(char cbAvg_override=0, char cbTilt_override=0, char cbRefl_override=0);
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
     void _correctTilt(scanRes* res);
+    void _savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames);
 public Q_SLOTS:
     void recalculate();
 private Q_SLOTS:

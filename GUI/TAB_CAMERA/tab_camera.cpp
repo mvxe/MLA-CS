@@ -152,7 +152,7 @@ tab_camera::tab_camera(QWidget* parent){
     connect(timer, SIGNAL(timeout()), this, SLOT(work_fun()));
 
     clickMenu=new QMenu;
-    clickMenu->addAction("Save int. and fft. at this pixel on next measurement", this, SLOT(onSavePixData()));
+    clickMenu->addAction("Save int. (and fft. if short scan) at this pixel on next measurement", this, SLOT(onSavePixData()));
     clickMenu->addAction("Save image to file", this, SLOT(onSaveCameraPicture()));
 
     clickMenuDepthRight=new QMenu;
