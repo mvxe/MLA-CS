@@ -284,6 +284,7 @@ void pgScanGUI::updateCO(std::string &report){
     COmeasure->addMotion("Z",(direction->val?-1:1)*readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
 
     CORdy=true;
+    skipAvgSettingsChanged=true;
 }
 int NA=0;
 void pgScanGUI::doOneRound(char cbAvg_override, bool force_disable_tilt_correction, char refl_override){
@@ -720,7 +721,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
         varShareClient<pgScanGUI::scanRes>* temp=result.getClient();
         const scanRes* oldScanRes=temp->get();
         if(oldScanRes==nullptr);
-        else if(oldScanRes->pos[0]!=res->pos[0] || oldScanRes->pos[1]!=res->pos[1] || oldScanRes->XYnmppx!=res->XYnmppx || oldScanRes->depth.cols!=nCols || oldScanRes->depth.rows!=nRows); //we moved, no point to make average
+        else if(oldScanRes->pos[0]!=res->pos[0] || oldScanRes->pos[1]!=res->pos[1] || oldScanRes->XYnmppx!=res->XYnmppx || oldScanRes->depth.cols!=nCols || oldScanRes->depth.rows!=nRows || skipAvgSettingsChanged) skipAvgSettingsChanged=false;
+            //we moved or scan settings changed, no point to make average
         else{
             // first we decorrect tilt on old mes
             cv::Mat corDepth;

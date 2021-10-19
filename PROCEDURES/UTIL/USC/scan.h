@@ -169,6 +169,7 @@ private:
     std::atomic<bool> bSaveAvgMess{false};    // for autosaving raw data - for debug and bookeeping purposes - for saving individual measurements that are being averaged.
     std::string stringSaveAvgMess;
     int saveIter;
+    std::atomic<bool> skipAvgSettingsChanged{false};
 
     void _doOneRound(char cbAvg_override=0, bool force_disable_tilt_correction=false, char cbRefl_override=0);
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
