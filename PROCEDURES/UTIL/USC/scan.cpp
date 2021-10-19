@@ -653,8 +653,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
         cv::multiply(peakIndex, 2*M_PI*peakLoc/nDFTFrames, mTmp, 1, CV_32F);
         cv::add(mPhs,mTmp,mPhs);
         tUMat mask(nRows, nCols, CV_8U);
-        while(1){
-            cv::compare(mPhs, 2*M_PI, mask, cv::CMP_GE);
+        if(debugDisplayModeSelect->index==0) while(1){
+            cv::compare(mPhs, M_PI, mask, cv::CMP_GE);
             if(cv::countNonZero(mask)==0) break;
             cv::subtract(mPhs,2*M_PI,mPhs,mask);
         }
