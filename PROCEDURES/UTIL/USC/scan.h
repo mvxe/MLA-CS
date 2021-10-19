@@ -36,7 +36,7 @@ public:
     pgScanGUI(mesLockProg& MLP);
     ~pgScanGUI();
     rtoml::vsr conf;                                //configuration map
-    twid* gui_activation;
+    QWidget* gui_activation;
     QWidget* gui_settings;
     twid* gui_processing;
     QTimer* timer;
@@ -44,12 +44,12 @@ public:
     constexpr static unsigned timerCM_delay=100;
 
     std::atomic<bool> measurementInProgress{false}; //for outside calling functions
-    void doOneRound(char cbAvg_override=0, char cbTilt_override=0, char cbRefl_override=0);
+    void doOneRound(char cbAvg_override=0, bool force_disable_tilt_correction=false, char cbRefl_override=0);
                                                     // for cbAvg_override==0, cbAvg setting is used, if cbAvg_override=1 avearage, if cbAvg_override=-1 do not average
                                                     // for cbTilt_override==0, cbTilt setting is used, if cbTilt_override=1 correct tilt, if cbTilt_override=-1 do not correct
                                                     // for cbRefl_override==0, cbRefl setting is used, if cbRefl_override=1 calc refl, if cbRefl_override=-1 do not calc refl
                                                     // this function is non blocking, check measurementInProgress to see if done
-    void doNRounds(int N, double redoIfMaskHasMore=0.01, int redoN=3, cv::Rect roi={0,0,0,0}, char cbTilt_override=0, char cbRefl_override=0);
+    void doNRounds(int N, double redoIfMaskHasMore=0.01, int redoN=3, cv::Rect roi={0,0,0,0}, bool force_disable_tilt_correction=false, char cbRefl_override=0);
                                                     // does at least N measurements (and most N+1) with avg (cbAvg_override==1), if mask is more than redoIfMaskHasMore fraction of total(ROID) pixels, redo mesurements, up to redoN times
                                                     // this funtion is blocking, but processes qt events
 
@@ -91,10 +91,14 @@ private:
     void init_gui_settings();
 
     //activation
+    QVBoxLayout* alayout;
     QPushButton* bScan;
     QCheckBox* bScanContinuous;
     QPushButton* bCenter;
-    checkbox_gs* cbCorrectTilt;
+    smp_selector* tiltCorrection;
+    std::atomic<double> tiltCor[2]{0,0};
+    std::atomic<bool> getTiltCalibOnNextScan{false};
+    QPushButton* tiltScan;
     checkbox_gs* cbAvg;
     checkbox_gs* cbGetRefl;
 
@@ -166,9 +170,9 @@ private:
     std::string stringSaveAvgMess;
     int saveIter;
 
-    void _doOneRound(char cbAvg_override=0, char cbTilt_override=0, char cbRefl_override=0);
+    void _doOneRound(char cbAvg_override=0, bool force_disable_tilt_correction=false, char cbRefl_override=0);
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
-    void _correctTilt(scanRes* res);
+    void _correctTilt(scanRes* res, bool force_disable_tilt_correction=false);
     void _savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames);
 public Q_SLOTS:
     void recalculate();
@@ -180,6 +184,8 @@ private Q_SLOTS:
     void onBSaveAvgMess();
     void onBSaveNextMirrorBaselineHist();
     void slotQMessageBoxWarning(QString title, QString text);
+    void onBTiltScan();
+    void onTiltCorrection(int index);
 Q_SIGNALS:
     void doneExpMinmax(int min, int max);
     void recalculateCOs();  // for other procedures that might use some settings from this one (eg. focus)

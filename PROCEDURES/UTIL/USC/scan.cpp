@@ -43,24 +43,32 @@ void pgScanGUI::slotQMessageBoxWarning(QString title, QString text){
 }
 
 void pgScanGUI::init_gui_activation(){
-    gui_activation=new twid(false);
+    gui_activation=new QWidget;
+    alayout=new QVBoxLayout;
+    gui_activation->setLayout(alayout);
     bScan=new QPushButton;
     bScan->setText("Scan");
     connect(bScan, SIGNAL(released()), this, SLOT(onBScan()));
     bScanContinuous=new QCheckBox;
     bScanContinuous->setText("Repeat");
     connect(bScanContinuous, SIGNAL(toggled(bool)), this, SLOT(onBScanContinuous(bool)));
-    gui_activation->addWidget(bScan);
-    gui_activation->addWidget(bScanContinuous);
-    cbCorrectTilt=new checkbox_gs(false,"Fix Tilt");
-    conf["cbCorrectTilt"]=cbCorrectTilt;
-    gui_activation->addWidget(cbCorrectTilt);
+    tiltCorrection=new smp_selector("Tilt correction:", 0, {"disabled","per scan", "enabled"});
+    connect(tiltCorrection, SIGNAL(changed(int)), this, SLOT(onTiltCorrection(int)));
+    conf["tiltCorrection"]=tiltCorrection;
+    conf["tiltCorrectionX"]=tiltCor[0];
+    conf["tiltCorrectionY"]=tiltCor[1];
+    tiltScan=new QPushButton;
+    tiltScan->setText("Tilt Scan");
+    tiltScan->setToolTip("Do this scan on a uniform portion of the flat sample. Repeat every time tilt changes (ie a flat sample is exchanged).");
+    tiltScan->setVisible(false);
+    connect(tiltScan, SIGNAL(released()), this, SLOT(onBTiltScan()));
+
     cbAvg=new checkbox_gs(false,"Average");
     conf["cbAvg"]=cbAvg;
-    gui_activation->addWidget(cbAvg);
     cbGetRefl=new checkbox_gs(false,"Reflectivity");
     conf["cbGetRefl"]=cbGetRefl;
-    gui_activation->addWidget(cbGetRefl);
+    alayout->addWidget(new twid(bScan, bScanContinuous, cbAvg, cbGetRefl));
+    alayout->addWidget(new twid(tiltCorrection, tiltScan));
 
     xDifShift=new val_selector(0, "", -1000, 1000, 1, 0, {"px"});
     yDifShift=new val_selector(0, "", -1000, 1000, 1, 0, {"px"});
@@ -72,6 +80,13 @@ void pgScanGUI::onBScan(){
     if(bScan->isCheckable() && !bScan->isChecked());
     else if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();doOneRound();}
     if(bScan->isCheckable() && bScan->isChecked()) timerCM->start();
+}
+void pgScanGUI::onBTiltScan(){
+    getTiltCalibOnNextScan=true;
+    onBScan();
+}
+void pgScanGUI::onTiltCorrection(int index){
+    tiltScan->setVisible(index==2);
 }
 void pgScanGUI::onBScanCW(){
     if(MLP._lock_meas.try_lock()){getWl=true; MLP._lock_meas.unlock();doOneRound();}
@@ -171,7 +186,7 @@ scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
     tiltCorThrs=new val_selector(0.2, "Tilt Correction 2nd Derivative Exclusion Threshold: ", 0, 1, 2);
     parent->conf[parent->selectScanSetting->getLabel(num)]["tiltCorThrs_"]=tiltCorThrs;
     slayout->addWidget(tiltCorThrs);
-    findBaseline=new checkbox_gs(false,"Correct for mirror baseline.");
+    findBaseline=new checkbox_gs(false,"Correct for mirror baseline (used only with per scan tilt cor.).");
     parent->conf[parent->selectScanSetting->getLabel(num)]["tab_camera_findBaseline"]=findBaseline;
     slayout->addWidget(findBaseline);
     findBaselineHistStep=new val_selector(0.1, "Mirror baseline cor. hist. step: ", 0.01, 10, 2, 0, {"nm"});
@@ -271,13 +286,13 @@ void pgScanGUI::updateCO(std::string &report){
     CORdy=true;
 }
 int NA=0;
-void pgScanGUI::doOneRound(char cbAvg_override, char cbTilt_override, char cbRefl_override){
+void pgScanGUI::doOneRound(char cbAvg_override, bool force_disable_tilt_correction, char refl_override){
     if(!CORdy) recalculate();
     measurementInProgress=true;
-    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,cbAvg_override, cbTilt_override, cbRefl_override));
+    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,cbAvg_override, force_disable_tilt_correction, refl_override));
 }
 
-void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect roi, char cbTilt_override, char cbRefl_override){
+void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect roi, bool force_disable_tilt_correction, char refl_override){
     if(!CORdy) recalculate();
     varShareClient<pgScanGUI::scanRes>* scanRes=result.getClient();
 
@@ -286,7 +301,7 @@ void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect r
     cv::Mat roiMask;
     do{
         measurementInProgress=true;
-        go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,-1,cbTilt_override, cbRefl_override));
+        go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,-1,force_disable_tilt_correction, refl_override));
         while(measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
         res=scanRes->get();
         doneN++;
@@ -296,7 +311,7 @@ void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect r
 
     while(res->avgNum<N){
         if(MLP._lock_meas.try_lock()){
-            go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,1,cbTilt_override, cbRefl_override));
+            go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,1,force_disable_tilt_correction, refl_override));
             MLP._lock_meas.unlock();
         }
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
@@ -321,32 +336,53 @@ double pgScanGUI::vsConv(val_selector* vs){
     }
 }
 
-void pgScanGUI::_correctTilt(scanRes* res){
+void pgScanGUI::_correctTilt(scanRes* res, bool force_disable_tilt_correction){
+    int titlCorIndex;
+    if(force_disable_tilt_correction) titlCorIndex=0;
+    else titlCorIndex=tiltCorrection->index;
+
+    if(titlCorIndex==0){
+        res->tiltCor[0]=0;
+        res->tiltCor[1]=0;
+        return;
+    }
+
     int nRows=res->depth.rows;
     int nCols=res->depth.cols;
-    cv::Mat blured;
-    double sigma=tiltCorBlur->val;
-    int ksize=sigma*5;
-    if(!(ksize%2)) ksize++;
-    //cv::GaussianBlur(res->depth, blured, cv::Size(ksize, ksize), sigma, sigma);   //using just gaussian blur also blurs out the inf edges maksed over, which sometimes causes tilt to fail
-    cv::bilateralFilter(res->depth, blured, ksize, sigma, sigma);                   //this does not blur over obvious sharp edges (but is a bit slower)
-    double derDbound=tiltCorThrs->val;
-    cv::Mat firstD, secondD, mask, maskT;                                           cv::Mat mask4hist;
-    cv::Sobel(blured, firstD, CV_32F,1,0); //X
-    cv::Sobel(blured, secondD, CV_32F,2,0); //X
-    cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
-    cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
-    mask.setTo(cv::Scalar::all(0), maskT);
-    mask.setTo(cv::Scalar::all(0), res->mask);                                      if(findBaseline->val) mask.copyTo(mask4hist);
-    res->tiltCor[0]=-cv::mean(firstD,mask)[0]/8;
-    cv::Sobel(blured, firstD, CV_32F,0,1); //Y
-    cv::Sobel(blured, secondD, CV_32F,0,2); //Y
-    cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
-    cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
-    mask.setTo(cv::Scalar::all(0), maskT);
-    mask.setTo(cv::Scalar::all(0), res->mask);                                      if(findBaseline->val) cv::bitwise_and(mask4hist,mask,mask4hist);
-    res->tiltCor[1]=-cv::mean(firstD,mask)[0]/8;
-    std::cout<<"CPhases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
+    cv::Mat mask4hist;
+    if(titlCorIndex==1 || getTiltCalibOnNextScan){
+        cv::Mat blured;
+        double sigma=tiltCorBlur->val;
+        int ksize=sigma*5;
+        if(!(ksize%2)) ksize++;
+        //cv::GaussianBlur(res->depth, blured, cv::Size(ksize, ksize), sigma, sigma);   //using just gaussian blur also blurs out the inf edges masked over, which sometimes causes tilt to fail
+        cv::bilateralFilter(res->depth, blured, ksize, sigma, sigma);                   //this does not blur over obvious sharp edges (but is a bit slower)
+        double derDbound=tiltCorThrs->val;
+        cv::Mat firstD, secondD, mask, maskT;
+        cv::Sobel(blured, firstD, CV_32F,1,0); //X
+        cv::Sobel(blured, secondD, CV_32F,2,0); //X
+        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
+        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
+        mask.setTo(cv::Scalar::all(0), maskT);
+        mask.setTo(cv::Scalar::all(0), res->mask);                                      if(findBaseline->val) mask.copyTo(mask4hist);
+        res->tiltCor[0]=-cv::mean(firstD,mask)[0]/8;
+        cv::Sobel(blured, firstD, CV_32F,0,1); //Y
+        cv::Sobel(blured, secondD, CV_32F,0,2); //Y
+        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
+        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
+        mask.setTo(cv::Scalar::all(0), maskT);
+        mask.setTo(cv::Scalar::all(0), res->mask);                                      if(findBaseline->val) cv::bitwise_and(mask4hist,mask,mask4hist);
+        res->tiltCor[1]=-cv::mean(firstD,mask)[0]/8;
+        std::cout<<"CPhases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
+        if(getTiltCalibOnNextScan){
+            tiltCor[0]=res->tiltCor[0];
+            tiltCor[1]=res->tiltCor[1];
+            getTiltCalibOnNextScan=false;
+        }
+    }else{
+        res->tiltCor[0]=tiltCor[0];
+        res->tiltCor[1]=tiltCor[1];
+    }
 
     cv::Mat slopeX1(1, nCols, CV_32F);
     cv::Mat slopeX(nRows, nCols, CV_32F);
@@ -360,7 +396,7 @@ void pgScanGUI::_correctTilt(scanRes* res){
     cv::repeat(slopeY1, 1, nCols, slopeY);
     cv::add(slopeY,res->depth,res->depth);
 
-    if(findBaseline->val){      //we also want to find the baseline level: we only look at points that are flat enough (some of the original flat image must be visible)
+    if(titlCorIndex==1 && findBaseline->val){      //we also want to find the baseline level: we only look at points that are flat enough (some of the original flat image must be visible)
         const double histRes=findBaselineHistStep->val;
         double min,max;
         cv::minMaxLoc(res->depth, &min, &max, nullptr, nullptr, mask4hist);  //the ignored mask values will be <min , everything is in nm
@@ -412,7 +448,7 @@ void pgScanGUI::_savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames
     }
 }
 
-void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRefl_override){
+void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correction, char cbRefl_override){
     typedef cv::Mat tUMat;//cv::UMat    // TODO fix; use conditional on if opencl was detected
     MLP._lock_meas.lock();                       //wait for other measurements to complete
     if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
@@ -752,8 +788,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, char cbTilt_override, char cbRe
         delete temp;
     }
 
-    if((cbCorrectTilt->val && cbTilt_override==0) || cbTilt_override==1) _correctTilt(res);     //autocorrect tilt
-    else {res->tiltCor[0]=0; res->tiltCor[1]=0;}
+    _correctTilt(res, force_disable_tilt_correction);     //autocorrect tilt
 
     cv::minMaxLoc(res->depth, &res->min, &res->max, nullptr, nullptr, res->maskN);  //the ignored mask values will be <min , everything is in nm
 

@@ -537,7 +537,7 @@ void pgCalib::WCFArray(){
 
             if(selArrayScanType->index==1){ //multiple mesurement
                 int tryB{0};
-                redoB:  tryB++; pgSGUI->doOneRound(-1,0,savePic->val?1:0);
+                redoB:  tryB++; pgSGUI->doOneRound(-1,false,savePic->val?1:0);
                 while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
                 const pgScanGUI::scanRes* res=scanRes->get();
                 int roiD=selArraySpacing->val*1000/res->XYnmppx;
