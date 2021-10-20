@@ -41,13 +41,6 @@ void camobj::new_frame_ready (ArvStream *stream, camobj* camm)
     else std::cerr<<"WARNING: this shouldnt happen, see camobj::new_frame_ready\n";
 }
 void camobj::start(){
-
-        /* TODO: remove these two: they are a workaround in the Aravis library */
-    int32_t valx=1024;
-    arv_device_write_memory (dev,0x000000000002002c,4,&valx,NULL);  //SI_maximum_trailer_size
-    arv_device_write_memory (dev,0x0000000000020018,4,&valx,NULL);  //SI_maximum_leader_size
-        /*                                                                     */
-
     payload=arv_camera_get_payload(cam, NULL);
     arv_camera_set_acquisition_mode(cam, ARV_ACQUISITION_MODE_CONTINUOUS, NULL);
     arv_camera_get_sensor_size(cam,&Xsize,&Ysize, NULL);
@@ -95,7 +88,10 @@ void camobj::requeueFrame(cv::Mat* MatPtr){
 }
 
 void camobj::work(){
-    if(control_lost) end();
+    if(control_lost){
+        end();
+        std::this_thread::sleep_for (std::chrono::milliseconds(100));
+    }
     if(checkID && !cobj->MVM_list){
         if(selected_ID.get()!=ID){      //we selected a different camera or try to connect to the same one if not connected
             if (ID!="none") end();
@@ -105,10 +101,9 @@ void camobj::work(){
         checkID=false;
     }
 
-    double maxReqFPS;
     if(_connected){
             /*work part start*/
-        maxReqFPS=FQsPCcam.isThereInterest();
+        double maxReqFPS=FQsPCcam.isThereInterest();
         if(maxReqFPS!=0){
             if(maxReqFPS!=ackFPS){
                 ackFPS=maxReqFPS;
@@ -133,8 +128,8 @@ void camobj::work(){
                 if(delayms>100*(1000/ackFPS)){   // if more than 100 frames are lost reset camera
                     arv_camera_execute_command(cam,"DeviceReset",NULL);
                     std::cerr<<"Camera timeout! Camera has been reset.\n";
-                    end();
-                    con_cam();
+                    control_lost=true;
+                    checkID=true;
                 }
             }else if(trigMode){
                 {std::lock_guard<std::mutex>lock(lastFrameTimeMux);
@@ -165,7 +160,7 @@ void camobj::end(){
         g_clear_object(&FreeBuffers.front());
         FreeBuffers.pop();
     }
-    while(!FullBuffers.empty()){
+    if(FQsPCcam.user_queues.empty()) while(!FullBuffers.empty()){
         g_clear_object(&FullBuffers.front());
         FullBuffers.pop_front();
     }
