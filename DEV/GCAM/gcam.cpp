@@ -23,7 +23,7 @@ void GCAM::run(){    //this is the GCAM thread loop
 
         for(int i=0;i!=_CAM_NUM;i++)
             _c[i].ptr->work();
-        std::this_thread::sleep_for (std::chrono::milliseconds(1));               //TODO fix this delay with timers
+        //std::this_thread::sleep_for (std::chrono::milliseconds(1));               //TODO fix this delay with timers
 
         if(end){
             for(int i=0;i!=_CAM_NUM;i++)

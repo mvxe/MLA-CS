@@ -137,8 +137,9 @@ void camobj::work(){
         }
         /*work part end*/
     }
-    else checkID=true;
-
+    else if(FQsPCcam.isThereInterest()){
+        checkID=true;
+    }
 }
 void camobj::end(){
     _connected=false;
