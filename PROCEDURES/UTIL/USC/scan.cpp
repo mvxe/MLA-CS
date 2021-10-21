@@ -257,8 +257,8 @@ void pgScanGUI::updateCO(std::string &report){
     double acceleration=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultAcceleration);
     displacementOneFrame=vsConv(led_wl)/2/vsConv(pphwl)/1000000;       // in mm
     report+=util::toString("One frame displacement = ",displacementOneFrame*1000000," nm.\n");
-    totalFrameNum=readRangeDis/displacementOneFrame;   // for simplicity no image taken on one edge
-    expectedDFTFrameNum=DFTrange->val*vsConv(pphwl);
+    totalFrameNum=std::round(readRangeDis/displacementOneFrame);   // for simplicity no image taken on one edge
+    expectedDFTFrameNum=std::round(DFTrange->val*vsConv(pphwl));
     double timeOneFrame=1./COfps;
     double motionTimeOneFrame;
     bool hasConstantVelocitySegment;
