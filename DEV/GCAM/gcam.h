@@ -13,7 +13,7 @@ public:
     ~GCAM();
     rtoml::vsr conf;
 
-    std::atomic<bool> MVM_list{true};          //TODO these two vars should not be exposed to the user, just FrameObserver::CameraListChanged
+    std::atomic<bool> MVM_list{true};
 private:
     void run();
     void list_cams();

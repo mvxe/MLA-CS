@@ -115,17 +115,19 @@ void MainWindow::on_cnc_select_triggered(QAction *arg1){
 
 void MainWindow::updateCamMenu(QMenu* menuN){
     menuN->clear();
-    for (int i=0;i!=go.pGCAM->cam_desc.get()->size();i++){
+    std::lock_guard<std::mutex>lock(go.pGCAM->cam_desc_mux);
+    for (int i=0;i!=go.pGCAM->cam_desc.size();i++){
         QAction *actx = new QAction(this);
-        actx->setText(QString::fromStdString(go.pGCAM->cam_desc.get()->at(i).ID));
-        actx->setToolTip(QString::fromStdString(go.pGCAM->cam_desc.get()->at(i).description));
+        actx->setText(QString::fromStdString(go.pGCAM->cam_desc.at(i).ID));
+        actx->setToolTip(QString::fromStdString(go.pGCAM->cam_desc.at(i).description));
         menuN->addAction(actx);
     }
+    go.pGCAM->MVM_list=true;
 }
 
 void MainWindow::updateCncMenu(QMenu* menuN){
     go.pCNC->refreshID=true;
-    while(go.pCNC->refreshID) std::this_thread::sleep_for (std::chrono::milliseconds(1));
+    while(go.pCNC->refreshID) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     menuN->clear();
     for (int i=0;i!=go.pCNC->serial_desc.get()->size();i++){
         QAction *actx = new QAction(this);

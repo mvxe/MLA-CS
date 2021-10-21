@@ -88,20 +88,15 @@ void camobj::requeueFrame(cv::Mat* MatPtr){
 }
 
 void camobj::work(){
-    if(control_lost){
-        end();
-        std::this_thread::sleep_for (std::chrono::milliseconds(100));
-    }
-    if(checkID && !cobj->MVM_list){
+    if(control_lost) end();
+    else if(checkID && !cobj->MVM_list){
         if(selected_ID.get()!=ID){      //we selected a different camera or try to connect to the same one if not connected
             if (ID!="none") end();
             if (selected_ID.get()!="none") con_cam();  //connects to the new cam selected_ID
             else ID="none";
         }
         checkID=false;
-    }
-
-    if(_connected){
+    }else if(_connected){
             /*work part start*/
         double maxReqFPS=FQsPCcam.isThereInterest();
         if(maxReqFPS!=0){
@@ -128,8 +123,6 @@ void camobj::work(){
                 if(delayms>100*(1000/ackFPS)){   // if more than 100 frames are lost reset camera
                     arv_camera_execute_command(cam,"DeviceReset",NULL);
                     std::cerr<<"Camera timeout! Camera has been reset.\n";
-                    control_lost=true;
-                    checkID=true;
                 }
             }else if(trigMode){
                 {std::lock_guard<std::mutex>lock(lastFrameTimeMux);
@@ -142,9 +135,9 @@ void camobj::work(){
                 std::cerr<<"No more interest, stopping camera ack.\n";
             }
         }
-        std::this_thread::sleep_for (std::chrono::milliseconds(1));
         /*work part end*/
     }
+    else checkID=true;
 
 }
 void camobj::end(){
