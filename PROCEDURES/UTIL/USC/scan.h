@@ -136,6 +136,7 @@ private:
     val_selector* range;        //scan range (TODO)
     val_selector* pphwl;        //points per half wavelength
     val_selector* dis_thresh;   //if the checked peaks within peakLocRange of the freq peak are higher than peakThresh x the main peak the pixel is added to the mask (of bad pixels)
+    checkbox_gs* unwrap;
     QLabel* calcL;
     constexpr static unsigned timer_delay=500;  //if the program is busy measuring we cannot update the variables, so wait for this ammount and try again
     val_selector* exclDill;
@@ -143,7 +144,6 @@ private:
     val_selector* tiltCorThrs;
     checkbox_gs* findBaseline;
     val_selector* findBaselineHistStep;
-    smp_selector* debugDisplayModeSelect;
     val_selector* avgDiscardCriteria;
     unsigned const timeout{500};        // we hardcode a timeout (in ms) for waiting for frames, in case something goes wrong with trigger
     QPushButton* saveAvgMess;
@@ -177,6 +177,7 @@ private:
     void _savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames);
 public Q_SLOTS:
     void recalculate();
+    void rstAvg();
 private Q_SLOTS:
     void onBScan();
     void onBScanCW();
@@ -205,6 +206,7 @@ public:
     val_selector* max_vel;
     val_selector* max_acc;
     val_selector* dis_thresh;
+    checkbox_gs* unwrap;
     QLabel* calcL;
     val_selector* exclDill;
     val_selector* tiltCorBlur;

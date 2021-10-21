@@ -123,8 +123,6 @@ void pgScanGUI::init_gui_settings(){
         slayout->addWidget(settingWdg.back());
     }
     connect(selectScanSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
-    debugDisplayModeSelect=new smp_selector("Display mode select (for debugging purposes): ", 0, {"Unwrapped", "Wrapped"});
-    slayout->addWidget(debugDisplayModeSelect);
     avgDiscardCriteria=new val_selector(5.0, "Averaging Mask% Discard Threshold:", 0.1, 100., 1, 1, {"%"});
     conf["avgDiscardCriteria"]=avgDiscardCriteria;
     avgDiscardCriteria->setToolTip("If the difference in the number of excluded element between the current measurement and the avg measurement (which combines all previous exclusions(or)) is larger than this percentage times the total num of pixels, the measurement is discarded.");
@@ -175,6 +173,11 @@ scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
     dis_thresh=new val_selector(255./16, "Peak Discard Threshold (1/8 of signal amplitude): ", 0.01, 255./8, 2);
     parent->conf[parent->selectScanSetting->getLabel(num)]["dis_thresh"]=dis_thresh;
     slayout->addWidget(dis_thresh);
+    unwrap=new checkbox_gs(true,"Unwrap.");
+    unwrap->setToolTip("Long scans are reduced to [0:2pi) for the opencv unwrap function and potential info is lost");
+    parent->conf[parent->selectScanSetting->getLabel(num)]["unwrap"]=unwrap;
+    connect(unwrap, SIGNAL(changed()), parent, SLOT(rstAvg()));
+    slayout->addWidget(unwrap);
     calcL=new QLabel;
     slayout->addWidget(calcL);
     exclDill=new val_selector(0, "Excluded dillation: ", 0, 100, 0, 0, {"px"});
@@ -187,7 +190,7 @@ scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
     parent->conf[parent->selectScanSetting->getLabel(num)]["tiltCorThrs_"]=tiltCorThrs;
     slayout->addWidget(tiltCorThrs);
     findBaseline=new checkbox_gs(false,"Correct for mirror baseline (used only with per scan tilt cor.).");
-    parent->conf[parent->selectScanSetting->getLabel(num)]["tab_camera_findBaseline"]=findBaseline;
+    parent->conf[parent->selectScanSetting->getLabel(num)]["findBaseline"]=findBaseline;
     slayout->addWidget(findBaseline);
     findBaselineHistStep=new val_selector(0.1, "Mirror baseline cor. hist. step: ", 0.01, 10, 2, 0, {"nm"});
     parent->conf[parent->selectScanSetting->getLabel(num)]["findBaselineHistStep"]=findBaselineHistStep;
@@ -199,6 +202,7 @@ void pgScanGUI::onMenuChange(int index){
     range=settingWdg[index]->range;
     pphwl=settingWdg[index]->pphwl;
     dis_thresh=settingWdg[index]->dis_thresh;
+    unwrap=settingWdg[index]->unwrap;
     calcL=settingWdg[index]->calcL;
     exclDill=settingWdg[index]->exclDill;
     tiltCorBlur=settingWdg[index]->tiltCorBlur;
@@ -221,6 +225,9 @@ void pgScanGUI::recalculate() {
         MLP._lock_meas.unlock();
     }
     else timer->start();
+}
+void pgScanGUI::rstAvg(){
+    skipAvgSettingsChanged=true;
 }
 
 void pgScanGUI::updateCO(std::string &report){
@@ -271,17 +278,17 @@ void pgScanGUI::updateCO(std::string &report){
     peakLoc=expectedDFTFrameNum/vsConv(pphwl);
     report+=util::toString("Expecting the peak to be at i = ", peakLoc," in the FFT.\n");
 
-    COmeasure->addMotion("Z",(direction->val?-1:1)*readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
+    COmeasure->addMotion("Z",(direction->val?1:-1)*readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from center to -edge
     COmeasure->addHold("Z",CTRL::he_motion_ontarget);
     for(unsigned i=0;i!=totalFrameNum;i++){
         COmeasure->startTimer("timer",1./COfps+triggerAdditionalDelay->val*0.001);          // in case motion is completed before the camera is ready for another frame
         COmeasure->pulseGPIO("trigCam",0.0001);             // 100us
         if(expo>0.0001) COmeasure->addDelay(expo-0.0001);   // keep stationary during exposure
-        COmeasure->addMotion("Z",(direction->val?1:-1)*displacementOneFrame,0,0,CTRL::MF_RELATIVE);
+        COmeasure->addMotion("Z",(direction->val?-1:1)*displacementOneFrame,0,0,CTRL::MF_RELATIVE);
         COmeasure->addHold("Z",CTRL::he_motion_ontarget);
         COmeasure->addHold("timer",CTRL::he_timer_done);
     }
-    COmeasure->addMotion("Z",(direction->val?-1:1)*readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
+    COmeasure->addMotion("Z",(direction->val?1:-1)*readRangeDis/2,0,0,CTRL::MF_RELATIVE);    // move from +edge to center
 
     CORdy=true;
     skipAvgSettingsChanged=true;
@@ -530,8 +537,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
         }
         MLP.progress_comp=20;
         // calc rolling avg
-        for(unsigned n=nDFTFrames;n!=nFrames;n++){
-            if(n!=nDFTFrames){
+        for(unsigned n=nDFTFrames-1;n!=nFrames;n++){
+            if(n!=nDFTFrames-1){
                 cv::subtract(*framequeue->getUserMat(n),I_0,tmp, cv::noArray(), CV_32F);
                 cv::multiply(tmp,tmp,tmp);
                 cv::add(avg,tmp,avg);
@@ -541,7 +548,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
             }
             cv::compare(avg, peakMax, mask, cv::CMP_GT);
             avg.copyTo(peakMax, mask);
-            peakIndex.setTo(n-nDFTFrames,mask);
+            peakIndex.setTo(n-nDFTFrames+1,mask);
         }
         MLP.progress_comp=30;
         tUMat data=tUMat::zeros(nFrames, nRows*nCols, CV_8U);
@@ -626,9 +633,6 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
     }
 
 
-
-    // TODO handle longer scans here
-
     // real and imaginary accumulation matrices
     tUMat mReal=tUMat::zeros(nRows, nCols, CV_32F);
     tUMat mImag=tUMat::zeros(nRows, nCols, CV_32F);
@@ -643,28 +647,28 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
     tUMat maskNot(nRows, nCols, CV_8U);
 
     for(unsigned n=0;n!=nDFTFrames;n++){
-        cv::multiply(*framequeue->getUserMat(n), sin(2*M_PI*n*peakLoc/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2), mTmp, 1, CV_32F);
+        cv::multiply(*framequeue->getUserMat(n),  cos(2*M_PI*n*peakLoc/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2), mTmp, 1, CV_32F);
         cv::add(mReal,mTmp,mReal);
-        cv::multiply(*framequeue->getUserMat(n), cos(2*M_PI*n*peakLoc/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2), mTmp, 1, CV_32F);
+        cv::multiply(*framequeue->getUserMat(n), -sin(2*M_PI*n*peakLoc/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2), mTmp, 1, CV_32F);
         cv::add(mImag,mTmp,mImag);
         MLP.progress_comp=90*(n+1)/nDFTFrames;
     }
-    cv::phase(mImag, mReal, mPhs);  // atan2(y,x)
+    cv::phase(mReal, mImag, mPhs);  // atan2(y,x)
     if(nDFTFrames!=nFrames){
+        cv::compare(mPhs, M_PI, mask, cv::CMP_GE);
+        cv::subtract(mPhs,2*M_PI,mPhs,mask);
+
         cv::multiply(peakIndex, 2*M_PI*peakLoc/nDFTFrames, mTmp, 1, CV_32F);
-        cv::add(mPhs,mTmp,mPhs);
-        tUMat mask(nRows, nCols, CV_8U);
-        if(debugDisplayModeSelect->index==0) while(1){
-            cv::compare(mPhs, M_PI, mask, cv::CMP_GE);
-            if(cv::countNonZero(mask)==0) break;
-            cv::subtract(mPhs,2*M_PI,mPhs,mask);
-        }
+        cv::subtract(mPhs,mTmp,mPhs);
+
+        if(unwrap->val) do{ // otherwise unwrap fails due to more than 32*pi*pi difference
+            cv::compare(mPhs, 0, mask, cv::CMP_LT);
+            cv::add(mPhs, 2*M_PI, mPhs,mask);
+        }while(cv::countNonZero(mask));
     }
     cv::magnitude(mReal, mImag, mAmp);
     cv::multiply(mAmp, 1./nDFTFrames, mAmp);
     cv::compare(mAmp, (double)dis_thresh->val, mask, cv::CMP_LT);
-
-    std::cerr<<"done with dfts\n";
 
     if((cbGetRefl->val && cbRefl_override==0) || cbRefl_override==1){
         double min,max;
@@ -685,7 +689,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
     if(getExpMinMax) calcExpMinMax(framequeue, &res->maskN);
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
-    if(debugDisplayModeSelect->index==0){   // if debug no unwrap is off
+    if(unwrap->val){
         mPhs.copyTo(res->depth);
         cv::phase_unwrapping::HistogramPhaseUnwrapping::Params params;
         params.width=nCols;
