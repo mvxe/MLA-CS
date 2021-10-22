@@ -32,6 +32,10 @@ cameraSett::cameraSett(std::atomic<bool>& getExpMinMax, pgMoveGUI* pgMov): getEx
     CLAHE_clipLimit=new val_selector(2, "Set clipLimit: ", 0, 100, 2);
     conf["CLAHE_clipLimit"]=CLAHE_clipLimit;
     layout->addWidget(CLAHE_clipLimit);
+    layout->addWidget(new hline);
+    wrsbar_unit=new val_selector(0, "Writing obj. Scalebar Unit: ", -1000, 1000, 2, 0, {"um"});
+    conf["wrsbar_unit"]=wrsbar_unit;
+    layout->addWidget(wrsbar_unit);
 
     connect(expMirau, SIGNAL(changed()), this, SLOT(_changeObjectiveMirau()));
     connect(expWriting, SIGNAL(changed()), this, SLOT(_changeObjectiveWriting()));

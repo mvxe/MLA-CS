@@ -28,6 +28,7 @@ private:
 public:
     val_selector* CLAHE_tileGridSize;
     val_selector* CLAHE_clipLimit;
+    val_selector* wrsbar_unit;
 public Q_SLOTS:
     void genReport();
     void onToggled(bool state);

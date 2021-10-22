@@ -203,7 +203,7 @@ void tab_camera::work_fun(){
                 }
                 if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY));
-                if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
+                if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx(), pgMGUI->currentObj==1?(static_cast<double>(camSet->wrsbar_unit->val)):0);
                 pgCal->drawWriteArea(&temp);
                 pgWrt->drawWriteArea(&temp);
                 scaleDisplay(temp, QImage::Format_Indexed8);
@@ -450,7 +450,7 @@ void tab_camera::onSaveCameraPicture(void){
     cv::Mat temp=onDisplay->clone();
     if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
     if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgMGUI->px2mm(pgBeAn->writeBeamCenterOfsX), pgMGUI->px2mm(pgBeAn->writeBeamCenterOfsY));
-    if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx());
+    if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx(), pgMGUI->currentObj==1?(static_cast<double>(camSet->wrsbar_unit->val)):0);
     imwrite(fileName, temp,{cv::IMWRITE_PNG_COMPRESSION,9});
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(fq);
 }

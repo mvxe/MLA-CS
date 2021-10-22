@@ -19,7 +19,7 @@ public:
     void colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange=false, bool isForExport=false, std::string label="Height (nm)", bool isReflectivity=false);
     const bool& changed{_changed};
     void draw_bw_target(cv::Mat* src, float dX, float dY);
-    void draw_bw_scalebar(cv::Mat* src, double XYnmppx);
+    void draw_bw_scalebar(cv::Mat* src, double XYnmppx, double xysbar_unit_override=0);
     void draw_color_box(cv::Mat* src, int x0, int x1, int y0, int y1);
     const std::atomic<bool>* exportSet4WholeVal;
 private:

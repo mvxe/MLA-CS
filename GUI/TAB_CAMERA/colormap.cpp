@@ -245,10 +245,10 @@ void colorMap::draw_bw_target(cv::Mat* src, float dX, float dY){
         cv::rectangle(*src, {xofs-targWidth/2-i, yofs+targDis-i, targWidth+2*i, targLenght+2*i}, i?backC:frontC,-1);
     }
 }
-void colorMap::draw_bw_scalebar(cv::Mat* src, double XYnmppx){
-    double lxysbar_unit=xysbar_unit->val; int ignore;
+void colorMap::draw_bw_scalebar(cv::Mat* src, double XYnmppx, double xysbar_unit_override){
+    double lxysbar_unit=(xysbar_unit_override!=0)?xysbar_unit_override:static_cast<double>(xysbar_unit->val);
     if(lxysbar_unit!=0 && XYnmppx!=0){
-        cv::Size size=cv::getTextSize(util::toString(xysbar_unit->val," um"), OCV_FF::ids[fontFace->index], fontSize->val, fontThickness->val, &ignore);
+        cv::Size size=cv::getTextSize(util::toString(xysbar_unit->val," um"), OCV_FF::ids[fontFace->index], fontSize->val, fontThickness->val, nullptr);
         int xofs=src->cols/2+xysbar_xoffset->val;
         int yofs=src->rows/2+xysbar_yoffset->val;
         int in=xysbar_corner->index;
