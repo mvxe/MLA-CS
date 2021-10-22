@@ -59,6 +59,8 @@ private:
     void pushFrameIntoStream();
     void requeueFrame(cv::Mat* MatPtr);
 
+    void resetTimeout();
+
     static GCAM *cobj;
     int lost_frames_GCAM_VMB{0};
 
@@ -78,8 +80,6 @@ private:
     double ackFPS;
     double actualAckFPS;
     std::string format;
-
-    bool ackstatus{false};                  //acquisition status
 
     std::mutex mtx;
     bool trigMode{false};

@@ -35,8 +35,7 @@ void camobj::new_frame_ready (ArvStream *stream, camobj* camm)
         camm->FQsPCcam.enqueueMat(freeMat, arv_buffer_get_timestamp(buffer));
         camm->pushFrameIntoStream();
 
-        {std::lock_guard<std::mutex>lock(camm->lastFrameTimeMux);   // for timeout
-        camm->lastFrameTime=std::chrono::system_clock::now();}
+        camm->resetTimeout();
     }
     else std::cerr<<"WARNING: this shouldnt happen, see camobj::new_frame_ready\n";
 }
@@ -60,6 +59,9 @@ void camobj::start(){
     double fmin,fmax;
     arv_camera_set_boolean(cam, "AcquisitionFrameRateEnable", true, NULL);  // these settings were made to work with Basler cameras, and may be problematic for other genicam cameras
     get_frame_rate_bounds(&fmin, &fmax);
+    ackFPS=0;
+    arv_camera_set_float(cam, "AcquisitionFrameRate", ackFPS, NULL);
+    arv_camera_start_acquisition(cam, NULL);
 
     std::cerr<<"maxFPS="<<fmax<<"\n";
     std::cerr<<"minFPS="<<fmin<<"\n";
@@ -97,42 +99,30 @@ void camobj::work(){
         }
         checkID=false;
     }else if(_connected){
-            /*work part start*/
+        /*work part start*/
         double maxReqFPS=FQsPCcam.isThereInterest();
-        if(maxReqFPS!=0){
-            if(maxReqFPS!=ackFPS){
-                ackFPS=maxReqFPS;
-                arv_camera_set_float(cam, "AcquisitionFrameRate", ackFPS, NULL);
-                actualAckFPS=arv_camera_get_float(cam, "ResultingFrameRate", NULL);
-                FQsPCcam.setActualFps(actualAckFPS);
+        if(maxReqFPS!=ackFPS){
+            ackFPS=maxReqFPS;
+            arv_camera_set_float(cam, "AcquisitionFrameRate", ackFPS, NULL);
+            actualAckFPS=arv_camera_get_float(cam, "ResultingFrameRate", NULL);
+            FQsPCcam.setActualFps(actualAckFPS);
+            if(ackFPS!=0){
                 std::cerr<<"Set new camera FPS: "<<ackFPS<<"\n";
                 std::cerr<<"Actual resulting camera FPS: "<<actualAckFPS<<"\n";
-            }
-            if(!ackstatus){
-                std::cerr<<"FQ interest, starting camera ack.\n";
-                arv_camera_start_acquisition(cam, NULL);
-                {std::lock_guard<std::mutex>lock(lastFrameTimeMux);     // for timeout
-                lastFrameTime=std::chrono::system_clock::now();}
-                ackstatus=true;
-            }
-            if(ackstatus && !trigMode){     // check for camera timeout
-                std::chrono::time_point<std::chrono::system_clock> now=std::chrono::system_clock::now();
-                unsigned delayms;
-                {std::lock_guard<std::mutex>lock(lastFrameTimeMux);
-                delayms=std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFrameTime).count();}
-                if(delayms>100*(1000/ackFPS)){   // if more than 100 frames are lost reset camera
-                    arv_camera_execute_command(cam,"DeviceReset",NULL);
-                    std::cerr<<"Camera timeout! Camera has been reset.\n";
-                }
-            }else if(trigMode){
-                {std::lock_guard<std::mutex>lock(lastFrameTimeMux);
-                lastFrameTime=std::chrono::system_clock::now();}
-            }
-        }else{
-            if(ackstatus){
-                arv_camera_stop_acquisition(cam, NULL);
-                ackstatus=false;
+            }else{
                 std::cerr<<"No more interest, stopping camera ack.\n";
+            }
+            resetTimeout();
+        }
+
+        if(actualAckFPS!=0 && trigMode==false){     // check for camera timeout
+            std::chrono::time_point<std::chrono::system_clock> now=std::chrono::system_clock::now();
+            unsigned delayms;
+            {std::lock_guard<std::mutex>lock(lastFrameTimeMux);
+            delayms=std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFrameTime).count();}
+            if(delayms>100*(1000/actualAckFPS)){   // if more than 100 frames are lost reset camera
+                arv_camera_execute_command(cam,"DeviceReset",NULL);
+                std::cerr<<"Camera timeout! Camera has been reset.\n";
             }
         }
         /*work part end*/
@@ -225,6 +215,7 @@ void camobj::run(std::string atr){
 }
 
 void camobj::set_trigger(std::string trig){
+    resetTimeout();
     std::lock_guard<std::mutex>lock(mtx);
     if(trig=="none") {
         arv_camera_set_string(cam, "TriggerMode", "Off", NULL);
@@ -235,6 +226,11 @@ void camobj::set_trigger(std::string trig){
         arv_camera_set_string(cam, "TriggerMode", "On", NULL);
         trigMode=true;
     }
+}
+
+void camobj::resetTimeout(){
+    std::lock_guard<std::mutex>lock(lastFrameTimeMux);
+    lastFrameTime=std::chrono::system_clock::now();
 }
 
 void camobj::get_frame_rate_bounds (double *min, double *max){
