@@ -7,10 +7,11 @@
 class writeSettings;
 class pgBeamAnalysis;
 class QLineEdit;
+class procLockProg;
 class pgWrite: public QObject{
     Q_OBJECT
 public:
-    pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI);
+    pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP);
     rtoml::vsr conf;                //configuration map
     QWidget* gui_activation;
     QWidget* gui_settings;
@@ -55,6 +56,7 @@ private:
 
     pgBeamAnalysis* pgBeAn;
     pgMoveGUI* pgMGUI;
+    procLockProg& MLP;
 
     float getDT(float H, float H0=0);
     float calcH(float DT, float H0=0);

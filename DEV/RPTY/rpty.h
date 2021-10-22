@@ -71,7 +71,7 @@ private:
     void CO_addHold(CO* a, std::string ID, _holdCondition condition);
     void CO_startTimer(CO* a, std::string ID, double duration);
     void CO_clear(CO* a, bool keepMotionRemainders);
-    double CO_getProgress(CO* a);
+    double CO_getProgress(CO* a);       // Implementation limitation: executeQueue() goes over all defined COs, so for many COs this may be slow
 
     struct cqus{
         cqueue main;

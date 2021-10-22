@@ -11,7 +11,7 @@ class QLabel;
 class pgScanGUI;
 class pgTiltGUI;
 class QPushButton;
-class mesLockProg;
+class procLockProg;
 class smp_selector;
 class focusSettings;
 class twid;
@@ -23,13 +23,13 @@ class pgFocusGUI: public QObject{
     Q_OBJECT
     //GUI
 public:
-    pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI);
+    pgFocusGUI(procLockProg& MLP, pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI);
     rtoml::vsr conf;            //configuration map
     twid* gui_activation;
     QWidget* gui_settings;
     QTimer* timer;
 
-    mesLockProg& MLP;
+    procLockProg& MLP;
     void refocus();
  private:
     smp_selector* selectFocusSetting;

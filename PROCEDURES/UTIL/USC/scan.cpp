@@ -20,7 +20,7 @@ void pScan::run(){
 
 //GUI
 
-pgScanGUI::pgScanGUI(mesLockProg& MLP): MLP(MLP){
+pgScanGUI::pgScanGUI(procLockProg& MLP): MLP(MLP){
     init_gui_activation();
     init_gui_settings();
     timer = new QTimer(this);
@@ -78,7 +78,7 @@ void pgScanGUI::init_gui_activation(){
 void pgScanGUI::onBScanContinuous(bool status){bScan->setCheckable(status);}
 void pgScanGUI::onBScan(){
     if(bScan->isCheckable() && !bScan->isChecked());
-    else if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();doOneRound();}
+    else if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();doOneRound();}
     if(bScan->isCheckable() && bScan->isChecked()) timerCM->start();
 }
 void pgScanGUI::onBTiltScan(){
@@ -89,7 +89,7 @@ void pgScanGUI::onTiltCorrection(int index){
     tiltScan->setVisible(index==2);
 }
 void pgScanGUI::onBScanCW(){
-    if(MLP._lock_meas.try_lock()){getWl=true; MLP._lock_meas.unlock();doOneRound();}
+    if(MLP._lock_proc.try_lock()){getWl=true; MLP._lock_proc.unlock();doOneRound();}
 }
 void pgScanGUI::init_gui_settings(){
     gui_settings=new QWidget;
@@ -214,7 +214,7 @@ void pgScanGUI::onMenuChange(int index){
 
 void pgScanGUI::recalculate() {
     Q_EMIT recalculateCOs();
-    if(MLP._lock_meas.try_lock()){
+    if(MLP._lock_proc.try_lock()){
         if(MLP._lock_comp.try_lock()){
             std::string report;
             updateCO(report);
@@ -222,7 +222,7 @@ void pgScanGUI::recalculate() {
             MLP._lock_comp.unlock();
         }
         else timer->start();
-        MLP._lock_meas.unlock();
+        MLP._lock_proc.unlock();
     }
     else timer->start();
 }
@@ -318,17 +318,17 @@ void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect r
     }while(cv::countNonZero(roiMask)>roiMask.cols*roiMask.rows*redoIfMaskHasMore && doneN<=redoN);
 
     while(res->avgNum<N){
-        if(MLP._lock_meas.try_lock()){
+        if(MLP._lock_proc.try_lock()){
             go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,1,force_disable_tilt_correction, refl_override));
-            MLP._lock_meas.unlock();
+            MLP._lock_proc.unlock();
         }
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         res=scanRes->get();
     }
     delete scanRes;
-    while(!MLP._lock_meas.try_lock()) {QCoreApplication::processEvents(QEventLoop::AllEvents, 10); std::this_thread::sleep_for(std::chrono::milliseconds(100));}
-    MLP._lock_meas.unlock();
+    while(!MLP._lock_proc.try_lock()) {QCoreApplication::processEvents(QEventLoop::AllEvents, 10); std::this_thread::sleep_for(std::chrono::milliseconds(100));}
+    MLP._lock_proc.unlock();
     while(!MLP._lock_comp.try_lock()) {QCoreApplication::processEvents(QEventLoop::AllEvents, 10); std::this_thread::sleep_for(std::chrono::milliseconds(100));}
     MLP._lock_comp.unlock();
 
@@ -458,7 +458,7 @@ void pgScanGUI::_savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames
 
 void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correction, char cbRefl_override){
     typedef cv::Mat tUMat;//cv::UMat    // TODO fix; use conditional on if opencl was detected
-    MLP._lock_meas.lock();                       //wait for other measurements to complete
+    MLP._lock_proc.lock();                       //wait for other measurements to complete
     if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
     if(!CORdy) return;
     pgMGUI->chooseObj(true);    // switch to mirau
@@ -477,7 +477,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
     while(1) {
         cframes=framequeue->getFullNumber();
         if(cframes>=nFrames){
-            MLP.progress_meas=100;
+            MLP.progress_proc=100;
             break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -488,7 +488,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
         lcframes=cframes;
         if(time>=timeout) break;
 
-        MLP.progress_meas=100./nFrames*cframes;
+        MLP.progress_proc=100./nFrames*cframes;
     }
 
     framequeue->setUserFps(0);
@@ -499,13 +499,13 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
     res->pos[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
 
     std::lock_guard<std::mutex>lock(MLP._lock_comp);    // wait till other processing is done
-    MLP._lock_meas.unlock();                             // allow new measurement to start
+    MLP._lock_proc.unlock();                             // allow new measurement to start
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
 
     if(framequeue->getFullNumber()!=nFrames){
         Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
-        if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();measurementInProgress=false;}
+        if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
         return;
     }
 
@@ -757,7 +757,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
                 std::cerr<<"Too many bad pixels, skipping.\n";
                 std::cerr<<"done nr "<<NA<<"\n"; NA++;
                 MLP.progress_comp=100;
-                if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();measurementInProgress=false;}
+                if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
                 delete res;
                 return;
             }
@@ -807,7 +807,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
     std::cerr<<"Full: "<<go.pGCAM->iuScope->FQsPCcam.getFullNumber()<<"\n";
 
     MLP.progress_comp=100;
-    if(MLP._lock_meas.try_lock()){MLP._lock_meas.unlock();measurementInProgress=false;}
+    if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
 }
 
 void pgScanGUI::calcExpMinMax(FQ* framequeue, cv::Mat* mask){

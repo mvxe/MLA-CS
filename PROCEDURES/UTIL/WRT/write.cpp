@@ -3,7 +3,7 @@
 #include "includes.h"
 #include "GUI/tab_monitor.h"    //for debug purposes
 
-pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI): pgBeAn(pgBeAn), pgMGUI(pgMGUI){
+pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP): pgBeAn(pgBeAn), pgMGUI(pgMGUI), MLP(MLP){
     gui_activation=new QWidget;
     gui_settings=new QWidget;
 
@@ -201,7 +201,7 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
     else cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_CUBIC);                         //enlarge
 
     // at this point resizedWrite contains the desired depth at each point
-
+    std::lock_guard<std::mutex>lock(MLP._lock_proc);
     if(!go.pRPTY->connected) return;
     pgMGUI->chooseObj(false);    // switch to writing
     pulse_precision=go.pRPTY->getPulsePrecision();  // pulse duration unit
@@ -238,14 +238,17 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
         CO.clear(true);
         xdir^=1;
 
-        // wait till row half complete
-        //QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+        while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+        MLP.progress_proc=100./resizedWrite.rows*j;
     }
 
     pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
     pgMGUI->corCOMove(CO,(xdir?-1:1)*offsX/2,-offsY/2,0);
     CO.execute();
     CO.clear(true);
+
+    while(CO.getProgress()<1) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+    MLP.progress_proc=100;
 }
 void pgWrite::onWriteFrame(){
     std::cerr<<"writing frame\n";

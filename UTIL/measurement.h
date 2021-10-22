@@ -4,11 +4,11 @@
 #include <atomic>
 #include <mutex>
 
-struct mesLockProg{
+struct procLockProg{
 public:
-    std::mutex _lock_meas;
+    std::mutex _lock_proc;
     std::mutex _lock_comp;
-    std::atomic<int> progress_meas{0};      //should be within [0:100]
+    std::atomic<int> progress_proc{0};      //should be within [0:100]
     std::atomic<int> progress_comp{0};
 };
 

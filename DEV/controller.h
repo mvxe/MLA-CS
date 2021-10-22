@@ -132,6 +132,7 @@ protected:
     virtual double CO_getProgress(CO* a)=0;
     // the returned value is a double in range [0,1], where 0 indicates that the commands from the executed CO havent started executing, and 1 that they have fully executed
     // if this CO has never been executed, returns 1
+    // the progress of a previously executed queue can be obtained even after CO_clear, unless CO_execute is called, after which it returns the progress of the new execution
 
 public:
 

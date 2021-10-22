@@ -13,7 +13,7 @@ class QPushButton;
 class QCheckBox;
 class FQ;
 class scanSettings;
-class mesLockProg;
+class procLockProg;
 class pgMoveGUI;
 class twid;
 class scanRes;
@@ -33,7 +33,7 @@ class pgScanGUI: public QObject{
     Q_OBJECT
     //GUI
 public:
-    pgScanGUI(mesLockProg& MLP);
+    pgScanGUI(procLockProg& MLP);
     ~pgScanGUI();
     rtoml::vsr conf;                                //configuration map
     QWidget* gui_activation;
@@ -70,7 +70,7 @@ public:
     };
     varShare<scanRes> result;
 
-    mesLockProg& MLP;
+    procLockProg& MLP;
     double vsConv(val_selector* vs);
 
     static cv::Rect lastROI;

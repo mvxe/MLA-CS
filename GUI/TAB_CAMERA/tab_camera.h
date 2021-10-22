@@ -18,7 +18,7 @@ public:
     void tab_entered();
     void tab_exited();
 
-    mesLockProg MLP;
+    procLockProg MLP;
 private:
     QTimer *timer;
 

@@ -7,7 +7,7 @@
 
 //GUI
 
-pgFocusGUI::pgFocusGUI(mesLockProg& MLP, pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI): MLP(MLP), pgSGUI(pgSGUI), pgMGUI(pgMGUI){
+pgFocusGUI::pgFocusGUI(procLockProg& MLP, pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI): MLP(MLP), pgSGUI(pgSGUI), pgMGUI(pgMGUI){
     init_gui_activation();
     init_gui_settings();
     timer = new QTimer(this);
@@ -28,8 +28,8 @@ void pgFocusGUI::init_gui_activation(){
     gui_activation->addWidget(bFocus);
 }
 void pgFocusGUI::onRefocus(){
-    if(MLP._lock_meas.try_lock()){
-        MLP._lock_meas.unlock();
+    if(MLP._lock_proc.try_lock()){
+        MLP._lock_proc.unlock();
         if(!CORdy) recalculate();
         go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this));
     }
@@ -82,7 +82,7 @@ void pgFocusGUI::onMenuChange(int index){
 }
 
 void pgFocusGUI::recalculate() {
-    if(MLP._lock_meas.try_lock()){
+    if(MLP._lock_proc.try_lock()){
         if(MLP._lock_comp.try_lock()){
             std::string report;
             updateCO(report);
@@ -90,7 +90,7 @@ void pgFocusGUI::recalculate() {
             MLP._lock_comp.unlock();
         }
         else timer->start();
-        MLP._lock_meas.unlock();
+        MLP._lock_proc.unlock();
     }
     else timer->start();
 }
@@ -155,7 +155,7 @@ void pgFocusGUI::refocus(){
     if(!CORdy) return;
     unsigned nFrames=totalFrameNum;
     FQ* framequeue;
-    {   std::lock_guard<std::mutex>lock(MLP._lock_meas);    //wait for other measurements to complete
+    {   std::lock_guard<std::mutex>lock(MLP._lock_proc);    //wait for other measurements to complete
         pgMGUI->chooseObj(true);    // switch to mirau
 
         go.pGCAM->iuScope->set_trigger("Line1");
@@ -169,7 +169,7 @@ void pgFocusGUI::refocus(){
         while(1) {
             cframes=framequeue->getFullNumber();
             if(cframes>=nFrames){
-                MLP.progress_meas=100;
+                MLP.progress_proc=100;
                 break;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -180,7 +180,7 @@ void pgFocusGUI::refocus(){
             lcframes=cframes;
             if(time>=timeout) break;
 
-            MLP.progress_meas=100./nFrames*cframes;
+            MLP.progress_proc=100./nFrames*cframes;
         }
 
         framequeue->setUserFps(0);

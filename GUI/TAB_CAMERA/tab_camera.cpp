@@ -75,7 +75,7 @@ tab_camera::tab_camera(QWidget* parent){
     conf["pgDepthEval"]=pgDpEv->conf;
     pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn);
     conf["pgCalib"]=pgCal->conf;
-    pgWrt=new pgWrite(pgBeAn,pgMGUI);
+    pgWrt=new pgWrite(pgBeAn,pgMGUI,MLP);
     conf["pgWrite"]=pgWrt->conf;
     //pgWrtPrd=new pgWritePredictor(pgMGUI);
 
@@ -282,7 +282,7 @@ void tab_camera::work_fun(){
     redrawHistClrmap=false;
     updateDisp=false;
 
-    measPB->setValue(MLP.progress_meas);
+    measPB->setValue(MLP.progress_proc);
     compPB->setValue(MLP.progress_comp);
 }
 
