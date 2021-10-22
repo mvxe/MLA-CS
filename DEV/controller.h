@@ -128,6 +128,11 @@ protected:
     virtual void CO_clear(CO* a, bool keepMotionRemainders)=0;
     // set keepMotionRemainders to true if you want to use the same object sequentially while correcting for motion precision rounding errors
 
+    //returns progress
+    virtual double CO_getProgress(CO* a)=0;
+    // the returned value is a double in range [0,1], where 0 indicates that the commands from the executed CO havent started executing, and 1 that they have fully executed
+    // if this CO has never been executed, returns 1
+
 public:
 
     class CO{       // command object - defines a specific procedure (such as a motion 'trajectory' combined with gpio triggering) attached to a specific controller
@@ -150,6 +155,8 @@ public:
         {ctrl->CO_startTimer(this, GPIOID, duration);}
         void clear(bool keepMotionRemainders=false)
         {ctrl->CO_clear(this, keepMotionRemainders);}
+        double getProgress()
+        {return ctrl->CO_getProgress(this);}
         CTRL* const& _ctrl{ctrl};
     private:
         CTRL* ctrl;

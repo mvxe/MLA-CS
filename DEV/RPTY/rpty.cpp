@@ -93,7 +93,7 @@ int RPTY::A2F_write(uint8_t queue, uint32_t *data, uint32_t size4){
     TCP_con::write(command,12);
     return TCP_con::write(data,4*size4);
 }
-int RPTY::getNum(getNumType statID, uint8_t queue){
+uint32_t RPTY::getNum(getNumType statID, uint8_t queue){
     uint32_t command[2]={2,queue};
     command[0]+=(int)statID;
     TCP_con::write(command,8);
@@ -318,6 +318,9 @@ void RPTY::executeQueue(cqueue& cq, uint8_t queue){
     std::lock_guard<std::recursive_mutex>lock(mux);
     A2F_write(queue, cq.data(), cq.size());
     recheck_position=true;
+    for(auto& elem: commandObjects){
+        if(elem.second.TODO<std::numeric_limits<uint32_t>::max()) elem.second.TODO+=cq.size();
+    }
 }
 
 
@@ -334,6 +337,8 @@ void RPTY::CO_delete(CO* a){
 }
 void RPTY::CO_execute(CO* a){
     std::lock_guard<std::recursive_mutex>lock(mux);
+    commandObjects[a].ELNUM=commandObjects[a].main.size();
+    commandObjects[a].TODO=0;
     if(!commandObjects[a].timer.empty())
         executeQueue(commandObjects[a].timer, timer_cq);
     if(!commandObjects[a].main.empty())
@@ -418,6 +423,14 @@ void RPTY::CO_clear(CO* a, bool keepMotionRemainders){
     commandObjects[a].main.clear();
     commandObjects[a].timer.clear();
     if(!keepMotionRemainders) commandObjects[a].motionRemainders.clear();
+}
+double RPTY::CO_getProgress(CO* a){
+    std::lock_guard<std::recursive_mutex>lock(mux);
+    if(commandObjects[a].ELNUM==0) return 1;
+    int64_t N=static_cast<int64_t>(getNum(A2F_RSCur,main_cq))-(commandObjects[a].TODO-commandObjects[a].ELNUM);
+    if(N<=0) return 1;
+    else if(N<commandObjects[a].ELNUM) return static_cast<double>(commandObjects[a].ELNUM-N)/commandObjects[a].ELNUM;
+    else return 0;
 }
 double RPTY::getPulsePrecision(){
     return 8e-9;

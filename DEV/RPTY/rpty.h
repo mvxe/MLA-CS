@@ -22,7 +22,7 @@ public:
     int F2A_read(uint8_t queue, uint32_t *data, uint32_t size4);    //queue is 0-3; note: size4 is number of uint32_t (4 bytes each), not bytes; return 0 if success, else -1
     int A2F_write(uint8_t queue, uint32_t *data, uint32_t size4);   //queue is 0-3; note: size4 is number of uint32_t (4 bytes each), not bytes; return 0 if success, else -1
     enum getNumType{F2A_RSMax=0, F2A_RSCur=1, F2A_lostN=2, A2F_RSMax=3, A2F_RSCur=4, A2F_lostN=5};  //maximum number of elements, number of elemenst currently in queue, number of lost elements
-    int getNum(getNumType statID, uint8_t queue);                   //queue is 0-3; for command see enum above; returns the result or -1 if error
+    uint32_t getNum(getNumType statID, uint8_t queue);              //queue is 0-3; for command see enum above; returns the result or -1 if error
     int A2F_trig(uint8_t queue);                                    //queue is 0-3
     int FIFOreset(uint8_t A2Fqueues, uint8_t F2Aqueues=0);          //queues is a 4bit binary value (0xF), where each queue is one bit: this lets one reset multiple queues silmultaneously
     int FIFOreset();                                                //total reset
@@ -71,11 +71,14 @@ private:
     void CO_addHold(CO* a, std::string ID, _holdCondition condition);
     void CO_startTimer(CO* a, std::string ID, double duration);
     void CO_clear(CO* a, bool keepMotionRemainders);
+    double CO_getProgress(CO* a);
 
     struct cqus{
         cqueue main;
         cqueue timer;
         std::map<std::string, double> motionRemainders;
+        uint64_t TODO;
+        uint32_t ELNUM;
     };
     std::map<CO*, cqus> commandObjects;
 
