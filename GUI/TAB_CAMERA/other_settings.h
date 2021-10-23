@@ -26,6 +26,7 @@ private:
     bool _isMirau=true;
 
 public:
+    val_selector* guiCamFPS;
     val_selector* CLAHE_tileGridSize;
     val_selector* CLAHE_clipLimit;
     val_selector* wrsbar_unit;

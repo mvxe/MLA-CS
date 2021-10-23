@@ -125,6 +125,9 @@ public:
 
     val_selector* xDifShift;
     val_selector* yDifShift;
+
+    std::atomic<bool> isROI{false};
+    std::atomic<int> ROI[4];
 private:
     smp_selector* selectScanSetting;    //scan setting
     std::vector<scanSettings*> settingWdg;

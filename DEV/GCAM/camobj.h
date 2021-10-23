@@ -55,6 +55,7 @@ private:
     void work();                                //call this periodically
     void end();                                 //mutexed
     void con_cam();
+    // implementing a ROI function doesnt work with camera(Basler) and api(Aravis), so I give up on that
 
     void pushFrameIntoStream();
     void requeueFrame(cv::Mat* MatPtr);

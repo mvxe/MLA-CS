@@ -154,6 +154,11 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenu=new QMenu;
     clickMenu->addAction("Save int. (and fft. if short scan) at this pixel on next measurement", this, SLOT(onSavePixData()));
     clickMenu->addAction("Save image to file", this, SLOT(onSaveCameraPicture()));
+    clickMenu->addAction("Reset Scan ROI", this, SLOT(onResetROI()));
+
+    clickMenuSelection=new QMenu;
+    clickMenuSelection->addAction("Set Scan ROI", this, SLOT(onChangeROI()));
+    clickMenuSelection->addAction("Save image to file", this, SLOT(onSaveCameraPicture()));
 
     clickMenuDepthRight=new QMenu;
     clickMenuDepthRight->addAction("Save DepthMap (wtih border, scalebar and colorbar) to file", this, SLOT(onSaveDepthMap()));
@@ -188,14 +193,14 @@ tab_camera::~tab_camera(){
 }
 
 void tab_camera::work_fun(){
-    if(selDisp->index==0) framequeueDisp->setUserFps(30,5);
+    if(selDisp->index==0) framequeueDisp->setUserFps(camSet->guiCamFPS->val,5);
     else framequeueDisp->setUserFps(0);
     onDisplay=framequeueDisp->getUserMat();
 
     if(selDisp->index==0){  // Camera
         LDisplay->isDepth=false;
         if(onDisplay!=nullptr){
-            if(main_show_target->isChecked() || main_show_scale->isChecked() || main_show_bounds->isChecked()){
+            if(main_show_target->isChecked() || main_show_scale->isChecked() || main_show_bounds->isChecked() || selectingFlag || lastSelectingFlag || pgSGUI->isROI){
                 cv::Mat temp=onDisplay->clone();
                 if(main_CLAHE_writing->isChecked() && !camSet->isMirau){
                     auto CLAHE=cv::createCLAHE(camSet->CLAHE_clipLimit->val, {(int)camSet->CLAHE_tileGridSize->val,(int)camSet->CLAHE_tileGridSize->val});
@@ -204,6 +209,12 @@ void tab_camera::work_fun(){
                 if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY));
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx(), pgMGUI->currentObj==1?(static_cast<double>(camSet->wrsbar_unit->val)):0);
+                if(selectingFlag){
+                    if(selectingFlagIsLine) cv::line(temp, {static_cast<int>(selStartX+1),static_cast<int>(selStartY+(temp.rows-temp.rows)/2)},{static_cast<int>(selCurX+1),static_cast<int>(selCurY+(temp.rows-temp.rows)/2)}, cv::Scalar{255}, 1, cv::LINE_AA);
+                    else cv::rectangle(temp, {static_cast<int>(selStartX+1),static_cast<int>(selStartY+(temp.rows-temp.rows)/2)},{static_cast<int>(selCurX+1),static_cast<int>(selCurY+(temp.rows-temp.rows)/2)}, cv::Scalar{255}, 1);
+                }
+                if(pgSGUI->isROI) cv::rectangle(temp, cv::Rect(pgSGUI->ROI[0],pgSGUI->ROI[1],pgSGUI->ROI[2],pgSGUI->ROI[3]), cv::Scalar{255}, 1);
+
                 pgCal->drawWriteArea(&temp);
                 pgWrt->drawWriteArea(&temp);
                 scaleDisplay(temp, QImage::Format_Indexed8);
@@ -311,7 +322,7 @@ void tab_camera::onShowAbsHeightChanged(){
 
 void tab_camera::tab_entered(){
     framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-    framequeueDisp->setUserFps(30,5);
+    framequeueDisp->setUserFps(camSet->guiCamFPS->val,5);
     go.pRPTY->setGPIO("ilumLED", 1);
 
     timer->start(work_call_time);
@@ -374,7 +385,12 @@ void iImageDisplay::mousePressEvent(QMouseEvent *event){
             parent->selectingFlagIsLine=true;
         }
     }
-    else{}
+    else{
+        if(event->button()==Qt::RightButton){
+            parent->selectingFlag=true;
+            parent->selectingFlagIsLine=false;
+        }
+    }
 }
 void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
     double xcoord,ycoord,pxW,pxH;
@@ -410,15 +426,18 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
         }
     }
     else{
-        if(xcoord<0 || xcoord>=pxW || ycoord<0 || ycoord>=pxH) return; //ignore events outside pixmap;
+        if(xcoord<0 || xcoord>=pxW || ycoord<0 || ycoord>=pxH) {parent->selectingFlag=false; return;} //ignore events outside pixmap;
         if(event->button()==Qt::LeftButton){
             double DX, DY;
             DX=parent->pgMGUI->px2mm(xcoord-pxW/2.)+parent->pgBeAn->writeBeamCenterOfsX;
             DY=parent->pgMGUI->px2mm(pxH/2.-ycoord)+parent->pgBeAn->writeBeamCenterOfsY;
             parent->pgMGUI->move(DX,DY,0);
             if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(xcoord-pxW/2, pxH/2-ycoord);
+            parent->pgSGUI->isROI=false;
         }else if(event->button()==Qt::RightButton){
-            parent->clickMenu->popup(QCursor::pos());
+            if(parent->selStartX==parent->selEndX && parent->selStartY==parent->selEndY) parent->clickMenu->popup(QCursor::pos());
+            else parent->clickMenuSelection->popup(QCursor::pos());
+            parent->selectingFlag=false;
         }
     }
 }
@@ -451,8 +470,24 @@ void tab_camera::onSaveCameraPicture(void){
     if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
     if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgMGUI->px2mm(pgBeAn->writeBeamCenterOfsX), pgMGUI->px2mm(pgBeAn->writeBeamCenterOfsY));
     if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx(), pgMGUI->currentObj==1?(static_cast<double>(camSet->wrsbar_unit->val)):0);
+
+    if(selStartX!=selEndX && selStartY!=selEndY){
+        int width=abs(selEndX-selStartX+1);
+        int height=abs(selEndY-selStartY+1);
+        temp=temp({static_cast<int>(selStartX<selEndX?selStartX:(selStartX-width)), static_cast<int>(selStartY<selEndY?selStartY:(selStartY-height)), width, height});
+    }
     imwrite(fileName, temp,{cv::IMWRITE_PNG_COMPRESSION,9});
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(fq);
+}
+void tab_camera::onResetROI(){
+    pgSGUI->isROI=false;
+}
+void tab_camera::onChangeROI(){
+    pgSGUI->ROI[2]=abs(selEndX-selStartX+1);
+    pgSGUI->ROI[3]=abs(selEndY-selStartY+1);
+    pgSGUI->ROI[0]=selStartX<selEndX?selStartX:(selStartX-pgSGUI->ROI[2]);
+    pgSGUI->ROI[1]=selStartY<selEndY?selStartY:(selStartY-pgSGUI->ROI[3]);
+    pgSGUI->isROI=true;
 }
 void tab_camera::onSaveDepthMap(void){
     std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving Depth Map (wtih border, scalebar and colorbar).", "","Images (*.png)").toStdString();

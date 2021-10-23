@@ -458,6 +458,10 @@ void pgScanGUI::_savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames
 
 void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correction, char cbRefl_override){
     typedef cv::Mat tUMat;//cv::UMat    // TODO fix; use conditional on if opencl was detected
+    cv::Rect scanROI;
+    if(isROI) scanROI=cv::Rect(ROI[0],ROI[1],ROI[2],ROI[3]);
+    else scanROI=cv::Rect(0,0,go.pGCAM->iuScope->camCols,go.pGCAM->iuScope->camRows);
+
     MLP._lock_proc.lock();                       //wait for other measurements to complete
     if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
     if(!CORdy) return;
@@ -509,8 +513,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
         return;
     }
 
-    unsigned nRows=framequeue->getUserMat(0)->rows;
-    unsigned nCols=framequeue->getUserMat(0)->cols;
+    unsigned nRows=(*framequeue->getUserMat(0))(scanROI).rows;
+    unsigned nCols=(*framequeue->getUserMat(0))(scanROI).cols;
     _savePixel(framequeue, nFrames, nDFTFrames);    //writing pixel to file: for selected pixel
 
     // for longer scans, here we separate the DFT frames from all taken frames
@@ -519,7 +523,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
         MLP.progress_comp=0;
         // get I_0
         tUMat I_0=tUMat::zeros(nRows, nCols, CV_32F);
-        for(unsigned n=0;n!=nFrames;n++) cv::add(I_0,*framequeue->getUserMat(n),I_0, cv::noArray(), CV_32F);
+        for(unsigned n=0;n!=nFrames;n++) cv::add(I_0,(*framequeue->getUserMat(n))(scanROI),I_0, cv::noArray(), CV_32F);
         cv::divide(I_0,nFrames,I_0);
         MLP.progress_comp=10;
         // prepare mats
@@ -531,7 +535,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
         tUMat mask2(nRows, nCols, CV_8U);
         // calc initial avg
         for(unsigned n=0;n!=nDFTFrames;n++){
-            cv::subtract(*framequeue->getUserMat(n),I_0,tmp, cv::noArray(), CV_32F);
+            cv::subtract((*framequeue->getUserMat(n))(scanROI),I_0,tmp, cv::noArray(), CV_32F);
             cv::multiply(tmp,tmp,tmp);
             cv::add(avg,tmp,avg);
         }
@@ -539,10 +543,10 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
         // calc rolling avg
         for(unsigned n=nDFTFrames-1;n!=nFrames;n++){
             if(n!=nDFTFrames-1){
-                cv::subtract(*framequeue->getUserMat(n),I_0,tmp, cv::noArray(), CV_32F);
+                cv::subtract((*framequeue->getUserMat(n))(scanROI),I_0,tmp, cv::noArray(), CV_32F);
                 cv::multiply(tmp,tmp,tmp);
                 cv::add(avg,tmp,avg);
-                cv::subtract(*framequeue->getUserMat(n-nDFTFrames),I_0,tmp, cv::noArray(), CV_32F);
+                cv::subtract((*framequeue->getUserMat(n-nDFTFrames))(scanROI),I_0,tmp, cv::noArray(), CV_32F);
                 cv::multiply(tmp,tmp,tmp);
                 cv::subtract(avg,tmp,avg);
             }
@@ -556,7 +560,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
         MLP.progress_comp=40;
         unsigned index;
         for(unsigned n=0;n!=nFrames;n++) for(unsigned j=0;j!=nRows;j++)
-            framequeue->getUserMat(n)->row(j).copyTo(data.row(n).colRange(j*nCols,(j+1)*nCols));
+            (*framequeue->getUserMat(n))(scanROI).row(j).copyTo(data.row(n).colRange(j*nCols,(j+1)*nCols));
         MLP.progress_comp=50;
         for(unsigned i=0;i!=nCols;i++) for(unsigned j=0;j!=nRows;j++){
             index=peakIndex.at<uint16_t>(j,i);
@@ -564,7 +568,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
         }
         MLP.progress_comp=60;
         for(unsigned n=0;n!=nDFTFrames;n++) for(unsigned j=0;j!=nRows;j++)
-            data2.row(n).colRange(j*nCols,(j+1)*nCols).copyTo(framequeue->getUserMatNonConst(n)->row(j));
+            data2.row(n).colRange(j*nCols,(j+1)*nCols).copyTo((*framequeue->getUserMatNonConst(n))(scanROI).row(j));
         MLP.progress_comp=70;
         for(unsigned n=nFrames-1;n!=nDFTFrames-1;n--)
             framequeue->freeUserMat(n);
@@ -589,8 +593,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
                 unsigned frames=nDFTFrames+k-1;
                 std::complex<double> res(0,0);
                 for(unsigned n=0;n!=frames;n++){    // its one pixel, no point optimizing
-                    res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(Y,X)*cos(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
-                    res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(Y,X)*sin(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
+                    res.real(res.real()+(int)(*framequeue->getUserMat(n))(scanROI).at<uint8_t>(Y,X)*cos(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
+                    res.imag(res.imag()-(int)(*framequeue->getUserMat(n))(scanROI).at<uint8_t>(Y,X)*sin(2*M_PI*n*Nperiods/frames)*pow(sin(M_PI*n/frames),2));
                 }
                 amp[k]=1./frames*std::abs(res);
             }
@@ -606,8 +610,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
                     if(!maxIter) goto next;
                     std::complex<double> res(0,0);
                     for(unsigned n=0;n!=nDFTFrames;n++){
-                        res.real(res.real()+(int)framequeue->getUserMat(n)->at<uint8_t>(Y,X)*cos(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
-                        res.imag(res.imag()-(int)framequeue->getUserMat(n)->at<uint8_t>(Y,X)*sin(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                        res.real(res.real()+(int)(*framequeue->getUserMat(n))(scanROI).at<uint8_t>(Y,X)*cos(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
+                        res.imag(res.imag()-(int)(*framequeue->getUserMat(n))(scanROI).at<uint8_t>(Y,X)*sin(2*M_PI*n*Nperiods/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2));
                     }
                     amp[direction?0:2]=1./nDFTFrames*std::abs(res);
                     if(amp[direction?0:2]<=amp[1]){
@@ -647,9 +651,9 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
     tUMat maskNot(nRows, nCols, CV_8U);
 
     for(unsigned n=0;n!=nDFTFrames;n++){
-        cv::multiply(*framequeue->getUserMat(n),  cos(2*M_PI*n*peakLoc/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2), mTmp, 1, CV_32F);
+        cv::multiply((*framequeue->getUserMat(n))(scanROI),  cos(2*M_PI*n*peakLoc/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2), mTmp, 1, CV_32F);
         cv::add(mReal,mTmp,mReal);
-        cv::multiply(*framequeue->getUserMat(n), -sin(2*M_PI*n*peakLoc/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2), mTmp, 1, CV_32F);
+        cv::multiply((*framequeue->getUserMat(n))(scanROI), -sin(2*M_PI*n*peakLoc/nDFTFrames)*pow(sin(M_PI*n/nDFTFrames),2), mTmp, 1, CV_32F);
         cv::add(mImag,mTmp,mImag);
         MLP.progress_comp=90*(n+1)/nDFTFrames;
     }
@@ -686,7 +690,16 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
     maskNot.copyTo(res->maskN);
     mPhs.copyTo(res->depth);
 
-    if(getExpMinMax) calcExpMinMax(framequeue, &res->maskN);
+    if(getExpMinMax){
+        int minn=256,maxx=-1;
+        for(int i=0;i!=framequeue->getFullNumber();i++){
+            double min,max;
+            cv::minMaxLoc((*framequeue->getUserMat(i))(scanROI), &min, &max, 0, 0, res->maskN);
+            if(min<minn)minn=min;
+            if(max>maxx)maxx=max;
+        }
+        Q_EMIT doneExpMinmax(minn, maxx);
+    }
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
 
     if(unwrap->val){
@@ -809,19 +822,6 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
     MLP.progress_comp=100;
     if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
 }
-
-void pgScanGUI::calcExpMinMax(FQ* framequeue, cv::Mat* mask){
-    int minn=256,maxx=-1;
-    for(int i=0;i!=framequeue->getFullNumber();i++){
-        double min,max;
-        cv::minMaxLoc(*framequeue->getUserMat(i), &min, &max, 0, 0, *mask);
-        if(min<minn)minn=min;
-        if(max>maxx)maxx=max;
-    }
-    Q_EMIT doneExpMinmax(minn, maxx);
-}
-
-
 
 // SOME STATIC FUNCTIONS
 

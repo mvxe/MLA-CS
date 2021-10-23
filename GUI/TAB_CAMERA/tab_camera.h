@@ -78,6 +78,7 @@ private:
     //pgWritePredictor* pgWrtPrd;
 
     QMenu* clickMenu;
+    QMenu* clickMenuSelection;
     QMenu* clickMenuDepthRight;
     QMenu* clickMenuDepthLeft;
 
@@ -120,6 +121,8 @@ private Q_SLOTS:
     void onPlotRect();
     void on2DFFT();
     void onCrop();
+    void onResetROI();
+    void onChangeROI();
 
     void updateImgF();
 

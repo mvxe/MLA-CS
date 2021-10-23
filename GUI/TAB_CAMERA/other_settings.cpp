@@ -12,6 +12,9 @@ cameraSett::cameraSett(std::atomic<bool>& getExpMinMax, pgMoveGUI* pgMov): getEx
     report0=new QLabel();
     layout->addWidget(report0);
     layout->addWidget(new hline);
+    guiCamFPS=new val_selector(30, "Set camera fps for GUI: ", 1, 240, 0);
+    conf["guiCamFPS"]=guiCamFPS;
+    layout->addWidget(guiCamFPS);
     expMirau=new val_selector(1000, "Set exposure for Mirau: ", 0, 9999999, 3, 0, {"us"});
     conf["expMirau"]=expMirau;
     layout->addWidget(expMirau);
