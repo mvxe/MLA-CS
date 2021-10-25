@@ -9,9 +9,9 @@ pgMoveGUI::pgMoveGUI(smp_selector* _selObjective): selObjective(_selObjective){
     connect(selObjective, SIGNAL(changed(int)), this, SLOT(_chooseObj(int)));
     connect(this, SIGNAL(sigChooseObj(bool)), this, SLOT(chooseObj(bool)));
     conf["selObjective"]=selObjective;
-    conf["objectiveDisplacement-X"]=objectiveDisplacement[0];
-    conf["objectiveDisplacement-Y"]=objectiveDisplacement[1];
-    conf["objectiveDisplacement-Z"]=objectiveDisplacement[2];
+    conf["objectiveDisplacement-X"]=_objectiveDisplacement[0];
+    conf["objectiveDisplacement-Y"]=_objectiveDisplacement[1];
+    conf["objectiveDisplacement-Z"]=_objectiveDisplacement[2];
 }
 
 void pgMoveGUI::init_gui_activation(){
@@ -182,9 +182,9 @@ void pgMoveGUI::_chooseObj(int index){
         return;
     }
     currentObjective=index;
-    go.pRPTY->motion("X",(useMirau?-1:1)*objectiveDisplacement[0],0,0,CTRL::MF_RELATIVE);
-    go.pRPTY->motion("Y",(useMirau?-1:1)*objectiveDisplacement[1],0,0,CTRL::MF_RELATIVE);
-    go.pRPTY->motion("Z",(useMirau?-1:1)*objectiveDisplacement[2],0,0,CTRL::MF_RELATIVE);
+    go.pRPTY->motion("X",(useMirau?-1:1)*_objectiveDisplacement[0],0,0,CTRL::MF_RELATIVE);
+    go.pRPTY->motion("Y",(useMirau?-1:1)*_objectiveDisplacement[1],0,0,CTRL::MF_RELATIVE);
+    go.pRPTY->motion("Z",(useMirau?-1:1)*_objectiveDisplacement[2],0,0,CTRL::MF_RELATIVE);
 }
 void pgMoveGUI::chooseObj(bool useMirau){
     if(currentObjective==(useMirau?0:1)) return;
@@ -338,8 +338,8 @@ void pgMoveGUI::getPos(double* X, double* Y, double* Z){
     double xr, yr;
     xr=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
     yr=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
-    *X=Xcor(xr-((currentObj==1)?objectiveDisplacement[0]:0),yr-((currentObj==1)?objectiveDisplacement[1]:0),0);
-    if(Y!=nullptr) *Y=Ycor(xr-((currentObj==1)?objectiveDisplacement[0]:0),yr-((currentObj==1)?objectiveDisplacement[1]:0),0);
+    *X=Xcor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0),0);
+    if(Y!=nullptr) *Y=Ycor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0),0);
     if(Z!=nullptr) *Z=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
 }
 
@@ -349,11 +349,11 @@ void pgMoveGUI::_onMarkObjDisY(bool isStart){
         tmpOD[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
         tmpOD[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
     }else{
-        for(unsigned i=0;i!=3;i++) objectiveDisplacement[i]=0;  // to prevent move
+        for(unsigned i=0;i!=3;i++) _objectiveDisplacement[i]=0;  // to prevent move
         chooseObj(false);
-        objectiveDisplacement[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position)-tmpOD[0];
-        objectiveDisplacement[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position)-tmpOD[1];
-        objectiveDisplacement[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position)-tmpOD[2];
+        _objectiveDisplacement[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position)-tmpOD[0];
+        _objectiveDisplacement[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position)-tmpOD[1];
+        _objectiveDisplacement[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position)-tmpOD[2];
     }
 }
 void pgMoveGUI::onSettingsObjectiveChange(int index){

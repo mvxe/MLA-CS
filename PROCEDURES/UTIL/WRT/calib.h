@@ -36,7 +36,6 @@ private:
 //    QPushButton* btnGoToNearestFree;
 //    val_selector* selRadDilGoToNearestFree;
 //    val_selector* selRadSprGoToNearestFree;
-    QPushButton* btnSelectSaveFolder;
     std::string saveFolderName{""};
     HQPushButton* btnWriteCalib;
 
@@ -61,13 +60,10 @@ private:
         val_selector* selArraySpacing;
         smp_selector* selArrayType;
         checkbox_gs* transposeMat;
-        val_selector* selArrayIntA;
-        val_selector* selArrayIntB;
         val_selector* selArrayDurA;
         val_selector* selArrayDurB;
         val_selector* selArrayFocA;
         val_selector* selArrayFocB;
-        smp_selector* selArrayScanType;     //one scan, multi scan
         val_selector* selArrayOneScanN;
         checkbox_gs* selArrayRandomize;
         checkbox_gs* saveMats;
@@ -107,13 +103,11 @@ private:
     void WCFFindNearest();
     void WCFArray();
     void WCFAArray();
-    void writePulse(int intensity, double duration, const std::string filename="", uchar* usedAvg=nullptr, const int cmdQueue=0, const int recQueue=1);       //duration in us
     std::string makeDateTimeFolder(const std::string folder);
-    void saveConf(std::string filename, double focus, double exclusionOrSpacing, int intensity, double duration, uchar averaging);       //focus in mm, duration in ms, exclusionOrSpacing in um
-    void saveConfMain(std::string filename, double focus, double extraFocusOffset);    //focus, extraFocusOffset in mm
+    void saveConf(std::string filename, double duration, double focus, double spacing);
+    void saveMainConf(std::string filename);
 private Q_SLOTS:
 //    void onGoToNearestFree();
-    void onSelSaveF();
     void onWCF();
     void onProcessFocusMes();
     void onChangeDrawWriteAreaOn(bool status);

@@ -34,6 +34,15 @@ void pgFocusGUI::onRefocus(){
         go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this));
     }
 }
+void pgFocusGUI::doRefocus(bool block){
+    if(MLP._lock_proc.try_lock()){
+        MLP._lock_proc.unlock();
+        if(!CORdy) recalculate();
+        focusInProgress=true;
+        go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this));
+        if(block) while(focusInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+    }
+}
 void pgFocusGUI::init_gui_settings(){
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
@@ -151,8 +160,8 @@ void pgFocusGUI::updateCO(std::string &report){
 }
 
 void pgFocusGUI::refocus(){
-    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
-    if(!CORdy) return;
+    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) {focusInProgress=false; return;}
+    if(!CORdy) {focusInProgress=false; return;}
 
     cv::Rect scanROI;
     if(pgSGUI->isROI) scanROI=cv::Rect(pgSGUI->ROI[0],pgSGUI->ROI[1],pgSGUI->ROI[2],pgSGUI->ROI[3]);
@@ -196,6 +205,7 @@ void pgFocusGUI::refocus(){
         if(framequeue->getFullNumber()!=nFrames){
             Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
             go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
+            focusInProgress=false;
             return;
         }
 
@@ -249,4 +259,5 @@ void pgFocusGUI::refocus(){
             Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: abs of the calculated correction is larger than half the read range distance: ",Zcor," vs ",readRangeDis/2," . Did not apply correction.")));
         else go.pRPTY->motion("Z",Zcor,0,0,CTRL::MF_RELATIVE);
     }
+    focusInProgress=false;
 }

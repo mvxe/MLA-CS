@@ -30,8 +30,11 @@ public:
     QTimer* timer;
 
     procLockProg& MLP;
-    void refocus();
+    void doRefocus(bool block=true);
+
+    std::atomic<bool> focusInProgress{false};   //for outside calling functions
  private:
+    void refocus();
     smp_selector* selectFocusSetting;
     std::vector<focusSettings*> settingWdg;
     friend class focusSettings;

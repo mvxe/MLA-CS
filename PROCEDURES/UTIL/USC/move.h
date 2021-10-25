@@ -32,7 +32,9 @@ public:
     double getYMotToXMot();
 
     const std::atomic<int>& currentObj{currentObjective};   // 0-mirau, 1-writing, -1-not initialized
-    double objectiveDisplacement[3]{0,0,0};                 // this is Writing-Mirau {dX,dY,dZ}
+    const double &objectiveDisplacementX{_objectiveDisplacement[0]};
+    const double &objectiveDisplacementY{_objectiveDisplacement[1]};
+    const double &objectiveDisplacementZ{_objectiveDisplacement[2]};
 
     // How it works; there are three(four) types of XY coordinates:
     //      - stage X, Y (these are skewed)
@@ -65,6 +67,8 @@ public Q_SLOTS:
 private:
     void init_gui_activation();
     void init_gui_settings();
+
+    double _objectiveDisplacement[3]{0,0,0};                 // this is Writing-Mirau {dX,dY,dZ}
 
     //activation
     QVBoxLayout* alayout;

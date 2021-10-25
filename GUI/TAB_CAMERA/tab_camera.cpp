@@ -213,7 +213,7 @@ void tab_camera::work_fun(){
                     if(selectingFlagIsLine) cv::line(temp, {static_cast<int>(selStartX+1),static_cast<int>(selStartY+(temp.rows-temp.rows)/2)},{static_cast<int>(selCurX+1),static_cast<int>(selCurY+(temp.rows-temp.rows)/2)}, cv::Scalar{255}, 1, cv::LINE_AA);
                     else cv::rectangle(temp, {static_cast<int>(selStartX+1),static_cast<int>(selStartY+(temp.rows-temp.rows)/2)},{static_cast<int>(selCurX+1),static_cast<int>(selCurY+(temp.rows-temp.rows)/2)}, cv::Scalar{255}, 1);
                 }
-                if(pgSGUI->isROI) cv::rectangle(temp, cv::Rect(pgSGUI->ROI[0],pgSGUI->ROI[1],pgSGUI->ROI[2],pgSGUI->ROI[3]), cv::Scalar{255}, 1);
+                if(camSet->isMirau &&  pgSGUI->isROI) cv::rectangle(temp, cv::Rect(pgSGUI->ROI[0],pgSGUI->ROI[1],pgSGUI->ROI[2],pgSGUI->ROI[3]), cv::Scalar{255}, 1);
 
                 pgCal->drawWriteArea(&temp);
                 pgWrt->drawWriteArea(&temp);
@@ -446,7 +446,7 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
             if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(xcoord-pxW/2, pxH/2-ycoord);
             parent->pgSGUI->isROI=false;
         }else if(event->button()==Qt::RightButton){
-            if(parent->selStartX==parent->selEndX && parent->selStartY==parent->selEndY) parent->clickMenu->popup(QCursor::pos());
+            if(parent->selStartX==parent->selEndX || parent->selStartY==parent->selEndY) parent->clickMenu->popup(QCursor::pos());
             else parent->clickMenuSelection->popup(QCursor::pos());
             parent->selectingFlag=false;
         }

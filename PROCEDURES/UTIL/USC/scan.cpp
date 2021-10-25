@@ -300,22 +300,19 @@ void pgScanGUI::doOneRound(char cbAvg_override, bool force_disable_tilt_correcti
     go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,cbAvg_override, force_disable_tilt_correction, refl_override));
 }
 
-void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, cv::Rect roi, bool force_disable_tilt_correction, char refl_override){
+void pgScanGUI::doNRounds(int N, double redoIfMaskHasMore, int redoN, bool force_disable_tilt_correction, char refl_override){
     if(!CORdy) recalculate();
     varShareClient<pgScanGUI::scanRes>* scanRes=result.getClient();
 
     int doneN=0;
     const pgScanGUI::scanRes* res;
-    cv::Mat roiMask;
     do{
         measurementInProgress=true;
         go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this,-1,force_disable_tilt_correction, refl_override));
         while(measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
         res=scanRes->get();
         doneN++;
-        if(roi.width!=0 && roi.height!=0) roiMask=cv::Mat(res->mask,roi);
-        else roiMask=cv::Mat(res->mask);
-    }while(cv::countNonZero(roiMask)>roiMask.cols*roiMask.rows*redoIfMaskHasMore && doneN<=redoN);
+    }while(cv::countNonZero(res->mask)>res->mask.cols*res->mask.rows*redoIfMaskHasMore && doneN<=redoN);
 
     while(res->avgNum<N){
         if(MLP._lock_proc.try_lock()){
@@ -463,8 +460,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
     else scanROI=cv::Rect(0,0,go.pGCAM->iuScope->camCols,go.pGCAM->iuScope->camRows);
 
     MLP._lock_proc.lock();                       //wait for other measurements to complete
-    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
-    if(!CORdy) return;
+    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) {measurementInProgress=false; return;}
+    if(!CORdy) {measurementInProgress=false; return;}
     pgMGUI->chooseObj(true);    // switch to mirau
     scanRes* res=new scanRes;
 
@@ -638,6 +635,7 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
             led_wl->setValue(mean,0);
         }
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
+        if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
         return;
     }
 

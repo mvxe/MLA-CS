@@ -49,8 +49,8 @@ public:
                                                     // for cbTilt_override==0, cbTilt setting is used, if cbTilt_override=1 correct tilt, if cbTilt_override=-1 do not correct
                                                     // for cbRefl_override==0, cbRefl setting is used, if cbRefl_override=1 calc refl, if cbRefl_override=-1 do not calc refl
                                                     // this function is non blocking, check measurementInProgress to see if done
-    void doNRounds(int N, double redoIfMaskHasMore=0.01, int redoN=3, cv::Rect roi={0,0,0,0}, bool force_disable_tilt_correction=false, char cbRefl_override=0);
-                                                    // does at least N measurements (and most N+1) with avg (cbAvg_override==1), if mask is more than redoIfMaskHasMore fraction of total(ROID) pixels, redo mesurements, up to redoN times
+    void doNRounds(int N, double redoIfMaskHasMore=0.01, int redoN=3, bool force_disable_tilt_correction=false, char cbRefl_override=0);
+                                                    // does at least N measurements (and most N+1) with avg (cbAvg_override==1), if mask is more than redoIfMaskHasMore fraction of total pixels, redo mesurements, up to redoN times
                                                     // this funtion is blocking, but processes qt events
 
     class scanRes{

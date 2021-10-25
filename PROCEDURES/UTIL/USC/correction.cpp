@@ -87,7 +87,7 @@ void pgCorrection::onStartCalib(bool state){
                 return;
             }
             if(!useCorrLocked)useCorr.lock();   //disabling correction temporarily
-            pgSGUI->doNRounds((int)selAvgNum->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(0,0,0,0), -1);  // this does QT process events
+            pgSGUI->doNRounds((int)selAvgNum->val, discardMaskRoiThresh, maxRedoScanTries, -1);  // this does QT process events
             if(!useCorrLocked)useCorr.unlock();
             scans->emplace_back(*scanResC->get());
 

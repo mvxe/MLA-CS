@@ -3,9 +3,9 @@
 #include "includes.h"
 
 pgBeamAnalysis::pgBeamAnalysis(pgMoveGUI* pgMGUI): pgMGUI(pgMGUI),
-    _writeBeamCenterOfsX(new val_selector(0, "Center X Offset: ",0,1,5,0,{"mm"})),
+    _writeBeamCenterOfsX(new val_selector(0, "Center X Offset: ",-1,1,5,0,{"mm"})),
     writeBeamCenterOfsX{_writeBeamCenterOfsX->val},
-    _writeBeamCenterOfsY(new val_selector(0, "Center Y Offset: ",0,1,5,0,{"mm"})),
+    _writeBeamCenterOfsY(new val_selector(0, "Center Y Offset: ",-1,1,5,0,{"mm"})),
     writeBeamCenterOfsY{_writeBeamCenterOfsY->val}
     {
 
