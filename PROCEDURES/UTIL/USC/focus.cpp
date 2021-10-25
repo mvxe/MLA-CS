@@ -153,6 +153,11 @@ void pgFocusGUI::updateCO(std::string &report){
 void pgFocusGUI::refocus(){
     if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
     if(!CORdy) return;
+
+    cv::Rect scanROI;
+    if(pgSGUI->isROI) scanROI=cv::Rect(pgSGUI->ROI[0],pgSGUI->ROI[1],pgSGUI->ROI[2],pgSGUI->ROI[3]);
+    else scanROI=cv::Rect(0,0,go.pGCAM->iuScope->camCols,go.pGCAM->iuScope->camRows);
+
     unsigned nFrames=totalFrameNum;
     FQ* framequeue;
     {   std::lock_guard<std::mutex>lock(MLP._lock_proc);    //wait for other measurements to complete
@@ -194,19 +199,19 @@ void pgFocusGUI::refocus(){
             return;
         }
 
-        int nRows=framequeue->getUserMat(0)->rows;
-        int nCols=framequeue->getUserMat(0)->cols;
+        unsigned nRows=(*framequeue->getUserMat(0))(scanROI).rows;
+        unsigned nCols=(*framequeue->getUserMat(0))(scanROI).cols;
 
         cv::UMat pixSum(1, nFrames, CV_64F, cv::Scalar(0));
         cv::Mat mat2D(nFrames, nCols, CV_64F);
 
-        if(!saveNextFocus.empty()) {std::ofstream wfile(util::toString(saveNextFocus,"/","test-avgAllPix.dat")); for(int i=0;i!=nFrames;i++) wfile<<cv::mean(*framequeue->getUserMat(i))[0]<<"\n"; wfile.close();}
+        if(!saveNextFocus.empty()) {std::ofstream wfile(util::toString(saveNextFocus,"/","test-avgAllPix.dat")); for(int i=0;i!=nFrames;i++) wfile<<cv::mean((*framequeue->getUserMat(i))(scanROI))[0]<<"\n"; wfile.close();}
 
         std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
         MLP.progress_comp=0;
         for(int k=0;k!=nRows;k++){      //Processing row by row
             for(int i=0;i!=nFrames;i++)
-                framequeue->getUserMat(i)->row(k).copyTo(mat2D.row(i));
+                (*framequeue->getUserMat(i))(scanROI).row(k).copyTo(mat2D.row(i));
             cv::UMat Umat2D;                    //row - frameN, col - FrameCol
             cv::UMat temp0, temp1;
             mat2D.copyTo(Umat2D);

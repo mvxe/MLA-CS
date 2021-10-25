@@ -154,10 +154,10 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenu=new QMenu;
     clickMenu->addAction("Save int. (and fft. if short scan) at this pixel on next measurement", this, SLOT(onSavePixData()));
     clickMenu->addAction("Save image to file", this, SLOT(onSaveCameraPicture()));
-    clickMenu->addAction("Reset Scan ROI", this, SLOT(onResetROI()));
+    clickMenu->addAction("Reset Scan/Focus ROI", this, SLOT(onResetROI()));
 
     clickMenuSelection=new QMenu;
-    clickMenuSelection->addAction("Set Scan ROI", this, SLOT(onChangeROI()));
+    clickMenuSelection->addAction("Set Scan/Focus ROI", this, SLOT(onChangeROI()));
     clickMenuSelection->addAction("Save image to file", this, SLOT(onSaveCameraPicture()));
 
     clickMenuDepthRight=new QMenu;
