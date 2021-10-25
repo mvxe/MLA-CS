@@ -299,7 +299,18 @@ void tab_camera::work_fun(){
 
 void tab_camera::scaleDisplay(cv::Mat img, QImage::Format format){
     cv::Mat tmp;
-    if(dispScale->val!=1) cv::resize(img, tmp, cv::Size(0,0),dispScale->val,dispScale->val, cv::INTER_AREA);
+    double scale=dispScale->val;
+    if(go.pGCAM->iuScope->connected){
+        double colRatio=static_cast<double>(img.cols)/go.pGCAM->iuScope->camCols;
+        double rowRatio=static_cast<double>(img.rows)/go.pGCAM->iuScope->camRows;
+        if(colRatio<1 && rowRatio<1){
+            if(colRatio<=scale && rowRatio<=scale) scale=1;
+            else if(colRatio>rowRatio) scale/=colRatio;
+            else if(colRatio<rowRatio) scale/=rowRatio;
+        }
+    }
+
+    if(scale!=1) cv::resize(img, tmp, cv::Size(0,0),scale,scale, cv::INTER_AREA);
     else tmp=img;
     LDisplay->setPixmap(QPixmap::fromImage(QImage(tmp.data, tmp.cols, tmp.rows, tmp.step, format)));
 }
