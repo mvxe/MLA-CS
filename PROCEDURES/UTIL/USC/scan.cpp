@@ -498,8 +498,11 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
     framequeue->setUserFps(0);
     go.pGCAM->iuScope->set_trigger("none");
 
-    res->pos[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
-    res->pos[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
+
+    if(pgMGUI==nullptr) res->XYnmppx=0;
+    else res->XYnmppx=pgMGUI->getNmPPx(0);
+    res->pos[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position)+(-go.pGCAM->iuScope->camCols/2.+ROI[0]+ROI[2]/2.)*res->XYnmppx/1000000;
+    res->pos[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position)+(-go.pGCAM->iuScope->camRows/2.+ROI[1]+ROI[3]/2.)*res->XYnmppx/1000000;
     res->pos[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
 
     std::lock_guard<std::mutex>lock(MLP._lock_comp);    // wait till other processing is done
@@ -515,6 +518,8 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
 
     unsigned nRows=(*framequeue->getUserMat(0))(scanROI).rows;
     unsigned nCols=(*framequeue->getUserMat(0))(scanROI).cols;
+
+
     _savePixel(framequeue, nFrames, nDFTFrames);    //writing pixel to file: for selected pixel
 
     // for longer scans, here we separate the DFT frames from all taken frames
@@ -725,8 +730,6 @@ void pgScanGUI::_doOneRound(char cbAvg_override, bool force_disable_tilt_correct
         useCorr->unlock();
     }
 
-    if(pgMGUI==nullptr) res->XYnmppx=0;
-    else res->XYnmppx=pgMGUI->getNmPPx(0);
     res->avgNum=1;
 
     if(bSaveAvgMess){  // for autosaving raw data - for debug and bookeeping purposes - for saving individual measurements that are being averaged.
