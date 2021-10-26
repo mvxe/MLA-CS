@@ -36,7 +36,6 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
 
-    calibMethod=new twd_selector("Select method:", "Find Nearest", false, false, false);
     calibMethodFindNearest=new vtwid;
         calibMethodFindNearest->addWidget(new QLabel("Selection procedure: Blur+Laplacian+Thresh+Dilate+Exclusion+Border"));
         selWriteCalibFocusDoNMeas=new val_selector(100, "Do this many measurements: ", 1, 100000, 0);
@@ -64,17 +63,12 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         conf["selWriteCalibFocusRange"]=selWriteCalibFocusRange;
         selWriteCalibFocusRange->setToolTip("Each measurement will be done at a random write beam focus around the starting focus\u00B1 this parameter.");
         calibMethodFindNearest->addWidget(selWriteCalibFocusRange);
-    //    selWriteCalibFocusMoveOOTW=new checkbox_gs(false,"pgCalib_selWriteCalibFocusMoveOOTW","Take direct picture of the beam before each measurement.");
-    //    calibMethodFindNearestLayout->addWidget(selWriteCalibFocusMoveOOTW);
-    //    selWriteCalibFocusMoveOOTWDis=new val_selector(0, "pgCalib_selWriteCalibFocusMoveOOTWDis", "Move X this much to get out of the way: ", -1000, 1000, 3, 0, {"mm"});
-    //    calibMethodFindNearestLayout->addWidget(selWriteCalibFocusMoveOOTWDis);
         selWriteCalibFocusPulseIntensity=new val_selector(1000, "Pulse Intensity: ", 0, 8192, 0);
         conf["selWriteCalibFocusPulseIntensity"]=selWriteCalibFocusPulseIntensity;
         calibMethodFindNearest->addWidget(selWriteCalibFocusPulseIntensity);
         selWriteCalibFocusPulseDuration=new val_selector(10, "Pulse Duration: ", 0.008, 1000000, 3, 0, {"us"});
         conf["selWriteCalibFocusPulseDuration"]=selWriteCalibFocusPulseDuration;
         calibMethodFindNearest->addWidget(selWriteCalibFocusPulseDuration);
-    calibMethod->addWidget(calibMethodFindNearest,"Find Nearest");
     calibMethodArray=new vtwid;
         selArrayXsize=new val_selector(10, "Array Size X", 1, 1000, 0);
         conf["selArrayXsize"]=selArrayXsize;
@@ -116,11 +110,7 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         savePic=new checkbox_gs(true,"Also save direct pictures of measurements.");
         conf["savePic"]=savePic;
         calibMethodArray->addWidget(savePic);
-//        doRefocusUScope=new checkbox_gs(true,"pgCalib_doRefocusUScope","Automatically refocus microscope (needed for good ref. beam refocus).");
-//        calibMethodArray->addWidget(doRefocusUScope);
-//        doRedFocusCenter=new checkbox_gs(true,"pgCalib_doRedFocusCenter","Automatically recenter and refocus reference beam.");
-//        calibMethodArray->addWidget(doRedFocusCenter);
-    calibMethod->addWidget(calibMethodArray, "Array");
+
     calibMethodAutoArray=new vtwid;
         calibMethodAutoArray->addWidget(new QLabel("Selection procedure: Exclusion+DilateSQ+Border"));
         selAArrayDoNMes=new val_selector(100, "In total do this many measurements (will decrement): ", 0, 100000000, 0);
@@ -158,7 +148,11 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         selAArraySetMaskToThisHeight->setToolTip("This should be a few times higher than the highest structure you expect to be written.\nIt is used only to plan the next move (the larger it is, the more likely the program will avoid areas with bad pixels).\nIn the end individual scans with"
                                                  " bad pixels are discarded anyway.");
         calibMethodAutoArray->addWidget(selAArraySetMaskToThisHeight);
+
+    calibMethod=new twd_selector("Select method:", "Array", false, false, false);
+    calibMethod->addWidget(calibMethodArray, "Array");
     calibMethod->addWidget(calibMethodAutoArray, "Auto Array");
+    calibMethod->addWidget(calibMethodFindNearest,"Find Nearest");
     calibMethod->setIndex(0);
     conf["calibMethod"]=calibMethod;
     slayout->addWidget(calibMethod);
@@ -222,18 +216,18 @@ bool pgCalib::goToNearestFree(double radDilat, double radRandSpread){
 void pgCalib::onWCF(){
     if(!btnWriteCalib->isChecked()) return;
     if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
-    std::string saveFolderName=QFileDialog::getExistingDirectory(this, "Select Folder for Saving Calibration Data").toStdString();
+    saveFolderName=QFileDialog::getExistingDirectory(this, "Select Folder for Saving Calibration Data").toStdString();
     if(saveFolderName.empty()){
         btnWriteCalib->setChecked(false);
         return;
     }
 
     switch(calibMethod->index){
-    case 0: WCFFindNearest();
+    case 0: WCFArray();
             break;
-    case 1: WCFArray();
+    case 1: WCFAArray();
             break;
-    case 2: WCFAArray();
+    case 2: WCFFindNearest();
             break;
     }
 }
@@ -252,14 +246,15 @@ std::string pgCalib::makeDateTimeFolder(const std::string folder){
 
 void pgCalib::saveMainConf(std::string filename){
     std::ofstream setFile(filename);     //this file contains some settings:
-    setFile <<"Objective_displacement_X(mm) Objective_displacement_Y(mm) Objective_displacement_Z(mm)\n";
-    setFile <<pgMGUI->objectiveDisplacementX<<" "<<pgMGUI->objectiveDisplacementY<<" "<<pgMGUI->objectiveDisplacementZ<<"\n";
+    setFile <<"Objective_displacement_X(mm) Objective_displacement_Y(mm) Objective_displacement_Z(mm) MirauXYmmppx(mm/px)\n";
+    setFile << std::setprecision(6);
+    setFile <<pgMGUI->objectiveDisplacementX<<" "<<pgMGUI->objectiveDisplacementY<<" "<<pgMGUI->objectiveDisplacementZ<<" "<<pgMGUI->getNmPPx()/1000000<<"\n";
     setFile.close();
 }
-void pgCalib::saveConf(std::string filename, double duration, double focus, double spacing){
+void pgCalib::saveConf(std::string filename, double duration, double focus){
     std::ofstream setFile(filename);            //this file contains some settings:
-    setFile <<"Duration(ms) Focus(um) Spacing(mm)\n";
-    setFile <<duration<<" "<<focus<<" "<<spacing<<"\n";
+    setFile <<"Duration(ms) Focus(um)\n";
+    setFile <<duration<<" "<<focus<<"\n";
     setFile.close();
 }
 
@@ -355,6 +350,7 @@ void pgCalib::WCFArray(){
     else for(int i=0;i!=arraySizeDur; i++) arrayDur.push_back(selArrayDurA->val*(1-(double)i/(arraySizeDur-1))+selArrayDurB->val*((double)i/(arraySizeDur-1)));
     if(arraySizeFoc==1) arrayFoc.push_back(selArrayFocA->val);
     else for(int i=0;i!=arraySizeFoc; i++) arrayFoc.push_back(selArrayFocA->val*(1-(double)i/(arraySizeFoc-1))+selArrayFocB->val*((double)i/(arraySizeFoc-1)));
+
     if(selArrayRandomize->val){                         //randomize if chosen
         std::mt19937 rnd(std::random_device{}());
         std::shuffle(arrayDur.begin(), arrayDur.end(), rnd);
@@ -369,13 +365,8 @@ void pgCalib::WCFArray(){
         else if(index==4)  WArray.at<cv::Vec2d>(j,i)[1]=arrayFoc[i];
         else WArray.at<cv::Vec2d>(j,i)[1]=arrayFoc[0];
     }
-    if(transposeMat->val){
-        //cv::Mat temp=WArray.clone();
-        //WArray=cv::Mat(selArrayXsize->val,selArrayYsize->val,CV_64FC4,cv::Scalar(0,0,0,0));
-        //for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++) for(int k=0;k!=3; k++)        // I do this manually because for some reason cv::transpose and mat.t() and even if I separate channels it does not work
-        //    WArray.at<cv::Vec2d>(j,i)[k]=temp.at<cv::Vec2d>(i,j)[k];
+    if(transposeMat->val)
         cv::transpose(WArray,WArray);
-    }
 
     std::string folder=makeDateTimeFolder(saveFolderName);
     if(saveMats->val){      //export values as matrices, for convenience
@@ -433,14 +424,14 @@ void pgCalib::WCFArray(){
     pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, discardMaskRoiThresh, maxRedoScanTries);
 
     res=scanRes->get();
-    pgScanGUI::saveScan(res, util::toString(folder,"/before"), false, true, false);
+    pgScanGUI::saveScan(res, util::toString(folder,"/before"), false, true, savePic->val?1:0);
 
 
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
         cv::utils::fs::createDirectory(util::toString(folder,"/",i+j*WArray.cols));
         sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000);
         sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000);
-        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",i+j*WArray.cols,"/before"), true, false);
+        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",i+j*WArray.cols,"/before"), true, savePic->val?1:0);
     }
 
     {std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_proc);
@@ -463,7 +454,7 @@ void pgCalib::WCFArray(){
                 CO.addHold("Z",CTRL::he_motion_ontarget);
                 CO.pulseGPIO("wrLaser",WArray.at<cv::Vec2d>(j,i)[0]/1000);
                 pgMGUI->corCOMove(CO,0,0,-WArray.at<cv::Vec2d>(j,i)[1]/1000);
-                saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1], selArraySpacing->val);
+                saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1]);
 
                 CO.execute();
                 CO.clear(true);
@@ -481,12 +472,12 @@ void pgCalib::WCFArray(){
 
     pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, discardMaskRoiThresh, maxRedoScanTries,0,savePic->val?1:0);
     res=scanRes->get();
-    pgScanGUI::saveScan(res, util::toString(folder,"/after"), false, true, false);
+    pgScanGUI::saveScan(res, util::toString(folder,"/after"), false, true, savePic->val?1:0);
 
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
         sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000);
         sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000);
-        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",i+j*WArray.cols,"/after"), true, false);
+        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",i+j*WArray.cols,"/after"), true, savePic->val?1:0);
     }
 
     btnWriteCalib->setChecked(false);
@@ -504,7 +495,7 @@ void pgCalib::WCFAArray(){
     varShareClient<pgScanGUI::scanRes>* scanResPre=pgSGUI->result.getClient();
     varShareClient<pgScanGUI::scanRes>* scanResPost=pgSGUI->result.getClient();
     //first find a good place to go next
- //TODO   pgSGUI->doOneRound(-1);
+    pgSGUI->doOneRound({0,0,0,0},-1);
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     const pgScanGUI::scanRes* resPre=scanResPre->get();
     cv::Mat WArray(selAArrayYsize->val,selAArrayXsize->val,CV_64FC2,cv::Scalar(0,0));   //contains Intensities, Durations
@@ -623,7 +614,7 @@ double gaussResidual(const std::pair<input_vector, double>& data, const paramete
     double an=params(5);
     double i0=params(6);
     //double model=i0+a*exp(-(pow(x-x0,2)+pow(y-y0,2))/2/pow(w,2));
-    //double model=i0+a*exp(-(  pow(x-x0,2)/2*(cos(an)/pow(wx,2)+sin(an)/pow(wy,2)) +  pow(y-y0,2)/2*(cos(an)/pow(wy,2)+sin(an)/pow(wx,2)) ));  //seams to be wrong
+    //double model=i0+a*exp(-(  pow(x-x0,2)/2*(cos(an)/pow(wx,2)+sin(an)/pow(wy,2)) +  pow(y-y0,2)/2*(cos(an)/pow(wy,2)+sin(an)/pow(wx,2)) ));  //seems to be wrong
     double A=pow(cos(an),2)/2/pow(wx,2)+pow(sin(an),2)/2/pow(wy,2);
     double B=sin(2*an)/2/pow(wx,2)-sin(2*an)/2/pow(wy,2);
     double C=pow(sin(an),2)/2/pow(wx,2)+pow(cos(an),2)/2/pow(wy,2);
@@ -633,7 +624,7 @@ double gaussResidual(const std::pair<input_vector, double>& data, const paramete
 }
 bool folderSort(std::string i,std::string j){
     size_t posi=i.find_last_of("/");
-    size_t posj=i.find_last_of("/");
+    size_t posj=j.find_last_of("/");
     return (std::stoi(i.substr(posi+1,9))<std::stoi(j.substr(posj+1,9)));
 }
 void pgCalib::onProcessFocusMes(){
@@ -647,7 +638,7 @@ void pgCalib::onProcessFocusMes(){
     struct stat filetype;
     std::string curFile;
     std::string curFolder;
-    bool dirHasMes[5]{false,false,false,false,false};
+    bool dirHasMes[5]{false,false,false,false};
     while(!readFolders.empty()){
         curFolder=readFolders.back();
         readFolders.pop_back();
@@ -663,36 +654,52 @@ void pgCalib::onProcessFocusMes(){
                     if(strcmp(entry->d_name,"settings.txt")==0) dirHasMes[0]=true;
                     else if(strcmp(entry->d_name,"before.pfm")==0) dirHasMes[1]=true;
                     else if(strcmp(entry->d_name,"after.pfm")==0) dirHasMes[2]=true;
-                    else if(strcmp(entry->d_name,"laser.dat")==0) dirHasMes[3]=true;
-                    else if(strcmp(entry->d_name,"pic.png")==0 || strcmp(entry->d_name,"after-RF.png")==0) dirHasMes[4]=true;       //nonessential for backward compatibility, also pic.png for backward compatibility
+                    else if(strcmp(entry->d_name,"after-RF.png")==0) dirHasMes[3]=true;       //nonessential for backward compatibility
                 }
             }
         }
         closedir(wp);
-        if(dirHasMes[0]&dirHasMes[1]&dirHasMes[2]&dirHasMes[3]) measFolders.push_back(curFolder);
+        if(dirHasMes[0]&dirHasMes[1]&dirHasMes[2]) measFolders.push_back(curFolder);
     }
+    std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_comp);
+    pgSGUI->MLP.progress_comp=0;
 
     //sort folders by number
     std::sort(measFolders.begin(), measFolders.end(), folderSort);
 
     std::ofstream wfile(saveName);
     int n=0;
-    wfile<<"# <1: not used> <2: focus distance(mm)> <3: peak height(nm)> <4: X width (1/e^2)(um)> <5: Y width (1/e^2)(um)> <6: ellipse angle(rad)>\n";
-    wfile<<"# <7: XY width (1/e^2)(um)> <8: X offset(um)> <9: Y offset(um)> <10: XY offset(um)> <11: Intensity (a.u.)> <12: duration(ms)> <13: MeanAbs.ReflectivityDeriv.(a.u.)>\n";
-    wfile<<"# <14: Max absolute 1st der. (px/um)> <15: Min Laplacian (px/um^2)> <16: Max Laplacian (px/um^2)> <17: peak height(nm)(max)> <18: peak height(nm)(max-min)>\n";
+    wfile<<"# 1: valid measurement(=1)\n";
+    wfile<<"# 2: focus distance(um)\n";
+    wfile<<"# 3: peak height(nm)\n";
+    wfile<<"# 4: X width (1/e^2)(um)\n";
+    wfile<<"# 5: Y width (1/e^2)(um)\n";
+    wfile<<"# 6: ellipse angle(rad)\n";
+    wfile<<"# 7: XY width (1/e^2)(um)\n";
+    wfile<<"# 8: X offset(um)\n";
+    wfile<<"# 9: Y offset(um)\n";
+    wfile<<"# 10: XY offset(um)\n";
+    wfile<<"# 11: not used\n";
+    wfile<<"# 12: duration(ms)\n";
+    wfile<<"# 13: MeanAbs.ReflectivityDeriv.(a.u.)\n";
+    wfile<<"# 14: Max absolute 1st der. (nm/um)\n";
+    wfile<<"# 15: Min Laplacian (nm/um^2)\n";
+    wfile<<"# 16: Max Laplacian (nm/um^2)\n";
+    wfile<<"# 17: peak height(nm)(max)\n";
+    wfile<<"# 18: peak height(nm)(max-min)\n";
+    wfile<<"# 19: X width (FWHM)(um)\n";
+    wfile<<"# 20: Y width (FWHM)(um)\n";
+    wfile<<"# 21: XY width (FWHM)(um)\n";
+
     for(auto& fldr:measFolders){ n++;
-        double FZdif;
-        double none;        //for backward compat., not used for now
-        double intensity;
+        double focus;
         double duration;
         std::ifstream ifs(util::toString(fldr,"/settings.txt"));
-        ifs>>FZdif;
-        for(int i=0;i!=2;i++) ifs>>intensity;
+        ifs.ignore(std::numeric_limits<std::streamsize>::max(),'\n');       // ignore header
         ifs>>duration;
-        for(int i=0;i!=2;i++)ifs>>none;
+        ifs>>focus;
         ifs.close();
 
-        //std::cerr<<fldr<<"\n";
         pgScanGUI::scanRes scanBefore, scanAfter;
         if(!pgScanGUI::loadScan(&scanBefore, util::toString(fldr,"/before.pfm"))) continue;
         if(!pgScanGUI::loadScan(&scanAfter, util::toString(fldr,"/after.pfm"))) continue;
@@ -710,16 +717,12 @@ void pgCalib::onProcessFocusMes(){
 //        cv::resize(scanDif.mask,rescaleMask,cv::Size(),0.2,0.2);
 
         std::vector<std::pair<input_vector, double>> data;
-//        for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++)
-//            if(scanDif.mask.at<uchar>(j,i)==0) data.push_back(std::make_pair(input_vector{(double)i,(double)j},scanDif.depth.at<float>(j,i)));
         for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++)
             if(scanDif.mask.at<uchar>(j,i)==0) data.push_back(std::make_pair(input_vector{(double)i,(double)j},scanDif.depth.at<float>(j,i)));
-        //std::cout<<"size= "<<data.size()<<"\n";
 
         parameter_vector res{(double)scanDif.depth.cols/2,(double)scanDif.depth.rows/2,scanDif.max-scanDif.min,(double)scanDif.depth.rows, (double)scanDif.depth.rows, 0.01, scanDif.min};
 
         dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7,100), gaussResidual, derivative(gaussResidual), data, res);
-        //std::cout << "inferred parameters: "<< dlib::trans(res) << "\n";
         while(res(5)>M_PI) res(5)-=M_PI;
         while(res(5)<0) res(5)+=M_PI;
         if(res(5)>=M_PI/2){
@@ -750,23 +753,53 @@ void pgCalib::onProcessFocusMes(){
         double maxDepthDer;
         cv::add(derv, dervy, derv);
         cv::minMaxIdx(derv, nullptr, &maxDepthDer);
+        //find min, max laplacian of depth (nm/um^2):
         cv::Laplacian(com, derv, CV_32F);
         double minDepthLaplacian, maxDepthLaplacian;
         cv::minMaxIdx(derv, &minDepthLaplacian, &maxDepthLaplacian);
 
-        if(res(0)<0 || res(0)>scanDif.depth.cols || res(1)<0 || res(1)>scanDif.depth.rows || res(2)<=0){   //center of the fit is out of frame or other things that indicate fit faliure
-            wfile<<none<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "<<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<" "<<scanDif.max<<" "<<scanDif.max-scanDif.min<<"\n";
-            std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
-                 <<none<<" "<<FZdif<<" 0 nan nan nan nan 0 0 0 "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "<<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<" "<<scanDif.max<<" "<<scanDif.max-scanDif.min<<"\n";
-        }else{
-            wfile<<none<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "
-                <<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<" "<<scanDif.max<<" "<<scanDif.max-scanDif.min<<"\n";
-            std::cerr<<"("<<n<<"/"<<measFolders.size()<<") "
-                 <<none<<" "<<FZdif<<" "<<res(2)<<" "<<2*abs(res(3))<<" "<<2*abs(res(4))<<" "<<res(5)<<" "<<2*(abs(res(3))+abs(res(4)))/2<<" "<<res(0)<<" "<<res(1)<<" "<<sqrt(res(0)*res(0)+res(1)*res(1))<<" "<<intensity<<" "<<duration<<" "<<intReflDeriv<<" "
-                <<maxDepthDer<<" "<<minDepthLaplacian<<" "<<maxDepthLaplacian<<" "<<scanDif.max<<" "<<scanDif.max-scanDif.min<<"\n";
-        }
+        double XYumppx=scanDif.XYnmppx/1000;
+        maxDepthDer/=XYumppx;
+        minDepthLaplacian/=XYumppx;
+        maxDepthLaplacian/=XYumppx;
+
+        double Xwidth=2*abs(res(3))*XYumppx;
+        double Ywidth=2*abs(res(4))*XYumppx;
+        double XYwidth=(Xwidth+Ywidth)/2;
+        double Xofs=res(0)*XYumppx;
+        double Yofs=res(1)*XYumppx;
+        double XYofs=sqrt(pow(Xofs,2)+pow(Yofs,2));
+        const double toFWHM=sqrt(2*log(2));
+
+        int valid=1;
+        if(res(0)<0 || res(0)>scanDif.depth.cols || res(1)<0 || res(1)>scanDif.depth.rows || res(2)<=0) valid=0;    //center of the fit is out of frame or other things that indicate fit faliure
+        wfile<<valid<<" ";                      // 1: valid measurement(=1)
+        wfile<<focus<<" ";                      // 2: focus distance(um)
+        wfile<<res(2)<<" ";                     // 3: peak height(nm)
+        wfile<<Xwidth<<" ";                     // 4: X width (1/e^2)(um)
+        wfile<<Ywidth<<" ";                     // 5: Y width (1/e^2)(um)
+        wfile<<res(5)<<" ";                     // 6: ellipse angle(rad)
+        wfile<<XYwidth<<" ";                    // 7: XY width (1/e^2)(um)
+        wfile<<Xofs<<" ";                       // 8: X offset(um)
+        wfile<<Yofs<<" ";                       // 9: Y offset(um)
+        wfile<<XYofs<<" ";                      // 10: XY offset(um)
+        wfile<<0<<" ";                          // 11: not used
+        wfile<<duration<<" ";                   // 12: duration(ms)
+        wfile<<intReflDeriv<<" ";               // 13: MeanAbs.ReflectivityDeriv.(a.u.)
+        wfile<<maxDepthDer<<" ";                // 14: Max absolute 1st der. (nm/um)
+        wfile<<minDepthLaplacian<<" ";          // 15: Min Laplacian (nm/um^2)
+        wfile<<maxDepthLaplacian<<" ";          // 16: Max Laplacian (nm/um^2)
+        wfile<<scanDif.max<<" ";                // 17: peak height(nm)(max)
+        wfile<<scanDif.max-scanDif.min<<" ";    // 18: peak height(nm)(max-min)
+        wfile<<Xwidth*toFWHM<<" ";              // 19: X width (FWHM)(um)
+        wfile<<Ywidth*toFWHM<<" ";              // 20: Y width (FWHM)(um)
+        wfile<<XYwidth*toFWHM<<"\n";            // 21: XY width (FWHM)(um)
+
+        pgSGUI->MLP.progress_comp=100./measFolders.size()*n;
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
     }
     wfile.close();
+    pgSGUI->MLP.progress_comp=100;
 }
 
 void pgCalib::onChangeDrawWriteAreaOn(bool status){
@@ -777,15 +810,15 @@ void pgCalib::drawWriteArea(cv::Mat* img){
     double xSize;
     double ySize;
     switch(calibMethod->index){
-    case 0: xSize=pgMGUI->mm2px(selWriteCalibFocusRadDil->val/1000);
-            ySize=pgMGUI->mm2px(selWriteCalibFocusRadDil->val/1000);
-            break;
-    case 1: xSize=pgMGUI->mm2px(selArrayXsize->val*selArraySpacing->val/1000);
+    case 0: xSize=pgMGUI->mm2px(selArrayXsize->val*selArraySpacing->val/1000);
             ySize=pgMGUI->mm2px(selArrayYsize->val*selArraySpacing->val/1000);
             if(transposeMat->val) std::swap(xSize,ySize);
             break;
-    case 2: xSize=pgMGUI->mm2px(selAArrayXsize->val*selAArraySpacing->val/1000);
+    case 1: xSize=pgMGUI->mm2px(selAArrayXsize->val*selAArraySpacing->val/1000);
             ySize=pgMGUI->mm2px(selAArrayYsize->val*selAArraySpacing->val/1000);
+            break;
+    case 2: xSize=pgMGUI->mm2px(selWriteCalibFocusRadDil->val/1000);
+            ySize=pgMGUI->mm2px(selWriteCalibFocusRadDil->val/1000);
             break;
     }
     double clr[2]={0,255}; int thck[2]={3,1};

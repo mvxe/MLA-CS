@@ -50,8 +50,6 @@ private:
         val_selector* selWriteCalibFocusBlur;
         val_selector* selWriteCalibFocusThresh;
         val_selector* selWriteCalibFocusRange;
-    //    checkbox_gs* selWriteCalibFocusMoveOOTW;
-    //    val_selector* selWriteCalibFocusMoveOOTWDis;
         val_selector* selWriteCalibFocusPulseIntensity;
         val_selector* selWriteCalibFocusPulseDuration;
     vtwid* calibMethodArray;
@@ -68,8 +66,6 @@ private:
         checkbox_gs* selArrayRandomize;
         checkbox_gs* saveMats;
         checkbox_gs* savePic;
-//        checkbox_gs* doRefocusUScope;
-//        checkbox_gs* doRedFocusCenter;
     vtwid* calibMethodAutoArray;
         val_selector* selAArrayDoNMes;
         val_selector* selAArrayXsize;
@@ -104,7 +100,7 @@ private:
     void WCFArray();
     void WCFAArray();
     std::string makeDateTimeFolder(const std::string folder);
-    void saveConf(std::string filename, double duration, double focus, double spacing);
+    void saveConf(std::string filename, double duration, double focus);
     void saveMainConf(std::string filename);
 private Q_SLOTS:
 //    void onGoToNearestFree();
