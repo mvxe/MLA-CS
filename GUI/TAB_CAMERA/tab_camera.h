@@ -91,6 +91,8 @@ private:
     int dispDepthMatRows;
     int dispDepthMatCols;
 
+    cv::Rect sROI;  // if sROI.width==0, ROI is off
+
     FQ* framequeueDisp;
     const cv::Mat* onDisplay;
 

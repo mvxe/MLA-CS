@@ -23,18 +23,19 @@ class pgFocusGUI: public QObject{
     Q_OBJECT
     //GUI
 public:
-    pgFocusGUI(procLockProg& MLP, pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI);
+    pgFocusGUI(procLockProg& MLP, cv::Rect& sROI, pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI);
     rtoml::vsr conf;            //configuration map
     twid* gui_activation;
     QWidget* gui_settings;
     QTimer* timer;
 
     procLockProg& MLP;
-    void doRefocus(bool block=true);
+    void doRefocus(bool block=true, cv::Rect ROI={0,0,0,0});
 
     std::atomic<bool> focusInProgress{false};   //for outside calling functions
+    cv::Rect& sROI;
  private:
-    void refocus();
+    void refocus(cv::Rect ROI={0,0,0,0});
     smp_selector* selectFocusSetting;
     std::vector<focusSettings*> settingWdg;
     friend class focusSettings;

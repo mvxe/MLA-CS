@@ -420,23 +420,17 @@ void pgCalib::WCFArray(){
         QMessageBox::critical(gui_activation, "Error", "The calibration ROI does not fit the viewport, aborting calibration.\n");
         btnWriteCalib->setChecked(false);
         delete scanRes;
-        pgSGUI->isROI=false;
         return;
     }
-    pgSGUI->isROI=true;
-    pgSGUI->ROI[0]=ROI.x;
-    pgSGUI->ROI[1]=ROI.y;
-    pgSGUI->ROI[2]=ROI.width;
-    pgSGUI->ROI[3]=ROI.height;
 
     // TODO add selector to force a certain refocus setting
-    pgFGUI->doRefocus(true);
+    pgFGUI->doRefocus(true, ROI);
 
     saveMainConf(util::toString(folder,"/main-settings.txt"));
 
     const pgScanGUI::scanRes* res;
     // TODO add selector to force a certain scan setting
-    pgSGUI->doNRounds((int)selArrayOneScanN->val, discardMaskRoiThresh, maxRedoScanTries);
+    pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, discardMaskRoiThresh, maxRedoScanTries);
 
     res=scanRes->get();
     pgScanGUI::saveScan(res, util::toString(folder,"/before"), false, true, false);
@@ -485,7 +479,7 @@ void pgCalib::WCFArray(){
         pgMGUI->chooseObj(true);
     }
 
-    pgSGUI->doNRounds((int)selArrayOneScanN->val, discardMaskRoiThresh, maxRedoScanTries,0,savePic->val?1:0);
+    pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, discardMaskRoiThresh, maxRedoScanTries,0,savePic->val?1:0);
     res=scanRes->get();
     pgScanGUI::saveScan(res, util::toString(folder,"/after"), false, true, false);
 
@@ -510,7 +504,7 @@ void pgCalib::WCFAArray(){
     varShareClient<pgScanGUI::scanRes>* scanResPre=pgSGUI->result.getClient();
     varShareClient<pgScanGUI::scanRes>* scanResPost=pgSGUI->result.getClient();
     //first find a good place to go next
-    pgSGUI->doOneRound(-1);
+ //TODO   pgSGUI->doOneRound(-1);
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     const pgScanGUI::scanRes* resPre=scanResPre->get();
     cv::Mat WArray(selAArrayYsize->val,selAArrayXsize->val,CV_64FC2,cv::Scalar(0,0));   //contains Intensities, Durations
@@ -783,18 +777,18 @@ void pgCalib::drawWriteArea(cv::Mat* img){
     double xSize;
     double ySize;
     switch(calibMethod->index){
-    case 0: xSize=selWriteCalibFocusRadDil->val*1000/pgMGUI->getNmPPx();
-            ySize=selWriteCalibFocusRadDil->val*1000/pgMGUI->getNmPPx();
+    case 0: xSize=pgMGUI->mm2px(selWriteCalibFocusRadDil->val/1000);
+            ySize=pgMGUI->mm2px(selWriteCalibFocusRadDil->val/1000);
             break;
-    case 1: xSize=selArrayXsize->val*selArraySpacing->val*1000/pgMGUI->getNmPPx();
-            ySize=selArrayYsize->val*selArraySpacing->val*1000/pgMGUI->getNmPPx();
+    case 1: xSize=pgMGUI->mm2px(selArrayXsize->val*selArraySpacing->val/1000);
+            ySize=pgMGUI->mm2px(selArrayYsize->val*selArraySpacing->val/1000);
             if(transposeMat->val) std::swap(xSize,ySize);
             break;
-    case 2: xSize=selAArrayXsize->val*selAArraySpacing->val*1000/pgMGUI->getNmPPx();
-            ySize=selAArrayYsize->val*selAArraySpacing->val*1000/pgMGUI->getNmPPx();
+    case 2: xSize=pgMGUI->mm2px(selAArrayXsize->val*selAArraySpacing->val/1000);
+            ySize=pgMGUI->mm2px(selAArrayYsize->val*selAArraySpacing->val/1000);
             break;
     }
     double clr[2]={0,255}; int thck[2]={3,1};
     for(int i=0;i!=2;i++)
-        cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), img->rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
+        cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), img->rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY), xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
 }

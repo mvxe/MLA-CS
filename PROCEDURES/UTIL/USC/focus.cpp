@@ -7,7 +7,7 @@
 
 //GUI
 
-pgFocusGUI::pgFocusGUI(procLockProg& MLP, pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI): MLP(MLP), pgSGUI(pgSGUI), pgMGUI(pgMGUI){
+pgFocusGUI::pgFocusGUI(procLockProg& MLP, cv::Rect& sROI, pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI): MLP(MLP), sROI(sROI), pgSGUI(pgSGUI), pgMGUI(pgMGUI){
     init_gui_activation();
     init_gui_settings();
     timer = new QTimer(this);
@@ -31,15 +31,15 @@ void pgFocusGUI::onRefocus(){
     if(MLP._lock_proc.try_lock()){
         MLP._lock_proc.unlock();
         if(!CORdy) recalculate();
-        go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this));
+        go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this,sROI));
     }
 }
-void pgFocusGUI::doRefocus(bool block){
+void pgFocusGUI::doRefocus(bool block, cv::Rect ROI){
     if(MLP._lock_proc.try_lock()){
         MLP._lock_proc.unlock();
         if(!CORdy) recalculate();
         focusInProgress=true;
-        go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this));
+        go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this,ROI));
         if(block) while(focusInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     }
 }
@@ -159,13 +159,12 @@ void pgFocusGUI::updateCO(std::string &report){
     CORdy=true;
 }
 
-void pgFocusGUI::refocus(){
+void pgFocusGUI::refocus(cv::Rect ROI){
     if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) {focusInProgress=false; return;}
     if(!CORdy) {focusInProgress=false; return;}
 
-    cv::Rect scanROI;
-    if(pgSGUI->isROI) scanROI=cv::Rect(pgSGUI->ROI[0],pgSGUI->ROI[1],pgSGUI->ROI[2],pgSGUI->ROI[3]);
-    else scanROI=cv::Rect(0,0,go.pGCAM->iuScope->camCols,go.pGCAM->iuScope->camRows);
+    if(ROI.width==0) ROI=sROI;
+    if(ROI.width==0) ROI=cv::Rect(0,0,go.pGCAM->iuScope->camCols,go.pGCAM->iuScope->camRows);
 
     unsigned nFrames=totalFrameNum;
     FQ* framequeue;
@@ -209,19 +208,19 @@ void pgFocusGUI::refocus(){
             return;
         }
 
-        unsigned nRows=(*framequeue->getUserMat(0))(scanROI).rows;
-        unsigned nCols=(*framequeue->getUserMat(0))(scanROI).cols;
+        unsigned nRows=(*framequeue->getUserMat(0))(ROI).rows;
+        unsigned nCols=(*framequeue->getUserMat(0))(ROI).cols;
 
         cv::UMat pixSum(1, nFrames, CV_64F, cv::Scalar(0));
         cv::Mat mat2D(nFrames, nCols, CV_64F);
 
-        if(!saveNextFocus.empty()) {std::ofstream wfile(util::toString(saveNextFocus,"/","test-avgAllPix.dat")); for(int i=0;i!=nFrames;i++) wfile<<cv::mean((*framequeue->getUserMat(i))(scanROI))[0]<<"\n"; wfile.close();}
+        if(!saveNextFocus.empty()) {std::ofstream wfile(util::toString(saveNextFocus,"/","test-avgAllPix.dat")); for(int i=0;i!=nFrames;i++) wfile<<cv::mean((*framequeue->getUserMat(i))(ROI))[0]<<"\n"; wfile.close();}
 
         std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
         MLP.progress_comp=0;
         for(int k=0;k!=nRows;k++){      //Processing row by row
             for(int i=0;i!=nFrames;i++)
-                (*framequeue->getUserMat(i))(scanROI).row(k).copyTo(mat2D.row(i));
+                (*framequeue->getUserMat(i))(ROI).row(k).copyTo(mat2D.row(i));
             cv::UMat Umat2D;                    //row - frameN, col - FrameCol
             cv::UMat temp0, temp1;
             mat2D.copyTo(Umat2D);

@@ -37,14 +37,14 @@ tab_camera::tab_camera(QWidget* parent){
     TWCtrl->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Expanding);
     layoutTBarW->addWidget(TWCtrl);
 
-    pgSGUI=new pgScanGUI(MLP);
+    pgSGUI=new pgScanGUI(MLP, sROI);
     conf["pgScan"]=pgSGUI->conf;
     scanRes=pgSGUI->result.getClient();
     pgMGUI=new pgMoveGUI(selObjective);
     conf["pgMove"]=pgMGUI->conf;
     pgTGUI=new pgTiltGUI;
     conf["pgTilt"]=pgTGUI->conf;
-    pgFGUI=new pgFocusGUI(MLP, pgSGUI, pgMGUI);
+    pgFGUI=new pgFocusGUI(MLP, sROI, pgSGUI, pgMGUI);
     conf["pgFocus"]=pgFGUI->conf;
     pgPRGUI=new pgPosRepGUI(pgMGUI);
     cm_sel=new smp_selector("Select colormap: ", 0, OCV_CM::qslabels());
@@ -200,7 +200,7 @@ void tab_camera::work_fun(){
     if(selDisp->index==0){  // Camera
         LDisplay->isDepth=false;
         if(onDisplay!=nullptr){
-            if(main_show_target->isChecked() || main_show_scale->isChecked() || main_show_bounds->isChecked() || selectingFlag || lastSelectingFlag || pgSGUI->isROI){
+            if(main_show_target->isChecked() || main_show_scale->isChecked() || main_show_bounds->isChecked() || selectingFlag || lastSelectingFlag || sROI.width!=0){
                 cv::Mat temp=onDisplay->clone();
                 if(main_CLAHE_writing->isChecked() && !camSet->isMirau){
                     auto CLAHE=cv::createCLAHE(camSet->CLAHE_clipLimit->val, {(int)camSet->CLAHE_tileGridSize->val,(int)camSet->CLAHE_tileGridSize->val});
@@ -213,7 +213,7 @@ void tab_camera::work_fun(){
                     if(selectingFlagIsLine) cv::line(temp, {static_cast<int>(selStartX+1),static_cast<int>(selStartY+(temp.rows-temp.rows)/2)},{static_cast<int>(selCurX+1),static_cast<int>(selCurY+(temp.rows-temp.rows)/2)}, cv::Scalar{255}, 1, cv::LINE_AA);
                     else cv::rectangle(temp, {static_cast<int>(selStartX+1),static_cast<int>(selStartY+(temp.rows-temp.rows)/2)},{static_cast<int>(selCurX+1),static_cast<int>(selCurY+(temp.rows-temp.rows)/2)}, cv::Scalar{255}, 1);
                 }
-                if(camSet->isMirau &&  pgSGUI->isROI) cv::rectangle(temp, cv::Rect(pgSGUI->ROI[0],pgSGUI->ROI[1],pgSGUI->ROI[2],pgSGUI->ROI[3]), cv::Scalar{255}, 1);
+                if(camSet->isMirau && sROI.width!=0) cv::rectangle(temp, sROI, cv::Scalar{255}, 1);
 
                 pgCal->drawWriteArea(&temp);
                 pgWrt->drawWriteArea(&temp);
@@ -444,7 +444,7 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
             DY=parent->pgMGUI->px2mm(pxH/2.-ycoord)+parent->pgBeAn->writeBeamCenterOfsY;
             parent->pgMGUI->move(DX,DY,0);
             if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(xcoord-pxW/2, pxH/2-ycoord);
-            parent->pgSGUI->isROI=false;
+            parent->sROI.width=0;
         }else if(event->button()==Qt::RightButton){
             if(parent->selStartX==parent->selEndX || parent->selStartY==parent->selEndY) parent->clickMenu->popup(QCursor::pos());
             else parent->clickMenuSelection->popup(QCursor::pos());
@@ -491,14 +491,13 @@ void tab_camera::onSaveCameraPicture(void){
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(fq);
 }
 void tab_camera::onResetROI(){
-    pgSGUI->isROI=false;
+    sROI.width=0;
 }
 void tab_camera::onChangeROI(){
-    pgSGUI->ROI[2]=abs(selEndX-selStartX+1);
-    pgSGUI->ROI[3]=abs(selEndY-selStartY+1);
-    pgSGUI->ROI[0]=selStartX<selEndX?selStartX:(selStartX-pgSGUI->ROI[2]);
-    pgSGUI->ROI[1]=selStartY<selEndY?selStartY:(selStartY-pgSGUI->ROI[3]);
-    pgSGUI->isROI=true;
+    sROI.width=abs(selEndX-selStartX+1);
+    sROI.height=abs(selEndY-selStartY+1);
+    sROI.x=selStartX<selEndX?selStartX:selEndX;
+    sROI.y=selStartY<selEndY?selStartY:selEndY;
 }
 void tab_camera::onSaveDepthMap(void){
     std::string fileName=QFileDialog::getSaveFileName(this,"Select file for saving Depth Map (wtih border, scalebar and colorbar).", "","Images (*.png)").toStdString();
@@ -719,17 +718,17 @@ void tab_camera::onCrop(){
     cv::Mat tmp;
     int width=abs(selEndX-selStartX+1);
     int height=abs(selEndY-selStartY+1);
-    loadedScan.depth(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height)).copyTo(tmp);
+    loadedScan.depth(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height)).copyTo(tmp);
     tmp.copyTo(loadedScan.depth);
-    loadedScan.mask(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height)).copyTo(tmp);
+    loadedScan.mask(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height)).copyTo(tmp);
     tmp.copyTo(loadedScan.mask);
     bitwise_not(loadedScan.mask, loadedScan.maskN);
     if(!loadedScan.depthSS.empty()){
-        loadedScan.depthSS(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height)).copyTo(tmp);
+        loadedScan.depthSS(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height)).copyTo(tmp);
         tmp.copyTo(loadedScan.depthSS);
     }
     if(!loadedScan.refl.empty()){
-        loadedScan.refl(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height)).copyTo(tmp);
+        loadedScan.refl(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height)).copyTo(tmp);
         tmp.copyTo(loadedScan.refl);
     }
     cv::minMaxLoc(loadedScan.depth, &loadedScan.min, &loadedScan.max, nullptr, nullptr, loadedScan.maskN);
@@ -757,7 +756,7 @@ void tab_camera::onPlotRect(){
     if(loadedOnDisplay) res=&loadedScan;
     else res=scanRes->get();
     if(res==nullptr) return;
-    tCG->plotRoi(res, cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height),selDisp->index);
+    tCG->plotRoi(res, cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height),selDisp->index);
 }
 
 void tab_camera::on2DFFT(){
@@ -768,11 +767,11 @@ void tab_camera::on2DFFT(){
     if(selEndX!=selStartX && selEndY!=selStartY){
         int width=abs(selEndX-selStartX+1);
         int height=abs(selEndY-selStartY+1);
-        loadedScan.depth=loadedScan.depth(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
-        loadedScan.mask =loadedScan.mask (cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
-        loadedScan.maskN=loadedScan.maskN(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
+        loadedScan.depth=loadedScan.depth(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height));
+        loadedScan.mask =loadedScan.mask (cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height));
+        loadedScan.maskN=loadedScan.maskN(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height));
         if(!loadedScan.depthSS.empty())
-            loadedScan.depthSS=loadedScan.depthSS(cv::Rect(selStartX<selEndX?selStartX:(selStartX-width), selStartY<selEndY?selStartY:(selStartY-height), width, height));
+            loadedScan.depthSS=loadedScan.depthSS(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height));
     }
 
     cv::Mat padded;
