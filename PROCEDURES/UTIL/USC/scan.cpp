@@ -722,7 +722,7 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
     if(useCorr->try_lock()){
         if(cor==nullptr)std::cerr<<"Correction was nullptr!\n";
         else if(cor->depth.empty())std::cerr<<"Correction depthmap was empty!\n";
-        else if(res->depth.cols==cor->depth.cols && res->depth.rows==cor->depth.rows) cv::subtract(res->depth,cor->depth,res->depth,res->maskN);
+        else if(res->depth.cols==cor->depth(ROI).cols && res->depth.rows==cor->depth(ROI).rows) cv::subtract(res->depth,cor->depth(ROI),res->depth,res->maskN);
         else std::cerr<<"Cannot do correction: the measured and correction depthmaps are of different dimensions!\n";
         useCorr->unlock();
     }
