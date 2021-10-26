@@ -133,7 +133,6 @@ void camobj::work(){
 }
 void camobj::end(){
     _connected=false;
-    control_lost=false;
     if(str!=NULL) arv_stream_set_emit_signals (str, FALSE);
     if(cam!=NULL) arv_camera_stop_acquisition(cam, NULL);
     if(str!=NULL) g_clear_object(&str);
@@ -148,6 +147,8 @@ void camobj::end(){
         g_clear_object(&FullBuffers.front());
         FullBuffers.pop_front();
     }
+    if(control_lost) cobj->MVM_list=true;
+    control_lost=false;
 }
 
 void camobj::control_lost_cb (ArvDevice *ldev){
