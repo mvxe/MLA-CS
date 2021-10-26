@@ -18,13 +18,27 @@ pgDepthEval::pgDepthEval(pgBoundsGUI* pgBGUI): pgBGUI(pgBGUI){
     findf_Thrs=new val_selector(0.2, "2nd Derivative Exclusion Threshold: ", 0, 1, 4);
     conf["findf_Thrs"]=findf_Thrs;
     connect(findf_Thrs, SIGNAL(changed()), this, SLOT(onChanged()));
-    findf_Dill=new val_selector(0, "Dillation: ", 0, 100, 0, 0, {"px"});                  //TODO turn this into radius in um / add option
+    findf_Dill=new val_selector(0, "Dillation: ", 0, 1000, 0, 0, {"px"});
     conf["findf_Dill"]=findf_Dill;
     connect(findf_Dill, SIGNAL(changed()), this, SLOT(onChanged()));
-    findf_Dill->setToolTip("Only used for testing: each call to depth eval should specify a dilation radius corresponding to the beam radius or whatever.");
+    findf_Rand=new val_selector(0, "Randomize: ", 0, 1000, 0, 0, {"px"});
+    conf["findf_Rand"]=findf_Rand;
+    findf_Dilly=new val_selector(0, "Dillation Y: ", 0, 1000, 0, 0, {"px"});
+    conf["findf_Dilly"]=findf_Dilly;
+    connect(findf_Dilly, SIGNAL(changed()), this, SLOT(onChanged()));
+    btnGoToNearestFree=new QPushButton("Go to nearest free");
+    btnGoToNearestFree->setToolTip("This adheres to write boundaries!");
+    connect(btnGoToNearestFree, SIGNAL(released()), this, SLOT(onGoToNearestFree()));
     layout->addWidget(findf_Blur);
     layout->addWidget(findf_Thrs);
     layout->addWidget(findf_Dill);
+    layout->addWidget(findf_Rand);
+    layout->addWidget(findf_Dilly);
+    layout->addWidget(new QLabel("If dillation y!=0, use rect with(dil,dily)."));
+    layout->addWidget(new twid{btnGoToNearestFree});
+}
+void pgDepthEval::onGoToNearestFree(){
+    Q_EMIT sigGoToNearestFree(findf_Dill->val, findf_Rand->val, findf_Blur->val, findf_Thrs->val, findf_Dilly->val, true);
 }
 
 void pgDepthEval::onDebugIndexChanged(int index){
@@ -47,6 +61,7 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
     cv::GaussianBlur(res.depth, res.depth, cv::Size(ksize, ksize), sigma, sigma);
     cv::Point  ignore;
     int dilation_size=findf_Dill->val;
+    int dilation_sizey=findf_Dilly->val;
     if(debugIndex<=6){
         if(debugIndex==1) {res.depth.setTo(std::numeric_limits<float>::max(),res.mask); cv::minMaxLoc(res.depth, &res.min, &res.max, &ignore, &ignore, res.maskN); return &res;}
         cv::Laplacian(res.depth, res.depth, CV_32F);
@@ -63,7 +78,9 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
         if(debugIndex==3) {bitwise_not(res.mask, res.maskN); return &res;}
 
         if(dilation_size>0){
-            cv::Mat element=cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dilation_size+1,2*dilation_size+1), cv::Point(dilation_size,dilation_size));
+            cv::Mat element;
+            if(dilation_sizey>0) element=cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2*dilation_size+1,2*dilation_sizey+1), cv::Point(dilation_size,dilation_sizey));
+            else element=cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dilation_size+1,2*dilation_size+1), cv::Point(dilation_size,dilation_size));
             cv::dilate(res.mask, res.mask, element);
         }
         bitwise_not(res.mask, res.maskN);
@@ -74,7 +91,9 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
     if(debugIndex==5 || debugIndex==7)  return &res;
 
     if(debugIndex==8 || debugIndex==9) if(dilation_size>0){
-        cv::Mat element=cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2*dilation_size+1,2*dilation_size+1), cv::Point(dilation_size,dilation_size));
+        cv::Mat element;
+        if(dilation_sizey>0) element=cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2*dilation_size+1,2*dilation_sizey+1), cv::Point(dilation_size,dilation_sizey));
+        else element=cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2*dilation_size+1,2*dilation_size+1), cv::Point(dilation_size,dilation_size));
         cv::Mat mask2(res.mask.rows,res.mask.cols,res.mask.type(),cv::Scalar(0));
         pgBGUI->drawBound(&mask2, res.XYnmppx, true);
         cv::dilate(mask2, mask2, element);
@@ -82,7 +101,9 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
         if(debugIndex==8) return &res;
     }
 
-    int red=dilation_size<res.mask.rows?dilation_size:res.mask.rows;
+    int red;
+    if(dilation_sizey>0) red=dilation_sizey<res.mask.rows?dilation_sizey:res.mask.rows;
+    else red=dilation_size<res.mask.rows?dilation_size:res.mask.rows;
     res.mask.rowRange(0,red).setTo(cv::Scalar(255));
     res.mask.rowRange(res.mask.rows-red,res.mask.rows).setTo(cv::Scalar(255));
     red=dilation_size<res.mask.cols?dilation_size:res.mask.cols;
@@ -91,11 +112,7 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
     if(debugIndex==6 || debugIndex==9)  return &res;
 }
 
-cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, int dil, double thresh, double blur){       // used in Find Nearest Calibration method
-    if(dil<0) dil=findf_Dill->val;
-    if(thresh<0) thresh=findf_Thrs->val;
-    if(blur<0) blur=findf_Blur->val;
-
+cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, int dil, double thresh, double blur, int dily){         // used in Find Nearest Calibration method and Auto Array Calibration method
     cv::Mat retMask;
     src->mask.copyTo(retMask);
 
@@ -114,7 +131,9 @@ cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, int dil, dou
     retMask.setTo(cv::Scalar::all(255), umask);
     retMask.setTo(cv::Scalar::all(255), umaskT);
     if(dil>0){
-        cv::Mat element=cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dil+1,2*dil+1), cv::Point(dil,dil));
+        cv::Mat element;
+        if(dily==0) element=cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dil+1,2*dil+1), cv::Point(dil,dil));
+        else element=cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2*dil+1,2*dily+1), cv::Point(dil,dily));
         cv::dilate(retMask, retMask, element);
         int red=dil<retMask.rows?dil:retMask.rows;
         retMask.rowRange(0,red).setTo(cv::Scalar(255));
@@ -126,20 +145,3 @@ cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, int dil, dou
     pgBGUI->drawBound(&retMask, res.XYnmppx, true);
     return retMask;
 }
-
-cv::Mat pgDepthEval::getMaskBoundary(const pgScanGUI::scanRes* src, int dilx, int dily){    //used in Auto Array Calibration method
-    if(dilx<0) dilx=0;
-    if(dily<0) dily=0;
-    cv::Mat retMask(src->mask.rows,src->mask.cols,src->mask.type(),cv::Scalar(0));
-    cv::Mat element=cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2*dilx+1,2*dily+1), cv::Point(dilx,dily));
-    pgBGUI->drawBound(&retMask, src->XYnmppx, true);
-    cv::dilate(retMask, retMask, element);
-    int red=dily<retMask.rows?dily:retMask.rows;
-    retMask.rowRange(0,red).setTo(cv::Scalar(255));
-    retMask.rowRange(retMask.rows-red,retMask.rows).setTo(cv::Scalar(255));
-    red=dilx<retMask.cols?dilx:retMask.cols;
-    retMask.colRange(0,red).setTo(cv::Scalar(255));
-    retMask.colRange(retMask.cols-red,retMask.cols).setTo(cv::Scalar(255));
-    return retMask;
-}
-

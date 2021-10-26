@@ -20,8 +20,9 @@ public:
     QWidget* gui_activation;
     QWidget* gui_settings;
     QWidget* gui_processing;
-    bool goToNearestFree(double radDilat, double radRandSpread); //returns true if failed (no free point nearby)
     void drawWriteArea(cv::Mat* img);
+private Q_SLOTS:
+    bool goToNearestFree(double radDilat, double radRandSpread, double blur, double thrs, double radDilaty=0, bool convpx2um=false);      //returns true if failed (no free point nearby)
 private:
     pgFocusGUI* pgFGUI;
     pgMoveGUI* pgMGUI;
@@ -32,10 +33,6 @@ private:
 
     //activation
     QVBoxLayout* alayout;
-//    hidCon* hcGoToNearestFree;
-//    QPushButton* btnGoToNearestFree;
-//    val_selector* selRadDilGoToNearestFree;
-//    val_selector* selRadSprGoToNearestFree;
     std::string saveFolderName{""};
     HQPushButton* btnWriteCalib;
 
@@ -72,8 +69,6 @@ private:
         val_selector* selAArrayYsize;
         val_selector* selAArraySpacing;
         val_selector* selAArrayAvgN;
-        val_selector* selAArrayIntA;
-        val_selector* selAArrayIntB;
         val_selector* selAArrayDurA;
         val_selector* selAArrayDurB;
         val_selector* selAArrayNGenCand;
@@ -103,7 +98,6 @@ private:
     void saveConf(std::string filename, double duration, double focus);
     void saveMainConf(std::string filename);
 private Q_SLOTS:
-//    void onGoToNearestFree();
     void onWCF();
     void onProcessFocusMes();
     void onChangeDrawWriteAreaOn(bool status);

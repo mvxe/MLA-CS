@@ -218,7 +218,6 @@ public:
     twid(QWidget* widget, bool setmargin=true, bool setstretch=true);
     template<typename... Args> twid(QWidget* widget, Args... args);
     void addWidget(QWidget* widget, bool front=false);
-private:
     QHBoxLayout* layout{nullptr};
 };
 template<typename... Args> twid::twid(QWidget* widget, Args... args): twid(args...){
@@ -270,6 +269,27 @@ private Q_SLOTS:
 };
 template<typename... Args> hidCon::hidCon(Args... args): mainTwid(new twid(args...)){
     hhidCon();
+}
+
+// MORE HIDDEN CONTAINER - click a button to reveal/hide content
+
+class mhidCon : public QWidget{
+    Q_OBJECT
+public:
+    template<typename... Args> mhidCon(Args... args);
+    void mhhidCon();
+    void addWidget(QWidget* widget);
+private:
+    twid* mainTwid;
+    QPushButton* showBtn;
+    QVBoxLayout* layout;
+    QWidget* wI;
+    QVBoxLayout* layoutI;
+private Q_SLOTS:
+    void onClicked();
+};
+template<typename... Args> mhidCon::mhidCon(Args... args): mainTwid(new twid(args...)){
+    mhhidCon();
 }
 
 // GUI HOVER QPushButton

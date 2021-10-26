@@ -450,6 +450,34 @@ void hidCon::onClicked(){
     showBtn->setText((wI->isVisible())?"< hide >":"< show >");
 }
 
+// MORE HIDDEN CONTAINER
+
+void mhidCon::mhhidCon(){
+    layout=new QVBoxLayout;
+    this->setLayout(layout);
+    showBtn=new QPushButton(">");
+    connect(showBtn, SIGNAL(released()), this, SLOT(onClicked()));
+    showBtn->setFlat(true);
+    mainTwid->addWidget(showBtn, true);
+    layout->addWidget(mainTwid);
+    wI=new QWidget;
+    layoutI=new QVBoxLayout;
+    wI->setLayout(layoutI);
+    layout->setMargin(0);
+    layoutI->setMargin(0);
+    layout->addWidget(wI);
+    wI->setVisible(false);
+    for(auto& wid: mainTwid->findChildren<QWidget*>()) {if(wid!=showBtn) wid->setVisible(false);}
+}
+void mhidCon::addWidget(QWidget* widget){
+    layoutI->addWidget(widget);
+}
+void mhidCon::onClicked(){
+    wI->setVisible(!wI->isVisible());
+    showBtn->setText((wI->isVisible())?"<":">");
+    for(auto& wid: mainTwid->findChildren<QWidget*>()) if(wid!=showBtn) wid->setVisible(wI->isVisible());
+}
+
 // GUI HOVER QPushButton
 
 void HQPushButton::enterEvent(QEvent *event){

@@ -16,7 +16,6 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP): 
     connect(pulse, SIGNAL(released()), this, SLOT(onPulse()));
     pulseDur=new val_selector(1, "Dur", 0.001, 10000, 3, 0, {"ms"});
     conf["pulseDur"]=pulseDur;
-    alayout->addWidget(new hline);
     alayout->addWidget(new twid(pulse, pulseDur));
     alayout->addWidget(new hline);
     importImg=new QPushButton("Import image");
@@ -47,7 +46,6 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP): 
 
     writeDM->setEnabled(false);
     writeFrame->setEnabled(false);
-    alayout->addWidget(new hline);
 
     selectWriteSetting=new smp_selector("Select write setting: ", 0, {"Set0", "Set1", "Set2", "Set3", "Tag"});    //should have Nset strings
     conf["selectWriteSetting"]=selectWriteSetting;

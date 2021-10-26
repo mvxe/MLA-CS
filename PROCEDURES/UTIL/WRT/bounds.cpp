@@ -27,9 +27,7 @@ pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMG
     this->setLayout(layout);
     selector=new twd_selector("Select active boundary:", "none", false, false, true);
     OOBLabel=new QLabel(); OOBLabel->setMaximumHeight(20); OOBLabel->setMaximumWidth(20); OOBLabel->setScaledContents(true);
-    layout->addWidget(selector);
-    layout->addWidget(new twid(new QLabel("In bounds:"),OOBLabel, false));
-    layout->addStretch(0);
+    layout->addWidget(new twid(selector,OOBLabel));
 
     circRad=new QWidget;
     circPts=new QWidget;

@@ -91,8 +91,9 @@ tab_camera::tab_camera(QWidget* parent){
         pageMotion->addWidget(pgPRGUI);
 
     pageWriting=new twd_selector;
-        pageWriting->addWidget(pgCal->gui_activation);
         pageWriting->addWidget(pgWrt->gui_activation);
+        pageWriting->addWidget(new hline);
+        pageWriting->addWidget(pgCal->gui_activation);
         pageWriting->addWidget(pgBGUI);
 
     pageProcessing=new twd_selector;

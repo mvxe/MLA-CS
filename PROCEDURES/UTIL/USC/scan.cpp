@@ -456,7 +456,7 @@ void pgScanGUI::_savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames
 void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disable_tilt_correction, char cbRefl_override){
     typedef cv::Mat tUMat;//cv::UMat    // TODO fix; use conditional on if opencl was detected
     if(ROI.width==0) ROI=sROI;
-    if(ROI.width==0) ROI=cv::Rect(0,0,go.pGCAM->iuScope->camCols,go.pGCAM->iuScope->camRows);
+    if(ROI.width<=0) ROI=cv::Rect(0,0,go.pGCAM->iuScope->camCols,go.pGCAM->iuScope->camRows);
 
     MLP._lock_proc.lock();                       //wait for other measurements to complete
     if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) {measurementInProgress=false; return;}
