@@ -72,7 +72,7 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     conf["savePic"]=savePic;
     slayout->addWidget(savePic);
     slayout->addWidget(new hline);
-    slayout->addWidget(new QLabel("Prewrite Plateau (set to 0 to disable"));
+    slayout->addWidget(new QLabel("Prewrite Plateau (set to 0 to disable)"));
     selPlateauA=new val_selector(0, "Plateau", 0, 1000, 3, 0, {"nm"});
     conf["selPlateauA"]=selPlateauA;
     slayout->addWidget(selPlateauA);
