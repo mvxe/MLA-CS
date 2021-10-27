@@ -112,8 +112,7 @@ HEADERS += \
     GUI/TAB_CAMERA/gnuplot.h \
     UTIL/pipe_template.h \
     PROCEDURES/UTIL/WRT/write.h \
-    PROCEDURES/UTIL/USC/correction.h \
-    PROCEDURES/UTIL/WRT/predictor.h
+    PROCEDURES/UTIL/USC/correction.h
 
 SOURCES += \
     DEV/RPTY/motionDevices/pinexactstage.cpp \
@@ -166,8 +165,7 @@ SOURCES += \
     PROCEDURES/UTIL/WRT/beamanl.cpp \
     GUI/TAB_CAMERA/gnuplot.cpp \
     PROCEDURES/UTIL/WRT/write.cpp \
-    PROCEDURES/UTIL/USC/correction.cpp \
-    PROCEDURES/UTIL/WRT/predictor.cpp
+    PROCEDURES/UTIL/USC/correction.cpp
 
 
 unix {

@@ -75,7 +75,6 @@ private:
     pgCalib* pgCal;
     pgBeamAnalysis* pgBeAn;
     pgWrite* pgWrt;
-    //pgWritePredictor* pgWrtPrd;
 
     QMenu* clickMenu;
     QMenu* clickMenuSelection;
