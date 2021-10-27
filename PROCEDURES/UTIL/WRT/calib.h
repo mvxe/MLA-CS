@@ -40,37 +40,25 @@ private:
 
     //settings
     QVBoxLayout* slayout;
-    twd_selector* calibMethod;
-    vtwid* calibMethodFindNearest;
-        val_selector* selWriteCalibFocusDoNMeas;
-        val_selector* selWriteCalibFocusReFocusNth;
-        val_selector* selWriteCalibFocusRadDil;
-        val_selector* selWriteCalibFocusRadSpr;
-        val_selector* selWriteCalibFocusBlur;
-        val_selector* selWriteCalibFocusThresh;
-        val_selector* selWriteCalibFocusRange;
-        val_selector* selWriteCalibFocusPulseIntensity;
-        val_selector* selWriteCalibFocusPulseDuration;
-    vtwid* calibMethodArray;
-        val_selector* selArrayXsize;
-        val_selector* selArrayYsize;
-        val_selector* selArraySpacing;
-        smp_selector* selArrayType;
-        checkbox_gs* transposeMat;
-        val_selector* selArrayDurA;
-        val_selector* selArrayDurB;
-        val_selector* selArrayFocA;
-        val_selector* selArrayFocB;
-        val_selector* selArrayOneScanN;
-        checkbox_gs* selArrayRandomize;
-        checkbox_gs* saveMats;
-        checkbox_gs* savePic;
-        val_selector* selPlateauA;
-        val_selector* selPlateauB;
-        smp_selector* selMultiArrayType;
-        val_selector* multiarrayN;
-        val_selector* selArrayFocusBlur;
-        val_selector* selArrayFocusThresh;
+    val_selector* selArrayXsize;
+    val_selector* selArrayYsize;
+    val_selector* selArraySpacing;
+    smp_selector* selArrayType;
+    checkbox_gs* transposeMat;
+    val_selector* selArrayDurA;
+    val_selector* selArrayDurB;
+    val_selector* selArrayFocA;
+    val_selector* selArrayFocB;
+    val_selector* selArrayOneScanN;
+    checkbox_gs* selArrayRandomize;
+    checkbox_gs* saveMats;
+    checkbox_gs* savePic;
+    val_selector* selPlateauA;
+    val_selector* selPlateauB;
+    smp_selector* selMultiArrayType;
+    val_selector* multiarrayN;
+    val_selector* selArrayFocusBlur;
+    val_selector* selArrayFocusThresh;
 
     int measCounter{0};
     bool drawWriteAreaOn{false};
@@ -87,10 +75,6 @@ private:
     constexpr static int maxRedoScanTries=3;
     constexpr static double discardMaskRoiThresh=0.001;     //if more than 0.1% of the pixels in the roi are bad, discard and try again, up to maxRedoScanTries. If it still fails accept it anyway
 
-    struct _pw;
-    static bool _pwsort(_pw i,_pw j);
-
-    void WCFFindNearest();
     void WCFArray(std::string folder);
     void WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac);
     void saveConf(std::string filename, double duration, double focus, double plateau);
