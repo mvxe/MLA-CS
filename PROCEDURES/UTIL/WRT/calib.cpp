@@ -106,16 +106,32 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         conf["savePic"]=savePic;
         calibMethodArray->addWidget(savePic);
         calibMethodArray->addWidget(new hline);
-        prewritePlateau=new checkbox_gs(false,"Prewrite Plataeu");
-        conf["prewritePlateau"]=prewritePlateau;
-        calibMethodArray->addWidget(prewritePlateau);
-        calibMethodArray->addWidget(new QLabel("NOTE: baseline calibration required for plateau."));
+        calibMethodArray->addWidget(new QLabel("Prewrite Plateau (set to 0 to disable"));
         selPlateauA=new val_selector(0, "Plateau", 0, 1000, 3, 0, {"nm"});
         conf["selPlateauA"]=selPlateauA;
         calibMethodArray->addWidget(selPlateauA);
         selPlateauB=new val_selector(0, "Plateau upper limit", 0, 1000, 3, 0, {"nm"});
         conf["selPlateauB"]=selPlateauB;
         calibMethodArray->addWidget(selPlateauB);
+        calibMethodArray->addWidget(new QLabel("NOTE: baseline calibration needed for plateau."));
+        calibMethodArray->addWidget(new hline);
+        selMultiArrayType=new smp_selector("Multiple runs variable parameter: ", 0, {"none","Focus","Duration", "Plateau"});
+        connect(selMultiArrayType, SIGNAL(changed(int)), this, SLOT(onSelMultiArrayTypeChanged(int)));
+        conf["selMultiArrayType"]=selMultiArrayType;
+        calibMethodArray->addWidget(selMultiArrayType);
+        multiarrayN=new val_selector(1, "N of runs:", 1, 10000, 0);
+        conf["multiarrayN"]=multiarrayN;
+        calibMethodArray->addWidget(multiarrayN);
+        connect(multiarrayN, SIGNAL(changed(double)), this, SLOT(onMultiarrayNChanged(double)));
+        selArrayFocusBlur=new val_selector(2, "Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
+        conf["selArrayFocusBlur"]=selArrayFocusBlur;
+        selArrayFocusBlur->setVisible(false);
+        calibMethodArray->addWidget(selArrayFocusBlur);
+        selArrayFocusThresh=new val_selector(0.2, "2nd Derivative Exclusion Threshold: ", 0, 1, 4);
+        conf["selArrayFocusThresh"]=selArrayFocusThresh;
+        selArrayFocusThresh->setToolTip("Try out values in Depth Eval.");
+        selArrayFocusThresh->setVisible(false);
+        calibMethodArray->addWidget(selArrayFocusThresh);
 
     calibMethod=new twd_selector("Select method:", "Array", false, false, false);
     calibMethod->addWidget(calibMethodArray, "Array");
@@ -141,15 +157,27 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
     playout->addWidget(new twid(btnProcessFocusMes));
 }
+void pgCalib::onMultiarrayNChanged(double val){
+    selArrayFocusBlur->setVisible(val!=1);
+    selArrayFocusThresh->setVisible(val!=1);
+}
 void pgCalib::onSelArrayTypeChanged(int index){
-    bool foc=index==1 || index==2 || index==4;
-    bool dur=index==0 || index==2 || index==3;
+    selArray(index, selMultiArrayType->index);
+}
+void pgCalib::onSelMultiArrayTypeChanged(int index){
+    selArray(selArrayType->index, index);
+}
+void pgCalib::selArray(int ArrayIndex, int MultiArrayIndex){
+    bool foc=ArrayIndex==1 || ArrayIndex==2 || ArrayIndex==4 || MultiArrayIndex==1;
+    bool dur=ArrayIndex==0 || ArrayIndex==2 || ArrayIndex==3 || MultiArrayIndex==2;
+    bool pla=MultiArrayIndex==3;
     selArrayFocA->setLabel(foc?"Focus lower limit":"Focus");
     selArrayDurA->setLabel(dur?"Duration lower limit":"Duration");
+    selPlateauA->setLabel(pla?"Plateau lower limit":"Plateau");
     selArrayFocB->setVisible(foc);
     selArrayDurB->setVisible(dur);
+    selPlateauB->setVisible(pla);
 }
-
 bool pgCalib::goToNearestFree(double radDilat, double radRandSpread, double blur, double thrs, double radDilaty, bool convpx2um){
     varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
     while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //if there is a measurement in progress, wait till its done
@@ -188,30 +216,27 @@ bool pgCalib::goToNearestFree(double radDilat, double radRandSpread, double blur
 void pgCalib::onWCF(){
     if(!btnWriteCalib->isChecked()) return;
     if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
-    saveFolderName=QFileDialog::getExistingDirectory(this, "Select Folder for Saving Calibration Data").toStdString();
+
+    std::time_t time=std::time(nullptr); std::tm ltime=*std::localtime(&time);
+    std::stringstream ifolder;
+    ifolder<<lastFolder;
+    ifolder<<std::put_time(&ltime, "%Y-%m-%d-%H-%M-%S");
+    std::string saveFolderName=QFileDialog::getSaveFileName(this, tr("Select Folder for Saving Calibration Data"),QString::fromStdString(ifolder.str()),tr("Folders")).toStdString();
     if(saveFolderName.empty()){
         btnWriteCalib->setChecked(false);
         return;
     }
+    lastFolder=saveFolderName.substr(0,saveFolderName.find_last_of("/"));
+    saveFolderName+="/";
+    lastFolder+="/";
+    cv::utils::fs::createDirectory(saveFolderName);
 
     switch(calibMethod->index){
-    case 0: WCFArray();
+    case 0: WCFArray(saveFolderName);
             break;
     case 1: WCFFindNearest();
             break;
     }
-}
-
-std::string pgCalib::makeDateTimeFolder(const std::string folder){
-    std::time_t time=std::time(nullptr); std::tm ltime=*std::localtime(&time);
-    std::stringstream ssfolder; ssfolder<<folder;
-    ssfolder<<std::put_time(&ltime, "/%Y-%m-%d/");
-    cv::utils::fs::createDirectory(ssfolder.str());
-    ssfolder<<std::put_time(&ltime, "%H/");
-    cv::utils::fs::createDirectory(ssfolder.str());
-    ssfolder<<std::put_time(&ltime, "%M-%S/");
-    cv::utils::fs::createDirectory(ssfolder.str());
-    return ssfolder.str();
 }
 
 void pgCalib::saveMainConf(std::string filename){
@@ -239,7 +264,7 @@ void pgCalib::WCFFindNearest(){
     varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
     QCoreApplication::processEvents(QEventLoop::AllEvents, 500);    //some waiting time for the system to stabilize after a rapid move
 
-    std::string folder=makeDateTimeFolder(saveFolderName);
+//TODO!    std::string folder=makeDateTimeFolder(saveFolderName);
 
     if((int)(selWriteCalibFocusReFocusNth->val)!=0)
     if(!(measCounter%((int)(selWriteCalibFocusReFocusNth->val)))){
@@ -298,11 +323,13 @@ void pgCalib::WCFFindNearest(){
     delete scanRes;
 }
 
-void pgCalib::WCFArray(){
-    varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
+void pgCalib::WCFArray(std::string folder){
     cv::Mat WArray(selArrayYsize->val,selArrayXsize->val,CV_64FC2,cv::Scalar(0,0));         //Duration(ms), Focus(um)
-    int arraySizeDur{1}, arraySizeFoc{1};
+    int arraySizeDur{1}, arraySizeFoc{1}, arraySizePla{1};
     int index=selArrayType->index;
+    int mindex=selMultiArrayType->index;
+    bool multiFoc=false;
+    bool multiDur=false;
     switch(index){
     case 0: arraySizeDur=selArrayYsize->val*selArrayXsize->val;     //Duration (XY), no repeat
             break;
@@ -316,50 +343,37 @@ void pgCalib::WCFArray(){
     case 4: arraySizeFoc=selArrayXsize->val;                        //Focus (XY), repeat
             break;
     }
+    switch(mindex){
+    case 1: arraySizeFoc*=multiarrayN->val;                         // Focus
+            multiFoc=true;
+            break;
+    case 2: arraySizeDur*=multiarrayN->val;                         // Duration
+            multiDur=true;
+            break;
+    case 3: arraySizePla=multiarrayN->val;                          // Plateau
+            break;
+    }
+
     std::vector<double> arrayDur; arrayDur.reserve(arraySizeDur);
     std::vector<double> arrayFoc; arrayFoc.reserve(arraySizeFoc);
+    std::vector<double> arrayPla; arrayFoc.reserve(arraySizePla);
     if(arraySizeDur==1) arrayDur.push_back(selArrayDurA->val);
     else for(int i=0;i!=arraySizeDur; i++) arrayDur.push_back(selArrayDurA->val*(1-(double)i/(arraySizeDur-1))+selArrayDurB->val*((double)i/(arraySizeDur-1)));
     if(arraySizeFoc==1) arrayFoc.push_back(selArrayFocA->val);
     else for(int i=0;i!=arraySizeFoc; i++) arrayFoc.push_back(selArrayFocA->val*(1-(double)i/(arraySizeFoc-1))+selArrayFocB->val*((double)i/(arraySizeFoc-1)));
+    if(arraySizePla==1) arrayPla.push_back(selPlateauA->val);
+    else for(int i=0;i!=arraySizePla; i++) arrayPla.push_back(selPlateauA->val*(1-(double)i/(arraySizePla-1))+selPlateauB->val*((double)i/(arraySizePla-1)));
 
     if(selArrayRandomize->val){                         //randomize if chosen
         std::mt19937 rnd(std::random_device{}());
         std::shuffle(arrayDur.begin(), arrayDur.end(), rnd);
         std::shuffle(arrayFoc.begin(), arrayFoc.end(), rnd);
-    }
-    for(int i=0;i!=WArray.cols; i++) for(int j=0;j!=WArray.rows; j++){              //populate 3D x2 array
-        if(index==0) WArray.at<cv::Vec2d>(j,i)[0]=arrayDur[i+j*WArray.cols];
-        else if(index==2 || index==3) WArray.at<cv::Vec2d>(j,i)[0]=arrayDur[i];
-        else WArray.at<cv::Vec2d>(j,i)[0]=arrayDur[0];
-        if(index==1) WArray.at<cv::Vec2d>(j,i)[1]=arrayFoc[i+j*WArray.cols];
-        else if(index==2)  WArray.at<cv::Vec2d>(j,i)[1]=arrayFoc[j];
-        else if(index==4)  WArray.at<cv::Vec2d>(j,i)[1]=arrayFoc[i];
-        else WArray.at<cv::Vec2d>(j,i)[1]=arrayFoc[0];
-    }
-    if(transposeMat->val)
-        cv::transpose(WArray,WArray);
-
-    std::string folder=makeDateTimeFolder(saveFolderName);
-    if(saveMats->val){      //export values as matrices, for convenience
-        std::string names[2]={"Duration","Focus"};
-        for(int k=0;k!=2;k++){
-            std::ofstream wfile(util::toString(folder,"/", names[k],".txt"));
-            for(int i=0;i!=WArray.cols; i++){
-                for(int j=0;j!=WArray.rows; j++)
-                    wfile<<WArray.at<cv::Vec2d>(j,i)[k]<<" ";
-                wfile<<"\n";
-            }
-            wfile.close();
-        }
+        std::shuffle(arrayPla.begin(), arrayPla.end(), rnd);
     }
 
-    double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;         //in mm
-    double yOfs=((WArray.rows-1)*selArraySpacing->val)/2000;
+
     double xSize=WArray.cols*pgMGUI->mm2px(selArraySpacing->val/1000);
     double ySize=WArray.rows*pgMGUI->mm2px(selArraySpacing->val/1000);
-
-    // TODO: if larger calibration matrices are needed expand this to support - chop up the calibration matrix into submatrices that fit ROI
 
     // set ROI
     bool err=false;
@@ -382,19 +396,65 @@ void pgCalib::WCFArray(){
     if(err){
         QMessageBox::critical(gui_activation, "Error", "The calibration ROI does not fit the viewport, aborting calibration.\n");
         btnWriteCalib->setChecked(false);
-        delete scanRes;
         return;
     }
+
+    saveMainConf(util::toString(folder,"/main-settings.txt"));
+    std::ofstream wfile(util::toString(folder,"/Plateau.txt"));
+    for(int i=0;i!=arrayPla.size(); i++){
+        wfile<<arrayPla[i]<<"\n";
+    }wfile.close();
+    for(int n=0;n!=multiarrayN->val;n++){
+        for(int i=0;i!=WArray.cols; i++) for(int j=0;j!=WArray.rows; j++){              //populate 3D x2 array
+            if(index==0) WArray.at<cv::Vec2d>(j,i)[0]=arrayDur[i+j*WArray.cols+(multiDur?n:0)*WArray.rows*WArray.cols];
+            else if(index==2 || index==3) WArray.at<cv::Vec2d>(j,i)[0]=arrayDur[i+(multiDur?n:0)*WArray.cols];
+            else WArray.at<cv::Vec2d>(j,i)[0]=arrayDur[multiDur?n:0];
+            if(index==1) WArray.at<cv::Vec2d>(j,i)[1]=arrayFoc[i+j*WArray.cols+(multiFoc?n:0)*WArray.rows*WArray.cols];
+            else if(index==2)  WArray.at<cv::Vec2d>(j,i)[1]=arrayFoc[j+(multiFoc?n:0)*WArray.rows];
+            else if(index==4)  WArray.at<cv::Vec2d>(j,i)[1]=arrayFoc[i+(multiFoc?n:0)*WArray.cols];
+            else WArray.at<cv::Vec2d>(j,i)[1]=arrayFoc[multiFoc?n:0];
+        }
+        if(transposeMat->val)
+            cv::transpose(WArray,WArray);
+
+        if(n!=0)
+            if(!btnWriteCalib->isChecked() || goToNearestFree(WArray.cols*selArraySpacing->val, selArraySpacing->val, selArrayFocusBlur->val, selArrayFocusThresh->val, WArray.rows*selArraySpacing->val)){
+                QMessageBox::critical(this, "Error", "Calibration aborted. Measurements up to this point were saved.");
+                btnWriteCalib->setChecked(false);
+                return;
+            }
+
+        if(saveMats->val){      //export values as matrices, for convenience
+            std::string names[2]={"Duration","Focus"};
+            for(int k=0;k!=2;k++){
+                std::ofstream wfile(util::toString(folder,"/", names[k],".txt"), std::ofstream::out | std::ofstream::app);
+                for(int i=0;i!=WArray.cols; i++){
+                    for(int j=0;j!=WArray.rows; j++)
+                        wfile<<WArray.at<cv::Vec2d>(j,i)[k]<<" ";
+                    wfile<<"\n";
+                }
+                wfile<<"\n";
+                wfile.close();
+            }
+        }
+        WCFArrayOne(WArray, arrayPla.size()==1?arrayPla[0]:arrayPla[n], ROI, sROI, folder, static_cast<double>(n)/multiarrayN->val);
+        if(transposeMat->val)
+            cv::transpose(WArray,WArray);
+    }
+    btnWriteCalib->setChecked(false);
+}
+void pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac){
+    varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
+    double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;         //in mm
+    double yOfs=((WArray.rows-1)*selArraySpacing->val)/2000;
 
     // TODO add selector to force a certain refocus setting
     pgFGUI->doRefocus(true, ROI);
 
-    if(prewritePlateau->val){
-        cv::Mat plateau(WArray.rows, WArray.cols, CV_32F, cv::Scalar(selPlateauA->val/1000000));
-        pgWr->onWriteDM(&plateau, 0, selArraySpacing->val/1000);
+    if(plateau!=0){
+        cv::Mat mplateau(WArray.rows, WArray.cols, CV_32F, cv::Scalar(plateau/1000000));
+        pgWr->onWriteDM(&mplateau, 0, selArraySpacing->val/1000);
     }
-
-    saveMainConf(util::toString(folder,"/main-settings.txt"));
 
     const pgScanGUI::scanRes* res;
     // TODO add selector to force a certain scan setting
@@ -414,13 +474,13 @@ void pgCalib::WCFArray(){
     {std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_proc);
         pgMGUI->chooseObj(false);
         pgMGUI->move(-xOfs,-yOfs,0);
-        pgSGUI->MLP.progress_proc=0;
+        pgSGUI->MLP.progress_proc=100*progressfac;
         CTRL::CO CO(go.pRPTY);
         CO.clear(true);
         for(int j=0;j!=WArray.rows; j++){
             for(int i=0;i!=WArray.cols; i++){
                 if(!btnWriteCalib->isChecked()){   //abort
-                    QMessageBox::critical(gui_activation, "Error", "Calibration aborted.\n");
+                    QMessageBox::critical(gui_activation, "Error", "Calibration aborted. Measurements up to this point were saved.\n");
                     delete scanRes;
                     return;
                 }
@@ -431,18 +491,16 @@ void pgCalib::WCFArray(){
                 CO.addHold("Z",CTRL::he_motion_ontarget);
                 CO.pulseGPIO("wrLaser",WArray.at<cv::Vec2d>(j,i)[0]/1000);
                 pgMGUI->corCOMove(CO,0,0,-WArray.at<cv::Vec2d>(j,i)[1]/1000);
-                saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1], selPlateauA->val);
+                saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1], plateau);
 
                 CO.execute();
                 CO.clear(true);
 
                 while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
-                pgSGUI->MLP.progress_proc=100./(WArray.rows*WArray.cols)*(j*WArray.cols+i);
                 if(i!=WArray.cols-1) pgMGUI->corCOMove(CO,selArraySpacing->val/1000,0,0);
             }
             if(j!=WArray.rows-1) pgMGUI->corCOMove(CO,-2*xOfs,selArraySpacing->val/1000,0);
         }
-        pgSGUI->MLP.progress_proc=100;
         pgMGUI->move(-xOfs,-yOfs,0);
         pgMGUI->chooseObj(true);
     }
@@ -457,7 +515,6 @@ void pgCalib::WCFArray(){
         pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",i+j*WArray.cols,"/after"), true, savePic->val?1:0);
     }
 
-    btnWriteCalib->setChecked(false);
     delete scanRes;
 }
 
@@ -495,7 +552,9 @@ void pgCalib::onProcessFocusMes(){
     std::vector<std::string> readFolders;   //folders still yet to be checked
     std::vector<std::string> measFolders;   //folders that contain the expected measurement files
 
-    readFolders.emplace_back(QFileDialog::getExistingDirectory(this, "Select Folder Contatining Measurements. It will be Searched Recursively.").toStdString());
+    readFolders.emplace_back(QFileDialog::getExistingDirectory(this, "Select Folder Contatining Measurements. It will be Searched Recursively.", QString::fromStdString(lastFolder)).toStdString());
+    if(readFolders.back().empty()) return;
+    lastFolder=readFolders.back().substr(0,readFolders.back().find_last_of("/"));
     std::string saveName=readFolders.back()+"/proc.txt";
     DIR *wp;
     struct dirent *entry;

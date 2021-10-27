@@ -35,7 +35,7 @@ private:
 
     //activation
     QVBoxLayout* alayout;
-    std::string saveFolderName{""};
+    std::string lastFolder{""};
     HQPushButton* btnWriteCalib;
 
     //settings
@@ -65,9 +65,12 @@ private:
         checkbox_gs* selArrayRandomize;
         checkbox_gs* saveMats;
         checkbox_gs* savePic;
-        checkbox_gs* prewritePlateau;
         val_selector* selPlateauA;
         val_selector* selPlateauB;
+        smp_selector* selMultiArrayType;
+        val_selector* multiarrayN;
+        val_selector* selArrayFocusBlur;
+        val_selector* selArrayFocusThresh;
 
     int measCounter{0};
     bool drawWriteAreaOn{false};
@@ -88,15 +91,18 @@ private:
     static bool _pwsort(_pw i,_pw j);
 
     void WCFFindNearest();
-    void WCFArray();
-    std::string makeDateTimeFolder(const std::string folder);
+    void WCFArray(std::string folder);
+    void WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac);
     void saveConf(std::string filename, double duration, double focus, double plateau);
     void saveMainConf(std::string filename);
+    void selArray(int ArrayIndex, int MultiArrayIndex);
 private Q_SLOTS:
     void onWCF();
     void onProcessFocusMes();
     void onChangeDrawWriteAreaOn(bool status);
     void onSelArrayTypeChanged(int index);
+    void onSelMultiArrayTypeChanged(int index);
+    void onMultiarrayNChanged(double val);
 
 };
 
