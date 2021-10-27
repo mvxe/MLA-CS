@@ -168,24 +168,13 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
     cv::Mat tmpWrite, resizedWrite;
     cv::Mat* src;
     double vdepthMaxval, vimgmmPPx, vpointSpacing, vfocus, vfocusXcor, vfocusYcor;
-    if(override!=nullptr){
-        src=override;
-        vdepthMaxval=override_depthMaxval;
-        vimgmmPPx=override_imgmmPPx;
-        vpointSpacing=override_pointSpacing;
-        vfocus=override_focus;
-        vfocusXcor=ov_fxcor;
-        vfocusYcor=ov_fycor;
-    }
-    else{
-        src=&WRImage;
-        vdepthMaxval=depthMaxval->val/1000000;
-        vimgmmPPx=imgUmPPx->val/1000;
-        vpointSpacing=pointSpacing->val/1000;
-        vfocus=focus->val/1000;
-        vfocusXcor=focusXcor->val/1000;
-        vfocusYcor=focusYcor->val/1000;
-    }
+    src=(override!=nullptr)?override:&WRImage;
+    vdepthMaxval=(override_depthMaxval!=0)?override_depthMaxval:depthMaxval->val/1000000;
+    vimgmmPPx=(override_imgmmPPx!=0)?override_imgmmPPx:imgUmPPx->val/1000;
+    vpointSpacing=(override_pointSpacing!=0)?override_pointSpacing:pointSpacing->val/1000;
+    vfocus=(override_focus!=std::numeric_limits<double>::max())?override_focus:focus->val/1000;
+    vfocusXcor=(ov_fxcor!=std::numeric_limits<double>::max())?ov_fxcor:focusXcor->val/1000;
+    vfocusYcor=(ov_fycor!=std::numeric_limits<double>::max())?ov_fycor:focusYcor->val/1000;
 
     if(src->type()==CV_8U){
         src->convertTo(tmpWrite, CV_32F, vdepthMaxval/255);

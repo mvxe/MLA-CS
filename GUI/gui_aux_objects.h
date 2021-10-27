@@ -32,6 +32,7 @@ public:
 
     void setMaximum(double max);
     void setMinimum(double min);
+    void setLabel(QString label);
 public Q_SLOTS:
     void setValue(double nvalue, int index=-1); // not thread safe, no change to index if index=-1
 private:

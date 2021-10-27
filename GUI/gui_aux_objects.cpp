@@ -40,6 +40,9 @@ void val_selector::setMaximum(double max){
 void val_selector::setMinimum(double min){
     spinbox->setMinimum(min);
 }
+void val_selector::setLabel(QString label){
+    _label->setText(label);
+}
 
 void val_selector::init1(){
     unit = new QScrollToolButton();

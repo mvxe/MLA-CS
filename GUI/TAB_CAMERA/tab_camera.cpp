@@ -73,10 +73,10 @@ tab_camera::tab_camera(QWidget* parent){
     conf["pgBounds"]=pgBGUI->conf;
     pgDpEv=new pgDepthEval(pgBGUI);
     conf["pgDepthEval"]=pgDpEv->conf;
-    pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn);
-    conf["pgCalib"]=pgCal->conf;
     pgWrt=new pgWrite(pgBeAn,pgMGUI,MLP);
     conf["pgWrite"]=pgWrt->conf;
+    pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn, pgWrt);
+    conf["pgCalib"]=pgCal->conf;
     //pgWrtPrd=new pgWritePredictor(pgMGUI);
 
     addInfo=new QLabel; addInfo->setMargin(10);

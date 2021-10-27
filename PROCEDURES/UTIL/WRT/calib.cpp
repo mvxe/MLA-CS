@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <random>
 
-pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn): pgSGUI(pgSGUI), pgBGUI(pgBGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgDpEv(pgDpEv), pgBeAn(pgBeAn){
+pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn, pgWrite* pgWr): pgSGUI(pgSGUI), pgBGUI(pgBGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgDpEv(pgDpEv), pgBeAn(pgBeAn), pgWr(pgWr){
     gui_activation=new QWidget;
     alayout=new QVBoxLayout;
     gui_activation->setLayout(alayout);
@@ -74,22 +74,23 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         conf["selArraySpacing"]=selArraySpacing;
         calibMethodArray->addWidget(selArraySpacing);
         selArrayType=new smp_selector("Variable Parameters (X-Y): ", 0, {"Duration(X,Y), no repeat","Focus(X,Y), no repeat","Duration(X)-Focus(Y)", "Duration(X,Y), repeat","Focus(X,Y), repeat"});
+        connect(selArrayType, SIGNAL(changed(int)), this, SLOT(onSelArrayTypeChanged(int)));
         conf["selArrayType"]=selArrayType;
         calibMethodArray->addWidget(selArrayType);
         transposeMat=new checkbox_gs(false,"Transpose matrix.");
         conf["transposeMat"]=transposeMat;
         calibMethodArray->addWidget(transposeMat);
-        calibMethodArray->addWidget(new QLabel("The Variable Parameters Will be Within the Specified Range.\nIf a Parameter is not Variable, it Will be Equal to Val A!"));
-        selArrayDurA=new val_selector(1, "Duration Value A", 0.001, 1000, 3, 0, {"ms"});
+        calibMethodArray->addWidget(new QLabel("The Variable Parameters Will be Within the Specified Range."));
+        selArrayDurA=new val_selector(1, "Duration", 0.001, 1000, 3, 0, {"ms"});
         conf["selArrayDurA"]=selArrayDurA;
         calibMethodArray->addWidget(selArrayDurA);
-        selArrayDurB=new val_selector(1, "Duration Value B", 0.001, 1000, 3, 0, {"ms"});
+        selArrayDurB=new val_selector(1, "Duration upper limit", 0.001, 1000, 3, 0, {"ms"});
         conf["selArrayDurB"]=selArrayDurB;
         calibMethodArray->addWidget(selArrayDurB);
-        selArrayFocA=new val_selector(-1, "Focus Value A", -1000, 1000, 3, 0, {"um"});
+        selArrayFocA=new val_selector(-1, "Focus", -1000, 1000, 3, 0, {"um"});
         conf["selArrayFocA"]=selArrayFocA;
         calibMethodArray->addWidget(selArrayFocA);
-        selArrayFocB=new val_selector(1, "Focus Value B", -1000, 1000, 3, 0, {"um"});
+        selArrayFocB=new val_selector(1, "Focus upper limit", -1000, 1000, 3, 0, {"um"});
         conf["selArrayFocB"]=selArrayFocB;
         calibMethodArray->addWidget(selArrayFocB);
         selArrayOneScanN=new val_selector(10, "Take and average This Many Scans: ", 1, 1000, 0);
@@ -104,42 +105,20 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
         savePic=new checkbox_gs(true,"Also save direct pictures of measurements.");
         conf["savePic"]=savePic;
         calibMethodArray->addWidget(savePic);
-
-    calibMethodAutoArray=new vtwid;
-        calibMethodAutoArray->addWidget(new QLabel("Selection procedure: Exclusion+DilateSQ+Border"));
-        selAArrayDoNMes=new val_selector(100, "In total do this many measurements (will decrement): ", 0, 100000000, 0);
-        conf["selAArrayDoNMes"]=selAArrayDoNMes;
-        calibMethodAutoArray->addWidget(selAArrayDoNMes);
-        selAArrayXsize=new val_selector(10, "Array Size X", 1, 1000, 0);
-        conf["selAArrayXsize"]=selAArrayXsize;
-        calibMethodAutoArray->addWidget(selAArrayXsize);
-        selAArrayYsize=new val_selector(10, "Array Size Y", 1, 1000, 0);
-        conf["selAArrayYsize"]=selAArrayYsize;
-        calibMethodAutoArray->addWidget(selAArrayYsize);
-        selAArraySpacing=new val_selector(5, "Array Spacing", 0.001, 100, 3, 0, {"um"});
-        conf["selAArraySpacing"]=selAArraySpacing;
-        calibMethodAutoArray->addWidget(selAArraySpacing);
-        selAArrayAvgN=new val_selector(10, "Average This Many Scans: ", 1, 1000, 0);
-        conf["selAArrayAvgN"]=selAArrayAvgN;
-        calibMethodAutoArray->addWidget(selAArrayAvgN);
-        selAArrayDurA=new val_selector(1, "Duration Value A", 0.001, 1000, 3, 0, {"ms"});
-        conf["selAArrayDurA"]=selAArrayDurA;
-        calibMethodAutoArray->addWidget(selAArrayDurA);
-        selAArrayDurB=new val_selector(1, "Duration Value B", 0.001, 1000, 3, 0, {"ms"});
-        conf["selAArrayDurB"]=selAArrayDurB;
-        calibMethodAutoArray->addWidget(selAArrayDurB);
-        selAArrayNGenCand=new val_selector(100, "Consider this many random points as next location: ", 1, 10000, 0);
-        conf["selAArrayNGenCand"]=selAArrayNGenCand;
-        calibMethodAutoArray->addWidget(selAArrayNGenCand);
-        selAArraySetMaskToThisHeight=new val_selector(200, "Bad pixel height (for planning next move): ", 0, 10000, 0, 0, {"nm"});
-        conf["selAArraySetMaskToThisHeight"]=selAArraySetMaskToThisHeight;
-        selAArraySetMaskToThisHeight->setToolTip("This should be a few times higher than the highest structure you expect to be written.\nIt is used only to plan the next move (the larger it is, the more likely the program will avoid areas with bad pixels).\nIn the end individual scans with"
-                                                 " bad pixels are discarded anyway.");
-        calibMethodAutoArray->addWidget(selAArraySetMaskToThisHeight);
+        calibMethodArray->addWidget(new hline);
+        prewritePlateau=new checkbox_gs(false,"Prewrite Plataeu");
+        conf["prewritePlateau"]=prewritePlateau;
+        calibMethodArray->addWidget(prewritePlateau);
+        calibMethodArray->addWidget(new QLabel("NOTE: baseline calibration required for plateau."));
+        selPlateauA=new val_selector(0, "Plateau", 0, 1000, 3, 0, {"nm"});
+        conf["selPlateauA"]=selPlateauA;
+        calibMethodArray->addWidget(selPlateauA);
+        selPlateauB=new val_selector(0, "Plateau upper limit", 0, 1000, 3, 0, {"nm"});
+        conf["selPlateauB"]=selPlateauB;
+        calibMethodArray->addWidget(selPlateauB);
 
     calibMethod=new twd_selector("Select method:", "Array", false, false, false);
     calibMethod->addWidget(calibMethodArray, "Array");
-    calibMethod->addWidget(calibMethodAutoArray, "Auto Array");
     calibMethod->addWidget(calibMethodFindNearest,"Find Nearest");
     calibMethod->setIndex(0);
     conf["calibMethod"]=calibMethod;
@@ -161,6 +140,14 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements (Array method)");
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
     playout->addWidget(new twid(btnProcessFocusMes));
+}
+void pgCalib::onSelArrayTypeChanged(int index){
+    bool foc=index==1 || index==2 || index==4;
+    bool dur=index==0 || index==2 || index==3;
+    selArrayFocA->setLabel(foc?"Focus lower limit":"Focus");
+    selArrayDurA->setLabel(dur?"Duration lower limit":"Duration");
+    selArrayFocB->setVisible(foc);
+    selArrayDurB->setVisible(dur);
 }
 
 bool pgCalib::goToNearestFree(double radDilat, double radRandSpread, double blur, double thrs, double radDilaty, bool convpx2um){
@@ -210,9 +197,7 @@ void pgCalib::onWCF(){
     switch(calibMethod->index){
     case 0: WCFArray();
             break;
-    case 1: WCFAArray();
-            break;
-    case 2: WCFFindNearest();
+    case 1: WCFFindNearest();
             break;
     }
 }
@@ -237,10 +222,10 @@ void pgCalib::saveMainConf(std::string filename){
     setFile << std::defaultfloat <<pgMGUI->getNmPPx()/1000000<<"\n";
     setFile.close();
 }
-void pgCalib::saveConf(std::string filename, double duration, double focus){
+void pgCalib::saveConf(std::string filename, double duration, double focus, double plateau){
     std::ofstream setFile(filename);            //this file contains some settings:
-    setFile <<"Duration(ms) Focus(um)\n";
-    setFile <<duration<<" "<<focus<<"\n";
+    setFile <<"Duration(ms) Focus(um) Plateau(nm)\n";
+    setFile <<duration<<" "<<focus<<" "<<plateau<<"\n";
     setFile.close();
 }
 
@@ -404,6 +389,11 @@ void pgCalib::WCFArray(){
     // TODO add selector to force a certain refocus setting
     pgFGUI->doRefocus(true, ROI);
 
+    if(prewritePlateau->val){
+        cv::Mat plateau(WArray.rows, WArray.cols, CV_32F, cv::Scalar(selPlateauA->val/1000000));
+        pgWr->onWriteDM(&plateau, 0, selArraySpacing->val/1000);
+    }
+
     saveMainConf(util::toString(folder,"/main-settings.txt"));
 
     const pgScanGUI::scanRes* res;
@@ -441,7 +431,7 @@ void pgCalib::WCFArray(){
                 CO.addHold("Z",CTRL::he_motion_ontarget);
                 CO.pulseGPIO("wrLaser",WArray.at<cv::Vec2d>(j,i)[0]/1000);
                 pgMGUI->corCOMove(CO,0,0,-WArray.at<cv::Vec2d>(j,i)[1]/1000);
-                saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1]);
+                saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1], selPlateauA->val);
 
                 CO.execute();
                 CO.clear(true);
@@ -476,122 +466,6 @@ struct pgCalib::_pw{
     double weight;
 };
 bool pgCalib::_pwsort(_pw i,_pw j){return (i.weight>j.weight);}
-
-void pgCalib::WCFAArray(){
-    int Nth{0};
-//    varShareClient<pgScanGUI::scanRes>* scanResPre=pgSGUI->result.getClient();
-//    varShareClient<pgScanGUI::scanRes>* scanResPost=pgSGUI->result.getClient();
-
-//    //first find a good place to go next
-//    pgSGUI->doOneRound({0,0,0,0},-1);
-//    while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-//    const pgScanGUI::scanRes* resPre=scanResPre->get();
-
-
-//    cv::Mat WArray(selAArrayYsize->val,selAArrayXsize->val,CV_64F,cv::Scalar(0,0));     //contains Durations
-//    int xSize=selAArrayXsize->val*selAArraySpacing->val*1000/resPre->XYnmppx;   //in px
-//    int ySize=selAArrayYsize->val*selAArraySpacing->val*1000/resPre->XYnmppx;
-
-//redo:
-//    if(!btnWriteCalib->isChecked()){   //abort
-//        std::cerr<<"Aborting calibration.\n";
-//        delete scanResPre;
-//        delete scanResPost;
-//        return;
-//    }
-//    cv::Mat mask=pgDpEv->getMaskBoundary(resPre, xSize/2, ySize/2);
-//    cv::bitwise_not(mask,mask);
-//    std::vector<cv::Point> validPts;
-//    cv::findNonZero(mask,validPts);
-//    if(validPts.empty()){     //no valid points
-//        QMessageBox::critical(this, "Error", "No visible valid points, aborting calibration.\n");
-//        btnWriteCalib->setChecked(false);
-//        delete scanResPre;
-//        delete scanResPost;
-//        return;
-//    }
-//    int toCheck=selAArrayNGenCand->val<validPts.size()?(long)(selAArrayNGenCand->val):validPts.size();
-//    std::mt19937 rnd(std::random_device{}());
-//    std::uniform_int_distribution<>dist(0,validPts.size()-1);
-
-
-//    std::vector<_pw> validPtsW;
-//    validPtsW.reserve(toCheck);
-//    for(int i=0;i!=toCheck;i++){            // sure, it may get the same point multiple times, but most of the time validPts.size() >> selAArrayNGenCand->val so this chance is too negligible to bother implementing a workaround that would have some computational cost
-//        int it=dist(rnd);
-//        cv::Rect roi(validPts[it].x-xSize/2,validPts[it].y-ySize/2,xSize,ySize);
-//        double weight=cv::mean(cv::Mat(resPre->depth,roi),cv::Mat(resPre->maskN,roi))[0];
-//        double corRatio=(double)cv::countNonZero(cv::Mat(resPre->mask,roi))/xSize/ySize;
-//        weight=(1-corRatio)*weight+corRatio*selAArraySetMaskToThisHeight->val;
-//        validPtsW.push_back({it,weight});
-//    }
-//    std::sort(validPtsW.begin(),validPtsW.end(),_pwsort);
-//    //for(int i=0;i!=toCheck;i++) std::cerr<<"chose "<<validPtsW[i].it<<" "<<validPts[validPtsW[i].it]<<" with weight "<<validPtsW[i].weight<<"\n";
-//    std::uniform_real_distribution<>dist2(0,1);
-//    int chosen=sqrt(dist2(rnd))*(toCheck-1);    //this gives a linear distribution with last element being the most likely
-//    //std::cerr<<"Finally chose "<<validPtsW[chosen].it<<" "<<validPts[validPtsW[chosen].it]<<" with weight "<<validPtsW[chosen].weight<<"\n";
-
-//        //go to measurement point
-////TODO!        pgMGUI->move((resPre->depth.cols/2+pgBeAn->writeBeamCenterOfsX-validPts[validPtsW[chosen].it].x)*resPre->XYnmppx/1000000,(resPre->depth.rows/2+pgBeAn->writeBeamCenterOfsY-validPts[validPtsW[chosen].it].y)*resPre->XYnmppx/1000000,0);
-//    validPts.clear(); validPtsW.clear();
-
-//        //prepare Int/Dur matrix
-//    std::uniform_int_distribution<>dist3(selAArrayIntA->val,selAArrayIntB->val);
-//    std::uniform_real_distribution<>dist4(selAArrayDurA->val,selAArrayDurB->val);
-//    for(int i=0;i!=WArray.cols; i++) for(int j=0;j!=WArray.rows; j++){
-//        WArray.at<cv::Vec2d>(j,i)[0]=dist3(rnd);
-//        WArray.at<cv::Vec2d>(j,i)[1]=dist4(rnd);
-//    }
-//    while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);  //wait for motion to complete
-
-//        //do pre writing measurements and save int/dur
-//    std::string folder=makeDateTimeFolder(saveFolderName);
-////TODO!        pgSGUI->doNRounds((int)selAArrayAvgN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(resPre->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, resPre->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize));
-//    resPre=scanResPre->get();
-
-//    double xOfs=((WArray.cols-1)*selAArraySpacing->val)/2000;         //in mm
-//    double yOfs=((WArray.rows-1)*selAArraySpacing->val)/2000;
-//    pgMGUI->move(xOfs,yOfs,0);
-//    for(int j=0;j!=WArray.rows; j++){
-//        for(int i=0;i!=WArray.cols; i++){
-//            while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
-// //TODO!           writePulse(WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1]*1000);
-//            if(i!=WArray.cols-1) pgMGUI->move(-selAArraySpacing->val/1000,0,0);
-//        }
-//        if(j!=WArray.rows-1) pgMGUI->move(2*xOfs,-selAArraySpacing->val/1000,0);
-//    }
-//    pgMGUI->move(xOfs,yOfs,0);
-//    while(!go.pXPS->isQueueEmpty()) QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
-
-//        //do post writing measurements
-// //TODO   pgSGUI->doNRounds((int)selAArrayAvgN->val, discardMaskRoiThresh, maxRedoScanTries, cv::Rect(resPre->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX, resPre->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY, xSize, ySize));
-//    const pgScanGUI::scanRes* resPost=scanResPost->get();
-
-
-//    std::ofstream wfile(util::toString(folder,"/params.txt"));      //has the following format: <int> <dur(ms)>, is plain text, separated by spaces
-//    int k=0;
-//    for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
-////TODO!            if(cv::countNonZero(cv::Mat(resPre->mask,cv::Rect(resPre->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPre->XYnmppx, resPre->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPre->XYnmppx,
-////TODO!                                                              selAArraySpacing->val*1000/resPre->XYnmppx, selAArraySpacing->val*1000/resPre->XYnmppx))) ||
-////TODO!               cv::countNonZero(cv::Mat(resPost->mask,cv::Rect(resPost->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPost->XYnmppx, resPost->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPost->XYnmppx,
-////TODO!                                                               selAArraySpacing->val*1000/resPost->XYnmppx, selAArraySpacing->val*1000/resPost->XYnmppx)))) continue;       //there were bad pixels so we skip
-////TODO!            pgScanGUI::saveScan(resPre, cv::Rect(resPre->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPre->XYnmppx, resPre->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPre->XYnmppx,
-////TODO!                                                  selAArraySpacing->val*1000/resPre->XYnmppx, selAArraySpacing->val*1000/resPre->XYnmppx), util::toString(folder,"/",k,"-pre"),false,false);
-////TODO!            pgScanGUI::saveScan(resPost, cv::Rect(resPost->depth.cols/2-xSize/2+pgBeAn->writeBeamCenterOfsX+i*selAArraySpacing->val*1000/resPost->XYnmppx, resPost->depth.rows/2-ySize/2+pgBeAn->writeBeamCenterOfsY+j*selAArraySpacing->val*1000/resPost->XYnmppx,
-////TODO!                                                  selAArraySpacing->val*1000/resPost->XYnmppx, selAArraySpacing->val*1000/resPost->XYnmppx), util::toString(folder,"/",k,"-post"),false,false);
-//        wfile<<WArray.at<cv::Vec2d>(j,i)[0]<<" "<<WArray.at<cv::Vec2d>(j,i)[1]<<"\n";
-//        k++;
-//    }
-//    wfile.close();
-
-//    if(selAArrayDoNMes->val>0) selAArrayDoNMes->setValue(selAArrayDoNMes->val-1);
-//    std::cerr<<"\nDone #"<<Nth<<", "<<selAArrayDoNMes->val<<" more to go\n\n";
-//    if(selAArrayDoNMes->val>0) goto redo;
-
-//    btnWriteCalib->setChecked(false);
-//    delete scanResPre;
-//    delete scanResPost;
-}
 
 typedef dlib::matrix<double,2,1> input_vector;
 typedef dlib::matrix<double,7,1> parameter_vector;
@@ -669,7 +543,7 @@ void pgCalib::onProcessFocusMes(){
     wfile<<"# 8: X offset(um)\n";
     wfile<<"# 9: Y offset(um)\n";
     wfile<<"# 10: XY offset(um)\n";
-    wfile<<"# 11: not used\n";
+    wfile<<"# 11: plateau(nm)\n";
     wfile<<"# 12: duration(ms)\n";
     wfile<<"# 13: MeanAbs.ReflectivityDeriv.(a.u.)\n";
     wfile<<"# 14: Max absolute 1st der. (nm/um)\n";
@@ -684,10 +558,12 @@ void pgCalib::onProcessFocusMes(){
     for(auto& fldr:measFolders){ n++;
         double focus;
         double duration;
+        double plateau;
         std::ifstream ifs(util::toString(fldr,"/settings.txt"));
         ifs.ignore(std::numeric_limits<std::streamsize>::max(),'\n');       // ignore header
         ifs>>duration;
         ifs>>focus;
+        ifs>>plateau;
         ifs.close();
 
         pgScanGUI::scanRes scanBefore, scanAfter;
@@ -773,7 +649,7 @@ void pgCalib::onProcessFocusMes(){
         wfile<<Xofs<<" ";                       // 8: X offset(um)
         wfile<<Yofs<<" ";                       // 9: Y offset(um)
         wfile<<XYofs<<" ";                      // 10: XY offset(um)
-        wfile<<0<<" ";                          // 11: not used
+        wfile<<plateau<<" ";                    // 11: plateau(nm)
         wfile<<duration<<" ";                   // 12: duration(ms)
         wfile<<intReflDeriv<<" ";               // 13: MeanAbs.ReflectivityDeriv.(a.u.)
         wfile<<maxDepthDer<<" ";                // 14: Max absolute 1st der. (nm/um)
@@ -804,10 +680,7 @@ void pgCalib::drawWriteArea(cv::Mat* img){
             ySize=pgMGUI->mm2px(selArrayYsize->val*selArraySpacing->val/1000);
             if(transposeMat->val) std::swap(xSize,ySize);
             break;
-    case 1: xSize=pgMGUI->mm2px(selAArrayXsize->val*selAArraySpacing->val/1000);
-            ySize=pgMGUI->mm2px(selAArrayYsize->val*selAArraySpacing->val/1000);
-            break;
-    case 2: xSize=pgMGUI->mm2px(selWriteCalibFocusRadDil->val/1000);
+    case 1: xSize=pgMGUI->mm2px(selWriteCalibFocusRadDil->val/1000);
             ySize=pgMGUI->mm2px(selWriteCalibFocusRadDil->val/1000);
             break;
     }

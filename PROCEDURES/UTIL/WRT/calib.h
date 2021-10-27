@@ -9,12 +9,13 @@ class pgMoveGUI;
 class pgBoundsGUI;
 class pgDepthEval;
 class pgBeamAnalysis;
+class pgWrite;
 class QSpinBox;
 
 class pgCalib: public QWidget{
     Q_OBJECT
 public:
-    pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn);
+    pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn, pgWrite* pgWr);
     rtoml::vsr conf;                //configuration map
 
     QWidget* gui_activation;
@@ -30,6 +31,7 @@ private:
     pgScanGUI* pgSGUI;
     pgDepthEval* pgDpEv;
     pgBeamAnalysis* pgBeAn;
+    pgWrite* pgWr;
 
     //activation
     QVBoxLayout* alayout;
@@ -63,16 +65,10 @@ private:
         checkbox_gs* selArrayRandomize;
         checkbox_gs* saveMats;
         checkbox_gs* savePic;
-    vtwid* calibMethodAutoArray;
-        val_selector* selAArrayDoNMes;
-        val_selector* selAArrayXsize;
-        val_selector* selAArrayYsize;
-        val_selector* selAArraySpacing;
-        val_selector* selAArrayAvgN;
-        val_selector* selAArrayDurA;
-        val_selector* selAArrayDurB;
-        val_selector* selAArrayNGenCand;
-        val_selector* selAArraySetMaskToThisHeight;
+        checkbox_gs* prewritePlateau;
+        val_selector* selPlateauA;
+        val_selector* selPlateauB;
+
     int measCounter{0};
     bool drawWriteAreaOn{false};
 
@@ -93,14 +89,14 @@ private:
 
     void WCFFindNearest();
     void WCFArray();
-    void WCFAArray();
     std::string makeDateTimeFolder(const std::string folder);
-    void saveConf(std::string filename, double duration, double focus);
+    void saveConf(std::string filename, double duration, double focus, double plateau);
     void saveMainConf(std::string filename);
 private Q_SLOTS:
     void onWCF();
     void onProcessFocusMes();
     void onChangeDrawWriteAreaOn(bool status);
+    void onSelArrayTypeChanged(int index);
 
 };
 

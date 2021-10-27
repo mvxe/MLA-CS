@@ -83,7 +83,7 @@ void pgScanGUI::onBScan(){
 }
 void pgScanGUI::onBTiltScan(){
     getTiltCalibOnNextScan=true;
-    onBScan();
+    if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();doOneRound();}
 }
 void pgScanGUI::onTiltCorrection(int index){
     tiltScan->setVisible(index==2);

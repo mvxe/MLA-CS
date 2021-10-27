@@ -66,7 +66,6 @@ private Q_SLOTS:
     void onPulse();
     void onMenuChange(int index);
     void onLoadImg();
-    void onWriteDM(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgmmPPx=0, double override_pointSpacing=0, double override_focus=0, double ov_fxcor=0, double ov_fycor=0);  //if you override override mat, you must override them all
     void onWriteFrame();
     void onWriteTag();
     void onChangeDrawWriteAreaOn(bool status);
@@ -74,8 +73,11 @@ private Q_SLOTS:
     void onChangeDrawWriteFrameAreaOn(bool status);
     void onCorDTCor();
     void onCorPPR();
+public Q_SLOTS:
+    void onWriteDM(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgmmPPx=0, double override_pointSpacing=0, double override_focus=std::numeric_limits<double>::max(), double ov_fxcor=std::numeric_limits<double>::max(), double ov_fycor=std::numeric_limits<double>::max());
+            // matrix depth, if CV_32F, is in mm, likewise override_depthMaxval is in mm too
+            // override_depthMaxval overrides only if matrix is CV_8U or CV_16U
 };
-
 
 
 class writeSettings: public QWidget{
