@@ -184,7 +184,8 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
     else {QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n"); writeDM->setEnabled(false); return;}
 
     double ratio=vimgmmPPx/vpointSpacing;
-    if(vimgmmPPx<vpointSpacing) cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_AREA);   //shrink
+    if(vimgmmPPx==vpointSpacing) tmpWrite.copyTo(resizedWrite);
+    else if(vimgmmPPx<vpointSpacing) cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_AREA);   //shrink
     else cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_CUBIC);                         //enlarge
 
     // at this point resizedWrite contains the desired depth at each point

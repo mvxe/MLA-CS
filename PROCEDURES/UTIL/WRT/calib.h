@@ -53,8 +53,11 @@ private:
     checkbox_gs* selArrayRandomize;
     checkbox_gs* saveMats;
     checkbox_gs* savePic;
+    smp_selector* selPrerunType;
     val_selector* selPlateauA;
     val_selector* selPlateauB;
+    val_selector* selPeakXshift;
+    val_selector* selPeakYshift;
     smp_selector* selMultiArrayType;
     val_selector* multiarrayN;
     val_selector* selArrayFocusBlur;
@@ -76,8 +79,8 @@ private:
     constexpr static double discardMaskRoiThresh=0.001;     //if more than 0.1% of the pixels in the roi are bad, discard and try again, up to maxRedoScanTries. If it still fails accept it anyway
 
     void WCFArray(std::string folder);
-    void WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac);
-    void saveConf(std::string filename, double duration, double focus, double plateau);
+    void WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac, bool isPlateau, double peakXshift, double peakYshift);
+    void saveConf(std::string filename, double duration, double focus, double plateau, double peak, double peakXshift, double peakYshift);
     void saveMainConf(std::string filename);
     void selArray(int ArrayIndex, int MultiArrayIndex);
 private Q_SLOTS:
@@ -87,6 +90,7 @@ private Q_SLOTS:
     void onSelArrayTypeChanged(int index);
     void onSelMultiArrayTypeChanged(int index);
     void onMultiarrayNChanged(double val);
+    void onPrerunTypeChanged(int);
 
 };
 
