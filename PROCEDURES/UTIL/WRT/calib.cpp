@@ -212,7 +212,7 @@ void pgCalib::onWCF(){
 
 void pgCalib::saveMainConf(std::string filename){
     std::ofstream setFile(filename);     //this file contains some settings:
-    setFile <<"Objective_displacement_X(mm) Objective_displacement_Y(mm) Objective_displacement_Z(mm) MirauXYmmppx(mm/px)\n";
+    setFile <<"#Objective_displacement_X(mm) Objective_displacement_Y(mm) Objective_displacement_Z(mm) MirauXYmmppx(mm/px)\n";
     setFile << std::fixed << std::setprecision(6);
     setFile <<pgMGUI->objectiveDisplacementX<<" "<<pgMGUI->objectiveDisplacementY<<" "<<pgMGUI->objectiveDisplacementZ<<" ";
     setFile << std::defaultfloat <<pgMGUI->getNmPPx()/1000000<<"\n";
@@ -220,7 +220,7 @@ void pgCalib::saveMainConf(std::string filename){
 }
 void pgCalib::saveConf(std::string filename, double duration, double focus, double plateau, double peak, double peakXshift, double peakYshift){
     std::ofstream setFile(filename);            //this file contains some settings:
-    setFile <<"Duration(ms) Focus(um)";
+    setFile <<"#Duration(ms) Focus(um)";
     if(peak!=0 || plateau!=0) setFile <<" Plateau(nm)";
     if(peak!=0) setFile<<" Peak(nm) PeakXShift(um) PeakYShift(um)";
     setFile <<"\n"<<duration<<" "<<focus;

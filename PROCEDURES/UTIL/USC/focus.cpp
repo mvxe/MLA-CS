@@ -62,13 +62,13 @@ void pgFocusGUI::init_gui_settings(){
     conf["gaussianBlur"]=gaussianBlur;
     slayout->addWidget(gaussianBlur);
     btnSaveNextDebugFocus=new QPushButton("Save Next Debug Values");
-    btnSaveNextDebugFocus->setToolTip("Select Folder for Debug. The measured values will be saved for the next 'ReFocus'..");
+    btnSaveNextDebugFocus->setToolTip("Select file for saving debug. The measured values will be saved for the next 'ReFocus'..");
     connect(btnSaveNextDebugFocus, SIGNAL(released()), this, SLOT(onBtnSaveNextDebugFocus()));
     slayout->addWidget(new twid(btnSaveNextDebugFocus));
     onMenuChange(0);
 }
 void pgFocusGUI::onBtnSaveNextDebugFocus(){
-    saveNextFocus=QFileDialog::getExistingDirectory(gui_settings, "Select Folder for Debug. The measured values will be saved for the next 'ReFocus'..").toStdString();
+    saveNextFocus=QFileDialog::getSaveFileName(gui_settings, "Select file for saving debug. The measured values will be saved for the next 'ReFocus'..").toStdString();
 }
 
 focusSettings::focusSettings(uint num, pgFocusGUI* parent): parent(parent){
@@ -168,95 +168,76 @@ void pgFocusGUI::refocus(cv::Rect ROI){
 
     unsigned nFrames=totalFrameNum;
     FQ* framequeue;
-    {   std::lock_guard<std::mutex>lock(MLP._lock_proc);    //wait for other measurements to complete
-        pgMGUI->chooseObj(true);    // switch to mirau
 
-        go.pGCAM->iuScope->set_trigger("Line1");
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // let it switch to trigger
-        framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-        framequeue->setUserFps(COfps);
-        COmeasure->execute();
+    MLP._lock_proc.lock();    //wait for other measurements to complete
+    pgMGUI->chooseObj(true);    // switch to mirau
+    go.pGCAM->iuScope->set_trigger("Line1");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // let it switch to trigger
+    framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
+    framequeue->setUserFps(COfps);
+    COmeasure->execute();
 
-        unsigned cframes, lcframes=0;
+    std::lock_guard<std::mutex>lock(MLP._lock_comp);
+
+    std::vector<double> mean; mean.reserve(nFrames);
+    std::vector<double> stdd; stdd.reserve(nFrames);
+    std::vector<double> tmpv; tmpv.reserve(nFrames);
+    cv::Scalar smean,sstdd;
+
+    unsigned frames=0;
+    while(1) {
         unsigned time=0;
-        while(1) {
-            cframes=framequeue->getFullNumber();
-            if(cframes>=nFrames){
-                MLP.progress_proc=100;
-                break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            if(lcframes==cframes){
-                if(cframes==0) time+=10;    // for first frame we put 10x timeout
-                else time+=100;
-            }else time=0;
-            lcframes=cframes;
+        while(framequeue->getUserMat()==nullptr){
+            time+=(frames==0)?10:100;  // for first frame we put 10x timeout
             if(time>=timeout) break;
-
-            MLP.progress_proc=100./nFrames*cframes;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
+        if(time>=timeout) break;
+        frames++;
 
-        framequeue->setUserFps(0);
-        go.pGCAM->iuScope->set_trigger("none");
+        cv::meanStdDev((*framequeue->getUserMat())(ROI), smean, sstdd);
+        mean.emplace_back(smean[0]);
+        stdd.emplace_back(sstdd[0]);
+        framequeue->freeUserMat();
+
+        MLP.progress_proc=100./nFrames*frames;
+        MLP.progress_comp=0.9*MLP.progress_proc;
+        if(frames==nFrames) break;
     }
-    {   std::lock_guard<std::mutex>lock(MLP._lock_comp);    //wait till other processing is done
+    framequeue->setUserFps(0);
+    go.pGCAM->iuScope->set_trigger("none");
+    MLP._lock_proc.unlock();
 
-        if(framequeue->getFullNumber()!=nFrames){
-            Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
-            go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
-            focusInProgress=false;
-            return;
-        }
-
-        unsigned nRows=(*framequeue->getUserMat(0))(ROI).rows;
-        unsigned nCols=(*framequeue->getUserMat(0))(ROI).cols;
-
-        cv::UMat pixSum(1, nFrames, CV_64F, cv::Scalar(0));
-        cv::Mat mat2D(nFrames, nCols, CV_64F);
-
-        if(!saveNextFocus.empty()) {std::ofstream wfile(util::toString(saveNextFocus,"/","test-avgAllPix.dat")); for(int i=0;i!=nFrames;i++) wfile<<cv::mean((*framequeue->getUserMat(i))(ROI))[0]<<"\n"; wfile.close();}
-
-        std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
-        MLP.progress_comp=0;
-        for(int k=0;k!=nRows;k++){      //Processing row by row
-            for(int i=0;i!=nFrames;i++)
-                (*framequeue->getUserMat(i))(ROI).row(k).copyTo(mat2D.row(i));
-            cv::UMat Umat2D;                    //row - frameN, col - FrameCol
-            cv::UMat temp0, temp1;
-            mat2D.copyTo(Umat2D);
-
-            if(k==nRows/2 && !saveNextFocus.empty()) {std::ofstream wfile(util::toString(saveNextFocus,"/","stage0-barePix.dat")); for(int j=0;j!=mat2D.rows;j++) wfile<<mat2D.at<double>(j, nCols/2)<<"\n"; wfile.close();}
-            cv::reduce(mat2D, temp0, 0, cv::REDUCE_AVG);
-            cv::repeat(temp0, nFrames, 1, temp1);
-
-            cv::subtract(Umat2D,temp1,Umat2D);                      // removed the average
-            if(k==nRows/2 && !saveNextFocus.empty()) {Umat2D.copyTo(mat2D); std::ofstream wfile(util::toString(saveNextFocus,"/","stage1-avgRmv.dat")); for(int j=0;j!=mat2D.rows;j++) wfile<<mat2D.at<double>(j, nCols/2)<<"\n"; wfile.close();}
-            cv::absdiff(Umat2D, cv::Scalar::all(0), Umat2D);        // get abs
-            if(k==nRows/2 && !saveNextFocus.empty()) {Umat2D.copyTo(mat2D); std::ofstream wfile(util::toString(saveNextFocus,"/","stage2-abs.dat")); for(int j=0;j!=mat2D.rows;j++) wfile<<mat2D.at<double>(j, nCols/2)<<"\n"; wfile.close();}
-
-            cv::reduce(Umat2D, temp0, 1, cv::REDUCE_AVG);           //avg pixels
-            cv::add(pixSum,temp0.t(),pixSum);
-            MLP.progress_comp=99*(k+1)/nRows;
-        }
-        if(!saveNextFocus.empty()) {pixSum.copyTo(mat2D); std::ofstream wfile(util::toString(saveNextFocus,"/","stage3-avgAll.dat")); for(int j=0;j!=mat2D.cols;j++) wfile<<mat2D.at<double>(0, j)<<"\n"; wfile.close();}
+    if(frames!=nFrames){
+        Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: took ",frames," frames, expected ",nFrames,".")));
+        go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
+    }else{
+        double MEAN=cv::mean(mean)[0];
+        cv::subtract(mean,MEAN,tmpv);
+        cv::add(tmpv,stdd,tmpv);
         double sigma=gaussianBlur->val;
         int ksize=sigma*5;
         if(!(ksize%2)) ksize++;
-        cv::GaussianBlur(pixSum, pixSum, cv::Size(ksize, 1), sigma, 0);
-        if(!saveNextFocus.empty()) {pixSum.copyTo(mat2D); std::ofstream wfile(util::toString(saveNextFocus,"/","stage4-blur.dat")); for(int j=0;j!=mat2D.cols;j++) wfile<<mat2D.at<double>(0, j)<<"\n"; wfile.close();saveNextFocus.clear();}
+        cv::GaussianBlur(tmpv, tmpv, cv::Size(ksize, 1), sigma, 0);
         cv::Point maxLoc;
-        cv::minMaxLoc(pixSum, nullptr, nullptr, nullptr, &maxLoc);
-        MLP.progress_comp=100;
-        std::cerr<<"res: "<<maxLoc.x<<" "<<nFrames<<"\n";
-        std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
-        std::cerr<<"Calculation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
+        cv::minMaxLoc(tmpv, nullptr, nullptr, nullptr, &maxLoc);
 
-        go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
+        if(!saveNextFocus.empty()) {
+            std::ofstream wfile(util::toString(saveNextFocus));
+            wfile<<"#frame mean stddev (mean-mean(mean)) (mean-mean(mean)+stddev) blured\n";
+            for(int i=0;i!=nFrames;i++){
+                wfile<<i<<" "<<mean[i]<<" "<<stdd[i]<<" "<<mean[i]-MEAN<<" ";
+                wfile<<mean[i]-MEAN+stdd[i]<<" "<<tmpv[i]<<"\n";
+            }
+            wfile.close();
+        }
 
         double Zcor=(maxLoc.x-nFrames/2.)*displacementOneFrame;
         if(abs(Zcor)>readRangeDis/2)
             Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: abs of the calculated correction is larger than half the read range distance: ",Zcor," vs ",readRangeDis/2," . Did not apply correction.")));
         else go.pRPTY->motion("Z",Zcor,0,0,CTRL::MF_RELATIVE);
     }
+    MLP.progress_comp=100;
+    go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
     focusInProgress=false;
 }
