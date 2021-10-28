@@ -122,22 +122,34 @@ void pgScanGUI::init_gui_settings(){
         settingWdg.push_back(new scanSettings(i, this));
         slayout->addWidget(settingWdg.back());
     }
+    slayout->addWidget(new hline());
+    hideavg=new hidCon(new QLabel("Averaging"));
+    hidedbg=new hidCon(new QLabel("Debug"));
+    slayout->addWidget(hideavg);
+    slayout->addWidget(hidedbg);
     connect(selectScanSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     avgDiscardCriteria=new val_selector(5.0, "Averaging Mask% Discard Threshold:", 0.1, 100., 1, 1, {"%"});
     conf["avgDiscardCriteria"]=avgDiscardCriteria;
     avgDiscardCriteria->setToolTip("If the difference in the number of excluded element between the current measurement and the avg measurement (which combines all previous exclusions(or)) is larger than this percentage times the total num of pixels, the measurement is discarded.");
-    slayout->addWidget(avgDiscardCriteria);
+    hideavg->addWidget(avgDiscardCriteria);
     connect(avgDiscardCriteria, SIGNAL(changed()), this, SLOT(recalculate()));
+    avgEnableAntiDrift=new checkbox_gs(false,"Enable Anti-Drift for averaging (TODO; broken)");
+    avgEnableAntiDrift->setToolTip("This enables a subpixel drift correction with correlation and shift.");
+    conf["avgEnableAntiDrift"]=avgEnableAntiDrift;
+    hideavg->addWidget(avgEnableAntiDrift);
+    avgAntiDriftStep=new val_selector(0.001, "Drift correction step:", 0.001, 1., 3, 0, {"px"});
+    conf["avgAntiDriftStep"]=avgAntiDriftStep;
+    hideavg->addWidget(avgAntiDriftStep);
     triggerAdditionalDelay=new val_selector(0., "Additional trigger delay:", 0., 1000., 2, 1, {"ms"});
     conf["triggerAdditionalDelay"]=triggerAdditionalDelay;
     triggerAdditionalDelay->setToolTip("If scan drops frames, it might be that the returned max FPS is incorrect. Use this parameter to compensate (try 1 ms).");
     connect(triggerAdditionalDelay, SIGNAL(changed()), this, SLOT(recalculate()));
-    slayout->addWidget(triggerAdditionalDelay);
+    hidedbg->addWidget(triggerAdditionalDelay);
     saveAvgMess=new QPushButton("Autosave raw measurements"); saveAvgMess->setCheckable(true);
     saveAvgMess->setToolTip("Select folder for saving all subsequent individual raw measurements. Last ROI applies (ie you must try saving something raw by selection first), else whole image is saved. Click again to disable further saving.");
-    slayout->addWidget(new twid(saveAvgMess));
+    hidedbg->addWidget(new twid(saveAvgMess));
     saveNextMirrorBaselineHist=new QPushButton("Save next mirror baseline histogram.");
-    slayout->addWidget(new twid(saveNextMirrorBaselineHist));
+    hidedbg->addWidget(new twid(saveNextMirrorBaselineHist));
     connect(saveAvgMess, SIGNAL(released()), this, SLOT(onBSaveAvgMess()));
     connect(saveNextMirrorBaselineHist, SIGNAL(released()), this, SLOT(onBSaveNextMirrorBaselineHist()));
     onMenuChange(0);
@@ -777,6 +789,66 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
 
             res->mask.setTo(255,oldScanRes->mask);
             bitwise_not(res->mask, res->maskN);
+
+            if(avgEnableAntiDrift->val){    // correct for drift
+                tUMat temp;
+                tUMat mask;
+                cv::dilate(res->mask,mask,cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3,3), cv::Point(1,1)));
+                double shift=avgAntiDriftStep->val;
+                double shiftX=0, shiftY=0;
+                double nshiftX=0, nshiftY=0;
+                double lacor,acor;
+
+                //first get no shift anticorrelation
+                cv::absdiff(res->depth,corDepth,temp);
+                temp.setTo(0,mask);
+                lacor=cv::sum(temp)[0];
+
+                const double mshift[5][4][2]={
+                    {/*right*/  {shift,0},  /*up*/       {0,shift},  /*left*/    {-shift,0},     /*down*/    {0,-shift}},
+                    {/*right*/  {shift,0},  /*up*/       {0,shift},  /*down*/    {0,-shift},     /*none*/    {0,0     }},
+                    {/*up*/     {0,shift},  /*left*/    {-shift,0},  /*right*/   {shift,0},      /*none*/    {0,0     }},
+                    {/*left*/  {-shift,0},  /*down*/    {0,-shift},  /*up*/      {0,shift},      /*none*/    {0,0     }},
+                    {/*down*/  {0,-shift},  /*right*/    {shift,0},  /*left*/    {-shift,0},     /*none*/    {0,0     }}
+                };
+                const int lastmoves[5][4]={
+                    {/*right*/  1,  /*up*/       2,  /*left*/    3,     /*down*/    4},
+                    {/*right*/  1,  /*up*/       2,  /*down*/    4,     /*none*/    0},
+                    {/*up*/     2,  /*left*/     4,  /*right*/   1,     /*none*/    0},
+                    {/*left*/   3,  /*down*/     4,  /*up*/      2,     /*none*/    0},
+                    {/*down*/   4,  /*right*/    1,  /*left*/    3,     /*none*/    0}
+                };
+                uchar lastmove=0;       // 0=none, 1=right, 2=up, 3=left, 4=down
+                bool cont;
+                while(1){
+                    cont=false;
+                    for(int i=0;i!=4;i++){
+                        if(i==3 && lastmove!=0) break;
+                        nshiftX=shiftX+mshift[lastmove][i][0];
+                        nshiftY=shiftY+mshift[lastmove][i][1];
+                        if(abs(nshiftX)>=1 || abs(nshiftY)>=1) break;
+                        acor=avgDriftCorr(&corDepth, &res->depth, &mask, &temp, nshiftX, nshiftY);
+                        //std::cerr<<"did one driftcortest\n";
+                        //std::cerr<<std::setprecision(10)<<"last acor="<<lacor<<", new acor="<<acor<<"\n";
+                        if(acor<lacor){
+                            shiftX=nshiftX;
+                            shiftY=nshiftY;
+                            lacor=acor;
+                            lastmove=lastmoves[lastmove][i];
+                            //std::cerr<<" was better\n";
+                            cont=true;
+                        }
+                    }
+                    if(cont) continue;
+                    break;
+                }
+                //std::cerr<<"shiftX="<<shiftX<<", shiftY="<<shiftY<<"\n";
+                if(shiftX!=0 || shiftY!=0){
+                    cv::Mat trans=(cv::Mat_<float>(2,3) << 1, 0, shiftX, 0, 1, shiftY);
+                    cv::warpAffine(res->depth, res->depth, trans, res->depth.size(), cv::INTER_LINEAR, cv::BORDER_REFLECT);  // TODO INTER_LINEAR should be INTER_LINEAR_EXACT but it crashes this version of openvc
+                }
+            }
+
             res->depth.setTo(0,res->mask);
             cv::Mat tempp;
             corDepth.copyTo(tempp);
@@ -821,6 +893,15 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
 
     MLP.progress_comp=100;
     if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
+}
+
+double pgScanGUI::avgDriftCorr(const cv::Mat* mavg, const cv::Mat* mnew, const cv::Mat* mask, cv::Mat* temp, double shiftX, double shiftY){
+    cv::Mat trans=(cv::Mat_<float>(2,3) << 1, 0, shiftX, 0, 1, shiftY);
+    std::cerr<<trans;
+    cv::warpAffine(*mnew, *temp, trans, mnew->size(), cv::INTER_LINEAR, cv::BORDER_REFLECT);  // TODO INTER_LINEAR should be INTER_LINEAR_EXACT but it crashes this version of openvc
+    cv::absdiff(*temp,*mavg,*temp);
+    temp->setTo(0,*mask);
+    return cv::sum(*temp)[0];
 }
 
 // SOME STATIC FUNCTIONS

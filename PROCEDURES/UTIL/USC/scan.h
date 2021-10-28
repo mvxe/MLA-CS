@@ -19,6 +19,7 @@ class twid;
 class scanRes;
 class checkbox_gs;
 class QDoubleSpinBox;
+class hidCon;
 
 class pScan: public sproc{
 public:
@@ -106,6 +107,8 @@ private:
 
     //settings
     QVBoxLayout* slayout;
+    hidCon* hideavg;
+    hidCon* hidedbg;
 public:
     val_selector* led_wl;       // LED wavelength
     QPushButton* scanWl;        // performs a scan and calculates the wavelength
@@ -148,6 +151,8 @@ private:
     checkbox_gs* findBaseline;
     val_selector* findBaselineHistStep;
     val_selector* avgDiscardCriteria;
+    checkbox_gs* avgEnableAntiDrift;
+    val_selector* avgAntiDriftStep;
     unsigned const timeout{500};        // we hardcode a timeout (in ms) for waiting for frames, in case something goes wrong with trigger
     QPushButton* saveAvgMess;
     QPushButton* saveNextMirrorBaselineHist;
@@ -178,6 +183,7 @@ private:
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
     void _correctTilt(scanRes* res, bool force_disable_tilt_correction=false);
     void _savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames);
+    double avgDriftCorr(const cv::Mat* mavg, const cv::Mat* mnew, const cv::Mat* mask, cv::Mat* temp, double shiftX, double shiftY);
 public Q_SLOTS:
     void recalculate();
     void rstAvg();
