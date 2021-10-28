@@ -34,14 +34,14 @@ void pgFocusGUI::onRefocus(){
         go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this,sROI));
     }
 }
-void pgFocusGUI::doRefocus(bool block, cv::Rect ROI){
-    if(MLP._lock_proc.try_lock()){
-        MLP._lock_proc.unlock();
-        if(!CORdy) recalculate();
-        focusInProgress=true;
-        go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this,ROI));
-        if(block) while(focusInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-    }
+bool pgFocusGUI::doRefocus(bool block, cv::Rect ROI){
+    if(!CORdy) recalculate();
+    focusInProgress=true;
+    focusFailed=false;
+    go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this,ROI));
+    if(block) while(focusInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+    else return false;
+    return focusFailed;
 }
 void pgFocusGUI::init_gui_settings(){
     gui_settings=new QWidget;
@@ -160,8 +160,8 @@ void pgFocusGUI::updateCO(std::string &report){
 }
 
 void pgFocusGUI::refocus(cv::Rect ROI){
-    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) {focusInProgress=false; return;}
-    if(!CORdy) {focusInProgress=false; return;}
+    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) {focusFailed=true; focusInProgress=false; return;}
+    if(!CORdy) {focusFailed=true; focusInProgress=false; return;}
 
     if(ROI.width==0) ROI=sROI;
     if(ROI.width==0) ROI=cv::Rect(0,0,go.pGCAM->iuScope->camCols,go.pGCAM->iuScope->camRows);
@@ -211,6 +211,7 @@ void pgFocusGUI::refocus(cv::Rect ROI){
     if(frames!=nFrames){
         Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: took ",frames," frames, expected ",nFrames,".")));
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
+        focusFailed=true;
     }else{
         double MEAN=cv::mean(mean)[0];
         cv::subtract(mean,MEAN,tmpv);
@@ -233,8 +234,10 @@ void pgFocusGUI::refocus(cv::Rect ROI){
         }
 
         double Zcor=(maxLoc.x-nFrames/2.)*displacementOneFrame;
-        if(abs(Zcor)>readRangeDis/2)
+        if(abs(Zcor)>readRangeDis/2){
             Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: abs of the calculated correction is larger than half the read range distance: ",Zcor," vs ",readRangeDis/2," . Did not apply correction.")));
+            focusFailed=true;
+        }
         else go.pRPTY->motion("Z",Zcor,0,0,CTRL::MF_RELATIVE);
     }
     MLP.progress_comp=100;

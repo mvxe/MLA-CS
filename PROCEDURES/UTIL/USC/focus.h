@@ -30,7 +30,7 @@ public:
     QTimer* timer;
 
     procLockProg& MLP;
-    void doRefocus(bool block=true, cv::Rect ROI={0,0,0,0});
+    bool doRefocus(bool block=true, cv::Rect ROI={0,0,0,0});            // returns true if focus failed (only if block==true), false if it succeeded
 
     std::atomic<bool> focusInProgress{false};   //for outside calling functions
     cv::Rect& sROI;
@@ -70,7 +70,7 @@ public:
     std::string saveNextFocus{""};
 
     double vsConv(val_selector* vs);
-
+    std::atomic<bool> focusFailed{false};
 public Q_SLOTS:
     void recalculate();
 private Q_SLOTS:

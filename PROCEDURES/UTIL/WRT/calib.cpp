@@ -354,11 +354,17 @@ void pgCalib::WCFArray(std::string folder){
     btnWriteCalib->setChecked(false);
 }
 void pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac, bool isPlateau, double peakXshift, double peakYshift){
+    for(int i=1;;i++){
+        if(!pgFGUI->doRefocus(true, ROI)) break;
+        if(i==maxRedoRefocusTries){
+            QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("Calibration aborted since refocusing failed ",i," times.\n")));
+            return;
+        }
+    }
+
     varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
     double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;         //in mm
     double yOfs=((WArray.rows-1)*selArraySpacing->val)/2000;
-
-    pgFGUI->doRefocus(true, ROI);
 
     if(plateau!=0){
         if(isPlateau){
