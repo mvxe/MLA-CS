@@ -468,7 +468,7 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
     unsigned nDFTFrames=expectedDFTFrameNum;
     FQ* framequeue;
     go.pGCAM->iuScope->set_trigger("Line1");
-    std::this_thread::sleep_for(std::chrono::milliseconds(10)); // let it switch to trigger
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // let it switch to trigger
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeue->setUserFps(COfps);
     COmeasure->execute();
