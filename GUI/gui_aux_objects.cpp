@@ -359,7 +359,7 @@ moveDial::moveDial(){
     dial->setValue(270);
     connect(dial, SIGNAL(valueChanged(int)), this, SLOT(onDialChanged(int)));
     dis=new QDoubleSpinBox;
-    dis->setRange(0,10000);
+    dis->setRange(0,1000000);
     dis->setDecimals(3);
     dis->setValue(1);
     dis->setPrefix("[Distance] "); dis->setSuffix(" um");

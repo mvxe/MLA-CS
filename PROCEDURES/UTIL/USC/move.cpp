@@ -19,18 +19,27 @@ void pgMoveGUI::init_gui_activation(){
     alayout=new QVBoxLayout;
     gui_activation->setLayout(alayout);
 
-    xMove=new eadScrlBar("Move X: ", 200,20);
+    xMove=new eadScrlBar("Move X: ", 250,20);
     connect(xMove->abar, SIGNAL(change(double)), this, SLOT(scaledMoveX(double)));
     alayout->addWidget(xMove);
-    yMove=new eadScrlBar("Move Y: ", 200,20);
+    yMove=new eadScrlBar("Move Y: ", 250,20);
     connect(yMove->abar, SIGNAL(change(double)), this, SLOT(scaledMoveY(double)));
     alayout->addWidget(yMove);
-    zMove=new eadScrlBar("Move Z: ", 200,20,false);
+    zMove=new eadScrlBar("Move Z: ", 250,20,false);
     connect(zMove->abar, SIGNAL(change(double)), this, SLOT(scaledMoveZ(double)));
     alayout->addWidget(zMove);
 
     mpow=new val_selector(0, "Move X10^", 0, 6, 0);
-    alayout->addWidget(new twid(mpow));
+    gotoX=new QPushButton("X");
+    gotoX->setMaximumSize(20,20);
+    connect(gotoX, SIGNAL(released()), this, SLOT(onGotoX()));
+    gotoY=new QPushButton("Y");
+    gotoY->setMaximumSize(20,20);
+    connect(gotoY, SIGNAL(released()), this, SLOT(onGotoY()));
+    gotoZ=new QPushButton("Z");
+    gotoZ->setMaximumSize(20,20);
+    connect(gotoZ, SIGNAL(released()), this, SLOT(onGotoZ()));
+    alayout->addWidget(new twid(mpow, new vline(), new QLabel("Goto:"),gotoX,gotoY,gotoZ));
 
     addDial=new QPushButton;
     connect(addDial, SIGNAL(released()), this, SLOT(onAddDial()));
@@ -218,7 +227,27 @@ void pgMoveGUI::onRmDial(){
 }
 void pgMoveGUI::onDialMove(double x,double y){move(x/1000, y/1000, 0);}
 
-
+void pgMoveGUI::onGotoX(){
+    if(!go.pRPTY->connected) return;
+    double pos;
+    getPos(&pos);
+    pos-=QInputDialog::getDouble(gui_activation, "Goto X", "Move (corrected) X to this position:", pos, -2147483647, 2147483647, 6);
+    move(-pos,0,0);
+}
+void pgMoveGUI::onGotoY(){
+    if(!go.pRPTY->connected) return;
+    double pos;
+    getPos(nullptr, &pos);
+    pos-=QInputDialog::getDouble(gui_activation, "Goto Y", "Move (corrected) Y to this position:", pos, -2147483647, 2147483647, 6);
+    move(0,-pos,0);
+}
+void pgMoveGUI::onGotoZ(){
+    if(!go.pRPTY->connected) return;
+    double pos;
+    getPos(nullptr, nullptr, &pos);
+    pos-=QInputDialog::getDouble(gui_activation, "Goto Z", "Move (corrected) Z to this position:", pos, -2147483647, 2147483647, 6);
+    move(0,0,-pos);
+}
 
 void pgMoveGUI::delvrNextClickPixDiff(double Dx, double Dy){
     reqstNextClickPixDiff=false;
@@ -336,9 +365,11 @@ double pgMoveGUI::px2mm(double coord, int index, double nmppx){
 
 void pgMoveGUI::getPos(double* X, double* Y, double* Z){
     double xr, yr;
-    xr=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
-    yr=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
-    *X=Xcor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0),0);
+    if(X!=nullptr || Y!=nullptr){
+        xr=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
+        yr=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
+    }
+    if(X!=nullptr) *X=Xcor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0),0);
     if(Y!=nullptr) *Y=Ycor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0),0);
     if(Z!=nullptr) *Z=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
 }

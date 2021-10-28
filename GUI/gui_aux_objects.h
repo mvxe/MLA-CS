@@ -251,6 +251,14 @@ public:
     }
 };
 
+class vline : public QLabel{
+    Q_OBJECT
+public:
+    vline(){
+        this->setFrameStyle(QFrame::VLine | QFrame::Plain);
+    }
+};
+
 // HIDDEN CONTAINER - click a button to reveal/hide content
 
 class hidCon : public QWidget{

@@ -51,7 +51,7 @@ pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMG
     setCircCenter=new QPushButton("Set");
     connect(setCircCenter, SIGNAL(released()), this, SLOT(onSetCircCenter()));
     setCircCenterTxt=new QLabel(QString::fromStdString(util::toString("Coords: ",circCenter[0],", ",circCenter[1])));
-    selCircRadius=new val_selector(1, "Radius:",0,999999,3,0,{"um"});
+    selCircRadius=new val_selector(1, "Radius:",0,999999,1,0,{"um"});
     conf["selCircRadius"]=selCircRadius;
     layCircRad->addWidget(new twid(setCircCenter, setCircCenterTxt));
     layCircRad->addWidget(selCircRadius);
@@ -61,16 +61,16 @@ pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMG
     connect(setCircEdge, SIGNAL(released()), this, SLOT(onSetCircEdge()));
     setCircEdgeTxt=new QLabel(QString::fromStdString(util::toString(getStatCirc())));
     layCircPts->addWidget(new twid(setCircEdge, setCircEdgeTxt));
-    circClearance=new val_selector(0, "Clearance:",-999999,999999,3,0,{"um"}); circClearance->setToolTip("A positive clearance makes the active area smaller.");
+    circClearance=new val_selector(0, "Clearance:",-999999,999999,1,0,{"um"}); circClearance->setToolTip("A positive clearance makes the active area smaller.");
     conf["circClearance"]=circClearance;
     layCircPts->addWidget(circClearance);
 
     setRectCenter=new QPushButton("Set");
     connect(setRectCenter, SIGNAL(released()), this, SLOT(onSetRectCenter()));
     setRectCenterTxt=new QLabel(QString::fromStdString(util::toString("Coords: ",rectCenter[0],", ",rectCenter[1])));
-    selRectWidth=new val_selector(1, "Width:",0,999999,3,0,{"um"});
+    selRectWidth=new val_selector(1, "Width:",0,999999,1,0,{"um"});
     conf["selRectWidth"]=selRectWidth;
-    selRectHeight=new val_selector(1, "Height:",0,999999,3,0,{"um"});
+    selRectHeight=new val_selector(1, "Height:",0,999999,1,0,{"um"});
     conf["selRectHeight"]=selRectHeight;
     layRectDim->addWidget(new twid(setRectCenter, setRectCenterTxt));
     layRectDim->addWidget(selRectWidth);
@@ -81,7 +81,7 @@ pgBoundsGUI::pgBoundsGUI(pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn): pgMGUI(pgMG
     setRectEdgeTxt=new QLabel(QString::fromStdString(util::toString(getStatRect())));
     layRectPts->addWidget(new twid(setRectEdge, new QString("Coords: ")));
     layRectPts->addWidget(setRectEdgeTxt);
-    rectClearance=new val_selector(0, "Clearance:",-999999,999999,3,0,{"um"}); rectClearance->setToolTip("A positive clearance makes the active area smaller.");
+    rectClearance=new val_selector(0, "Clearance:",-999999,999999,1,0,{"um"}); rectClearance->setToolTip("A positive clearance makes the active area smaller.");
     conf["rectClearance"]=rectClearance;
     layRectPts->addWidget(rectClearance);
 
@@ -96,7 +96,7 @@ void pgBoundsGUI::onSetCircCenter(){
     pgMGUI->getPos(&circCenter[0], &circCenter[1]);
     circCenter[0]-=pgBeAn->writeBeamCenterOfsX;  //-correct for noncentered write beam
     circCenter[1]-=pgBeAn->writeBeamCenterOfsY;
-    setCircCenterTxt->setText(QString::fromStdString(util::toString("Corrds: ",circCenter[0],", ",circCenter[1])));
+    setCircCenterTxt->setText(QString::fromStdString(util::toString("Coords: ",circCenter[0]," mm, ",circCenter[1]," mm")));
 }
 void pgBoundsGUI::onSetCircEdge(){
     pgMGUI->getPos(&circEdge[cIter][0], &circEdge[cIter][1]);
@@ -104,12 +104,13 @@ void pgBoundsGUI::onSetCircEdge(){
     circEdge[cIter][1]-=pgBeAn->writeBeamCenterOfsY;
     cIter++; if(cIter>2) cIter=0;
     setCircEdgeTxt->setText(QString::fromStdString(util::toString(getStatCirc())));
+    calcCenRad();
 }
 void pgBoundsGUI::onSetRectCenter(){
     pgMGUI->getPos(&rectCenter[0], &rectCenter[1]);
     rectCenter[0]-=pgBeAn->writeBeamCenterOfsX;
     rectCenter[1]-=pgBeAn->writeBeamCenterOfsY;
-    setRectCenterTxt->setText(QString::fromStdString(util::toString("Corrds: ",rectCenter[0],", ",rectCenter[1])));
+    setRectCenterTxt->setText(QString::fromStdString(util::toString("Coords: ",rectCenter[0]," mm, ",rectCenter[1]," mm")));
 }
 void pgBoundsGUI::onSetRectEdge(){
     pgMGUI->getPos(&rectEdge[rIter][0], &rectEdge[rIter][1]);
@@ -121,12 +122,14 @@ void pgBoundsGUI::onSetRectEdge(){
 std::string pgBoundsGUI::getStatCirc(){
     std::string ret;
     ret+="Coords: ";
-    for(int i=0;i!=3;i++) ret+=util::toString("(",circEdge[i][0],",",circEdge[i][1],")",i==0?"\n":" ");
+    for(int i=0;i!=3;i++) ret+=util::toString("(",circEdge[i][0]," mm, ",circEdge[i][1]," mm)",i==0?"\n":" ");
+    ret+=util::toString("\nCenter = (",ptsCircCenter[0]," mm, ",ptsCircCenter[1]," mm)");
+    ret+=util::toString("\nRadius = ",ptsCircRadius," mm");
     return ret;
 }
 std::string pgBoundsGUI::getStatRect(){
     std::string ret;
-    for(int i=0;i!=4;i++) ret+=util::toString("(",rectEdge[i][0],",",rectEdge[i][1],")",i==1?"\n":" ");
+    for(int i=0;i!=4;i++) ret+=util::toString("(",rectEdge[i][0]," mm, ",rectEdge[i][1]," mm)",i==1?"\n":" ");
     return ret;
 }
 
@@ -137,9 +140,7 @@ bool pgBoundsGUI::isWithinBounds(){
     y-=pgBeAn->writeBeamCenterOfsY;
     switch(selector->index){
         case 1: return (sqrt(pow(x-circCenter[0],2)+pow(y-circCenter[1],2))<selCircRadius->val/1000);
-        case 2: double xx,yy,rad;
-                calcCenRad(xx, yy, rad);
-                return (sqrt(pow(x-xx,2)+pow(y-yy,2))<(rad-circClearance->val/1000));
+        case 2: return (sqrt(pow(x-ptsCircCenter[0],2)+pow(y-ptsCircCenter[1],2))<(ptsCircRadius-circClearance->val/1000));
         case 3: return ((abs(x-rectCenter[0])<selRectWidth->val/2000)&&(abs(y-rectCenter[1])<selRectHeight->val/2000));
         case 4: return isWithinRect(x,y);
         default: return true;
@@ -147,25 +148,25 @@ bool pgBoundsGUI::isWithinBounds(){
 }
 
 
-void pgBoundsGUI::calcCenRad(double &x, double &y, double &rad){        // TODO: these two keep doing the same calcs every time, perhaps save them in variables instead?
+void pgBoundsGUI::calcCenRad(){
     if (((circEdge[0][0]==circEdge[1][0]) && (circEdge[2][0]==circEdge[1][0]))||((circEdge[0][1]==circEdge[1][1]) && (circEdge[2][1]==circEdge[1][1]))){
-        rad=0; x=0; y=0;
+        ptsCircRadius=0; ptsCircCenter[0]=0; ptsCircCenter[1]=0;
     }
     double ma=(circEdge[1][1]-circEdge[0][1])/(circEdge[1][0]-circEdge[0][0]);
     double mb=(circEdge[2][1]-circEdge[1][1])/(circEdge[2][0]-circEdge[1][0]);
     if (circEdge[0][0]==circEdge[1][0]){
-        x=(mb*(circEdge[2][1]-circEdge[0][1])+circEdge[1][0]-circEdge[2][0])/2;
-        y=(circEdge[1][1]+circEdge[0][1])/2;
+        ptsCircCenter[0]=(mb*(circEdge[2][1]-circEdge[0][1])+circEdge[1][0]-circEdge[2][0])/2;
+        ptsCircCenter[1]=(circEdge[1][1]+circEdge[0][1])/2;
     }
     else if (circEdge[2][0]==circEdge[1][0]){
-        x=(ma*(circEdge[0][1]-circEdge[2][1])+circEdge[1][0]+circEdge[0][0])/2;
-        y=(circEdge[1][1]+circEdge[2][1])/2;
+        ptsCircCenter[0]=(ma*(circEdge[0][1]-circEdge[2][1])+circEdge[1][0]+circEdge[0][0])/2;
+        ptsCircCenter[1]=(circEdge[1][1]+circEdge[2][1])/2;
     }
     else{
-        x=( ma*mb*(circEdge[0][1]-circEdge[2][1]) + mb*(circEdge[1][0]+circEdge[0][0]) - ma*(circEdge[1][0]+circEdge[2][0]) )/(2*(mb-ma));
-        y=( mb*(circEdge[1][1]+circEdge[2][1]) - ma*(circEdge[1][1]+circEdge[0][1]) - circEdge[0][0] + circEdge[2][0] )/(2*(mb-ma));
+        ptsCircCenter[0]=( ma*mb*(circEdge[0][1]-circEdge[2][1]) + mb*(circEdge[1][0]+circEdge[0][0]) - ma*(circEdge[1][0]+circEdge[2][0]) )/(2*(mb-ma));
+        ptsCircCenter[1]=( mb*(circEdge[1][1]+circEdge[2][1]) - ma*(circEdge[1][1]+circEdge[0][1]) - circEdge[0][0] + circEdge[2][0] )/(2*(mb-ma));
     }
-    rad=sqrt(pow(x-circEdge[0][0],2)+pow(y-circEdge[0][1],2));
+    ptsCircRadius=sqrt(pow(ptsCircCenter[0]-circEdge[0][0],2)+pow(ptsCircCenter[1]-circEdge[0][1],2));
 }
 
 bool pgBoundsGUI::isWithinRect(double x, double y){
@@ -197,6 +198,12 @@ void pgBoundsGUI::getLineDisDir(double a, double b, double x, double y, bool* di
 
 
 void pgBoundsGUI::update(){
+    if(setCircCenterTxt->isVisible()) setCircCenterTxt->setText(QString::fromStdString(util::toString("Coords: ",circCenter[0]," mm, ",circCenter[1]," mm")));
+    if(setCircEdgeTxt->isVisible()) setCircEdgeTxt->setText(QString::fromStdString(util::toString(getStatCirc())));
+    if(setRectCenterTxt->isVisible()) setRectCenterTxt->setText(QString::fromStdString(util::toString("Coords: ",rectCenter[0]," mm, ",rectCenter[1]," mm")));
+    if(setRectEdgeTxt->isVisible()) setRectEdgeTxt->setText(QString::fromStdString(util::toString(getStatRect())));
+    if(selector->index==2) calcCenRad();
+
     if(!go.pRPTY->connected) return;
     if(isWithinBounds()) OOBLabel->setPixmap(QPixmap(":/dialog-ok.svg"));
     else OOBLabel->setPixmap(QPixmap(":/gtk-no.svg"));
@@ -221,12 +228,10 @@ void pgBoundsGUI::drawBound(cv::Mat* img, double XYnmppx, bool isMask){
         }
 
     }else if(selector->index==2){
-        double xx,yy,rad;
-        calcCenRad(xx, yy, rad);
-        if(isnan(xx)||isnan(yy)||isnan(rad)) break;
-        if(isMask) cv::circle(mask, {(int)(-(cur[0]-xx)*1000000/XYnmppx+ofsX),(int)((cur[1]-yy)*1000000/XYnmppx+ofsY)}, (int)((rad-circClearance->val/1000)*1000000/XYnmppx), 255, -1);
+        if(isnan(ptsCircCenter[0])||isnan(ptsCircCenter[1])||isnan(ptsCircRadius)) break;
+        if(isMask) cv::circle(mask, {(int)(-(cur[0]-ptsCircCenter[0])*1000000/XYnmppx+ofsX),(int)((cur[1]-ptsCircCenter[1])*1000000/XYnmppx+ofsY)}, (int)((((ptsCircRadius>circClearance->val/1000)?(ptsCircRadius-circClearance->val/1000):0))*1000000/XYnmppx), 255, -1);
         else for(int i=0;i!=2;i++)
-            cv::circle(*img, {(int)(-(cur[0]-xx)*1000000/XYnmppx+ofsX),(int)((cur[1]-yy)*1000000/XYnmppx+ofsY)}, (int)((rad-circClearance->val/1000)*1000000/XYnmppx), {clr[i]}, thck[i], cv::LINE_AA);
+            cv::circle(*img, {(int)(-(cur[0]-ptsCircCenter[0])*1000000/XYnmppx+ofsX),(int)((cur[1]-ptsCircCenter[1])*1000000/XYnmppx+ofsY)}, (int)((((ptsCircRadius>circClearance->val/1000)?(ptsCircRadius-circClearance->val/1000):0))*1000000/XYnmppx), {clr[i]}, thck[i], cv::LINE_AA);
     }else if(selector->index==3){
         if(isMask) cv::rectangle(mask, {(int)((-cur[0]+rectCenter[0]-selRectWidth->val/1000/2)*1000000/XYnmppx+ofsX),(int)((cur[1]-rectCenter[1]-selRectHeight->val/1000/2)*1000000/XYnmppx+ofsY),(int)(selRectWidth->val*1000/XYnmppx),(int)(selRectHeight->val*1000/XYnmppx)}, 255, -1);
         else for(int i=0;i!=2;i++)

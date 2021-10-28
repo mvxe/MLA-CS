@@ -40,6 +40,8 @@ private:
         double circEdge[3][2]{{0,0},{0,0},{0,0}};
         int cIter{0};
         val_selector* circClearance;
+        double ptsCircCenter[2]{0,0};
+        double ptsCircRadius{0};
     QVBoxLayout* layRectDim;
         QPushButton* setRectCenter;
         QLabel* setRectCenterTxt;
@@ -57,7 +59,7 @@ private:
 
     std::string getStatCirc();
     std::string getStatRect();
-    void calcCenRad(double &x, double &y, double &rad);
+    void calcCenRad();
     bool isWithinRect(double x, double y);
     void getLineDisDir(double a, double b, double x, double y, bool* dir, double* dis=nullptr);
 private Q_SLOTS:

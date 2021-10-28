@@ -80,6 +80,9 @@ private:
     std::vector<moveDial*> moveDials;
     QPushButton* addDial;
     QPushButton* rmDial;
+    QPushButton* gotoX;
+    QPushButton* gotoY;
+    QPushButton* gotoZ;
 
     //settings
     QVBoxLayout* slayout;
@@ -141,7 +144,9 @@ private Q_SLOTS:
     void reCalcConst(bool isMirau);
     void reCalcConstM(){reCalcConst(true);};
     void reCalcConstW(){reCalcConst(false);};
-
+    void onGotoX();
+    void onGotoY();
+    void onGotoZ();
 Q_SIGNALS:
     void sigChooseObj(bool useMirau);
     void sigChooseObjExpo(bool useMirau);
