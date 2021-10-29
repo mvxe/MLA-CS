@@ -13,15 +13,10 @@
 #include <random>
 
 pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn, pgWrite* pgWr): pgSGUI(pgSGUI), pgBGUI(pgBGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgDpEv(pgDpEv), pgBeAn(pgBeAn), pgWr(pgWr){
-    gui_activation=new QWidget;
-    alayout=new QVBoxLayout;
-    gui_activation->setLayout(alayout);
-
-    btnWriteCalib=new HQPushButton("Calibrate Write Focus");
+    btnWriteCalib=new HQPushButton("Run Write Focus Calibration");
     connect(btnWriteCalib, SIGNAL(released()), this, SLOT(onWCF()));
     connect(btnWriteCalib, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
     btnWriteCalib->setCheckable(true);
-    alayout->addWidget(new twid(btnWriteCalib));
 
 
     connect(pgDpEv, SIGNAL(sigGoToNearestFree(double, double, double, double, double, bool)), this, SLOT(goToNearestFree(double, double, double, double, double, bool)));
@@ -108,7 +103,7 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     selArrayFocusThresh->setToolTip("Try out values in Depth Eval.");
     selArrayFocusThresh->setVisible(false);
     slayout->addWidget(selArrayFocusThresh);
-
+    slayout->addWidget(new QLabel("NOTE: runs abide by boundaries"));
     slayout->addWidget(new hline);
     slayout->addWidget(new QLabel("PROCESSING:"));
     slayout->addWidget(new QLabel("Crop individual points (for shifted beams)(setting not saved):"));
@@ -118,6 +113,8 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     cropRght=new QSpinBox; cropRght->setRange(0,100); cropRght->setPrefix("Right: "); cropRght->setSuffix(" px");
     slayout->addWidget(new twid(cropTop,cropBttm));
     slayout->addWidget(new twid(cropLeft,cropRght));
+    slayout->addWidget(new hline);
+    slayout->addWidget(new twid(btnWriteCalib));
 
 
     gui_processing=new QWidget;
@@ -301,7 +298,7 @@ void pgCalib::WCFArray(std::string folder){
         ROI.height=ySize;
     }
     if(err){
-        QMessageBox::critical(gui_activation, "Error", "The calibration ROI does not fit the viewport, aborting calibration.\n");
+        QMessageBox::critical(gui_settings, "Error", "The calibration ROI does not fit the viewport, aborting calibration.\n");
         btnWriteCalib->setChecked(false);
         return;
     }
@@ -357,7 +354,7 @@ void pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     for(int i=1;;i++){
         if(!pgFGUI->doRefocus(true, ROI)) break;
         if(i==maxRedoRefocusTries){
-            QMessageBox::critical(gui_activation, "Error", QString::fromStdString(util::toString("Calibration aborted since refocusing failed ",i," times.\n")));
+            QMessageBox::critical(gui_settings, "Error", QString::fromStdString(util::toString("Calibration aborted since refocusing failed ",i," times.\n")));
             return;
         }
     }
@@ -401,7 +398,7 @@ void pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
         for(int j=0;j!=WArray.rows; j++){
             for(int i=0;i!=WArray.cols; i++){
                 if(!btnWriteCalib->isChecked()){   //abort
-                    QMessageBox::critical(gui_activation, "Error", "Calibration aborted. Measurements up to this point were saved.\n");
+                    QMessageBox::critical(gui_settings, "Error", "Calibration aborted. Measurements up to this point were saved.\n");
                     delete scanRes;
                     return;
                 }

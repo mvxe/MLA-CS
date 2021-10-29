@@ -18,7 +18,6 @@ public:
     pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn, pgWrite* pgWr);
     rtoml::vsr conf;                //configuration map
 
-    QWidget* gui_activation;
     QWidget* gui_settings;
     QWidget* gui_processing;
     void drawWriteArea(cv::Mat* img);
@@ -32,11 +31,6 @@ private:
     pgDepthEval* pgDpEv;
     pgBeamAnalysis* pgBeAn;
     pgWrite* pgWr;
-
-    //activation
-    QVBoxLayout* alayout;
-    std::string lastFolder{""};
-    HQPushButton* btnWriteCalib;
 
     //settings
     QVBoxLayout* slayout;
@@ -62,6 +56,8 @@ private:
     val_selector* multiarrayN;
     val_selector* selArrayFocusBlur;
     val_selector* selArrayFocusThresh;
+    std::string lastFolder{""};
+    HQPushButton* btnWriteCalib;
 
     int measCounter{0};
     bool drawWriteAreaOn{false};

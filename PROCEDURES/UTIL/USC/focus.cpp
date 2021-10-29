@@ -211,7 +211,6 @@ void pgFocusGUI::refocus(cv::Rect ROI){
 
     if(frames!=nFrames){
         Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: took ",frames," frames, expected ",nFrames,".")));
-        go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
         focusFailed=true;
     }else{
         double MEAN=cv::mean(mean)[0];
