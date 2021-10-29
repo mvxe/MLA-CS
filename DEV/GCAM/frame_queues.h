@@ -18,7 +18,6 @@ public:
     FQsPC();
     ~FQsPC();
 
-    unsigned getFreeNumber();       //get the number of free matrices
     unsigned getFullNumber();       //get the number of full matrices
 
     FQ* getNewFQ();                 //returns a pointer to a new frame queue
@@ -30,6 +29,7 @@ protected:
     void enqueueMat(cv::Mat* mat, unsigned int timestamp);
     double isThereInterest();       //this returns the highest requested FPS, 0 if no interest
     void setActualFps(double fps){std::lock_guard<std::mutex>lock(qmx); actualFps=fps;}
+    unsigned getFreeNumber();       //get the number of free matrices
 
 private:
     struct _used{

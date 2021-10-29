@@ -480,9 +480,10 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
     unsigned nDFTFrames=expectedDFTFrameNum;
     FQ* framequeue;
     go.pGCAM->iuScope->set_trigger("Line1");
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // let it switch to trigger
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeue->setUserFps(COfps);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    while(framequeue->getFullNumber()) framequeue->freeUserMat();   // remove any remaining non-trig frames
     COmeasure->execute();
     unsigned cframes, lcframes=0;
     unsigned time=0;
@@ -888,7 +889,6 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
     std::chrono::time_point<std::chrono::system_clock> B=std::chrono::system_clock::now();
     std::cerr<<"Calculation took "<<std::chrono::duration_cast<std::chrono::microseconds>(B - A).count()<<" microseconds\n";
     std::cerr<<"done nr "<<NA<<"\n"; NA++;
-    std::cerr<<"Free: "<<go.pGCAM->iuScope->FQsPCcam.getFreeNumber()<<"\n";
     std::cerr<<"Full: "<<go.pGCAM->iuScope->FQsPCcam.getFullNumber()<<"\n";
 
     MLP.progress_comp=100;

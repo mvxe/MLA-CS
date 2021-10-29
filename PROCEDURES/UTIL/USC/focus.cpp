@@ -172,9 +172,10 @@ void pgFocusGUI::refocus(cv::Rect ROI){
     MLP._lock_proc.lock();    //wait for other measurements to complete
     pgMGUI->chooseObj(true);    // switch to mirau
     go.pGCAM->iuScope->set_trigger("Line1");
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // let it switch to trigger
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeue->setUserFps(COfps);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    while(framequeue->getFullNumber()) framequeue->freeUserMat();   // remove any remaining non-trig frames
     COmeasure->execute();
 
     std::lock_guard<std::mutex>lock(MLP._lock_comp);
