@@ -73,7 +73,7 @@ tab_camera::tab_camera(QWidget* parent){
     conf["pgBounds"]=pgBGUI->conf;
     pgDpEv=new pgDepthEval(pgBGUI);
     conf["pgDepthEval"]=pgDpEv->conf;
-    pgWrt=new pgWrite(pgBeAn,pgMGUI,MLP);
+    pgWrt=new pgWrite(pgBeAn,pgMGUI,MLP,pgSGUI);
     conf["pgWrite"]=pgWrt->conf;
     pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn, pgWrt);
     conf["pgCalib"]=pgCal->conf;

@@ -2,10 +2,12 @@
 #include "GUI/gui_includes.h"
 #include "includes.h"
 #include "GUI/tab_monitor.h"    //for debug purposes
+#include <time.h>
 
-pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP): pgBeAn(pgBeAn), pgMGUI(pgMGUI), MLP(MLP){
+pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI* pgSGUI): pgBeAn(pgBeAn), pgMGUI(pgMGUI), MLP(MLP), pgSGUI(pgSGUI){
     gui_activation=new QWidget;
     gui_settings=new QWidget;
+    scanRes=pgSGUI->result.getClient();
 
     alayout=new QVBoxLayout;
     slayout=new QVBoxLayout;
@@ -14,35 +16,70 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP): 
 
     pulse=new QPushButton("Pulse");
     connect(pulse, SIGNAL(released()), this, SLOT(onPulse()));
-    pulseDur=new val_selector(1, "Dur", 0.001, 10000, 3, 0, {"ms"});
+    pulseDur=new val_selector(1, "Duration:", 0.001, 10000, 3, 0, {"ms"});
     conf["pulseDur"]=pulseDur;
-    alayout->addWidget(new twid(pulse, pulseDur));
+    pulseh=new hidCon(pulse);
+    pulseh->addWidget(new twid(pulseDur));
+    alayout->addWidget(pulseh);
+
     alayout->addWidget(new hline);
-    importImg=new QPushButton("Import image");
+
+    importImg=new QPushButton("Load image");
     connect(importImg, SIGNAL(released()), this, SLOT(onLoadImg()));
-    depthMaxval=new val_selector(10, "(if 8/16bit)Maxval=", 0.1, 500, 3, 0, {"nm"});
+    depthMaxval=new val_selector(10, "(if 8/16bit)Maxval = ", 0.1, 500, 3, 0, {"nm"});
     conf["depthMaxval"]=depthMaxval;
-    alayout->addWidget(new twid(importImg,depthMaxval));
+    imgUmPPx=new val_selector(10, "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
+    conf["imgUmPPx"]=imgUmPPx;
+    importh=new hidCon(importImg);
+    importh->addWidget(depthMaxval);
+    importh->addWidget(imgUmPPx);
+    alayout->addWidget(importh);
+
+    writeDM=new HQPushButton("Write");
+    connect(writeDM, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
+    connect(writeDM, SIGNAL(released()), this, SLOT(onWriteDM()));
+    scanB=new QPushButton("Scan");
+    scanB->setEnabled(false);
+    connect(scanB, SIGNAL(released()), this, SLOT(onScan()));
+    saveB=new QPushButton("Save");
+    saveB->setEnabled(false);
+    connect(saveB, SIGNAL(released()), this, SLOT(onSave()));
+    alayout->addWidget(new twid(writeDM,scanB,saveB));
+
+    tagText=new QLineEdit;
+    writeTag=new HQPushButton("Write Tag");
+    connect(writeTag, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOnTag(bool)));
+    connect(writeTag, SIGNAL(released()), this, SLOT(onWriteTag()));
+    alayout->addWidget(new twid(writeTag,new QLabel("Text:"),tagText));
+
+    writeFrame=new HQPushButton("Write Frame");
+    connect(writeFrame, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteFrameAreaOn(bool)));
+    connect(writeFrame, SIGNAL(released()), this, SLOT(onWriteFrame()));
+    alayout->addWidget(new twid(writeFrame));
+
+    tagString=new lineedit_gs("A");
+    conf["tagString"]=tagString;
+    tagSTwid=new twid(new QLabel("Tag String:"),tagString);
+    tagSTwid->setVisible(false);
+    connect(tagString, SIGNAL(changed()), this, SLOT(onRecomputeTagString()));
+    alayout->addWidget(tagSTwid);
+    tagUInt=new val_selector(0, "Tag UInt: ", 0, 999999, 0);
+    conf["tagUInt"]=tagUInt;
+    tagUInt->setVisible(false);
+    connect(tagUInt, SIGNAL(changed()), this, SLOT(onRecomputeTagUInt()));
+    alayout->addWidget(tagUInt);
+
+    useWriteScheduling=new checkbox_gs(false,"Enable write scheduling");
+    connect(useWriteScheduling, SIGNAL(changed(bool)), this, SLOT(onUseWriteScheduling(bool)));
+    conf["useWriteScheduling"]=useWriteScheduling;
+    alayout->addWidget(new twid(useWriteScheduling));
+
     dTCcor=new val_selector(1, "Pulse duration correction", 0.1, 3, 3);
     conf["dTCcor"]=dTCcor;
     corDTCor=new QPushButton("Correct Correction");
     connect(corDTCor, SIGNAL(released()), this, SLOT(onCorDTCor()));
     alayout->addWidget(new twid(dTCcor,corDTCor));
-    imgUmPPx=new val_selector(10, "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
-    conf["imgUmPPx"]=imgUmPPx;
-    alayout->addWidget(imgUmPPx);
-    writeDM=new HQPushButton("Write");
-    connect(writeDM, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
-    connect(writeDM, SIGNAL(released()), this, SLOT(onWriteDM()));
-    writeFrame=new HQPushButton("Frame");
-    connect(writeFrame, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteFrameAreaOn(bool)));
-    connect(writeFrame, SIGNAL(released()), this, SLOT(onWriteFrame()));
-    alayout->addWidget(new twid(writeDM,writeFrame));
-    tagText=new QLineEdit;
-    writeTag=new HQPushButton("Write Tag");
-    connect(writeTag, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOnTag(bool)));
-    connect(writeTag, SIGNAL(released()), this, SLOT(onWriteTag()));
-    alayout->addWidget(new twid(new QLabel("Tag:"),tagText,writeTag));
+
 
     writeDM->setEnabled(false);
     writeFrame->setEnabled(false);
@@ -60,8 +97,156 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP): 
     QLabel* textl=new QLabel("Predicting height change with formula:\n\u0394H=A(\u0394T-\u0394T\u2080\u2080)exp[-B/(\u0394T-\u0394T\u2080\u2080)],\nwhere \u0394T and \u0394T\u2080\u2080 are pulse durations.");
     textl->setWordWrap(true);
     slayout->addWidget(textl);
-}
+    slayout->addWidget(new hline());
 
+
+    folderhcon=new hidCon(new QLabel("Default Folders and naming"));
+        write_default_folder=new btnlabel_gs(".");
+        conf["write_default_folder"]=write_default_folder;
+        connect(write_default_folder, SIGNAL(released()), this, SLOT(on_write_default_folder()));
+        folderhcon->addWidget(new QLabel("Write source default folder:"));
+        folderhcon->addWidget(write_default_folder);
+        autoscan_default_folder=new btnlabel_gs(".");
+        conf["autoscan_default_folder"]=autoscan_default_folder;
+        connect(autoscan_default_folder, SIGNAL(released()), this, SLOT(on_autoscan_default_folder()));
+        folderhcon->addWidget(new QLabel("Autoscan destination default folder:"));
+        folderhcon->addWidget(autoscan_default_folder);
+        filenaming=new lineedit_gs("%Y-%m/$T$N-$F-$V");
+        conf["filenaming"]=filenaming;
+        folderhcon->addWidget(new twid(new QLabel("File naming:"),filenaming));
+        std::string tooltip{"Date&Time is in ctime/strftime format (%Y, %m, %d, etc).\n"
+                            "Other than that custom symbols are:\n"
+                            "$T - string tag\n"
+                            "$N - numeric tag\n"
+                            "$F - source filename\n"
+                            "$V - maxval\n"
+                            "$X - scaling"};
+        filenaming->setToolTip(QString::fromStdString(tooltip));
+        connect(filenaming, SIGNAL(changed()), this, SLOT(onCheckTagString()));
+        tagnaming=new lineedit_gs("$T$N");
+        tagnaming->setToolTip(QString::fromStdString(tooltip));
+        conf["tagnaming"]=tagnaming;
+        folderhcon->addWidget(new twid(new QLabel("Tag autofill:"),tagnaming));
+        connect(tagnaming, SIGNAL(changed()), this, SLOT(onCheckTagString()));
+        confnaming=new lineedit_gs("");
+        confnaming->setToolTip(QString::fromStdString(util::toString(tooltip+"\nIf left empty, no configuration file will be made.\nUse \\n for newline.\nThe configuration file will have a .conf extension.")));
+        conf["confnaming"]=confnaming;
+        folderhcon->addWidget(new twid(new QLabel("Conf autofill:"),confnaming));
+        connect(confnaming, SIGNAL(changed()), this, SLOT(onCheckTagString()));
+        numbericTagMinDigits=new val_selector(3, "Minimum number of digits in numeric tag: ", 1, 10, 0);
+        conf["numbericTagMinDigits"]=numbericTagMinDigits;
+        folderhcon->addWidget(numbericTagMinDigits);
+
+
+    slayout->addWidget(folderhcon);
+
+    showWriteFrame=new checkbox_gs(false,"Show 'Write frame' button.");
+    conf["showWriteFrame"]=showWriteFrame;
+    connect(showWriteFrame, SIGNAL(changed(bool)), this, SLOT(onShowWriteFrame(bool)));
+    slayout->addWidget(showWriteFrame);
+    scanExtraBorder=new val_selector(0, "Scan extra margin = ", 0, 1000, 0, 0, {"um","px"});
+    scanExtraBorder->setToolTip("Generally a good idea, also may catch tag/border.\nIf this goes beyond viewport, the extra will be clipped.");
+    conf["scanExtraBorder"]=scanExtraBorder;
+    slayout->addWidget(scanExtraBorder);
+    scanRepeatN=new val_selector(1, "Scan number of scans: ", 1, 500, 0);
+    conf["scanRepeatN"]=scanRepeatN;
+    slayout->addWidget(scanRepeatN);
+}
+pgWrite::~pgWrite(){
+    delete scanRes;
+}
+void pgWrite::replacePlaceholdersInString(std::string& src){
+    if(src.empty()) return;
+    if(src.find("%")!=std::string::npos){
+        time_t rawtime;
+        time(&rawtime);
+        char buffer [300];
+        strftime(buffer,300,src.c_str(),localtime(&rawtime));
+        src.clear();
+        src=buffer;
+    }
+    while(std::isspace(src[src.size()-1])) src.pop_back();
+    std::string placeholders[5]={"$T","$N","$F","$V","$X"};
+    std::string replacements[5]={tagString->text().toStdString(),std::to_string(static_cast<int>(tagUInt->val)),fileName,std::to_string(depthMaxval->val),std::to_string(imgUmPPx->val)};
+    while(replacements[1].size()<numbericTagMinDigits->val) replacements[1].insert(0,"0");
+    for(int i=0;i!=5;i++) while(1){
+        std::size_t found=src.find(placeholders[i]);
+        if(found==std::string::npos) break;
+        stripDollarSigns(replacements[i]);
+        src.replace(found,2,replacements[i]);
+    }
+}
+void pgWrite::stripDollarSigns(std::string &str){
+    while(1){
+        std::size_t found=str.find("$");
+        if(found==std::string::npos) return;
+        str.erase(found,1);
+    }
+}
+void pgWrite::onCheckTagString(){
+    bool show;
+    if(filenaming->get().find("$T")!=std::string::npos) show=true;
+    else if(tagnaming->get().find("$T")!=std::string::npos) show=true;
+    else if(confnaming->get().find("$T")!=std::string::npos) show=true;
+    else show=false;
+    tagSTwid->setVisible(show);
+
+    if(filenaming->get().find("$N")!=std::string::npos) show=true;
+    else if(tagnaming->get().find("$N")!=std::string::npos) show=true;
+    else if(confnaming->get().find("$N")!=std::string::npos) show=true;
+    else show=false;
+    tagUInt->setVisible(show);
+    onRecomputeTag();
+}
+void pgWrite::onRecomputeTagString(){
+    if(tagnaming->get().find("$T")!=std::string::npos) onRecomputeTag();
+}
+void pgWrite::onRecomputeTagUInt(){
+    if(tagnaming->get().find("$N")!=std::string::npos) onRecomputeTag();
+}
+void pgWrite::onRecomputeTag(){
+    std::string ttext=tagnaming->get();
+    if(!ttext.empty()){
+        replacePlaceholdersInString(ttext);
+        tagText->setText(QString::fromStdString(ttext));
+    }
+}
+void pgWrite::onUseWriteScheduling(bool state){
+    writeDM->setText(state?"Schedule Write":"Write");
+    writeTag->setText(state?"Schedule Write Tag":"Write Tag");
+    writeFrame->setText(state?"Schedule Write Frame":"Write Frame");
+}
+void pgWrite::onScan(){
+    pgMGUI->chooseObj(true);
+    pgMGUI->absMove(scanCoords[0], scanCoords[1], scanCoords[2]);
+    pgSGUI->doNRounds(scanRepeatN->val,scanROI);
+    res=scanRes->get();
+    if(res==nullptr){QMessageBox::critical(gui_activation, "Error", "Somehow cannot find scan.\n");return;}
+    saveB->setEnabled(true);
+}
+void pgWrite::onSave(){
+    res=scanRes->get();
+    if(res==nullptr){saveB->setEnabled(false);return;}
+    std::string filename=filenaming->get();
+    std::cerr<<"got "<<filename<<"\n";
+    replacePlaceholdersInString(filename);
+    std::cerr<<"got "<<filename<<"\n";
+    filename=QFileDialog::getSaveFileName(gui_activation,"Save scan to file.",QString::fromStdString(util::toString(autoscan_default_folder->get(),"/",filename,".pfm")),"Images (*.pfm)").toStdString();
+    std::cerr<<"got "<<filename<<"\n";
+    if(filename.empty()) return;
+    pgScanGUI::saveScan(res,filename);
+}
+void pgWrite::onShowWriteFrame(bool state){
+    writeFrame->setVisible(state);
+}
+void pgWrite::on_write_default_folder(){
+    std::string folder=QFileDialog::getExistingDirectory(gui_settings, tr("Select write source default folder"), QString::fromStdString(write_default_folder->get())).toStdString();
+    if(!folder.empty()) write_default_folder->set(folder);
+}
+void pgWrite::on_autoscan_default_folder(){
+    std::string folder=QFileDialog::getExistingDirectory(gui_settings, tr("Select autoscan destination default folder"), QString::fromStdString(autoscan_default_folder->get())).toStdString();
+    if(!folder.empty()) autoscan_default_folder->set(folder);
+}
 void pgWrite::onCorDTCor(){
     bool ok;
     float preH=QInputDialog::getDouble(gui_activation, "Correct intensity correction", "Input actual written height (nm) for given expected height.", 0.001, 0, 1000, 3, &ok);
@@ -156,15 +341,64 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
 }
 void pgWrite::onLoadImg(){
     writeDM->setEnabled(false);
-    std::string fileName=QFileDialog::getOpenFileName(gui_activation,"Select file containing stucture to write (Should be either 8bit or 16bit image (will be made monochrome if color), or 32bit float.).", "","Images (*.pfm *.png *.jpg *.tif)").toStdString();
+    writeFrame->setEnabled(false);
+    scanB->setEnabled(false);
+    saveB->setEnabled(false);
+    fileName=QFileDialog::getOpenFileName(gui_activation,"Select file containing stucture to write (Should be either 8bit or 16bit image (will be made monochrome if color), or 32bit float.).",
+                                          firstImageLoaded?"":QString::fromStdString(write_default_folder->get()),"Images (*.pfm *.png *.jpg *.tif)").toStdString();
     if(fileName.empty()) return;
     WRImage=cv::imread(fileName, cv::IMREAD_GRAYSCALE|cv::IMREAD_ANYDEPTH);
-    if(WRImage.empty()) {QMessageBox::critical(gui_activation, "Error", "Image empty.\n"); return;}
+    if(WRImage.empty()) {
+        QMessageBox::critical(gui_activation, "Error", "Image empty.\n");
+        return;
+    }
+    if(WRImage.type()!=CV_8U && WRImage.type()!=CV_16U && WRImage.type()!=CV_32F){
+        QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n");
+        return;
+    }
 
+    if(!firstImageLoaded){
+        firstImageLoaded=true;
+    }else{
+        tagUInt->setValue(tagUInt->val+1);
+    }
     writeDM->setEnabled(true);
     writeFrame->setEnabled(true);
 }
-void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double override_imgmmPPx, double override_pointSpacing, double override_focus, double ov_fxcor, double ov_fycor){
+void pgWrite::onWriteDM(){
+    writeMat();
+    scanB->setEnabled(true);
+
+    // save coords for scan
+    QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 100);
+    pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
+
+    // prepare ROI for scan
+    double ratio=imgUmPPx->val;
+    int xSize=round(ratio*WRImage.cols+2)*1000/pgMGUI->getNmPPx();
+    int ySize=round(ratio*WRImage.rows+2)*1000/pgMGUI->getNmPPx();
+    int cols=go.pGCAM->iuScope->camCols;
+    int rows=go.pGCAM->iuScope->camRows;
+
+    double extraB=scanExtraBorder->val;
+    if(extraB>0){
+        if(scanExtraBorder->index==0){  // um
+            extraB=pgMGUI->mm2px(extraB/1000);
+        }
+    }
+    scanROI=cv::Rect(cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX)-extraB, rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY)-extraB, xSize+2*extraB, ySize+2*extraB);
+    if(scanROI.x<0){
+        scanROI.width+=scanROI.x;
+        scanROI.x=0;
+    }
+    if(scanROI.y<0){
+        scanROI.height+=scanROI.y;
+        scanROI.y=0;
+    }
+    if(scanROI.width+scanROI.x>cols) scanROI.width=cols-scanROI.x;
+    if(scanROI.height+scanROI.y>rows) scanROI.height=rows-scanROI.y;
+}
+void pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double override_imgmmPPx, double override_pointSpacing, double override_focus, double ov_fxcor, double ov_fycor){
     cv::Mat tmpWrite, resizedWrite;
     cv::Mat* src;
     double vdepthMaxval, vimgmmPPx, vpointSpacing, vfocus, vfocusXcor, vfocusYcor;
@@ -181,7 +415,7 @@ void pgWrite::onWriteDM(cv::Mat* override, double override_depthMaxval, double o
     }else if(src->type()==CV_16U){
         src->convertTo(tmpWrite, CV_32F, vdepthMaxval/65536);
     }else if(src->type()==CV_32F) src->copyTo(tmpWrite);
-    else {QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n"); writeDM->setEnabled(false); return;}
+    else {QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n"); return;}
 
     double ratio=vimgmmPPx/vpointSpacing;
     if(vimgmmPPx==vpointSpacing) tmpWrite.copyTo(resizedWrite);
@@ -256,14 +490,14 @@ void pgWrite::onWriteFrame(){
             tagImage.at<uchar>(ySize-1-j,i*(xSize-1))=255;
         }
     }
-    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
+    writeMat(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
 }
 void pgWrite::onWriteTag(){
     std::cerr<<"writing tag\n";
     cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
     tagImage=cv::Mat(size.height+4,size.width+4,CV_8U,cv::Scalar(0));
     cv::putText(tagImage,tagText->text().toStdString(), {0,size.height+1}, OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, cv::Scalar(255), settingWdg[4]->fontThickness->val, cv::LINE_AA);
-    onWriteDM(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
+    writeMat(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
 }
 
 float pgWrite::getDT(float H, float H0){
@@ -313,7 +547,7 @@ void pgWrite::drawWriteArea(cv::Mat* img){
         ySize=round(ratio*WRImage.rows+2*fr)*1000/pgMGUI->getNmPPx();
     }else if(drawWriteAreaOn==2){ //tag
         if(tagText->text().toStdString().empty()) return;
-        ratio=settingWdg[4]->imgUmPPx->val;    //TODO change
+        ratio=settingWdg[4]->imgUmPPx->val;
         cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
         xSize=round(ratio*(size.width+1))*1000/pgMGUI->getNmPPx();
         ySize=round(ratio*(size.height+1))*1000/pgMGUI->getNmPPx();

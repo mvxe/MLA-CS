@@ -322,8 +322,45 @@ void checkbox_gs::setValue(bool nvalue){
 void checkbox_gs::set(bool nvalue){setValue(nvalue);}
 bool checkbox_gs::get(){return val;}
 
+// LINEEDIT thread safe with get()/set() (compatible with rtoml)
+
+lineedit_gs::lineedit_gs(std::string initialState){
+    this->setText(QString::fromStdString(initialState));
+    connect(this, SIGNAL(textEdited(const QString &)), this, SLOT(on_textChanged(const QString &)));
+}
+void lineedit_gs::set(std::string nvalue){
+    {std::lock_guard<std::mutex>lock(smx);
+    this->setText(QString::fromStdString(nvalue));}
+    Q_EMIT changed(nvalue);
+    Q_EMIT changed();
+}
+std::string lineedit_gs::get(){
+    std::lock_guard<std::mutex>lock(smx);
+    return this->text().toStdString();
+}
+void lineedit_gs::on_textChanged(const QString &text){
+    Q_EMIT changed(text.toStdString());
+    Q_EMIT changed();
+}
 
 
+// BUTTON string thread safe with get()/set() (compatible with rtoml)
+
+btnlabel_gs::btnlabel_gs(std::string initialState, bool flat){
+    this->setText(QString::fromStdString(initialState));
+    this->setFlat(flat);
+    this->setStyleSheet("Text-align:left");
+}
+void btnlabel_gs::set(std::string nvalue){
+    std::lock_guard<std::mutex>lock(smx);
+    this->setText(QString::fromStdString(nvalue));
+    Q_EMIT changed(nvalue);
+    Q_EMIT changed();
+}
+std::string btnlabel_gs::get(){
+    std::lock_guard<std::mutex>lock(smx);
+    return this->text().toStdString();
+}
 // Adding scroll to QToolButton
 
 void QScrollToolButton::wheelEvent(QWheelEvent *event){
@@ -402,7 +439,7 @@ twid::twid(bool setmargin, bool setstretch){
     this->setLayout(layout);
     if(setmargin) layout->setMargin(0);
     if(setstretch) layout->addStretch(0);
-    setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Maximum);
+    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Maximum);
 }
 void twid::addWidget(QWidget* widget, bool front){
     layout->insertWidget(front?0:(layout->count()-1), widget);

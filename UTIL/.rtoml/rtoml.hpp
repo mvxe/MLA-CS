@@ -132,7 +132,7 @@ namespace rtoml{
                 }else return var->changed(data);            // initialized as a variable - check it
             }
             std::string format(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& data){   // fixes indentation, removes empty comments (needed to prevent inline)
-                std::string str = toml::format(data,80,10);                                           // tsl::ordered_map preserves insertion order
+                std::string str = toml::format(data,800,10);                                           // tsl::ordered_map preserves insertion order
                 if(str.size()==0) return str;
 
                 std::size_t lineBegin=0;

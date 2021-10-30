@@ -7,6 +7,7 @@
 #include <QToolButton>
 #include <QCheckBox>
 #include <QPushButton>
+#include <QLineEdit>
 #include "UTIL/containers.h"
 
 class QHBoxLayout;
@@ -176,7 +177,6 @@ Q_SIGNALS:
     void _changed(bool state);      // do not use
 };
 
-
 // Adding scroll to QToolButton
 
 class QScrollToolButton : public QToolButton{
@@ -240,6 +240,39 @@ private:
 template<typename... Args> vtwid::vtwid(QWidget* widget, Args... args): vtwid(args...){
     addWidget(widget, true);
 }
+
+// LINEEDIT thread safe with get()/set() (compatible with rtoml)
+
+class lineedit_gs : public QLineEdit{
+    Q_OBJECT
+public:
+    lineedit_gs(std::string initialState);
+    void set(std::string nvalue);          // thread safe, for toml::vsr
+    std::string get();                     // thread safe, for toml::vsr
+private:
+    std::mutex smx;
+private Q_SLOTS:
+    void on_textChanged(const QString &text);
+Q_SIGNALS:
+    void changed();
+    void changed(std::string text);
+};
+
+// BUTTON string thread safe with get()/set() (compatible with rtoml)
+// you need to connect signal released() to your own function, and that function should then use set(std::string)
+
+class btnlabel_gs : public QPushButton{
+    Q_OBJECT
+public:
+    btnlabel_gs(std::string initialState, bool flat=true);
+    void set(std::string nvalue);          // thread safe, for toml::vsr
+    std::string get();                     // thread safe, for toml::vsr
+private:
+    std::mutex smx;
+Q_SIGNALS:
+    void changed();
+    void changed(std::string text);
+};
 
 // HORIZONTAL LINE
 

@@ -510,9 +510,10 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
 
     if(pgMGUI==nullptr) res->XYnmppx=0;
     else res->XYnmppx=pgMGUI->getNmPPx(0);
-    res->pos[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position)+(-go.pGCAM->iuScope->camCols/2.+ROI.x+ROI.width/2.)*res->XYnmppx/1000000;
-    res->pos[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position)+(-go.pGCAM->iuScope->camRows/2.+ROI.y+ROI.height/2.)*res->XYnmppx/1000000;
-    res->pos[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
+
+    pgMGUI->getPos(&res->pos[0], &res->pos[1], &res->pos[2]);
+    res->pos[0]+=(-go.pGCAM->iuScope->camCols/2.+ROI.x+ROI.width/2.)*res->XYnmppx/1000000;
+    res->pos[1]+=(-go.pGCAM->iuScope->camRows/2.+ROI.y+ROI.height/2.)*res->XYnmppx/1000000;
 
     std::lock_guard<std::mutex>lock(MLP._lock_comp);    // wait till other processing is done
     MLP._lock_proc.unlock();                             // allow new measurement to start

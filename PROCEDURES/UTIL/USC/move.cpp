@@ -151,7 +151,7 @@ void pgMoveGUI::init_gui_settings(){
 void pgMoveGUI::scaledMoveX(double magnitude){move(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0);}
 void pgMoveGUI::scaledMoveY(double magnitude){move(0,magnitude*xMoveScale->val/1000*pow(10,mpow->val),0);}
 void pgMoveGUI::scaledMoveZ(double magnitude){move(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val));}
-void pgMoveGUI::move(double Xmov, double Ymov, double Zmov){
+void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, bool disableZtiltCor){
     double _Xmov=Xmov;
     double _Ymov=Ymov;
     if(!disableSkewCorrection->val){
@@ -159,10 +159,15 @@ void pgMoveGUI::move(double Xmov, double Ymov, double Zmov){
         _Ymov=Yraw(Xmov,Ymov,0);
     }
 
-    double _Zmov=Zmov+_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val;    //this correction should change with skewCorrection, but implementing that would be annoying (dont want to add more configuration) and its negligible anyway, just recalibrate autoadjXZ,YZ with skewCorrection if its a problem
+    double _Zmov=Zmov+(disableZtiltCor?0:_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val);    //this correction should change with skewCorrection, but implementing that would be annoying (dont want to add more configuration) and its negligible anyway, just recalibrate autoadjXZ,YZ with skewCorrection if its a problem
     go.pRPTY->motion("X",_Xmov,0,0,CTRL::MF_RELATIVE);
     go.pRPTY->motion("Y",_Ymov,0,0,CTRL::MF_RELATIVE);
     go.pRPTY->motion("Z",_Zmov,0,0,CTRL::MF_RELATIVE);
+}
+void pgMoveGUI::absMove(double Xpos, double Ypos, double Zpos){
+    double pos[3];
+    getPos(&pos[0],&pos[1],&pos[3]);
+    move(Xpos-pos[0], Ypos-pos[1], Zpos-pos[2],true);
 }
 
 void pgMoveGUI::corCOMove(CTRL::CO& co, double Xmov, double Ymov, double Zmov, bool forceSkewCorrection){
@@ -364,14 +369,17 @@ double pgMoveGUI::px2mm(double coord, int index, double nmppx){
 }
 
 void pgMoveGUI::getPos(double* X, double* Y, double* Z){
-    double xr, yr;
+    double xr, yr, zr;
     if(X!=nullptr || Y!=nullptr){
         xr=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
         yr=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
     }
     if(X!=nullptr) *X=Xcor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0),0);
     if(Y!=nullptr) *Y=Ycor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0),0);
-    if(Z!=nullptr) *Z=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
+    if(Z!=nullptr){
+        zr=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
+        *Z=zr-((currentObj==1)?_objectiveDisplacement[2]:0);
+    }
 }
 
 void pgMoveGUI::_onMarkObjDisY(bool isStart){

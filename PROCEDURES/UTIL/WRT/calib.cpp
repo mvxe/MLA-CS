@@ -366,11 +366,11 @@ void pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     if(plateau!=0){
         if(isPlateau){
             cv::Mat mplateau(WArray.rows+1, WArray.cols+1, CV_32F, cv::Scalar(plateau/1000000));
-            pgWr->onWriteDM(&mplateau, 0, selArraySpacing->val/1000);
+            pgWr->writeMat(&mplateau, 0, selArraySpacing->val/1000);
         }else{
             cv::Mat mplateau(WArray.rows, WArray.cols, CV_32F, cv::Scalar(plateau/1000000));
             pgMGUI->move(peakXshift/1000,peakYshift/1000,0);
-            pgWr->onWriteDM(&mplateau, 0, selArraySpacing->val/1000, selArraySpacing->val/1000);
+            pgWr->writeMat(&mplateau, 0, selArraySpacing->val/1000, selArraySpacing->val/1000);
             pgMGUI->move(-peakXshift/1000,-peakYshift/1000,0);
         }
     }

@@ -56,7 +56,8 @@ public:
 
 public Q_SLOTS:
     void chooseObj(bool useMirau);
-    void move(double Xmov, double Ymov, double Zmov);  // in mm, corrects Z on X and Y move
+    void move(double Xmov, double Ymov, double Zmov, bool disableZtiltCor=false);  // in mm, corrects Z on X and Y move
+    void absMove(double Xpos, double Ypos, double Zpos);                           // for convenience, uses corrected
 
     void scaledMoveX(double magnitude);
     void scaledMoveY(double magnitude);

@@ -8,29 +8,43 @@ class writeSettings;
 class pgBeamAnalysis;
 class QLineEdit;
 class procLockProg;
+class hidCon;
 class pgWrite: public QObject{
     Q_OBJECT
 public:
-    pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP);
+    pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI *pgSGUI);
+    ~pgWrite();
     rtoml::vsr conf;                //configuration map
     QWidget* gui_activation;
     QWidget* gui_settings;
     void drawWriteArea(cv::Mat* img);
+    void writeMat(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgmmPPx=0, double override_pointSpacing=0, double override_focus=std::numeric_limits<double>::max(), double ov_fxcor=std::numeric_limits<double>::max(), double ov_fycor=std::numeric_limits<double>::max());
+            // matrix depth, if CV_32F, is in mm, likewise override_depthMaxval is in mm too
+            // override_depthMaxval overrides only if matrix is CV_8U or CV_16U
 private:
     //activation
     QVBoxLayout* alayout;
+    hidCon* pulseh;
     QPushButton* pulse;
     val_selector* pulseDur;
 
+    hidCon* importh;
     QPushButton* importImg;
     val_selector* depthMaxval;
     val_selector* imgUmPPx;
+
     val_selector* dTCcor;
     QPushButton* corDTCor;
-    QPushButton* writeDM;
-    QPushButton* writeFrame;
+    HQPushButton* writeDM;
+    QPushButton* scanB;
+    QPushButton* saveB;
+    HQPushButton* writeFrame;
     QLineEdit* tagText;
     HQPushButton* writeTag;
+    twid* tagSTwid;
+    lineedit_gs* tagString;
+    val_selector* tagUInt;
+    checkbox_gs* useWriteScheduling;
 
     //settings
     QVBoxLayout* slayout;
@@ -49,19 +63,41 @@ private:
     val_selector* pointSpacing;
     checkbox_gs* writeZeros;
 
+    hidCon* folderhcon;
+    btnlabel_gs* write_default_folder;
+    btnlabel_gs* autoscan_default_folder;
+    lineedit_gs* filenaming;
+    val_selector* numbericTagMinDigits;
+    lineedit_gs* tagnaming;
+    lineedit_gs* confnaming;
+
+    checkbox_gs* showWriteFrame;
+    val_selector* scanExtraBorder;
+    val_selector* scanRepeatN;
+
     cv::Mat WRImage;
+    std::string fileName;
     cv::Mat tagImage;
     int drawWriteAreaOn{0};     //1 is img, 2 is tag, 3 is frame
     const double servoCycle{0.0001};    // The XPS servo cycle (in s)
+    cv::Rect scanROI;
+    double scanCoords[3];
 
     pgBeamAnalysis* pgBeAn;
     pgMoveGUI* pgMGUI;
     procLockProg& MLP;
+    pgScanGUI* pgSGUI;
+    varShareClient<pgScanGUI::scanRes>* scanRes;
+    const pgScanGUI::scanRes* res;
 
     float getDT(float H, float H0=0);
     float calcH(float DT, float H0=0);
     double pulse_precision;
 //    float gaussian(float x, float y, float a, float wx, float wy, float an);
+    void replacePlaceholdersInString(std::string& src);
+    void stripDollarSigns(std::string &str);
+    bool firstImageLoaded{false};
+
 private Q_SLOTS:
     void onPulse();
     void onMenuChange(int index);
@@ -73,10 +109,17 @@ private Q_SLOTS:
     void onChangeDrawWriteFrameAreaOn(bool status);
     void onCorDTCor();
     void onCorPPR();
-public Q_SLOTS:
-    void onWriteDM(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgmmPPx=0, double override_pointSpacing=0, double override_focus=std::numeric_limits<double>::max(), double ov_fxcor=std::numeric_limits<double>::max(), double ov_fycor=std::numeric_limits<double>::max());
-            // matrix depth, if CV_32F, is in mm, likewise override_depthMaxval is in mm too
-            // override_depthMaxval overrides only if matrix is CV_8U or CV_16U
+    void on_write_default_folder();
+    void on_autoscan_default_folder();
+    void onScan();
+    void onSave();
+    void onShowWriteFrame(bool state);
+    void onUseWriteScheduling(bool state);
+    void onCheckTagString();
+    void onRecomputeTagString();
+    void onRecomputeTagUInt();
+    void onRecomputeTag();
+    void onWriteDM();
 };
 
 
