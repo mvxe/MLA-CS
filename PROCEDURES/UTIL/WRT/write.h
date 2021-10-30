@@ -18,9 +18,11 @@ public:
     QWidget* gui_activation;
     QWidget* gui_settings;
     void drawWriteArea(cv::Mat* img);
-    void writeMat(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgmmPPx=0, double override_pointSpacing=0, double override_focus=std::numeric_limits<double>::max(), double ov_fxcor=std::numeric_limits<double>::max(), double ov_fycor=std::numeric_limits<double>::max());
+    bool writeMat(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgmmPPx=0, double override_pointSpacing=0, double override_focus=std::numeric_limits<double>::max(), double ov_fxcor=std::numeric_limits<double>::max(), double ov_fycor=std::numeric_limits<double>::max());
             // matrix depth, if CV_32F, is in mm, likewise override_depthMaxval is in mm too
             // override_depthMaxval overrides only if matrix is CV_8U or CV_16U
+            // return true if failed/aborted
+    void wait4motionToComplete();
 private:
     //activation
     QVBoxLayout* alayout;
@@ -31,12 +33,14 @@ private:
     hidCon* importh;
     QPushButton* importImg;
     val_selector* depthMaxval;
+    double lastDepth;
     val_selector* imgUmPPx;
 
+    QPushButton* abort;
     val_selector* dTCcor;
     QPushButton* corDTCor;
     HQPushButton* writeDM;
-    QPushButton* scanB;
+    HQPushButton* scanB;
     QPushButton* saveB;
     HQPushButton* writeFrame;
     QLineEdit* tagText;
@@ -44,6 +48,7 @@ private:
     twid* tagSTwid;
     lineedit_gs* tagString;
     val_selector* tagUInt;
+    QPushButton* guessTagUInt;
     checkbox_gs* useWriteScheduling;
 
     //settings
@@ -65,15 +70,19 @@ private:
 
     hidCon* folderhcon;
     btnlabel_gs* write_default_folder;
-    btnlabel_gs* autoscan_default_folder;
+    btnlabel_gs* scan_default_folder;
     lineedit_gs* filenaming;
     val_selector* numbericTagMinDigits;
     lineedit_gs* tagnaming;
-    lineedit_gs* confnaming;
 
     checkbox_gs* showWriteFrame;
     val_selector* scanExtraBorder;
     val_selector* scanRepeatN;
+    checkbox_gs* switchBack2mirau;
+
+    QPushButton* notes;
+    checkbox_gs* addNotes;
+    std::string notestring;
 
     cv::Mat WRImage;
     std::string fileName;
@@ -97,6 +106,10 @@ private:
     void replacePlaceholdersInString(std::string& src);
     void stripDollarSigns(std::string &str);
     bool firstImageLoaded{false};
+    bool firstWritten{false};
+    bool wabort;
+
+    void saveConfig(std::string filename);
 
 private Q_SLOTS:
     void onPulse();
@@ -105,12 +118,13 @@ private Q_SLOTS:
     void onWriteFrame();
     void onWriteTag();
     void onChangeDrawWriteAreaOn(bool status);
+    void onChangeDrawScanAreaOn(bool status);
     void onChangeDrawWriteAreaOnTag(bool status);
     void onChangeDrawWriteFrameAreaOn(bool status);
     void onCorDTCor();
     void onCorPPR();
     void on_write_default_folder();
-    void on_autoscan_default_folder();
+    void on_scan_default_folder();
     void onScan();
     void onSave();
     void onShowWriteFrame(bool state);
@@ -120,6 +134,9 @@ private Q_SLOTS:
     void onRecomputeTagUInt();
     void onRecomputeTag();
     void onWriteDM();
+    void onAbort();
+    void guessAndUpdateNextTagUInt();
+    void onNotes();
 };
 
 

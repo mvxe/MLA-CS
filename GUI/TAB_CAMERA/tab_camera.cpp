@@ -439,7 +439,7 @@ void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
             double DX, DY;
             DX=parent->pgMGUI->px2mm(xcoord-pxW/2.)+parent->pgBeAn->writeBeamCenterOfsX;
             DY=parent->pgMGUI->px2mm(pxH/2.-ycoord)+parent->pgBeAn->writeBeamCenterOfsY;
-            parent->pgMGUI->move(DX,DY,0);
+            parent->pgMGUI->move(DX,DY,0,false,!parent->camSet->isMirau);
             if(parent->pgMGUI->reqstNextClickPixDiff) parent->pgMGUI->delvrNextClickPixDiff(xcoord-pxW/2, pxH/2-ycoord);
             parent->sROI.width=0;
         }else if(event->button()==Qt::RightButton){

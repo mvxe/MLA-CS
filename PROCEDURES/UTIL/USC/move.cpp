@@ -151,23 +151,18 @@ void pgMoveGUI::init_gui_settings(){
 void pgMoveGUI::scaledMoveX(double magnitude){move(magnitude*xMoveScale->val/1000*pow(10,mpow->val),0,0);}
 void pgMoveGUI::scaledMoveY(double magnitude){move(0,magnitude*xMoveScale->val/1000*pow(10,mpow->val),0);}
 void pgMoveGUI::scaledMoveZ(double magnitude){move(0,0,magnitude*zMoveScale->val/1000*pow(10,mpow->val));}
-void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, bool disableZtiltCor){
+void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, bool isAbsolute, bool useWritingObjAngles){
     double _Xmov=Xmov;
     double _Ymov=Ymov;
     if(!disableSkewCorrection->val){
-        _Xmov=Xraw(Xmov,Ymov,0);
-        _Ymov=Yraw(Xmov,Ymov,0);
+        _Xmov=Xraw(Xmov,Ymov,useWritingObjAngles);
+        _Ymov=Yraw(Xmov,Ymov,useWritingObjAngles);
     }
 
-    double _Zmov=Zmov+(disableZtiltCor?0:_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val);    //this correction should change with skewCorrection, but implementing that would be annoying (dont want to add more configuration) and its negligible anyway, just recalibrate autoadjXZ,YZ with skewCorrection if its a problem
-    go.pRPTY->motion("X",_Xmov,0,0,CTRL::MF_RELATIVE);
-    go.pRPTY->motion("Y",_Ymov,0,0,CTRL::MF_RELATIVE);
-    go.pRPTY->motion("Z",_Zmov,0,0,CTRL::MF_RELATIVE);
-}
-void pgMoveGUI::absMove(double Xpos, double Ypos, double Zpos){
-    double pos[3];
-    getPos(&pos[0],&pos[1],&pos[3]);
-    move(Xpos-pos[0], Ypos-pos[1], Zpos-pos[2],true);
+    double _Zmov=Zmov+(isAbsolute?0:(_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val));    //this correction should change with skewCorrection, but implementing that would be annoying (dont want to add more configuration) and its negligible anyway, just recalibrate autoadjXZ,YZ with skewCorrection if its a problem
+    go.pRPTY->motion("X",_Xmov+((isAbsolute&&currentObj==1)?_objectiveDisplacement[0]:0),0,0,isAbsolute?0:CTRL::MF_RELATIVE);
+    go.pRPTY->motion("Y",_Ymov+((isAbsolute&&currentObj==1)?_objectiveDisplacement[1]:0),0,0,isAbsolute?0:CTRL::MF_RELATIVE);
+    go.pRPTY->motion("Z",_Zmov+((isAbsolute&&currentObj==1)?_objectiveDisplacement[2]:0),0,0,isAbsolute?0:CTRL::MF_RELATIVE);
 }
 
 void pgMoveGUI::corCOMove(CTRL::CO& co, double Xmov, double Ymov, double Zmov, bool forceSkewCorrection){
@@ -343,21 +338,21 @@ void pgMoveGUI::reCalcConst(bool isMirau){
     C[!isMirau]=(1.-a[!isMirau]*A[!isMirau])/b[!isMirau];
     D[!isMirau]=-a[!isMirau]*B[!isMirau]/b[!isMirau];
 }
-double pgMoveGUI::Xraw(double Xcor, double Ycor, int index){
-    if(index!=1) index=0;   // default to mirau (for index=-1)
-    return a[index]*Xcor+b[index]*Ycor;
+double pgMoveGUI::Xraw(double Xcor, double Ycor, bool useWritingObjAngles){
+    int index=useWritingObjAngles?1:0;
+    return A[index]*Xcor+C[index]*Ycor;
 }
-double pgMoveGUI::Yraw(double Xcor, double Ycor, int index){
-    if(index!=1) index=0;
-    return c[index]*Xcor+d[index]*Ycor;
+double pgMoveGUI::Yraw(double Xcor, double Ycor, bool useWritingObjAngles){
+    int index=useWritingObjAngles?1:0;
+    return B[index]*Xcor+D[index]*Ycor;
 }
-double pgMoveGUI::Xcor(double Xraw, double Yraw, int index){
-    if(index!=1) index=0;
-    return A[index]*Xraw+B[index]*Yraw;
+double pgMoveGUI::Xcor(double Xraw, double Yraw, bool useWritingObjAngles){
+    int index=useWritingObjAngles?1:0;
+    return a[index]*Xraw+c[index]*Yraw;
 }
-double pgMoveGUI::Ycor(double Xraw, double Yraw, int index){
-    if(index!=1) index=0;
-    return C[index]*Xraw+D[index]*Yraw;
+double pgMoveGUI::Ycor(double Xraw, double Yraw, bool useWritingObjAngles){
+    int index=useWritingObjAngles?1:0;
+    return b[index]*Xraw+d[index]*Yraw;
 }
 double pgMoveGUI::mm2px(double coord, int index, double nmppx){
     if(nmppx==0) nmppx=getNmPPx(index);
@@ -374,8 +369,8 @@ void pgMoveGUI::getPos(double* X, double* Y, double* Z){
         xr=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
         yr=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
     }
-    if(X!=nullptr) *X=Xcor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0),0);
-    if(Y!=nullptr) *Y=Ycor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0),0);
+    if(X!=nullptr) *X=Xcor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0));
+    if(Y!=nullptr) *Y=Ycor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0));
     if(Z!=nullptr){
         zr=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
         *Z=zr-((currentObj==1)?_objectiveDisplacement[2]:0);

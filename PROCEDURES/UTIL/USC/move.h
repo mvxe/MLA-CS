@@ -45,19 +45,17 @@ public:
     //      - objective X, Y, in pixels
     //                  to convert use mm2px(coord) and px2mm(coord), where coord is corrected X or Y
     // for converting X,Y coordinates to/from mm from/to px
-    double Xraw(double Xcor, double Ycor, int objective_index_override=-1);    // to force using Mirau(Writing) objective settings,
-    double Yraw(double Xcor, double Ycor, int objective_index_override=-1);    //      set objective_index_override to 0(1)
-    double Xcor(double Xraw, double Yraw, int objective_index_override=-1);
-    double Ycor(double Xraw, double Yraw, int objective_index_override=-1);
+    double Xraw(double Xcor, double Ycor, bool useWritingObjAngles=false);      // useWritingObjAngles is used only in click to move in writing obj mode
+    double Yraw(double Xcor, double Ycor, bool useWritingObjAngles=false);      // we neglect this in area displays in writing obj mode though as they are nearly the same
+    double Xcor(double Xraw, double Yraw, bool useWritingObjAngles=false);
+    double Ycor(double Xraw, double Yraw, bool useWritingObjAngles=false);
     double mm2px(double coord, int objective_index_override=-1, double nmppx=0);    // here you can also manually override nmppx
     double px2mm(double coord, int objective_index_override=-1, double nmppx=0);
 
     void getPos(double* X, double* Y=nullptr, double* Z=nullptr);       // returns current position, corrected by obj-obj difference
-
 public Q_SLOTS:
     void chooseObj(bool useMirau);
-    void move(double Xmov, double Ymov, double Zmov, bool disableZtiltCor=false);  // in mm, corrects Z on X and Y move
-    void absMove(double Xpos, double Ypos, double Zpos);                           // for convenience, uses corrected
+    void move(double Xmov, double Ymov, double Zmov, bool isAbsolute=false, bool useWritingObjAngles=false);    // in mm, corrects Z on X and Y move
 
     void scaledMoveX(double magnitude);
     void scaledMoveY(double magnitude);

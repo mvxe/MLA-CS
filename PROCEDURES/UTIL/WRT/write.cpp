@@ -3,6 +3,9 @@
 #include "includes.h"
 #include "GUI/tab_monitor.h"    //for debug purposes
 #include <time.h>
+#include "opencv2/core/utils/filesystem.hpp"
+#include <dirent.h>
+#include <sys/stat.h>
 
 pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI* pgSGUI): pgBeAn(pgBeAn), pgMGUI(pgMGUI), MLP(MLP), pgSGUI(pgSGUI){
     gui_activation=new QWidget;
@@ -35,11 +38,17 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     importh->addWidget(imgUmPPx);
     alayout->addWidget(importh);
 
+    abort=new QPushButton("Abort");
+    abort->setVisible(false);
+    connect(abort, SIGNAL(released()), this, SLOT(onAbort()));
+    alayout->addWidget(new twid(abort));
+
     writeDM=new HQPushButton("Write");
     connect(writeDM, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
     connect(writeDM, SIGNAL(released()), this, SLOT(onWriteDM()));
-    scanB=new QPushButton("Scan");
+    scanB=new HQPushButton("Scan");
     scanB->setEnabled(false);
+    connect(scanB, SIGNAL(changed(bool)), this, SLOT(onChangeDrawScanAreaOn(bool)));
     connect(scanB, SIGNAL(released()), this, SLOT(onScan()));
     saveB=new QPushButton("Save");
     saveB->setEnabled(false);
@@ -67,7 +76,16 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     conf["tagUInt"]=tagUInt;
     tagUInt->setVisible(false);
     connect(tagUInt, SIGNAL(changed()), this, SLOT(onRecomputeTagUInt()));
-    alayout->addWidget(tagUInt);
+    guessTagUInt=new QPushButton("Guess");
+    connect(guessTagUInt, SIGNAL(released()), this, SLOT(guessAndUpdateNextTagUInt()));
+    guessTagUInt->setFlat(true);
+    alayout->addWidget(new twid(tagUInt,guessTagUInt));
+
+    notes=new QPushButton("Edit notes");
+    conf["notes"]=notestring;
+    connect(notes, SIGNAL(released()), this, SLOT(onNotes()));
+    addNotes=new checkbox_gs(false,"Append notes to .cfg");
+    alayout->addWidget(new twid(notes,addNotes));
 
     useWriteScheduling=new checkbox_gs(false,"Enable write scheduling");
     connect(useWriteScheduling, SIGNAL(changed(bool)), this, SLOT(onUseWriteScheduling(bool)));
@@ -106,11 +124,11 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
         connect(write_default_folder, SIGNAL(released()), this, SLOT(on_write_default_folder()));
         folderhcon->addWidget(new QLabel("Write source default folder:"));
         folderhcon->addWidget(write_default_folder);
-        autoscan_default_folder=new btnlabel_gs(".");
-        conf["autoscan_default_folder"]=autoscan_default_folder;
-        connect(autoscan_default_folder, SIGNAL(released()), this, SLOT(on_autoscan_default_folder()));
-        folderhcon->addWidget(new QLabel("Autoscan destination default folder:"));
-        folderhcon->addWidget(autoscan_default_folder);
+        scan_default_folder=new btnlabel_gs(".");
+        conf["scan_default_folder"]=scan_default_folder;
+        connect(scan_default_folder, SIGNAL(released()), this, SLOT(on_scan_default_folder()));
+        folderhcon->addWidget(new QLabel("Scan destination default folder:"));
+        folderhcon->addWidget(scan_default_folder);
         filenaming=new lineedit_gs("%Y-%m/$T$N-$F-$V");
         conf["filenaming"]=filenaming;
         folderhcon->addWidget(new twid(new QLabel("File naming:"),filenaming));
@@ -128,11 +146,6 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
         conf["tagnaming"]=tagnaming;
         folderhcon->addWidget(new twid(new QLabel("Tag autofill:"),tagnaming));
         connect(tagnaming, SIGNAL(changed()), this, SLOT(onCheckTagString()));
-        confnaming=new lineedit_gs("");
-        confnaming->setToolTip(QString::fromStdString(util::toString(tooltip+"\nIf left empty, no configuration file will be made.\nUse \\n for newline.\nThe configuration file will have a .conf extension.")));
-        conf["confnaming"]=confnaming;
-        folderhcon->addWidget(new twid(new QLabel("Conf autofill:"),confnaming));
-        connect(confnaming, SIGNAL(changed()), this, SLOT(onCheckTagString()));
         numbericTagMinDigits=new val_selector(3, "Minimum number of digits in numeric tag: ", 1, 10, 0);
         conf["numbericTagMinDigits"]=numbericTagMinDigits;
         folderhcon->addWidget(numbericTagMinDigits);
@@ -151,12 +164,24 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     scanRepeatN=new val_selector(1, "Scan number of scans: ", 1, 500, 0);
     conf["scanRepeatN"]=scanRepeatN;
     slayout->addWidget(scanRepeatN);
+    switchBack2mirau=new checkbox_gs(false,"Switch back to Mirau objective after writing operations.");
+    conf["switchBack2mirau"]=switchBack2mirau;
+    slayout->addWidget(switchBack2mirau);
 }
 pgWrite::~pgWrite(){
     delete scanRes;
 }
+void pgWrite::onAbort(){
+    wabort=true;
+}
+void pgWrite::onNotes(){
+    bool ok;
+    QString tmp=QInputDialog::getMultiLineText(gui_activation, tr("QInputDialog::getMultiLineText()"),tr("String to be added to .cfg:"), QString::fromStdString(notestring), &ok);
+    if(ok) notestring=tmp.toStdString();
+}
 void pgWrite::replacePlaceholdersInString(std::string& src){
     if(src.empty()) return;
+    std::size_t found;
     if(src.find("%")!=std::string::npos){
         time_t rawtime;
         time(&rawtime);
@@ -167,10 +192,15 @@ void pgWrite::replacePlaceholdersInString(std::string& src){
     }
     while(std::isspace(src[src.size()-1])) src.pop_back();
     std::string placeholders[5]={"$T","$N","$F","$V","$X"};
-    std::string replacements[5]={tagString->text().toStdString(),std::to_string(static_cast<int>(tagUInt->val)),fileName,std::to_string(depthMaxval->val),std::to_string(imgUmPPx->val)};
+    std::string replacements[5]={tagString->text().toStdString(),std::to_string(static_cast<int>(tagUInt->val)),fileName,std::to_string(lastDepth),std::to_string(imgUmPPx->val)};
+    for(int i:{3,4}) if(replacements[i].find(".")!=std::string::npos) while(replacements[i].back()=='0') replacements[i].pop_back();    //remove extra zeroes
+    found=replacements[2].find_last_of("/");
+    if(found!=std::string::npos) replacements[2].erase(0,found+1);
+    found=replacements[2].find_last_of(".");
+    if(found!=std::string::npos) replacements[2].erase(found,replacements[2].size()-found);
     while(replacements[1].size()<numbericTagMinDigits->val) replacements[1].insert(0,"0");
     for(int i=0;i!=5;i++) while(1){
-        std::size_t found=src.find(placeholders[i]);
+        found=src.find(placeholders[i]);
         if(found==std::string::npos) break;
         stripDollarSigns(replacements[i]);
         src.replace(found,2,replacements[i]);
@@ -187,13 +217,11 @@ void pgWrite::onCheckTagString(){
     bool show;
     if(filenaming->get().find("$T")!=std::string::npos) show=true;
     else if(tagnaming->get().find("$T")!=std::string::npos) show=true;
-    else if(confnaming->get().find("$T")!=std::string::npos) show=true;
     else show=false;
     tagSTwid->setVisible(show);
 
     if(filenaming->get().find("$N")!=std::string::npos) show=true;
     else if(tagnaming->get().find("$N")!=std::string::npos) show=true;
-    else if(confnaming->get().find("$N")!=std::string::npos) show=true;
     else show=false;
     tagUInt->setVisible(show);
     onRecomputeTag();
@@ -211,6 +239,52 @@ void pgWrite::onRecomputeTag(){
         tagText->setText(QString::fromStdString(ttext));
     }
 }
+void pgWrite::guessAndUpdateNextTagUInt(){
+    std::vector<std::string> folders;
+    std::vector<std::string> files;
+    folders.push_back(scan_default_folder->get());
+    std::string folder; DIR *wp;
+    std::string curFile;
+    struct dirent *entry;
+    struct stat filetype;
+    int newTagN=-1;
+    while(!folders.empty()){
+        folder=folders.back();
+        folders.pop_back();
+        wp=opendir(folder.c_str());
+        if(wp!=nullptr) while((entry=readdir(wp))){
+            curFile=entry->d_name;
+            if (curFile!="." && curFile!=".."){
+                curFile=folder+'/'+entry->d_name;
+                stat(curFile.data(),&filetype);
+                if(filetype.st_mode&S_IFDIR) folders.push_back(curFile);
+                else if (filetype.st_mode&S_IFREG){
+                    if(curFile.size()>3) if(curFile.substr(curFile.size()-4,4).compare(".cfg")==0){
+                        std::ifstream ifile(curFile);
+                        std::string line;
+                        bool right_tag=false;
+                        int num=-1;
+                        while(!ifile.eof()){
+                            std::getline(ifile,line);
+                            if(line.find("Tag String: ")!=std::string::npos){
+                                line.erase(0,sizeof("Tag String: ")-1);
+                                while(std::isspace(line.back())) line.pop_back();
+                                right_tag=(line.compare(tagString->text().toStdString())==0);
+                            }else if (line.find("Tag UInt: ")!=std::string::npos){
+                                line.erase(0,sizeof("Tag UInt: ")-1);
+                                num=std::stoi(line);
+                            }
+                        }
+                        if(right_tag && num>newTagN) newTagN=num;
+                        ifile.close();
+                    }
+                }
+            }
+        }
+        closedir(wp);
+    }
+    if(newTagN>-1) tagUInt->setValue(newTagN+1);
+}
 void pgWrite::onUseWriteScheduling(bool state){
     writeDM->setText(state?"Schedule Write":"Write");
     writeTag->setText(state?"Schedule Write Tag":"Write Tag");
@@ -218,7 +292,7 @@ void pgWrite::onUseWriteScheduling(bool state){
 }
 void pgWrite::onScan(){
     pgMGUI->chooseObj(true);
-    pgMGUI->absMove(scanCoords[0], scanCoords[1], scanCoords[2]);
+    pgMGUI->move(scanCoords[0], scanCoords[1], scanCoords[2], true);
     pgSGUI->doNRounds(scanRepeatN->val,scanROI);
     res=scanRes->get();
     if(res==nullptr){QMessageBox::critical(gui_activation, "Error", "Somehow cannot find scan.\n");return;}
@@ -228,13 +302,34 @@ void pgWrite::onSave(){
     res=scanRes->get();
     if(res==nullptr){saveB->setEnabled(false);return;}
     std::string filename=filenaming->get();
-    std::cerr<<"got "<<filename<<"\n";
     replacePlaceholdersInString(filename);
-    std::cerr<<"got "<<filename<<"\n";
-    filename=QFileDialog::getSaveFileName(gui_activation,"Save scan to file.",QString::fromStdString(util::toString(autoscan_default_folder->get(),"/",filename,".pfm")),"Images (*.pfm)").toStdString();
-    std::cerr<<"got "<<filename<<"\n";
+    std::string path=util::toString(scan_default_folder->get(),"/",filename);
+    size_t found=path.find_last_of("/");
+    if(found!=std::string::npos){
+        path.erase(found,path.size()+found);
+        cv::utils::fs::createDirectory(path);
+    }
+    filename=QFileDialog::getSaveFileName(gui_activation,"Save scan to file.",QString::fromStdString(util::toString(scan_default_folder->get(),"/",filename,".pfm")),"Images (*.pfm)").toStdString();
     if(filename.empty()) return;
     pgScanGUI::saveScan(res,filename);
+    saveConfig(filename);
+}
+void pgWrite::saveConfig(std::string filename){
+    if(filename.size()>4) filename.replace(filename.size()-4,4,".cfg");
+    std::ofstream wfile(filename);
+    wfile<<"Tag String: "<<tagString->text().toStdString()<<"\n";
+    wfile<<"Tag UInt: "<<static_cast<int>(tagUInt->val)<<"\n";
+    wfile<<"MaxDepth: "<<lastDepth<<"\n";
+    wfile<<"ImgUmPPx: "<<imgUmPPx->val<<"\n";
+    std::string fn=fileName;
+    size_t found=fn.find_last_of("/");
+    if(found!=std::string::npos) fn.erase(0,found+1);
+    wfile<<"Source filename: "<<fn<<"\n";
+    if(addNotes->val){
+        wfile<<"User Notes:\n";
+        wfile<<notestring;
+    }
+    wfile.close();
 }
 void pgWrite::onShowWriteFrame(bool state){
     writeFrame->setVisible(state);
@@ -243,9 +338,9 @@ void pgWrite::on_write_default_folder(){
     std::string folder=QFileDialog::getExistingDirectory(gui_settings, tr("Select write source default folder"), QString::fromStdString(write_default_folder->get())).toStdString();
     if(!folder.empty()) write_default_folder->set(folder);
 }
-void pgWrite::on_autoscan_default_folder(){
-    std::string folder=QFileDialog::getExistingDirectory(gui_settings, tr("Select autoscan destination default folder"), QString::fromStdString(autoscan_default_folder->get())).toStdString();
-    if(!folder.empty()) autoscan_default_folder->set(folder);
+void pgWrite::on_scan_default_folder(){
+    std::string folder=QFileDialog::getExistingDirectory(gui_settings, tr("Select autoscan destination default folder"), QString::fromStdString(scan_default_folder->get())).toStdString();
+    if(!folder.empty()) scan_default_folder->set(folder);
 }
 void pgWrite::onCorDTCor(){
     bool ok;
@@ -273,6 +368,7 @@ void pgWrite::onPulse(){
     co.addHold("Z",CTRL::he_motion_ontarget);
     co.pulseGPIO("wrLaser",pulseDur->val/1000);
     co.execute();
+    if(switchBack2mirau)pgMGUI->chooseObj(true);
 }
 void pgWrite::onMenuChange(int index){
     for(int i=0;i!=Nset;i++) settingWdg[i]->setVisible(i==index?true:false);
@@ -342,8 +438,6 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
 void pgWrite::onLoadImg(){
     writeDM->setEnabled(false);
     writeFrame->setEnabled(false);
-    scanB->setEnabled(false);
-    saveB->setEnabled(false);
     fileName=QFileDialog::getOpenFileName(gui_activation,"Select file containing stucture to write (Should be either 8bit or 16bit image (will be made monochrome if color), or 32bit float.).",
                                           firstImageLoaded?"":QString::fromStdString(write_default_folder->get()),"Images (*.pfm *.png *.jpg *.tif)").toStdString();
     if(fileName.empty()) return;
@@ -357,21 +451,29 @@ void pgWrite::onLoadImg(){
         return;
     }
 
-    if(!firstImageLoaded){
-        firstImageLoaded=true;
-    }else{
-        tagUInt->setValue(tagUInt->val+1);
-    }
+    firstImageLoaded=true;
     writeDM->setEnabled(true);
     writeFrame->setEnabled(true);
 }
 void pgWrite::onWriteDM(){
-    writeMat();
-    scanB->setEnabled(true);
-
     // save coords for scan
-    QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 100);
+    wait4motionToComplete();
+    QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
+
+    scanB->setEnabled(false);
+    saveB->setEnabled(false);
+    if(!firstWritten)firstWritten=true;
+    else tagUInt->setValue(tagUInt->val+1);
+
+    //write:
+    if(writeMat()){
+        firstWritten=false;
+        return;
+    }
+    if(WRImage.type()!=CV_32F) lastDepth=depthMaxval->val;
+    else cv::minMaxIdx(WRImage,0,&lastDepth);
+    scanB->setEnabled(true);
 
     // prepare ROI for scan
     double ratio=imgUmPPx->val;
@@ -398,7 +500,16 @@ void pgWrite::onWriteDM(){
     if(scanROI.width+scanROI.x>cols) scanROI.width=cols-scanROI.x;
     if(scanROI.height+scanROI.y>rows) scanROI.height=rows-scanROI.y;
 }
-void pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double override_imgmmPPx, double override_pointSpacing, double override_focus, double ov_fxcor, double ov_fycor){
+void pgWrite::wait4motionToComplete(){
+    CTRL::CO CO(go.pRPTY);
+    CO.addHold("X",CTRL::he_motion_ontarget);
+    CO.addHold("Y",CTRL::he_motion_ontarget);
+    CO.addHold("Z",CTRL::he_motion_ontarget);
+    CO.execute();
+    while(CO.getProgress()!=1) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+}
+bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double override_imgmmPPx, double override_pointSpacing, double override_focus, double ov_fxcor, double ov_fycor){
+    wabort=false;
     cv::Mat tmpWrite, resizedWrite;
     cv::Mat* src;
     double vdepthMaxval, vimgmmPPx, vpointSpacing, vfocus, vfocusXcor, vfocusYcor;
@@ -415,7 +526,7 @@ void pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
     }else if(src->type()==CV_16U){
         src->convertTo(tmpWrite, CV_32F, vdepthMaxval/65536);
     }else if(src->type()==CV_32F) src->copyTo(tmpWrite);
-    else {QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n"); return;}
+    else {QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n"); return true;}
 
     double ratio=vimgmmPPx/vpointSpacing;
     if(vimgmmPPx==vpointSpacing) tmpWrite.copyTo(resizedWrite);
@@ -424,7 +535,7 @@ void pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
 
     // at this point resizedWrite contains the desired depth at each point
     std::lock_guard<std::mutex>lock(MLP._lock_proc);
-    if(!go.pRPTY->connected) return;
+    if(!go.pRPTY->connected) return true;
     pgMGUI->chooseObj(false);    // switch to writing
     pulse_precision=go.pRPTY->getPulsePrecision();  // pulse duration unit
 
@@ -442,9 +553,9 @@ void pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
     CO.execute();
     CO.clear(true);
 
-    unsigned nops;
     double pulse;
     bool xdir=0;
+    abort->setVisible(true);
     for(int j=0;j!=resizedWrite.rows;j++){   // write row by row (so that processing for the next row is done while writing the previous one, and the operation can be terminated more easily)
         for(int i=0;i!=resizedWrite.cols;i++){
             pulse=getDT(resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i));          // Y inverted because image formats have flipped Y
@@ -462,6 +573,7 @@ void pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
 
         while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
         MLP.progress_proc=100./resizedWrite.rows*j;
+        if(wabort) {if(switchBack2mirau)pgMGUI->chooseObj(true); abort->setVisible(false); return true;}
     }
 
     pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
@@ -471,6 +583,9 @@ void pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
 
     while(CO.getProgress()<1) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     MLP.progress_proc=100;
+    if(switchBack2mirau)pgMGUI->chooseObj(true);
+    abort->setVisible(false);
+    return false;
 }
 void pgWrite::onWriteFrame(){
     std::cerr<<"writing frame\n";
@@ -534,11 +649,16 @@ void pgWrite::onChangeDrawWriteAreaOnTag(bool status){
 void pgWrite::onChangeDrawWriteFrameAreaOn(bool status){
     drawWriteAreaOn=status?3:0;
 }
+void pgWrite::onChangeDrawScanAreaOn(bool status){
+    drawWriteAreaOn=status?4:0;
+}
 void pgWrite::drawWriteArea(cv::Mat* img){
     if(!drawWriteAreaOn) return;
     double ratio;
     double xSize;
     double ySize;
+    double xShiftmm=0;
+    double yShiftmm=0;
 
     if(drawWriteAreaOn==3){ //frame
         if(WRImage.empty() || !writeFrame->isEnabled()) return;
@@ -551,14 +671,21 @@ void pgWrite::drawWriteArea(cv::Mat* img){
         cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
         xSize=round(ratio*(size.width+1))*1000/pgMGUI->getNmPPx();
         ySize=round(ratio*(size.height+1))*1000/pgMGUI->getNmPPx();
-    }else{
+    }else if(drawWriteAreaOn==1){ // write
         if(WRImage.empty() || !writeDM->isEnabled()) return;
         ratio=imgUmPPx->val;
         xSize=round(ratio*WRImage.cols)*1000/pgMGUI->getNmPPx();
         ySize=round(ratio*WRImage.rows)*1000/pgMGUI->getNmPPx();
+    }else{  // scan
+        if(!scanB->isEnabled() || !go.pRPTY->connected) return;
+        pgMGUI->getPos(&xShiftmm, &yShiftmm);
+        xShiftmm-=scanCoords[0];
+        yShiftmm-=scanCoords[1];
+        xSize=pgMGUI->mm2px(pgMGUI->px2mm(scanROI.width,0));
+        ySize=pgMGUI->mm2px(pgMGUI->px2mm(scanROI.height,0));
     }
 
     double clr[2]={0,255}; int thck[2]={3,1};
     for(int i=0;i!=2;i++)
-        cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), img->rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY), xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
+        cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX+xShiftmm), img->rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY+yShiftmm), xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
 }
