@@ -9,6 +9,10 @@ class pgBeamAnalysis;
 class QLineEdit;
 class procLockProg;
 class hidCon;
+class QListView;
+class QStandardItemModel;
+class QStandardItem;
+class QFont;
 class pgWrite: public QObject{
     Q_OBJECT
 public:
@@ -50,6 +54,19 @@ private:
     val_selector* tagUInt;
     QPushButton* guessTagUInt;
     checkbox_gs* useWriteScheduling;
+    QListView* schedulelw;
+    QStandardItemModel* schedulemod;
+    struct schItem{
+        QStandardItem* ptr;
+        cv::Mat src;            // write source image
+        bool isWrite;           // if not, it is scan
+        double coords[3];       // write/scan coordinates
+        std::string conf;       // if scan, prefilled conf
+        std::string filename;   // if write, source filename, if scan, save filename
+        cv::Rect scanROI;       // if scan, ROI
+        double writePars[6];    // write parameters
+    };
+    std::vector<schItem> scheduled;
 
     //settings
     QVBoxLayout* slayout;
@@ -90,6 +107,7 @@ private:
     int drawWriteAreaOn{0};     //1 is img, 2 is tag, 3 is frame
     const double servoCycle{0.0001};    // The XPS servo cycle (in s)
     cv::Rect scanROI;
+    void prepareScanROI();
     double scanCoords[3];
 
     pgBeamAnalysis* pgBeAn;
@@ -110,7 +128,10 @@ private:
     bool wabort;
 
     void saveConfig(std::string filename);
+    std::string genConfig();
+    QStandardItem* addScheduleItem(std::string text, bool toTop);
 
+    void prepareSchedTagFrame(std::string name);
 private Q_SLOTS:
     void onPulse();
     void onMenuChange(int index);

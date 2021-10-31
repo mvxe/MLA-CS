@@ -6,6 +6,8 @@
 #include "opencv2/core/utils/filesystem.hpp"
 #include <dirent.h>
 #include <sys/stat.h>
+#include <QListView>
+#include <QStandardItemModel>
 
 pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI* pgSGUI): pgBeAn(pgBeAn), pgMGUI(pgMGUI), MLP(MLP), pgSGUI(pgSGUI){
     gui_activation=new QWidget;
@@ -89,8 +91,17 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
 
     useWriteScheduling=new checkbox_gs(false,"Enable write scheduling");
     connect(useWriteScheduling, SIGNAL(changed(bool)), this, SLOT(onUseWriteScheduling(bool)));
-    conf["useWriteScheduling"]=useWriteScheduling;
     alayout->addWidget(new twid(useWriteScheduling));
+    schedulelw=new QListView;
+    schedulelw->setVisible(false);
+    alayout->addWidget(schedulelw);
+
+    schedulelw->setDragEnabled(true);
+    schedulelw->setDragDropMode(QAbstractItemView::InternalMove);
+    schedulelw->setDefaultDropAction(Qt::MoveAction);
+
+    schedulemod=new QStandardItemModel(0, 1);
+    schedulelw->setModel(schedulemod);
 
     dTCcor=new val_selector(1, "Pulse duration correction", 0.1, 3, 3);
     conf["dTCcor"]=dTCcor;
@@ -289,6 +300,17 @@ void pgWrite::onUseWriteScheduling(bool state){
     writeDM->setText(state?"Schedule Write":"Write");
     writeTag->setText(state?"Schedule Write Tag":"Write Tag");
     writeFrame->setText(state?"Schedule Write Frame":"Write Frame");
+    schedulelw->setVisible(state);
+    saveB->setVisible(!state);
+    scanB->setVisible(!state);
+}
+QStandardItem* pgWrite::addScheduleItem(std::string text, bool toTop){
+    schedulemod->insertRows(toTop?0:schedulemod->rowCount(),1);
+    QStandardItem *item = new QStandardItem(QString::fromStdString(text));
+    item->setEditable(false);
+    item->setDropEnabled(false);
+    schedulemod->setItem(toTop?0:(schedulemod->rowCount()-1), 0, item);
+    return item;
 }
 void pgWrite::onScan(){
     pgMGUI->chooseObj(true);
@@ -317,19 +339,25 @@ void pgWrite::onSave(){
 void pgWrite::saveConfig(std::string filename){
     if(filename.size()>4) filename.replace(filename.size()-4,4,".cfg");
     std::ofstream wfile(filename);
-    wfile<<"Tag String: "<<tagString->text().toStdString()<<"\n";
-    wfile<<"Tag UInt: "<<static_cast<int>(tagUInt->val)<<"\n";
-    wfile<<"MaxDepth: "<<lastDepth<<"\n";
-    wfile<<"ImgUmPPx: "<<imgUmPPx->val<<"\n";
+    wfile<<genConfig();
+    wfile.close();
+}
+std::string pgWrite::genConfig(){
     std::string fn=fileName;
     size_t found=fn.find_last_of("/");
     if(found!=std::string::npos) fn.erase(0,found+1);
-    wfile<<"Source filename: "<<fn<<"\n";
+    std::string ret= util::toString(
+                "Tag String: ",tagString->text().toStdString(),"\n",
+                "Tag UInt: ",static_cast<int>(tagUInt->val),"\n",
+                "MaxDepth: ",lastDepth,"\n",
+                "ImgUmPPx: ",imgUmPPx->val,"\n",
+                "Source filename: ",fn,"\n"
+                );
     if(addNotes->val){
-        wfile<<"User Notes:\n";
-        wfile<<notestring;
+        ret+="User Notes:\n";
+        ret+=notestring;
     }
-    wfile.close();
+    return ret;
 }
 void pgWrite::onShowWriteFrame(bool state){
     writeFrame->setVisible(state);
@@ -461,24 +489,50 @@ void pgWrite::onWriteDM(){
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
 
-    scanB->setEnabled(false);
-    saveB->setEnabled(false);
+    prepareScanROI();
+    if(WRImage.type()!=CV_32F) lastDepth=depthMaxval->val;
+    else cv::minMaxIdx(WRImage,0,&lastDepth);
+
     if(!firstWritten)firstWritten=true;
     else tagUInt->setValue(tagUInt->val+1);
 
+    if(useWriteScheduling->val){    // scheduling
+        std::string filename=filenaming->get();
+        replacePlaceholdersInString(filename);
+        scheduled.emplace_back();
+        for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
+        WRImage.copyTo(scheduled.back().src);
+        scheduled.back().isWrite=true;
+        scheduled.back().writePars[0]=depthMaxval->val/1000000;
+        scheduled.back().writePars[1]=imgUmPPx->val/1000;
+        scheduled.back().writePars[2]=pointSpacing->val/1000;
+        scheduled.back().writePars[3]=focus->val/1000;
+        scheduled.back().writePars[4]=focusXcor->val/1000;
+        scheduled.back().writePars[5]=focusYcor->val/1000;
+        scheduled.back().ptr=addScheduleItem(util::toString("Pending - Write       - ",filename),true);
+
+        scheduled.emplace_back();
+        for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
+        scheduled.back().isWrite=false;
+        scheduled.back().filename=util::toString(scan_default_folder->get(),"/",filename);
+        scheduled.back().conf=genConfig();
+        scheduled.back().scanROI=scanROI;
+        scheduled.back().ptr=addScheduleItem(util::toString("Pending - Scan        - ",filename),false);
+        return;
+    }
+
+    scanB->setEnabled(false);
+    saveB->setEnabled(false);
     //write:
     if(writeMat()){
         firstWritten=false;
         return;
     }
-    if(WRImage.type()!=CV_32F) lastDepth=depthMaxval->val;
-    else cv::minMaxIdx(WRImage,0,&lastDepth);
     scanB->setEnabled(true);
-
-    // prepare ROI for scan
-    double ratio=imgUmPPx->val;
-    int xSize=round(ratio*WRImage.cols+2)*1000/pgMGUI->getNmPPx();
-    int ySize=round(ratio*WRImage.rows+2)*1000/pgMGUI->getNmPPx();
+}
+void pgWrite::prepareScanROI(){
+    int xSize=pgMGUI->mm2px(round(imgUmPPx->val*WRImage.cols+2)/1000,0);
+    int ySize=pgMGUI->mm2px(round(imgUmPPx->val*WRImage.rows+2)/1000,0);
     int cols=go.pGCAM->iuScope->camCols;
     int rows=go.pGCAM->iuScope->camRows;
 
@@ -500,6 +554,7 @@ void pgWrite::onWriteDM(){
     if(scanROI.width+scanROI.x>cols) scanROI.width=cols-scanROI.x;
     if(scanROI.height+scanROI.y>rows) scanROI.height=rows-scanROI.y;
 }
+
 void pgWrite::wait4motionToComplete(){
     CTRL::CO CO(go.pRPTY);
     CO.addHold("X",CTRL::he_motion_ontarget);
@@ -588,7 +643,6 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
     return false;
 }
 void pgWrite::onWriteFrame(){
-    std::cerr<<"writing frame\n";
     cv::Size size=WRImage.size();
     double ratio=imgUmPPx->val; double fr=settingWdg[4]->frameDis->val;
     int xSize=round(ratio*WRImage.cols+2*fr)/settingWdg[4]->imgUmPPx->val;
@@ -605,14 +659,37 @@ void pgWrite::onWriteFrame(){
             tagImage.at<uchar>(ySize-1-j,i*(xSize-1))=255;
         }
     }
-    writeMat(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
+
+    if(useWriteScheduling->val) prepareSchedTagFrame("Write Frame - ");
+    else writeMat(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
 }
 void pgWrite::onWriteTag(){
-    std::cerr<<"writing tag\n";
     cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
     tagImage=cv::Mat(size.height+4,size.width+4,CV_8U,cv::Scalar(0));
     cv::putText(tagImage,tagText->text().toStdString(), {0,size.height+1}, OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, cv::Scalar(255), settingWdg[4]->fontThickness->val, cv::LINE_AA);
-    writeMat(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
+
+    if(useWriteScheduling->val) prepareSchedTagFrame("Write Tag   - ");
+    else writeMat(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
+}
+void pgWrite::prepareSchedTagFrame(std::string name){
+    wait4motionToComplete();
+    QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+    double coords[3];
+    pgMGUI->getPos(&coords[0], &coords[1], &coords[2]);
+
+    std::string filename=filenaming->get();
+    replacePlaceholdersInString(filename);
+    scheduled.emplace_back();
+    for(int i:{0,1,2})scheduled.back().coords[i]=coords[i];
+    tagImage.copyTo(scheduled.back().src);
+    scheduled.back().isWrite=true;
+    scheduled.back().writePars[0]=settingWdg[4]->depthMaxval->val/1000000;
+    scheduled.back().writePars[1]=settingWdg[4]->imgUmPPx->val/1000;
+    scheduled.back().writePars[2]=settingWdg[4]->pointSpacing->val/1000;
+    scheduled.back().writePars[3]=settingWdg[4]->focus->val/1000;
+    scheduled.back().writePars[4]=settingWdg[4]->focusXcor->val/1000;
+    scheduled.back().writePars[5]=settingWdg[4]->focusYcor->val/1000;
+    scheduled.back().ptr=addScheduleItem(util::toString("Pending - ",name,filename),true);
 }
 
 float pgWrite::getDT(float H, float H0){
