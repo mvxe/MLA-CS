@@ -100,3 +100,43 @@ void imgAux::getNearestFreePointToCenter(const cv::Mat* mask, const int cenX, co
         ptX=pts[itt]->x-width/2; ptY=pts[itt]->y-height/2;
     }
 }
+
+
+// overlay
+
+void* overlay::add_overlay(cv::Mat mat, long posx, long posy){
+    overlayElements.push_back({posx,posy,mat});
+    return &overlayElements.back();
+}
+void overlay::rm_overlay(void* ptr){
+    for (std::list<overlayElement>::iterator it=overlayElements.begin(); it!=overlayElements.end(); it++)
+        if(ptr==&(*it)) overlayElements.erase(it);
+}
+void overlay::drawOverlays(cv::Mat& mat, long posx, long posy){
+    if(mat.empty()) return;
+    for(auto& elem:overlayElements){
+        cv::Rect ROIM(posx,-posy,mat.cols,mat.rows);
+        cv::Rect ROIE(elem.posx+(mat.cols-elem.mat.cols)/2,-elem.posy+(mat.rows-elem.mat.rows)/2,elem.mat.cols,elem.mat.rows);
+        cv::Rect ROIov=ROIM&ROIE;
+        if(ROIov.width<=0 || ROIov.height<=0) continue; // not in viewport
+        ROIM=ROIov;
+        ROIM.x-=posx;
+        ROIM.y+=posy;
+        ROIE=ROIov;
+        ROIE.x-=elem.posx+(mat.cols-elem.mat.cols)/2;
+        ROIE.y+=elem.posy-(mat.rows-elem.mat.rows)/2;
+        cv::addWeighted(mat(ROIM),0.5,elem.mat(ROIE),0.5,0,mat(ROIM));
+    }
+}
+bool overlay::check(const cv::Mat& mat, long posx, long posy){
+    if(mat.empty()) return false;
+    for(auto& elem:overlayElements){
+        cv::Rect ROIM(posx,-posy,mat.cols,mat.rows);
+        cv::Rect ROIE(elem.posx+(mat.cols-elem.mat.cols)/2,-elem.posy+(mat.rows-elem.mat.rows)/2,elem.mat.cols,elem.mat.rows);
+        cv::Rect ROIov=ROIM&ROIE;
+        if(ROIov.width<=0 || ROIov.height<=0) continue; // not in viewport
+        return true;
+    }
+    return false;
+}
+

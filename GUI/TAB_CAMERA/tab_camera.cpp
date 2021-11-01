@@ -69,9 +69,9 @@ tab_camera::tab_camera(QWidget* parent){
 
     pgBeAn=new pgBeamAnalysis(pgMGUI);
     conf["pgBeamAnalysis"]=pgBeAn->conf;
-    pgWrt=new pgWrite(pgBeAn,pgMGUI,MLP,pgSGUI);
+    pgWrt=new pgWrite(pgBeAn, pgMGUI, MLP, pgSGUI, ovl);
     conf["pgWrite"]=pgWrt->conf;
-    pgCal=new pgCalib(pgSGUI, pgFGUI, pgMGUI, pgBeAn, pgWrt);
+    pgCal=new pgCalib(pgSGUI, pgFGUI, pgMGUI, pgBeAn, pgWrt, ovl);
     conf["pgCalib"]=pgCal->conf;
 
     addInfo=new QLabel; addInfo->setMargin(10);
@@ -184,15 +184,26 @@ void tab_camera::work_fun(){
     else framequeueDisp->setUserFps(0);
     onDisplay=framequeueDisp->getUserMat();
 
+
     if(selDisp->index==0){  // Camera
         LDisplay->isDepth=false;
         if(onDisplay!=nullptr){
-            if(main_show_target->isChecked() || main_show_scale->isChecked() || selectingFlag || lastSelectingFlag || sROI.width!=0){
+            long ipos[2];
+            bool hasOverlay=false;
+            if(!ovl.empty() && camSet->isMirau){
+                double pos[2];
+                pgMGUI->getPos(&pos[0],&pos[1]);
+                for(int i:{0,1}) ipos[i]=static_cast<long>(pgMGUI->mm2px(pos[i]));
+                hasOverlay=ovl.check(*onDisplay,ipos[0],ipos[1]);
+            }
+
+            if(hasOverlay || main_show_target->isChecked() || main_show_scale->isChecked() || selectingFlag || lastSelectingFlag || sROI.width!=0){
                 cv::Mat temp=onDisplay->clone();
                 if(main_CLAHE_writing->isChecked() && !camSet->isMirau){
                     auto CLAHE=cv::createCLAHE(camSet->CLAHE_clipLimit->val, {(int)camSet->CLAHE_tileGridSize->val,(int)camSet->CLAHE_tileGridSize->val});
                     CLAHE->apply(temp,temp);
                 }
+                if(hasOverlay) ovl.drawOverlays(temp,ipos[0],ipos[1]);
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY));
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx(), pgMGUI->currentObj==1?(static_cast<double>(camSet->wrsbar_unit->val)):0);
                 if(selectingFlag){

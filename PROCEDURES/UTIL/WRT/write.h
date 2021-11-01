@@ -16,7 +16,7 @@ class QFont;
 class pgWrite: public QObject{
     Q_OBJECT
 public:
-    pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI *pgSGUI);
+    pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI *pgSGUI, overlay& ovl);
     ~pgWrite();
     rtoml::vsr conf;                //configuration map
     QWidget* gui_activation;
@@ -45,7 +45,6 @@ private:
     HQPushButton* writeDM;
     HQPushButton* scanB;
     QPushButton* saveB;
-    HQPushButton* writeFrame;
     QLineEdit* tagText;
     HQPushButton* writeTag;
     twid* tagSTwid;
@@ -64,6 +63,7 @@ private:
         std::string filename;   // if write, source filename, if scan, save filename
         cv::Rect scanROI;       // if scan, ROI
         double writePars[6];    // write parameters
+        void* overlay{nullptr};
     };
     std::vector<schItem> scheduled;
 
@@ -91,7 +91,6 @@ private:
     val_selector* numbericTagMinDigits;
     lineedit_gs* tagnaming;
 
-    checkbox_gs* showWriteFrame;
     val_selector* scanExtraBorder;
     val_selector* scanRepeatN;
     checkbox_gs* switchBack2mirau;
@@ -113,6 +112,7 @@ private:
     pgMoveGUI* pgMGUI;
     procLockProg& MLP;
     pgScanGUI* pgSGUI;
+    overlay& ovl;
     varShareClient<pgScanGUI::scanRes>* scanRes;
     const pgScanGUI::scanRes* res;
 
@@ -135,19 +135,16 @@ private Q_SLOTS:
     void onPulse();
     void onMenuChange(int index);
     void onLoadImg();
-    void onWriteFrame();
     void onWriteTag();
     void onChangeDrawWriteAreaOn(bool status);
     void onChangeDrawScanAreaOn(bool status);
     void onChangeDrawWriteAreaOnTag(bool status);
-    void onChangeDrawWriteFrameAreaOn(bool status);
     void onCorDTCor();
     void onCorPPR();
     void on_write_default_folder();
     void on_scan_default_folder();
     void onScan();
     void onSave();
-    void onShowWriteFrame(bool state);
     void onUseWriteScheduling(bool state);
     void onCheckTagString();
     void onRecomputeTagString();

@@ -15,7 +15,7 @@ class QSpinBox;
 class pgCalib: public QWidget{
     Q_OBJECT
 public:
-    pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn, pgWrite* pgWr);
+    pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn, pgWrite* pgWr, overlay& ovl);
     rtoml::vsr conf;                //configuration map
 
     QWidget* gui_settings;
@@ -26,6 +26,7 @@ private:
     pgScanGUI* pgSGUI;
     pgBeamAnalysis* pgBeAn;
     pgWrite* pgWr;
+    overlay& ovl;
 
     //settings
     QVBoxLayout* slayout;

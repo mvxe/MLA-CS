@@ -50,6 +50,7 @@ private:
     cameraSett* camSet;     unsigned index_camSet;
     pgCorrection* pgCor;
     QLabel* addInfo;
+    overlay ovl;
 
     smp_selector* cm_sel;       //for selecting the colormap for display
     QPushButton* epc_sel;       //for selecting the excluded pixel color

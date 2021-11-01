@@ -5,9 +5,6 @@
 #include <atomic>
 #include <QString>
 #include "opencv2/opencv.hpp"
-namespace cv {
-    class Mat;
-}
 
 //CVMAT SAFE
 
@@ -80,6 +77,25 @@ private:
     static bool sortF0(point& i,point& j);
     static bool findLT(point& i);
     static float target;
+};
+
+// overlay
+
+class overlay{
+public:
+    overlay(){}
+    void* add_overlay(cv::Mat mat, long posx, long posy);
+    void rm_overlay(void* ptr);
+    void drawOverlays(cv::Mat& mat, long posx, long posy);
+    bool empty(){return overlayElements.empty();}
+    bool check(const cv::Mat& mat, long posx, long posy);
+private:
+    struct overlayElement{
+        long posx;        // in px
+        long posy;        // in px
+        cv::Mat mat;
+    };
+    std::list<overlayElement> overlayElements;
 };
 
 #endif // IMG_UTIL_H

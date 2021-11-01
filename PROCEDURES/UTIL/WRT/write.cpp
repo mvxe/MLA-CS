@@ -9,7 +9,7 @@
 #include <QListView>
 #include <QStandardItemModel>
 
-pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI* pgSGUI): pgBeAn(pgBeAn), pgMGUI(pgMGUI), MLP(MLP), pgSGUI(pgSGUI){
+pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI* pgSGUI, overlay& ovl): pgBeAn(pgBeAn), pgMGUI(pgMGUI), MLP(MLP), pgSGUI(pgSGUI), ovl(ovl){
     gui_activation=new QWidget;
     gui_settings=new QWidget;
     scanRes=pgSGUI->result.getClient();
@@ -63,11 +63,6 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     connect(writeTag, SIGNAL(released()), this, SLOT(onWriteTag()));
     alayout->addWidget(new twid(writeTag,new QLabel("Text:"),tagText));
 
-    writeFrame=new HQPushButton("Write Frame");
-    connect(writeFrame, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteFrameAreaOn(bool)));
-    connect(writeFrame, SIGNAL(released()), this, SLOT(onWriteFrame()));
-    alayout->addWidget(new twid(writeFrame));
-
     tagString=new lineedit_gs("A");
     conf["tagString"]=tagString;
     tagSTwid=new twid(new QLabel("Tag String:"),tagString);
@@ -111,7 +106,6 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
 
 
     writeDM->setEnabled(false);
-    writeFrame->setEnabled(false);
 
     selectWriteSetting=new smp_selector("Select write setting: ", 0, {"Set0", "Set1", "Set2", "Set3", "Tag"});    //should have Nset strings
     conf["selectWriteSetting"]=selectWriteSetting;
@@ -164,10 +158,6 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
 
     slayout->addWidget(folderhcon);
 
-    showWriteFrame=new checkbox_gs(false,"Show 'Write frame' button.");
-    conf["showWriteFrame"]=showWriteFrame;
-    connect(showWriteFrame, SIGNAL(changed(bool)), this, SLOT(onShowWriteFrame(bool)));
-    slayout->addWidget(showWriteFrame);
     scanExtraBorder=new val_selector(0, "Scan extra margin = ", 0, 1000, 0, 0, {"um","px"});
     scanExtraBorder->setToolTip("Generally a good idea, also may catch tag/border.\nIf this goes beyond viewport, the extra will be clipped.");
     conf["scanExtraBorder"]=scanExtraBorder;
@@ -299,7 +289,6 @@ void pgWrite::guessAndUpdateNextTagUInt(){
 void pgWrite::onUseWriteScheduling(bool state){
     writeDM->setText(state?"Schedule Write":"Write");
     writeTag->setText(state?"Schedule Write Tag":"Write Tag");
-    writeFrame->setText(state?"Schedule Write Frame":"Write Frame");
     schedulelw->setVisible(state);
     saveB->setVisible(!state);
     scanB->setVisible(!state);
@@ -358,9 +347,6 @@ std::string pgWrite::genConfig(){
         ret+=notestring;
     }
     return ret;
-}
-void pgWrite::onShowWriteFrame(bool state){
-    writeFrame->setVisible(state);
 }
 void pgWrite::on_write_default_folder(){
     std::string folder=QFileDialog::getExistingDirectory(gui_settings, tr("Select write source default folder"), QString::fromStdString(write_default_folder->get())).toStdString();
@@ -465,7 +451,6 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
 }
 void pgWrite::onLoadImg(){
     writeDM->setEnabled(false);
-    writeFrame->setEnabled(false);
     fileName=QFileDialog::getOpenFileName(gui_activation,"Select file containing stucture to write (Should be either 8bit or 16bit image (will be made monochrome if color), or 32bit float.).",
                                           firstImageLoaded?"":QString::fromStdString(write_default_folder->get()),"Images (*.pfm *.png *.jpg *.tif)").toStdString();
     if(fileName.empty()) return;
@@ -481,7 +466,6 @@ void pgWrite::onLoadImg(){
 
     firstImageLoaded=true;
     writeDM->setEnabled(true);
-    writeFrame->setEnabled(true);
 }
 void pgWrite::onWriteDM(){
     // save coords for scan
@@ -510,6 +494,12 @@ void pgWrite::onWriteDM(){
         scheduled.back().writePars[4]=focusXcor->val/1000;
         scheduled.back().writePars[5]=focusYcor->val/1000;
         scheduled.back().ptr=addScheduleItem(util::toString("Pending - Write       - ",filename),true);
+        cv::Mat resized;
+        double ratio=imgUmPPx->val;
+        double xSize=round(ratio*WRImage.cols)*1000/pgMGUI->getNmPPx(0);
+        double ySize=round(ratio*WRImage.rows)*1000/pgMGUI->getNmPPx(0);
+        cv::resize(WRImage, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
+        scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(scanCoords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(scanCoords[1]-pgBeAn->writeBeamCenterOfsY,0));
 
         scheduled.emplace_back();
         for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
@@ -518,6 +508,7 @@ void pgWrite::onWriteDM(){
         scheduled.back().conf=genConfig();
         scheduled.back().scanROI=scanROI;
         scheduled.back().ptr=addScheduleItem(util::toString("Pending - Scan        - ",filename),false);
+
         return;
     }
 
@@ -633,56 +624,39 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
     abort->setVisible(false);
     return false;
 }
-void pgWrite::onWriteFrame(){
-    cv::Size size=WRImage.size();
-    double ratio=imgUmPPx->val; double fr=settingWdg[4]->frameDis->val;
-    int xSize=round(ratio*WRImage.cols+2*fr)/settingWdg[4]->imgUmPPx->val;
-    int ySize=round(ratio*WRImage.rows+2*fr)/settingWdg[4]->imgUmPPx->val;
-    tagImage=cv::Mat(ySize,xSize,CV_8U,cv::Scalar(0));
-    int tglen=fr/settingWdg[4]->imgUmPPx->val;
-    for(int i=0;i!=2;i++) for(int j=0;j<tglen;j++){
-        if(j<xSize){
-            tagImage.at<uchar>(i*(ySize-1),j        )=255;
-            tagImage.at<uchar>(i*(ySize-1),xSize-1-j)=255;
-        }
-        if(j<ySize){
-            tagImage.at<uchar>(j,        i*(xSize-1))=255;
-            tagImage.at<uchar>(ySize-1-j,i*(xSize-1))=255;
-        }
-    }
-
-    if(useWriteScheduling->val) prepareSchedTagFrame("Write Frame - ");
-    else writeMat(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
-}
 void pgWrite::onWriteTag(){
     cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
     tagImage=cv::Mat(size.height+4,size.width+4,CV_8U,cv::Scalar(0));
     cv::putText(tagImage,tagText->text().toStdString(), {0,size.height+1}, OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, cv::Scalar(255), settingWdg[4]->fontThickness->val, cv::LINE_AA);
 
-    if(useWriteScheduling->val) prepareSchedTagFrame("Write Tag   - ");
+    if(useWriteScheduling->val){
+        pgMGUI->wait4motionToComplete();
+        QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+        double coords[3];
+        pgMGUI->getPos(&coords[0], &coords[1], &coords[2]);
+
+        std::string filename=filenaming->get();
+        replacePlaceholdersInString(filename);
+        scheduled.emplace_back();
+        for(int i:{0,1,2})scheduled.back().coords[i]=coords[i];
+        tagImage.copyTo(scheduled.back().src);
+        scheduled.back().isWrite=true;
+        scheduled.back().writePars[0]=settingWdg[4]->depthMaxval->val/1000000;
+        scheduled.back().writePars[1]=settingWdg[4]->imgUmPPx->val/1000;
+        scheduled.back().writePars[2]=settingWdg[4]->pointSpacing->val/1000;
+        scheduled.back().writePars[3]=settingWdg[4]->focus->val/1000;
+        scheduled.back().writePars[4]=settingWdg[4]->focusXcor->val/1000;
+        scheduled.back().writePars[5]=settingWdg[4]->focusYcor->val/1000;
+        scheduled.back().ptr=addScheduleItem(util::toString("Pending - ","Write Tag   - ",filename),true);
+        cv::Mat resized;
+        double ratio=settingWdg[4]->imgUmPPx->val;
+        double xSize=round(ratio*tagImage.cols)*1000/pgMGUI->getNmPPx(0);
+        double ySize=round(ratio*tagImage.rows)*1000/pgMGUI->getNmPPx(0);
+        cv::resize(tagImage, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
+        scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(coords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(coords[1]-pgBeAn->writeBeamCenterOfsY,0));
+    }
     else writeMat(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
 }
-void pgWrite::prepareSchedTagFrame(std::string name){
-    pgMGUI->wait4motionToComplete();
-    QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
-    double coords[3];
-    pgMGUI->getPos(&coords[0], &coords[1], &coords[2]);
-
-    std::string filename=filenaming->get();
-    replacePlaceholdersInString(filename);
-    scheduled.emplace_back();
-    for(int i:{0,1,2})scheduled.back().coords[i]=coords[i];
-    tagImage.copyTo(scheduled.back().src);
-    scheduled.back().isWrite=true;
-    scheduled.back().writePars[0]=settingWdg[4]->depthMaxval->val/1000000;
-    scheduled.back().writePars[1]=settingWdg[4]->imgUmPPx->val/1000;
-    scheduled.back().writePars[2]=settingWdg[4]->pointSpacing->val/1000;
-    scheduled.back().writePars[3]=settingWdg[4]->focus->val/1000;
-    scheduled.back().writePars[4]=settingWdg[4]->focusXcor->val/1000;
-    scheduled.back().writePars[5]=settingWdg[4]->focusYcor->val/1000;
-    scheduled.back().ptr=addScheduleItem(util::toString("Pending - ",name,filename),true);
-}
-
 float pgWrite::getDT(float H, float H0){
     float min=(constX0->val/1000)*dTCcor->val/plataeuPeakRatio->val;
     float ret=1;            // we limit pulse duration to 1 second
@@ -714,11 +688,8 @@ void pgWrite::onChangeDrawWriteAreaOn(bool status){
 void pgWrite::onChangeDrawWriteAreaOnTag(bool status){
     drawWriteAreaOn=status?2:0;
 }
-void pgWrite::onChangeDrawWriteFrameAreaOn(bool status){
-    drawWriteAreaOn=status?3:0;
-}
 void pgWrite::onChangeDrawScanAreaOn(bool status){
-    drawWriteAreaOn=status?4:0;
+    drawWriteAreaOn=status?3:0;
 }
 void pgWrite::drawWriteArea(cv::Mat* img){
     if(!drawWriteAreaOn) return;
@@ -728,23 +699,18 @@ void pgWrite::drawWriteArea(cv::Mat* img){
     double xShiftmm=0;
     double yShiftmm=0;
 
-    if(drawWriteAreaOn==3){ //frame
-        if(WRImage.empty() || !writeFrame->isEnabled()) return;
-        ratio=imgUmPPx->val; double fr=settingWdg[4]->frameDis->val;
-        xSize=round(ratio*WRImage.cols+2*fr)*1000/pgMGUI->getNmPPx();
-        ySize=round(ratio*WRImage.rows+2*fr)*1000/pgMGUI->getNmPPx();
-    }else if(drawWriteAreaOn==2){ //tag
+    if(drawWriteAreaOn==2){ //tag
         if(tagText->text().toStdString().empty()) return;
         ratio=settingWdg[4]->imgUmPPx->val;
         cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
-        xSize=round(ratio*(size.width+1))*1000/pgMGUI->getNmPPx();
-        ySize=round(ratio*(size.height+1))*1000/pgMGUI->getNmPPx();
+        xSize=round(ratio*(size.width+4))*1000/pgMGUI->getNmPPx();
+        ySize=round(ratio*(size.height+4))*1000/pgMGUI->getNmPPx();
     }else if(drawWriteAreaOn==1){ // write
         if(WRImage.empty() || !writeDM->isEnabled()) return;
         ratio=imgUmPPx->val;
         xSize=round(ratio*WRImage.cols)*1000/pgMGUI->getNmPPx();
         ySize=round(ratio*WRImage.rows)*1000/pgMGUI->getNmPPx();
-    }else{  // scan
+    }else if(drawWriteAreaOn==3){  // scan
         if(!scanB->isEnabled() || !go.pRPTY->connected) return;
         pgMGUI->getPos(&xShiftmm, &yShiftmm);
         xShiftmm-=scanCoords[0];
