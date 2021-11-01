@@ -22,17 +22,17 @@ rpMotionDevice_PINEXACTStage::rpMotionDevice_PINEXACTStage(){
     //conf["minimumStep"]=minimumStep;
 
     conf["serial_gpio_o"]=serial_gpio_o;
-    conf["serial_gpio_o"].comments.push_back("N (0-7), P (8-15)");
+    conf["serial_gpio_o"].comments().push_back("N (0-7), P (8-15)");
     conf["serial_gpio_i"]=serial_gpio_i;
-    conf["serial_gpio_i"].comments.push_back("N (0-7), P (8-15)");
+    conf["serial_gpio_i"].comments().push_back("N (0-7), P (8-15)");
     conf["motionType"]=reinterpret_cast<int&>(mType);
-    conf["motionType"].comments.push_back("0=mt_nanostepping_delay, 1=mt_nanostepping_ontarget, 2=mt_alternating_delay, 3=mt_alternating_ontarget");
+    conf["motionType"].comments().push_back("0=mt_nanostepping_delay, 1=mt_nanostepping_ontarget, 2=mt_alternating_delay, 3=mt_alternating_ontarget");
     conf["settleWindow"]=settleWindow;
-    conf["settleWindow"].comments.push_back("Settle window for on target, 1 count is 0.5nm.");
+    conf["settleWindow"].comments().push_back("Settle window for on target, 1 count is 0.5nm.");
     conf["settleTime"]=settleTime;
-    conf["settleTime"].comments.push_back("Settle time for on target, in seconds.");
+    conf["settleTime"].comments().push_back("Settle time for on target, in seconds.");
     conf["serialTimeout"]=serialTimeout;
-    conf["serialTimeout"].comments.push_back("Timeout for serial acquisition, in seconds. Some commands will be resent after no response.");
+    conf["serialTimeout"].comments().push_back("Timeout for serial acquisition, in seconds. Some commands will be resent after no response.");
 }
 rpMotionDevice_PINEXACTStage::~rpMotionDevice_PINEXACTStage(){
 }

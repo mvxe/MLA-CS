@@ -395,24 +395,6 @@ struct serializer
     // templatize for any table-like container
     std::string operator()(const table_type& v) const
     {
-        // if an element has a comment, then it can't be inlined.
-        // table = {# how can we write a comment for this? key = "value"}
-        if(this->can_be_inlined_ && !(this->has_comment_inside(v)))
-        {
-            std::string token;
-            if(!this->keys_.empty())
-            {
-                token += format_key(this->keys_.back());
-                token += " = ";
-            }
-            token += this->make_inline_table(v);
-            if(token.size() < this->width_ &&
-               token.end() == std::find(token.begin(), token.end(), '\n'))
-            {
-                return token;
-            }
-        }
-
         std::string token;
         if(!keys_.empty())
         {

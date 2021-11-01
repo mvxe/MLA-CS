@@ -4,11 +4,11 @@
 
 RPTY::gpioDevice::gpioDevice(){
     conf["gpio_pin"]=gpio;
-    conf["gpio_pin"].comments.push_back("N (0-7), P (8-15), LED(16-23)");
+    conf["gpio_pin"].comments().push_back("N (0-7), P (8-15), LED(16-23)");
     conf["isInput"]=isInput;
-    conf["direction"].comments.push_back("If true, gpio configured as input.");
+    conf["direction"].comments().push_back("If true, gpio configured as input.");
     conf["inverted"]=inverted;
-    conf["inverted"].comments.push_back("If true and output, the gpio will be high by default (even after deinit), and pulse will pull it low. Also inverts state in setGPIO. Does not afect input.");
+    conf["inverted"].comments().push_back("If true and output, the gpio will be high by default (even after deinit), and pulse will pull it low. Also inverts state in setGPIO. Does not afect input.");
 };
 void RPTY::gpioDevice::initGPIO(cqueue& cq){
     if(gpio>23) throw std::invalid_argument(util::toString("In RPTY::gpioDevice::initGPIO: no such gpio pin: ",gpio));

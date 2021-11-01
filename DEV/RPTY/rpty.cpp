@@ -155,7 +155,7 @@ void RPTY::setMotionDeviceType(std::string axisID){
             motionAxes[axisID].dev=new rpMotionDevice_SimpleServo;
             motionAxes[axisID].conf["rpMotionDevice_SimpleServo"]=motionAxes[axisID].dev->conf;
     }else{
-        motionAxes[axisID].conf["type"].comments.push_back("Implemented devices: md_PINEXACTStage, md_SimpleServo.");
+        motionAxes[axisID].conf["type"].comments().push_back("Implemented devices: md_PINEXACTStage, md_SimpleServo.");
         motionAxes[axisID].conf.save();
         throw std::runtime_error(util::toString("In RPTY::initMotionDevice, uncrecognized/nonexistant motion device defined for axis ",axisID,". Saved possible options to conf."));
     }
