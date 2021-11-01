@@ -78,8 +78,8 @@ private:
     gint payload;
     int Xsize;
     int Ysize;
-    double ackFPS;
-    double actualAckFPS;
+    double ackFPS{0};
+    double actualAckFPS{0};
     std::string format;
 
     std::mutex mtx;

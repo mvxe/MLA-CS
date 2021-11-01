@@ -67,6 +67,7 @@ void camobj::start(){
     std::cerr<<"minFPS="<<fmin<<"\n";
 
     for (int i=0;i!=FRAMEBUFFER_INITIAL_SIZE;i++) pushFrameIntoStream();
+    resetTimeout();
 }
 void camobj::pushFrameIntoStream(){
     if(!FreeBuffers.empty()){
