@@ -112,7 +112,7 @@ const pgScanGUI::scanRes* pgDepthEval::getDebugImage(const pgScanGUI::scanRes* s
     if(debugIndex==6 || debugIndex==9)  return &res;
 }
 
-cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, int dil, double thresh, double blur, int dily){         // used in Find Nearest Calibration method and Auto Array Calibration method
+cv::Mat pgDepthEval::getMaskFlatness(const pgScanGUI::scanRes* src, int dil, double thresh, double blur, int dily){         // used in Auto Array Calibration method
     cv::Mat retMask;
     src->mask.copyTo(retMask);
 

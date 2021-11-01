@@ -26,7 +26,6 @@ public:
             // matrix depth, if CV_32F, is in mm, likewise override_depthMaxval is in mm too
             // override_depthMaxval overrides only if matrix is CV_8U or CV_16U
             // return true if failed/aborted
-    void wait4motionToComplete();
 private:
     //activation
     QVBoxLayout* alayout;

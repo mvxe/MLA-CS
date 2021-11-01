@@ -424,7 +424,7 @@ void RPTY::CO_clear(CO* a, bool keepMotionRemainders){
     commandObjects[a].timer.clear();
     if(!keepMotionRemainders) commandObjects[a].motionRemainders.clear();
 }
-double RPTY::CO_getProgress(CO* a){
+double RPTY::CO_getProgress(CO* a){     // appears to be half broken
     std::lock_guard<std::recursive_mutex>lock(mux);
     if(commandObjects[a].ELNUM==0) return 1;
     int64_t N=static_cast<int64_t>(getNum(A2F_RSCur,main_cq))-(commandObjects[a].TODO-commandObjects[a].ELNUM);

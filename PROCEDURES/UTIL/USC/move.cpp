@@ -400,3 +400,11 @@ void pgMoveGUI::onSettingsObjectiveChange(int index){
         calibMirauW->setVisible(index==0);
     }
 }
+void pgMoveGUI::wait4motionToComplete(){
+    CTRL::CO CO(go.pRPTY);
+    CO.addHold("X",CTRL::he_motion_ontarget);
+    CO.addHold("Y",CTRL::he_motion_ontarget);
+    CO.addHold("Z",CTRL::he_motion_ontarget);
+    CO.execute();
+    while(CO.getProgress()!=1) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+}

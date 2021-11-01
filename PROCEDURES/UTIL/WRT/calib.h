@@ -19,7 +19,6 @@ public:
     rtoml::vsr conf;                //configuration map
 
     QWidget* gui_settings;
-    QWidget* gui_processing;
     void drawWriteArea(cv::Mat* img);
 private Q_SLOTS:
     bool goToNearestFree(double radDilat, double radRandSpread, double blur, double thrs, double radDilaty=0, bool convpx2um=false);      //returns true if failed (no free point nearby)
@@ -58,6 +57,7 @@ private:
     val_selector* selArrayFocusThresh;
     std::string lastFolder{""};
     HQPushButton* btnWriteCalib;
+    QLabel* report;
 
     int measCounter{0};
     bool drawWriteAreaOn{false};
@@ -68,7 +68,6 @@ private:
     QSpinBox* cropRght;
 
     //processing
-    QVBoxLayout* playout;
     QPushButton* btnProcessFocusMes;
 
     constexpr static int maxRedoScanTries=3;
@@ -76,7 +75,7 @@ private:
     constexpr static int maxRedoRefocusTries=3;
 
     void WCFArray(std::string folder);
-    void WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac, bool isPlateau, double peakXshift, double peakYshift);
+    bool WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac, bool isPlateau, double peakXshift, double peakYshift, unsigned n);
     void saveConf(std::string filename, double duration, double focus, double plateau, double peak, double peakXshift, double peakYshift);
     void saveMainConf(std::string filename);
     void selArray(int ArrayIndex, int MultiArrayIndex);

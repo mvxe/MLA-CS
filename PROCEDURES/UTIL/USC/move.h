@@ -62,7 +62,7 @@ public Q_SLOTS:
     void scaledMoveZ(double magnitude);
 
     void corCOMove(CTRL::CO& co, double Xmov, double Ymov, double Zmov, bool forceSkewCorrection=false);
-
+    void wait4motionToComplete();
 private:
     void init_gui_activation();
     void init_gui_settings();

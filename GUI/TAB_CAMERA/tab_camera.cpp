@@ -101,7 +101,6 @@ tab_camera::tab_camera(QWidget* parent){
         combineUseRefl=new QCheckBox("Use Reflectivity");
 
         pageProcessing->addWidget(new vtwid(new twid(loadRawBtn),new twid(diff2RawBtn),new twid(combineMes,combineUseRefl),pgSGUI->gui_processing,false, false));
-        pageProcessing->addWidget(pgCal->gui_processing);
 
     pageSettings=new twd_selector("","Select");
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));

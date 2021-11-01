@@ -148,8 +148,8 @@ void pgFocusGUI::updateCO(std::string &report){
     COmeasure->addHold("Z",CTRL::he_motion_ontarget);
     for(unsigned i=0;i!=totalFrameNum;i++){
         COmeasure->startTimer("timer",1./COfps+pgSGUI->triggerAdditionalDelay->val*0.001);      // in case motion is completed before the camera is ready for another frame
-        COmeasure->pulseGPIO("trigCam",0.0001);             // 100us
-        if(expo>0.0001) COmeasure->addDelay(expo-0.0001);   // keep stationary during exposure
+        COmeasure->pulseGPIO("trigCam",0.00001);            // 10us
+        if(expo>0.0001) COmeasure->addDelay(expo-0.00001);  // keep stationary during exposure
         COmeasure->addMotion("Z",displacementOneFrame,0,0,CTRL::MF_RELATIVE);
         COmeasure->addHold("Z",CTRL::he_motion_ontarget);
         COmeasure->addHold("timer",CTRL::he_timer_done);
@@ -173,8 +173,8 @@ void pgFocusGUI::refocus(cv::Rect ROI){
     pgMGUI->chooseObj(true);    // switch to mirau
     go.pGCAM->iuScope->set_trigger("Line1");
     framequeue=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
-    framequeue->setUserFps(COfps);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    framequeue->setUserFps(2*COfps);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     while(framequeue->getFullNumber()) framequeue->freeUserMat();   // remove any remaining non-trig frames
     COmeasure->execute();
 

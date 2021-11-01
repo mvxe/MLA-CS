@@ -114,15 +114,12 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgM
     slayout->addWidget(new twid(cropTop,cropBttm));
     slayout->addWidget(new twid(cropLeft,cropRght));
     slayout->addWidget(new hline);
-    slayout->addWidget(new twid(btnWriteCalib));
+    report=new QLabel("");
+    slayout->addWidget(new twid(btnWriteCalib,report));
 
-
-    gui_processing=new QWidget;
-    playout=new QVBoxLayout;
-    gui_processing->setLayout(playout);
-    btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements (Array method)");
+    btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements");
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
-    playout->addWidget(new twid(btnProcessFocusMes));
+    slayout->addWidget(new twid(btnProcessFocusMes));
 }
 void pgCalib::onMultiarrayNChanged(double val){
     selArrayFocusBlur->setVisible(val!=1);
@@ -157,13 +154,12 @@ bool pgCalib::goToNearestFree(double radDilat, double radRandSpread, double blur
 
     // first check if the current scan result is valid (done on current position)
     double tmp[3];
-    tmp[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
-    tmp[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
-    tmp[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
+    pgMGUI->getPos(&tmp[0], &tmp[1], &tmp[2]);
     bool redoScan=false;
     const pgScanGUI::scanRes* res=scanRes->get();
     if(res!=nullptr){
         for(int i=0;i!=3;i++) if(res->pos[i]!=tmp[i])redoScan=true;
+        if(res->depth.rows!=go.pGCAM->iuScope->camRows || res->depth.cols!=go.pGCAM->iuScope->camCols)redoScan=true;
     }else redoScan=true;
     if(redoScan){
         pgSGUI->doOneRound({0,0,-1,0}); // forces full ROI
@@ -312,6 +308,7 @@ void pgCalib::WCFArray(std::string folder){
         }wfile.close();
     }
     for(int n=0;n!=multiarrayN->val;n++){
+        report->setText(QString::fromStdString(util::toString(n,"/",multiarrayN->val)));
         for(int i=0;i!=WArray.cols; i++) for(int j=0;j!=WArray.rows; j++){              //populate 3D x2 array
             if(index==0) WArray.at<cv::Vec2d>(j,i)[0]=arrayDur[i+j*WArray.cols+(multiDur?n:0)*WArray.rows*WArray.cols];
             else if(index==2 || index==3) WArray.at<cv::Vec2d>(j,i)[0]=arrayDur[i+(multiDur?n:0)*WArray.cols];
@@ -325,10 +322,8 @@ void pgCalib::WCFArray(std::string folder){
             cv::transpose(WArray,WArray);
 
         if(n!=0)
-            if(!btnWriteCalib->isChecked() || goToNearestFree(WArray.cols*selArraySpacing->val, selArraySpacing->val, selArrayFocusBlur->val, selArrayFocusThresh->val, WArray.rows*selArraySpacing->val)){
-                QMessageBox::critical(this, "Error", "Calibration aborted. Measurements up to this point were saved.");
-                btnWriteCalib->setChecked(false);
-                return;
+            if(!btnWriteCalib->isChecked() || goToNearestFree(WArray.cols*selArraySpacing->val/2, selArraySpacing->val, selArrayFocusBlur->val, selArrayFocusThresh->val, WArray.rows*selArraySpacing->val)){
+                goto abort;
             }
 
         if(saveMats->val){      //export values as matrices, for convenience
@@ -344,18 +339,25 @@ void pgCalib::WCFArray(std::string folder){
                 wfile.close();
             }
         }
-        WCFArrayOne(WArray, arrayPla.size()==1?arrayPla[0]:arrayPla[n], ROI, sROI, folder, static_cast<double>(n)/multiarrayN->val, isPlateau, selPeakXshift->val, selPeakYshift->val);
+        if(WCFArrayOne(WArray, arrayPla.size()==1?arrayPla[0]:arrayPla[n], ROI, sROI, folder, static_cast<double>(n)/multiarrayN->val, isPlateau, selPeakXshift->val, selPeakYshift->val,n)){
+            abort:QMessageBox::critical(gui_settings, "Error", "Calibration aborted. Measurements up to this point were saved.");
+            btnWriteCalib->setChecked(false);
+            report->setText(QString::fromStdString(util::toString("Aborted at ",n,"/",multiarrayN->val)));
+            return;
+        }
         if(transposeMat->val)
             cv::transpose(WArray,WArray);
+
     }
+    report->setText(QString::fromStdString(util::toString(multiarrayN->val,"/",multiarrayN->val)));
     btnWriteCalib->setChecked(false);
 }
-void pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac, bool isPlateau, double peakXshift, double peakYshift){
+bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac, bool isPlateau, double peakXshift, double peakYshift, unsigned n){
     for(int i=1;;i++){
         if(!pgFGUI->doRefocus(true, ROI)) break;
         if(i==maxRedoRefocusTries){
-            QMessageBox::critical(gui_settings, "Error", QString::fromStdString(util::toString("Calibration aborted since refocusing failed ",i," times.\n")));
-            return;
+            QMessageBox::critical(gui_settings, "Error", QString::fromStdString(util::toString("Refocusing failed ",i," times.\n")));
+            return true;
         }
     }
 
@@ -383,10 +385,10 @@ void pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
 
 
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
-        cv::utils::fs::createDirectory(util::toString(folder,"/",i+j*WArray.cols));
+        cv::utils::fs::createDirectory(util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols));
         sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000);
         sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000);
-        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",i+j*WArray.cols,"/before"), true, savePic->val?1:0);
+        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/before"), true, savePic->val?1:0);
     }
 
     {std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_proc);
@@ -398,9 +400,8 @@ void pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
         for(int j=0;j!=WArray.rows; j++){
             for(int i=0;i!=WArray.cols; i++){
                 if(!btnWriteCalib->isChecked()){   //abort
-                    QMessageBox::critical(gui_settings, "Error", "Calibration aborted. Measurements up to this point were saved.\n");
                     delete scanRes;
-                    return;
+                    return true;
                 }
 
                 pgMGUI->corCOMove(CO,0,0,WArray.at<cv::Vec2d>(j,i)[1]/1000);
@@ -409,7 +410,7 @@ void pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
                 CO.addHold("Z",CTRL::he_motion_ontarget);
                 CO.pulseGPIO("wrLaser",WArray.at<cv::Vec2d>(j,i)[0]/1000);
                 pgMGUI->corCOMove(CO,0,0,-WArray.at<cv::Vec2d>(j,i)[1]/1000);
-                saveConf(util::toString(folder,"/",i+j*WArray.cols,"/settings.txt"), WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1], isPlateau?plateau:0, isPlateau?0:plateau, isPlateau?0:static_cast<double>(selArraySpacing->val), isPlateau?0:static_cast<double>(selArraySpacing->val));
+                saveConf(util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/settings.txt"), WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1], isPlateau?plateau:0, isPlateau?0:plateau, isPlateau?0:static_cast<double>(selArraySpacing->val), isPlateau?0:static_cast<double>(selArraySpacing->val));
 
                 CO.execute();
                 CO.clear(true);
@@ -430,10 +431,11 @@ void pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
         sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000);
         sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000);
-        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",i+j*WArray.cols,"/after"), true, savePic->val?1:0);
+        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/after"), true, savePic->val?1:0);
     }
 
     delete scanRes;
+    return false;
 }
 
 typedef dlib::matrix<double,2,1> input_vector;
@@ -528,6 +530,8 @@ void pgCalib::onProcessFocusMes(){
     wfile<<"# 22: prepeak(nm)\n";
     wfile<<"# 23: prepeakXoffs(um)\n";
     wfile<<"# 24: prepeakYoffs(um)\n";
+    wfile<<"# 25: Mirror tilt X(nm/nm)\n";
+    wfile<<"# 26: Mirror tilt Y(nm/nm)\n";
 
     for(auto& fldr:measFolders){ n++;
         double focus;
@@ -613,6 +617,8 @@ void pgCalib::onProcessFocusMes(){
         double Xofs=res(0)*XYumppx;
         double Yofs=res(1)*XYumppx;
         double XYofs=sqrt(pow(Xofs,2)+pow(Yofs,2));
+        double tiltX=scanBefore.tiltCor[0]/scanBefore.XYnmppx;
+        double tiltY=scanBefore.tiltCor[1]/scanBefore.XYnmppx;
         const double toFWHM=sqrt(2*log(2));
 
         int valid=1;
@@ -640,7 +646,9 @@ void pgCalib::onProcessFocusMes(){
         wfile<<XYwidth*toFWHM<<" ";             // 21: XY width (FWHM)(um)
         wfile<<prepeak<<" ";                    // 22: prepeak(nm)
         wfile<<prepeakXofs<<" ";                // 23: prepeakXoffs(um)
-        wfile<<prepeakYofs<<"\n";               // 24: prepeakYoffs(um)
+        wfile<<prepeakYofs<<" ";                // 24: prepeakYoffs(um)
+        wfile<<tiltX<<" ";                      //
+        wfile<<tiltY<<"\n";                     //
         pgSGUI->MLP.progress_comp=100./measFolders.size()*n;
         QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
     }

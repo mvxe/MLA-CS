@@ -485,7 +485,7 @@ void pgWrite::onLoadImg(){
 }
 void pgWrite::onWriteDM(){
     // save coords for scan
-    wait4motionToComplete();
+    pgMGUI->wait4motionToComplete();
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
 
@@ -553,15 +553,6 @@ void pgWrite::prepareScanROI(){
     }
     if(scanROI.width+scanROI.x>cols) scanROI.width=cols-scanROI.x;
     if(scanROI.height+scanROI.y>rows) scanROI.height=rows-scanROI.y;
-}
-
-void pgWrite::wait4motionToComplete(){
-    CTRL::CO CO(go.pRPTY);
-    CO.addHold("X",CTRL::he_motion_ontarget);
-    CO.addHold("Y",CTRL::he_motion_ontarget);
-    CO.addHold("Z",CTRL::he_motion_ontarget);
-    CO.execute();
-    while(CO.getProgress()!=1) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
 }
 bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double override_imgmmPPx, double override_pointSpacing, double override_focus, double ov_fxcor, double ov_fycor){
     wabort=false;
@@ -672,7 +663,7 @@ void pgWrite::onWriteTag(){
     else writeMat(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
 }
 void pgWrite::prepareSchedTagFrame(std::string name){
-    wait4motionToComplete();
+    pgMGUI->wait4motionToComplete();
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     double coords[3];
     pgMGUI->getPos(&coords[0], &coords[1], &coords[2]);
