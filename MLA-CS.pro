@@ -105,8 +105,6 @@ HEADERS += \
     GUI/TAB_CAMERA/colormap.h \
     GUI/TAB_CAMERA/other_settings.h \
     UTIL/measurement.h \
-    PROCEDURES/UTIL/WRT/bounds.h \
-    PROCEDURES/UTIL/WRT/deptheval.h \
     PROCEDURES/UTIL/WRT/calib.h \
     PROCEDURES/UTIL/WRT/beamanl.h \
     GUI/TAB_CAMERA/gnuplot.h \
@@ -159,8 +157,6 @@ SOURCES += \
     UTIL/threadpool.cpp \
     GUI/TAB_CAMERA/colormap.cpp \
     GUI/TAB_CAMERA/other_settings.cpp \
-    PROCEDURES/UTIL/WRT/bounds.cpp \
-    PROCEDURES/UTIL/WRT/deptheval.cpp \
     PROCEDURES/UTIL/WRT/calib.cpp \
     PROCEDURES/UTIL/WRT/beamanl.cpp \
     GUI/TAB_CAMERA/gnuplot.cpp \

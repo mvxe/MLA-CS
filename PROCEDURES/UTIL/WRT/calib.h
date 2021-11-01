@@ -15,19 +15,15 @@ class QSpinBox;
 class pgCalib: public QWidget{
     Q_OBJECT
 public:
-    pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn, pgWrite* pgWr);
+    pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn, pgWrite* pgWr);
     rtoml::vsr conf;                //configuration map
 
     QWidget* gui_settings;
     void drawWriteArea(cv::Mat* img);
-private Q_SLOTS:
-    bool goToNearestFree(double radDilat, double radRandSpread, double blur, double thrs, double radDilaty=0, bool convpx2um=false);      //returns true if failed (no free point nearby)
 private:
     pgFocusGUI* pgFGUI;
     pgMoveGUI* pgMGUI;
-    pgBoundsGUI* pgBGUI;
     pgScanGUI* pgSGUI;
-    pgDepthEval* pgDpEv;
     pgBeamAnalysis* pgBeAn;
     pgWrite* pgWr;
 

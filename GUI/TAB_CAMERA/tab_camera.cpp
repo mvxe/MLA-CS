@@ -69,13 +69,9 @@ tab_camera::tab_camera(QWidget* parent){
 
     pgBeAn=new pgBeamAnalysis(pgMGUI);
     conf["pgBeamAnalysis"]=pgBeAn->conf;
-    pgBGUI=new pgBoundsGUI(pgMGUI,pgBeAn);
-    conf["pgBounds"]=pgBGUI->conf;
-    pgDpEv=new pgDepthEval(pgBGUI);
-    conf["pgDepthEval"]=pgDpEv->conf;
     pgWrt=new pgWrite(pgBeAn,pgMGUI,MLP,pgSGUI);
     conf["pgWrite"]=pgWrt->conf;
-    pgCal=new pgCalib(pgSGUI, pgBGUI, pgFGUI, pgMGUI, pgDpEv, pgBeAn, pgWrt);
+    pgCal=new pgCalib(pgSGUI, pgFGUI, pgMGUI, pgBeAn, pgWrt);
     conf["pgCalib"]=pgCal->conf;
 
     addInfo=new QLabel; addInfo->setMargin(10);
@@ -91,8 +87,6 @@ tab_camera::tab_camera(QWidget* parent){
 
     pageWriting=new twd_selector;
         pageWriting->addWidget(pgWrt->gui_activation);\
-        pageWriting->addWidget(new hline);
-        pageWriting->addWidget(pgBGUI);
 
     pageProcessing=new twd_selector;
         loadRawBtn=new QPushButton("Load measurement"); connect(loadRawBtn, SIGNAL(released()), this, SLOT(onLoadDepthMapRaw()));
@@ -111,7 +105,6 @@ tab_camera::tab_camera(QWidget* parent){
         pageSettings->addWidget(pgCor->gui_settings,"Scan Correction");
         pageSettings->addWidget(cMap,"ColorMap");
         pageSettings->addWidget(camSet,"Camera");               index_camSet=6;
-        pageSettings->addWidget(pgDpEv,"Depth Eval");
         pageSettings->addWidget(pgCal->gui_settings,"Write Calibration");
         pageSettings->addWidget(pgBeAn->gui_settings,"Beam Centering");
         pageSettings->addWidget(tCG,"Gnuplot");
@@ -135,11 +128,9 @@ tab_camera::tab_camera(QWidget* parent){
     conf["main_show_scale"]=main_show_scale;
     main_show_target=new checkbox_gs(false,"Target");
     conf["main_show_target"]=main_show_target;
-    main_show_bounds=new checkbox_gs(false,"Write Bounds");
-    conf["main_show_bounds"]=main_show_bounds;
     main_CLAHE_writing=new checkbox_gs(false,"CLAHE(WrObj)");
     conf["main_CLAHE_writing"]=main_CLAHE_writing;
-    layoutTBarW->addWidget(new twid(main_show_scale, main_show_target, main_show_bounds, main_CLAHE_writing));
+    layoutTBarW->addWidget(new twid(main_show_scale, main_show_target, main_CLAHE_writing));
 
     measPB=new QProgressBar; measPB->setRange(0,100);
     compPB=new QProgressBar; compPB->setRange(0,100);
@@ -180,7 +171,6 @@ tab_camera::~tab_camera(){
     delete pgCor;
     delete pgCal;
     delete pgSGUI;
-    delete pgBGUI;
     delete pgBeAn;
     delete pgMGUI;
     delete pgTGUI;
@@ -197,13 +187,12 @@ void tab_camera::work_fun(){
     if(selDisp->index==0){  // Camera
         LDisplay->isDepth=false;
         if(onDisplay!=nullptr){
-            if(main_show_target->isChecked() || main_show_scale->isChecked() || main_show_bounds->isChecked() || selectingFlag || lastSelectingFlag || sROI.width!=0){
+            if(main_show_target->isChecked() || main_show_scale->isChecked() || selectingFlag || lastSelectingFlag || sROI.width!=0){
                 cv::Mat temp=onDisplay->clone();
                 if(main_CLAHE_writing->isChecked() && !camSet->isMirau){
                     auto CLAHE=cv::createCLAHE(camSet->CLAHE_clipLimit->val, {(int)camSet->CLAHE_tileGridSize->val,(int)camSet->CLAHE_tileGridSize->val});
                     CLAHE->apply(temp,temp);
                 }
-                if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY));
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx(), pgMGUI->currentObj==1?(static_cast<double>(camSet->wrsbar_unit->val)):0);
                 if(selectingFlag){
@@ -232,14 +221,13 @@ void tab_camera::work_fun(){
         }
     }else if(selDisp->index==1 || selDisp->index==2 || selDisp->index==3){   // Depth map or SD or refl.
         LDisplay->isDepth=true;
-        if(pgDpEv->debugChanged || scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || cMap->changed || selectingFlag || lastSelectingFlag || updateDisp){
+        if(scanRes->changed() || oldIndex!=selDisp->index || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || cMap->changed || selectingFlag || lastSelectingFlag || updateDisp){
             const pgScanGUI::scanRes* res;
             if(scanRes->changed()) loadedOnDisplay=false;
             if(loadedOnDisplay) res=&loadedScan;
             else res=scanRes->get();
 
             if(res!=nullptr){
-                res=pgDpEv->getDebugImage(res);         //if there is no debug image, it returns res so the command does nothing
                 double min,max;
                 cv::Mat display;
                 if(selDisp->index==1 || (selDisp->index==2 && res->depthSS.empty()) || (selDisp->index==3 && res->refl.empty())){  //show Depth Map
@@ -474,7 +462,6 @@ void tab_camera::onSaveCameraPicture(void){
     fq->setUserFps(999,1);
     while(fq->getUserMat()==nullptr);
     cv::Mat temp=onDisplay->clone();
-    if(main_show_bounds->isChecked()) pgBGUI->drawBound(&temp, pgMGUI->getNmPPx());
     if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgMGUI->px2mm(pgBeAn->writeBeamCenterOfsX), pgMGUI->px2mm(pgBeAn->writeBeamCenterOfsY));
     if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx(), pgMGUI->currentObj==1?(static_cast<double>(camSet->wrsbar_unit->val)):0);
 

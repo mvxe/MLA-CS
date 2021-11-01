@@ -59,7 +59,6 @@ private:
     pgHistogrameGUI* pgHistGUI;
     checkbox_gs* main_show_scale;
     checkbox_gs* main_show_target;
-    checkbox_gs* main_show_bounds;
     checkbox_gs* main_CLAHE_writing;
     QProgressBar* measPB;
     QProgressBar* compPB;
@@ -70,8 +69,6 @@ private:
     QCheckBox* combineUseRefl;
 
     // writing
-    pgBoundsGUI* pgBGUI;
-    pgDepthEval* pgDpEv;
     pgCalib* pgCal;
     pgBeamAnalysis* pgBeAn;
     pgWrite* pgWrt;

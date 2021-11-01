@@ -3,7 +3,6 @@
 #include "includes.h"
 #include "PROCEDURES/UTIL/USC/focus.h"
 #include "PROCEDURES/UTIL/USC/move.h"
-#include "PROCEDURES/UTIL/WRT/bounds.h"
 #include "opencv2/core/utils/filesystem.hpp"
 #include "GUI/tab_monitor.h"    //for debug purposes
 #include <dirent.h>
@@ -12,14 +11,11 @@
 #include <algorithm>
 #include <random>
 
-pgCalib::pgCalib(pgScanGUI* pgSGUI, pgBoundsGUI* pgBGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgDepthEval* pgDpEv, pgBeamAnalysis* pgBeAn, pgWrite* pgWr): pgSGUI(pgSGUI), pgBGUI(pgBGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgDpEv(pgDpEv), pgBeAn(pgBeAn), pgWr(pgWr){
+pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn, pgWrite* pgWr): pgSGUI(pgSGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgBeAn(pgBeAn), pgWr(pgWr){
     btnWriteCalib=new HQPushButton("Run Write Focus Calibration");
     connect(btnWriteCalib, SIGNAL(released()), this, SLOT(onWCF()));
     connect(btnWriteCalib, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
     btnWriteCalib->setCheckable(true);
-
-
-    connect(pgDpEv, SIGNAL(sigGoToNearestFree(double, double, double, double, double, bool)), this, SLOT(goToNearestFree(double, double, double, double, double, bool)));
 
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
@@ -147,39 +143,6 @@ void pgCalib::selArray(int ArrayIndex, int MultiArrayIndex){
     selArrayFocB->setVisible(foc);
     selArrayDurB->setVisible(dur);
     selPlateauB->setVisible(pla);
-}
-bool pgCalib::goToNearestFree(double radDilat, double radRandSpread, double blur, double thrs, double radDilaty, bool convpx2um){
-    varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
-    while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //if there is a measurement in progress, wait till its done
-
-    // first check if the current scan result is valid (done on current position)
-    double tmp[3];
-    pgMGUI->getPos(&tmp[0], &tmp[1], &tmp[2]);
-    bool redoScan=false;
-    const pgScanGUI::scanRes* res=scanRes->get();
-    if(res!=nullptr){
-        for(int i=0;i!=3;i++) if(res->pos[i]!=tmp[i])redoScan=true;
-        if(res->depth.rows!=go.pGCAM->iuScope->camRows || res->depth.cols!=go.pGCAM->iuScope->camCols)redoScan=true;
-    }else redoScan=true;
-    if(redoScan){
-        pgSGUI->doOneRound({0,0,-1,0}); // forces full ROI
-        while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
-        res=scanRes->get();
-    }
-    int dil=(convpx2um?radDilat:pgMGUI->mm2px(radDilat/1000)-0.5); if(dil<0) dil=0;
-    int dily=(convpx2um?radDilaty:pgMGUI->mm2px(radDilaty/1000)-0.5); if(dily<0) dily=0;
-    cv::Mat mask=pgDpEv->getMaskFlatness(res, dil, thrs, blur, dily);
-    int ptX,ptY;
-    imgAux::getNearestFreePointToCenter(&mask, pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY), ptX, ptY, convpx2um?radRandSpread:pgMGUI->mm2px(radRandSpread/1000));
-    if(ptX==-1){
-        QMessageBox::warning(this, "Warning", "No free nearby!");
-        delete scanRes;
-        return true;
-    }
-
-    pgMGUI->move(pgMGUI->px2mm(ptX-res->depth.cols/2),-pgMGUI->px2mm(ptY-res->depth.rows/2),0);
-    delete scanRes;
-    return false;
 }
 
 void pgCalib::onWCF(){
@@ -321,10 +284,7 @@ void pgCalib::WCFArray(std::string folder){
         if(transposeMat->val)
             cv::transpose(WArray,WArray);
 
-        if(n!=0)
-            if(!btnWriteCalib->isChecked() || goToNearestFree(WArray.cols*selArraySpacing->val/2, selArraySpacing->val, selArrayFocusBlur->val, selArrayFocusThresh->val, WArray.rows*selArraySpacing->val)){
-                goto abort;
-            }
+        if(n!=0) // TODO move
 
         if(saveMats->val){      //export values as matrices, for convenience
             std::string names[2]={"Duration","Focus"};
