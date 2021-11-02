@@ -269,11 +269,9 @@ void tab_camera::work_fun(){
                 scaleDisplay(display, QImage::Format_RGBA8888);
                 if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0 || res->avgNum>1){
                     std::string text;
-                    if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0) text+=util::toString("Tilt correction was: X: ",res->tiltCor[0],", Y: ",res->tiltCor[1]);
-                    if(res->avgNum>1){
-                        if(!text.empty()) text+="\n";
-                        text+=util::toString("Averaged ",res->avgNum," measurements.");
-                    }
+                    if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0) text+=util::toString("Tilt correction was: X: ",res->tiltCor[0],", Y: ",res->tiltCor[1],"\n");
+                    text+=util::toString("Coords were: X: ",res->pos[0],", Y: ",res->pos[1],", Z: ",res->pos[2],"\n");
+                    if(res->avgNum>1) text+=util::toString("Averaged ",res->avgNum," measurements.");
                     addInfo->setText(QString::fromStdString(text));
                     addInfo->setVisible(true);
                 } else addInfo->setVisible(false);
