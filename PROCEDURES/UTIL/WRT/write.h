@@ -94,6 +94,7 @@ private:
     val_selector* scanExtraBorder;
     val_selector* scanRepeatN;
     checkbox_gs* switchBack2mirau;
+    bool wasMirau;
 
     QPushButton* notes;
     checkbox_gs* addNotes;

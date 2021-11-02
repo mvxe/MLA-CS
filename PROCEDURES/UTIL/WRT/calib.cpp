@@ -16,6 +16,10 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     connect(btnWriteCalib, SIGNAL(released()), this, SLOT(onWCF()));
     connect(btnWriteCalib, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
     btnWriteCalib->setCheckable(true);
+    scheduleMultiWrite=new HQPushButton("Schedule");
+    connect(scheduleMultiWrite, SIGNAL(released()), this, SLOT(onSchedule()));
+    connect(scheduleMultiWrite, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOnSch(bool)));
+    scheduleMultiWrite->setVisible(false);
 
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
@@ -111,7 +115,7 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     slayout->addWidget(new twid(cropLeft,cropRght));
     slayout->addWidget(new hline);
     report=new QLabel("");
-    slayout->addWidget(new twid(btnWriteCalib,report));
+    slayout->addWidget(new twid(scheduleMultiWrite,btnWriteCalib,report));
 
     btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements");
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
@@ -121,6 +125,13 @@ void pgCalib::onMultiarrayNChanged(double val){
     selArrayFocusBlur->setVisible(val!=1);
     selArrayFocusThresh->setVisible(val!=1);
     selArray(selArrayType->index, selMultiArrayType->index);
+    btnWriteCalib->setEnabled(val==1);
+    scheduleMultiWrite->setVisible(val!=1);
+    if(val==1) while(!scheduledPos.empty()){
+        ovl.rm_overlay(scheduledPos.front().ovlptr);
+        scheduledPos.pop_front();
+    }
+    report->setText("");
 }
 void pgCalib::onSelArrayTypeChanged(int index){
     selArray(index, selMultiArrayType->index);
@@ -164,6 +175,21 @@ void pgCalib::onWCF(){
     cv::utils::fs::createDirectory(saveFolderName);
 
     WCFArray(saveFolderName);
+}
+void pgCalib::onSchedule(){
+    pgMGUI->wait4motionToComplete();
+    QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+    double coords[3];
+    pgMGUI->getPos(&coords[0], &coords[1], &coords[2]);
+    if(scheduledPos.size()==multiarrayN->val){
+        ovl.rm_overlay(scheduledPos.front().ovlptr);
+        scheduledPos.pop_front();
+    }
+    cv::Size size(pgMGUI->mm2px(selArrayXsize->val*selArraySpacing->val/1000,0),pgMGUI->mm2px(selArrayYsize->val*selArraySpacing->val/1000,0));
+    cv::Mat mat(size,CV_8U,255);
+    scheduledPos.push_back({ovl.add_overlay(mat,pgMGUI->mm2px(coords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(coords[1]-pgBeAn->writeBeamCenterOfsY,0)),{coords[0],coords[1],coords[2]}});
+    report->setText(QString::fromStdString(util::toString("Scheduled ",scheduledPos.size(),"/",multiarrayN->val)));
+    if(scheduledPos.size()==multiarrayN->val) btnWriteCalib->setEnabled(true);
 }
 
 void pgCalib::saveMainConf(std::string filename){
@@ -235,25 +261,25 @@ void pgCalib::WCFArray(std::string folder){
     }
 
 
-    double xSize=WArray.cols*pgMGUI->mm2px(selArraySpacing->val/1000);
-    double ySize=WArray.rows*pgMGUI->mm2px(selArraySpacing->val/1000);
+    double xSize=WArray.cols*pgMGUI->mm2px(selArraySpacing->val/1000,0);
+    double ySize=WArray.rows*pgMGUI->mm2px(selArraySpacing->val/1000,0);
 
     // set ROI
     bool err=false;
     cv::Rect ROI, sROI;
-    sROI.width=pgMGUI->mm2px(selArraySpacing->val/1000);
+    sROI.width=pgMGUI->mm2px(selArraySpacing->val/1000,0);
     sROI.height=sROI.width;
 
-    if(go.pGCAM->iuScope->camCols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX)<0 || go.pGCAM->iuScope->camCols/2-xSize/2-pgBeAn->writeBeamCenterOfsX+xSize>=go.pGCAM->iuScope->camCols){
+    if(go.pGCAM->iuScope->camCols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX,0)<0 || go.pGCAM->iuScope->camCols/2-xSize/2-pgBeAn->writeBeamCenterOfsX+xSize>=go.pGCAM->iuScope->camCols){
         err=true;
     }else{
-        ROI.x=go.pGCAM->iuScope->camCols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX);
+        ROI.x=go.pGCAM->iuScope->camCols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX,0);
         ROI.width=xSize;
     }
-    if(go.pGCAM->iuScope->camRows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY)<0 || go.pGCAM->iuScope->camRows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY)+ySize>=go.pGCAM->iuScope->camRows){
+    if(go.pGCAM->iuScope->camRows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY,0)<0 || go.pGCAM->iuScope->camRows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY,0)+ySize>=go.pGCAM->iuScope->camRows){
         err=true;
     }else{
-        ROI.y=go.pGCAM->iuScope->camRows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY);
+        ROI.y=go.pGCAM->iuScope->camRows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY,0);
         ROI.height=ySize;
     }
     if(err){
@@ -284,7 +310,12 @@ void pgCalib::WCFArray(std::string folder){
         if(transposeMat->val)
             cv::transpose(WArray,WArray);
 
-        if(n!=0) // TODO move
+        if(!scheduledPos.empty()){
+            ovl.rm_overlay(scheduledPos.front().ovlptr);
+            pgMGUI->move(scheduledPos.front().pos[0],scheduledPos.front().pos[1],scheduledPos.front().pos[2],true);
+            pgMGUI->wait4motionToComplete();
+            scheduledPos.pop_front();
+        }
 
         if(saveMats->val){      //export values as matrices, for convenience
             std::string names[2]={"Duration","Focus"};
@@ -346,14 +377,14 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
 
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
         cv::utils::fs::createDirectory(util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols));
-        sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000);
-        sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000);
+        sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000,0);
+        sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000,0);
         pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/before"), true, savePic->val?1:0);
     }
 
     {std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_proc);
         pgMGUI->chooseObj(false);
-        pgMGUI->move(-xOfs,-yOfs,0);
+        pgMGUI->move(-xOfs,yOfs,0);
         pgSGUI->MLP.progress_proc=100*progressfac;
         CTRL::CO CO(go.pRPTY);
         CO.clear(true);
@@ -378,9 +409,9 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
                 while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
                 if(i!=WArray.cols-1) pgMGUI->corCOMove(CO,selArraySpacing->val/1000,0,0);
             }
-            if(j!=WArray.rows-1) pgMGUI->corCOMove(CO,-2*xOfs,selArraySpacing->val/1000,0);
+            if(j!=WArray.rows-1) pgMGUI->corCOMove(CO,-2*xOfs,-selArraySpacing->val/1000,0);
         }
-        pgMGUI->move(-xOfs,-yOfs,0);
+        pgMGUI->move(-xOfs,yOfs,0);
         pgMGUI->chooseObj(true);
     }
 
@@ -389,8 +420,8 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     pgScanGUI::saveScan(res, util::toString(folder,"/after"), false, true, savePic->val?1:0);
 
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
-        sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000);
-        sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000);
+        sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000,0);
+        sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000,0);
         pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/after"), true, savePic->val?1:0);
     }
 
@@ -617,6 +648,9 @@ void pgCalib::onProcessFocusMes(){
 }
 
 void pgCalib::onChangeDrawWriteAreaOn(bool status){
+    drawWriteAreaOn=status&(multiarrayN->val==1);
+}
+void pgCalib::onChangeDrawWriteAreaOnSch(bool status){
     drawWriteAreaOn=status;
 }
 void pgCalib::drawWriteArea(cv::Mat* img){

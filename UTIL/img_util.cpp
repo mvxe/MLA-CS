@@ -110,7 +110,10 @@ void* overlay::add_overlay(cv::Mat mat, long posx, long posy){
 }
 void overlay::rm_overlay(void* ptr){
     for (std::list<overlayElement>::iterator it=overlayElements.begin(); it!=overlayElements.end(); it++)
-        if(ptr==&(*it)) overlayElements.erase(it);
+        if(ptr==&(*it)){
+            overlayElements.erase(it);
+            return;
+        }
 }
 void overlay::drawOverlays(cv::Mat& mat, long posx, long posy){
     if(mat.empty()) return;

@@ -53,7 +53,14 @@ private:
     val_selector* selArrayFocusBlur;
     val_selector* selArrayFocusThresh;
     std::string lastFolder{""};
+    struct scheduled{
+        void* ovlptr;
+        double pos[3];
+    };
+    std::list<scheduled> scheduledPos;
+
     HQPushButton* btnWriteCalib;
+    HQPushButton* scheduleMultiWrite;
     QLabel* report;
 
     int measCounter{0};
@@ -78,8 +85,10 @@ private:
     void selArray(int ArrayIndex, int MultiArrayIndex);
 private Q_SLOTS:
     void onWCF();
+    void onSchedule();
     void onProcessFocusMes();
     void onChangeDrawWriteAreaOn(bool status);
+    void onChangeDrawWriteAreaOnSch(bool status);
     void onSelArrayTypeChanged(int index);
     void onSelMultiArrayTypeChanged(int index);
     void onMultiarrayNChanged(double val);

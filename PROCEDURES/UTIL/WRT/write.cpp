@@ -375,6 +375,7 @@ void pgWrite::onCorPPR(){
 }
 void pgWrite::onPulse(){
     if(!go.pRPTY->connected) return;
+    wasMirau=pgMGUI->currentObj==0;
     pgMGUI->chooseObj(false);    // switch to writing
     CTRL::CO co(go.pRPTY);
     co.addHold("X",CTRL::he_motion_ontarget);
@@ -382,7 +383,7 @@ void pgWrite::onPulse(){
     co.addHold("Z",CTRL::he_motion_ontarget);
     co.pulseGPIO("wrLaser",pulseDur->val/1000);
     co.execute();
-    if(switchBack2mirau)pgMGUI->chooseObj(true);
+    if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true);
 }
 void pgWrite::onMenuChange(int index){
     for(int i=0;i!=Nset;i++) settingWdg[i]->setVisible(i==index?true:false);
@@ -530,10 +531,10 @@ void pgWrite::prepareScanROI(){
     double extraB=scanExtraBorder->val;
     if(extraB>0){
         if(scanExtraBorder->index==0){  // um
-            extraB=pgMGUI->mm2px(extraB/1000);
+            extraB=pgMGUI->mm2px(extraB/1000,0);
         }
     }
-    scanROI=cv::Rect(cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX)-extraB, rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY)-extraB, xSize+2*extraB, ySize+2*extraB);
+    scanROI=cv::Rect(cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX,0)-extraB, rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY,0)-extraB, xSize+2*extraB, ySize+2*extraB);
     if(scanROI.x<0){
         scanROI.width+=scanROI.x;
         scanROI.x=0;
@@ -573,6 +574,7 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
     // at this point resizedWrite contains the desired depth at each point
     std::lock_guard<std::mutex>lock(MLP._lock_proc);
     if(!go.pRPTY->connected) return true;
+    wasMirau=pgMGUI->currentObj==0;
     pgMGUI->chooseObj(false);    // switch to writing
     pulse_precision=go.pRPTY->getPulsePrecision();  // pulse duration unit
 
@@ -610,7 +612,7 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
 
         while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
         MLP.progress_proc=100./resizedWrite.rows*j;
-        if(wabort) {if(switchBack2mirau)pgMGUI->chooseObj(true); abort->setVisible(false); return true;}
+        if(wabort) {if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true); abort->setVisible(false); return true;}
     }
 
     pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
@@ -620,7 +622,7 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
 
     while(CO.getProgress()<1) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     MLP.progress_proc=100;
-    if(switchBack2mirau)pgMGUI->chooseObj(true);
+    if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true);
     abort->setVisible(false);
     return false;
 }
