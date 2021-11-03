@@ -83,6 +83,7 @@ private:
     void saveConf(std::string filename, double duration, double focus, double plateau, double peak, double peakXshift, double peakYshift);
     void saveMainConf(std::string filename);
     void selArray(int ArrayIndex, int MultiArrayIndex);
+    void calcParameters(std::string fldr, std::string* output, std::atomic<unsigned>* completed);
 private Q_SLOTS:
     void onWCF();
     void onSchedule();

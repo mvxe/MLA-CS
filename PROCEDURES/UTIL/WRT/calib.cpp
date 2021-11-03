@@ -496,7 +496,7 @@ void pgCalib::onProcessFocusMes(){
     std::sort(measFolders.begin(), measFolders.end(), folderSort);
 
     std::ofstream wfile(saveName);
-    int n=0;
+
     wfile<<"# 1: valid measurement(=1)\n";
     wfile<<"# 2: focus distance(um)\n";
     wfile<<"# 3: peak height(nm)\n";
@@ -509,7 +509,7 @@ void pgCalib::onProcessFocusMes(){
     wfile<<"# 10: XY offset(um)\n";
     wfile<<"# 11: plateau(nm)\n";
     wfile<<"# 12: duration(ms)\n";
-    wfile<<"# 13: Peak Center Reflectivity change (a.u.)\n";
+    wfile<<"# 13: Peak Center Reflectivity change (averaged within FWHM)(a.u.)\n";
     wfile<<"# 14: Max absolute 1st der. (nm/um)\n";
     wfile<<"# 15: Min Laplacian (nm/um^2)\n";
     wfile<<"# 16: Max Laplacian (nm/um^2)\n";
@@ -524,127 +524,142 @@ void pgCalib::onProcessFocusMes(){
     wfile<<"# 25: Mirror tilt X(nm/nm)\n";
     wfile<<"# 26: Mirror tilt Y(nm/nm)\n";
 
-    for(auto& fldr:measFolders){ n++;
-        double focus;
-        double duration;
-        double plateau{0};
-        double prepeak{0}, prepeakXofs{0}, prepeakYofs{0};
-        std::ifstream ifs(util::toString(fldr,"/settings.txt"));
-        ifs.ignore(std::numeric_limits<std::streamsize>::max(),'\n');       // ignore header
-        ifs>>duration;
-        ifs>>focus;
-        ifs>>plateau;
-        ifs>>prepeak;
-        ifs>>prepeakXofs;
-        ifs>>prepeakYofs;
-        ifs.close();
-
-        pgScanGUI::scanRes scanBefore, scanAfter;
-        if(!pgScanGUI::loadScan(&scanBefore, util::toString(fldr,"/before.pfm"))) continue;
-        if(!pgScanGUI::loadScan(&scanAfter, util::toString(fldr,"/after.pfm"))) continue;
-        pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
-        if(cropTop->value()!=0 || cropBttm->value()!=0 || cropLeft->value()!=0 || cropRght->value()!=0){
-            if(cropTop->value()+cropBttm->value()>=scanDif.depth.rows || cropRght->value()+cropLeft->value()>=scanDif.depth.cols) {std::cerr<<"Cropped dimensions are larger than scan sizes. Aborting processing.\n"; return;}
-            scanDif.mask =scanDif.mask (cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
-            scanDif.depth=scanDif.depth(cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
-            scanDif.maskN=scanDif.maskN(cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
-        }
-        pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
-
-//        cv::Mat rescaleDepth, rescaleMask;                                    //this can be done to increase performance
-//        cv::resize(scanDif.depth,rescaleDepth,cv::Size(),0.2,0.2);            //dont forget to rescale the measured widths
-//        cv::resize(scanDif.mask,rescaleMask,cv::Size(),0.2,0.2);
-
-        std::vector<std::pair<input_vector, double>> data;
-        for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++)
-            if(scanDif.mask.at<uchar>(j,i)==0) data.push_back(std::make_pair(input_vector{(double)i,(double)j},scanDif.depth.at<float>(j,i)));
-
-        parameter_vector res{(double)scanDif.depth.cols/2,(double)scanDif.depth.rows/2,scanDif.max-scanDif.min,(double)scanDif.depth.rows, (double)scanDif.depth.rows, 0.01, scanDif.min};
-
-        dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7,100), gaussResidual, derivative(gaussResidual), data, res);
-        while(res(5)>M_PI) res(5)-=M_PI;
-        while(res(5)<0) res(5)+=M_PI;
-        if(res(5)>=M_PI/2){
-           res(5)-= M_PI/2;
-           double tmp=res(3);
-           res(3)=res(4);
-           res(4)=tmp;
-        }
-
-        int peakRefl{-1};
-        if(dirHasMes[3]){
-            int X=res(0)+scanDif.depth.cols/2;
-            int Y=res(1)+scanDif.depth.rows/2;
-            if(X<0 || Y<0 || X>=scanDif.depth.cols || Y>=scanDif.depth.rows) peakRefl=-1;
-            else{
-                cv::Mat reflb=imread(util::toString(fldr,"/before-RF.png"), cv::IMREAD_GRAYSCALE);
-                cv::Mat refla=imread(util::toString(fldr,"/after-RF.png"), cv::IMREAD_GRAYSCALE);
-                peakRefl=static_cast<int>(refla.at<uchar>(Y,X))-reflb.at<uchar>(Y,X);
-            }
-        }
-
-        //find max abs first derivative of depth (nm/um):
-        cv::Mat com, derv, dervy;
-        cv::bilateralFilter(scanDif.depth, com, -1, 3, 3);  //smooth it a bit
-        cv::Sobel(com, derv, CV_32F,1,0);                   //first derivative
-        cv::Sobel(com, dervy, CV_32F,0,1);                  //first derivative
-        double maxDepthDer;
-        cv::add(derv, dervy, derv);
-        cv::minMaxIdx(derv, nullptr, &maxDepthDer);
-        //find min, max laplacian of depth (nm/um^2):
-        cv::Laplacian(com, derv, CV_32F);
-        double minDepthLaplacian, maxDepthLaplacian;
-        cv::minMaxIdx(derv, &minDepthLaplacian, &maxDepthLaplacian);
-
-        double XYumppx=scanDif.XYnmppx/1000;
-        maxDepthDer/=XYumppx;
-        minDepthLaplacian/=XYumppx;
-        maxDepthLaplacian/=XYumppx;
-
-        double Xwidth=2*abs(res(3))*XYumppx;
-        double Ywidth=2*abs(res(4))*XYumppx;
-        double XYwidth=(Xwidth+Ywidth)/2;
-        double Xofs=res(0)*XYumppx;
-        double Yofs=res(1)*XYumppx;
-        double XYofs=sqrt(pow(Xofs,2)+pow(Yofs,2));
-        double tiltX=scanBefore.tiltCor[0]/scanBefore.XYnmppx;
-        double tiltY=scanBefore.tiltCor[1]/scanBefore.XYnmppx;
-        const double toFWHM=sqrt(2*log(2));
-
-        int valid=1;
-        if(res(0)<0 || res(0)>scanDif.depth.cols || res(1)<0 || res(1)>scanDif.depth.rows || res(2)<=0) valid=0;    //center of the fit is out of frame or other things that indicate fit faliure
-        wfile<<valid<<" ";                      // 1: valid measurement(=1)
-        wfile<<focus<<" ";                      // 2: focus distance(um)
-        wfile<<res(2)<<" ";                     // 3: peak height(nm)
-        wfile<<Xwidth<<" ";                     // 4: X width (1/e^2)(um)
-        wfile<<Ywidth<<" ";                     // 5: Y width (1/e^2)(um)
-        wfile<<res(5)<<" ";                     // 6: ellipse angle(rad)
-        wfile<<XYwidth<<" ";                    // 7: XY width (1/e^2)(um)
-        wfile<<Xofs<<" ";                       // 8: X offset(um)
-        wfile<<Yofs<<" ";                       // 9: Y offset(um)
-        wfile<<XYofs<<" ";                      // 10: XY offset(um)
-        wfile<<plateau<<" ";                    // 11: plateau(nm)
-        wfile<<duration<<" ";                   // 12: duration(ms)
-        wfile<<peakRefl<<" ";                   // 13: Peak Center Reflectivity change (a.u.)\n";
-        wfile<<maxDepthDer<<" ";                // 14: Max absolute 1st der. (nm/um)
-        wfile<<minDepthLaplacian<<" ";          // 15: Min Laplacian (nm/um^2)
-        wfile<<maxDepthLaplacian<<" ";          // 16: Max Laplacian (nm/um^2)
-        wfile<<scanDif.max<<" ";                // 17: peak height(nm)(max)
-        wfile<<scanDif.max-scanDif.min<<" ";    // 18: peak height(nm)(max-min)
-        wfile<<Xwidth*toFWHM<<" ";              // 19: X width (FWHM)(um)
-        wfile<<Ywidth*toFWHM<<" ";              // 20: Y width (FWHM)(um)
-        wfile<<XYwidth*toFWHM<<" ";             // 21: XY width (FWHM)(um)
-        wfile<<prepeak<<" ";                    // 22: prepeak(nm)
-        wfile<<prepeakXofs<<" ";                // 23: prepeakXoffs(um)
-        wfile<<prepeakYofs<<" ";                // 24: prepeakYoffs(um)
-        wfile<<tiltX<<" ";                      //
-        wfile<<tiltY<<"\n";                     //
-        pgSGUI->MLP.progress_comp=100./measFolders.size()*n;
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+    std::vector<std::string> results;
+    std::atomic<unsigned> completed=0;
+    int n=0;
+    for(auto& fldr:measFolders){
+        results.emplace_back();
+        results.back().reserve(26*100);
     }
-    wfile.close();
+    for(auto& fldr:measFolders){
+        go.OCL_threadpool.doJob(std::bind(&pgCalib::calcParameters, this, fldr, &results[n], &completed));
+        n++;
+    }
+    while(completed!=n){
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        pgSGUI->MLP.progress_comp=100./n*completed;
+    }
+    for(int i=0;i!=n;i++) wfile<<results[i];
     pgSGUI->MLP.progress_comp=100;
+    wfile.close();
 }
+void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<unsigned>* completed){
+    double focus;
+    double duration;
+    double plateau{0};
+    double prepeak{0}, prepeakXofs{0}, prepeakYofs{0};
+    std::ifstream ifs(util::toString(fldr,"/settings.txt"));
+    ifs.ignore(std::numeric_limits<std::streamsize>::max(),'\n');       // ignore header
+    ifs>>duration;
+    ifs>>focus;
+    ifs>>plateau;
+    ifs>>prepeak;
+    ifs>>prepeakXofs;
+    ifs>>prepeakYofs;
+    ifs.close();
+
+    pgScanGUI::scanRes scanBefore, scanAfter;
+    if(!pgScanGUI::loadScan(&scanBefore, util::toString(fldr,"/before.pfm"))) return;
+    if(!pgScanGUI::loadScan(&scanAfter, util::toString(fldr,"/after.pfm"))) return;
+    pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
+    if(cropTop->value()!=0 || cropBttm->value()!=0 || cropLeft->value()!=0 || cropRght->value()!=0){
+        if(cropTop->value()+cropBttm->value()>=scanDif.depth.rows || cropRght->value()+cropLeft->value()>=scanDif.depth.cols) {std::cerr<<"Cropped dimensions are larger than scan sizes. Aborting processing.\n"; return;}
+        scanDif.mask =scanDif.mask (cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
+        scanDif.depth=scanDif.depth(cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
+        scanDif.maskN=scanDif.maskN(cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
+    }
+    pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
+
+    std::vector<std::pair<input_vector, double>> data;
+    for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++)
+        if(scanDif.mask.at<uchar>(j,i)==0) data.push_back(std::make_pair(input_vector{(double)i,(double)j},scanDif.depth.at<float>(j,i)));
+
+    parameter_vector res{(double)scanDif.depth.cols/2,(double)scanDif.depth.rows/2,scanDif.max-scanDif.min,(double)scanDif.depth.rows, (double)scanDif.depth.rows, 0.01, scanDif.min};
+
+    dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7,100), gaussResidual, derivative(gaussResidual), data, res);
+    while(res(5)>M_PI) res(5)-=M_PI;
+    while(res(5)<0) res(5)+=M_PI;
+    if(res(5)>=M_PI/2){
+       res(5)-= M_PI/2;
+       double tmp=res(3);
+       res(3)=res(4);
+       res(4)=tmp;
+    }
+
+    const double toFWHM=sqrt(2*log(2));
+
+    double peakRefl{0};
+    int nref=0;
+    cv::Mat reflb=imread(util::toString(fldr,"/before-RF.png"), cv::IMREAD_GRAYSCALE);
+    cv::Mat refla=imread(util::toString(fldr,"/after-RF.png"), cv::IMREAD_GRAYSCALE);
+    if(!reflb.empty() && !refla.empty())
+        for(int i=0;i!=reflb.cols;i++) for(int j=0;j!=reflb.rows;j++)
+            if(i>=(res(0)-abs(res(3))*toFWHM) && i<=(res(0)+abs(res(3))*toFWHM) && j>=(res(1)-abs(res(4))*toFWHM) && j<=(res(1)+abs(res(4))*toFWHM)){
+                peakRefl+=static_cast<double>(refla.at<uint8_t>(j,i))-reflb.at<uint8_t>(j,i);
+                nref++;
+            }
+    peakRefl/=nref;
+
+    //find max abs first derivative of depth (nm/um):
+    cv::Mat com, derv, dervy;
+    cv::bilateralFilter(scanDif.depth, com, -1, 3, 3);  //smooth it a bit
+    cv::Sobel(com, derv, CV_32F,1,0);                   //first derivative
+    cv::Sobel(com, dervy, CV_32F,0,1);                  //first derivative
+    double maxDepthDer;
+    cv::add(derv, dervy, derv);
+    cv::minMaxIdx(derv, nullptr, &maxDepthDer);
+    //find min, max laplacian of depth (nm/um^2):
+    cv::Laplacian(com, derv, CV_32F);
+    double minDepthLaplacian, maxDepthLaplacian;
+    cv::minMaxIdx(derv, &minDepthLaplacian, &maxDepthLaplacian);
+
+    double XYumppx=scanDif.XYnmppx/1000;
+    maxDepthDer/=XYumppx;
+    minDepthLaplacian/=XYumppx;
+    maxDepthLaplacian/=XYumppx;
+
+    double Xwidth=2*abs(res(3))*XYumppx;
+    double Ywidth=2*abs(res(4))*XYumppx;
+    double XYwidth=(Xwidth+Ywidth)/2;
+    double Xofs=(res(0)-scanDif.depth.cols/2.)*XYumppx;
+    double Yofs=(res(1)-scanDif.depth.rows/2.)*XYumppx;
+    double XYofs=sqrt(pow(Xofs,2)+pow(Yofs,2));
+    double tiltX=scanBefore.tiltCor[0]/scanBefore.XYnmppx;
+    double tiltY=scanBefore.tiltCor[1]/scanBefore.XYnmppx;
+
+    int valid=1;
+    if(res(0)<0 || res(0)>scanDif.depth.cols || res(1)<0 || res(1)>scanDif.depth.rows || res(2)<=0) valid=0;    //center of the fit is out of frame or other things that indicate fit faliure
+    *output=util::toString(
+        valid," ",                      // 1: valid measurement(=1)
+        focus," ",                      // 2: focus distance(um)
+        res(2)," ",                     // 3: peak height(nm)
+        Xwidth," ",                     // 4: X width (1/e^2)(um)
+        Ywidth," ",                     // 5: Y width (1/e^2)(um)
+        res(5)," ",                     // 6: ellipse angle(rad)
+        XYwidth," ",                    // 7: XY width (1/e^2)(um)
+        Xofs," ",                       // 8: X offset(um)
+        Yofs," ",                       // 9: Y offset(um)
+        XYofs," ",                      // 10: XY offset(um)
+        plateau," ",                    // 11: plateau(nm)
+        duration," ",                   // 12: duration(ms)
+        peakRefl," ",                   // 13: Peak Center Reflectivity change (averaged within FWHM)(a.u.)\n";
+        maxDepthDer," ",                // 14: Max absolute 1st der. (nm/um)
+        minDepthLaplacian," ",          // 15: Min Laplacian (nm/um^2)
+        maxDepthLaplacian," ",          // 16: Max Laplacian (nm/um^2)
+        scanDif.max," ",                // 17: peak height(nm)(max)
+        scanDif.max-scanDif.min," ",    // 18: peak height(nm)(max-min)
+        Xwidth*toFWHM," ",              // 19: X width (FWHM)(um)
+        Ywidth*toFWHM," ",              // 20: Y width (FWHM)(um)
+        XYwidth*toFWHM," ",             // 21: XY width (FWHM)(um)
+        prepeak," ",                    // 22: prepeak(nm)
+        prepeakXofs," ",                // 23: prepeakXoffs(um)
+        prepeakYofs," ",                // 24: prepeakYoffs(um)
+        tiltX," ",                      // 25: Mirror tilt X(nm/nm)
+        tiltY,"\n"                      // 26: Mirror tilt Y(nm/nm)
+                );
+    (*completed)++;
+}
+
 
 void pgCalib::onChangeDrawWriteAreaOn(bool status){
     drawWriteAreaOn=status&(multiarrayN->val==1);
