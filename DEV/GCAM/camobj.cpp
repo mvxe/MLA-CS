@@ -2,6 +2,8 @@
 
 camobj::camobj(std::string strID) : camobj_config(strID), selected_ID(&mkmx,strID){
     conf["selected_ID"]=selected_ID;
+    conf["cameraTimeout"]=cameraTimeout;
+    conf["cameraTimeout"].comments().push_back(" Camera timeout in ms");
 }
 GCAM *camobj::cobj;
 
@@ -121,7 +123,7 @@ void camobj::work(){
             unsigned delayms;
             {std::lock_guard<std::mutex>lock(lastFrameTimeMux);
             delayms=std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFrameTime).count();}
-            if(delayms>100*(1000/actualAckFPS)){   // if more than 100 frames are lost reset camera
+            if(delayms>cameraTimeout){
                 arv_camera_execute_command(cam,"DeviceReset",NULL);
                 std::cerr<<"Camera timeout! Camera has been reset.\n";
             }

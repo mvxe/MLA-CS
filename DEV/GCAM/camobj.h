@@ -86,6 +86,7 @@ private:
     bool trigMode{false};
     std::chrono::time_point<std::chrono::system_clock> lastFrameTime;   // for timeout detection
     std::mutex lastFrameTimeMux;
+    unsigned cameraTimeout{10000};
 };
 
 #endif // CAMOBJ_H
