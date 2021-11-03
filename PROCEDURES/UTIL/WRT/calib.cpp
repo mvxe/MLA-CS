@@ -169,9 +169,8 @@ void pgCalib::onWCF(){
         btnWriteCalib->setChecked(false);
         return;
     }
-    lastFolder=saveFolderName.substr(0,saveFolderName.find_last_of("/"));
+    lastFolder=saveFolderName.substr(0,saveFolderName.find_last_of("/")+1);
     saveFolderName+="/";
-    lastFolder+="/";
     cv::utils::fs::createDirectory(saveFolderName);
 
     WCFArray(saveFolderName);
@@ -459,7 +458,7 @@ void pgCalib::onProcessFocusMes(){
 
     readFolders.emplace_back(QFileDialog::getExistingDirectory(this, "Select Folder Contatining Measurements. It will be Searched Recursively.", QString::fromStdString(lastFolder)).toStdString());
     if(readFolders.back().empty()) return;
-    lastFolder=readFolders.back().substr(0,readFolders.back().find_last_of("/"));
+    lastFolder=readFolders.back().substr(0,readFolders.back().find_last_of("/")+1);
     std::string saveName=readFolders.back()+"/proc.txt";
     DIR *wp;
     struct dirent *entry;
