@@ -119,9 +119,9 @@ void camobj::work(){
         }
 
         if(actualAckFPS!=0 && trigMode==false){     // check for camera timeout
-            std::chrono::time_point<std::chrono::system_clock> now=std::chrono::system_clock::now();
             unsigned delayms;
             {std::lock_guard<std::mutex>lock(lastFrameTimeMux);
+            std::chrono::time_point<std::chrono::system_clock> now=std::chrono::system_clock::now();
             delayms=std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFrameTime).count();}
             if(delayms>cameraTimeout){
                 arv_camera_execute_command(cam,"DeviceReset",NULL);
