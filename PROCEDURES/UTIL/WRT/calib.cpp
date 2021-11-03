@@ -27,10 +27,9 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
 
     selArrayXsize=new val_selector(10, "Array Size X", 1, 1000, 0);
     conf["selArrayXsize"]=selArrayXsize;
-    slayout->addWidget(selArrayXsize);
     selArrayYsize=new val_selector(10, "Array Size Y", 1, 1000, 0);
     conf["selArrayYsize"]=selArrayYsize;
-    slayout->addWidget(selArrayYsize);
+    slayout->addWidget(new twid{selArrayXsize,selArrayYsize});
     selArraySpacing=new val_selector(5, "Array Spacing", 0.001, 100, 3, 0, {"um"});
     conf["selArraySpacing"]=selArraySpacing;
     slayout->addWidget(selArraySpacing);
@@ -63,9 +62,9 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     saveMats=new checkbox_gs(true,"Extra Save Mats Containing D,F for Convenience.");
     conf["saveMats"]=saveMats;
     slayout->addWidget(saveMats);
-    savePic=new checkbox_gs(true,"Also save direct pictures of measurements.");
-    conf["savePic"]=savePic;
-    slayout->addWidget(savePic);
+    saveRF=new checkbox_gs(true,"Also save reflectivity.");
+    conf["saveRF"]=saveRF;
+    slayout->addWidget(saveRF);
     slayout->addWidget(new hline);
     selPrerunType=new smp_selector("Prerun type ", 0, {"Plateau","Peak"});
     connect(selPrerunType, SIGNAL(changed(int)), this, SLOT(onPrerunTypeChanged(int)));
@@ -83,8 +82,7 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     selPeakYshift=new val_selector(0, "Peak shift Y", -100, 100, 3, 0, {"um"});
     conf["selPeakYshift"]=selPeakYshift;
     slayout->addWidget(selPeakYshift);
-    slayout->addWidget(new QLabel("NOTE: baseline calibration needed for plateau/peak."));
-    slayout->addWidget(new QLabel("NOTE: set height to 0 to disable."));
+    selPeakYshift->setToolTip("NOTE: baseline calibration needed for plateau/peak.\nNOTE: set height to 0 to disable.");
     slayout->addWidget(new hline);
     selMultiArrayType=new smp_selector("Multiple runs variable parameter: ", 0, {"none","Focus","Duration", "Plateau/Peak"});
     connect(selMultiArrayType, SIGNAL(changed(int)), this, SLOT(onSelMultiArrayTypeChanged(int)));
@@ -94,36 +92,18 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     connect(multiarrayN, SIGNAL(changed(double)), this, SLOT(onMultiarrayNChanged(double)));
     conf["multiarrayN"]=multiarrayN;
     slayout->addWidget(multiarrayN);
-    selArrayFocusBlur=new val_selector(2, "Gaussian Blur Sigma: ", 0, 100, 1, 0, {"px"});
-    conf["selArrayFocusBlur"]=selArrayFocusBlur;
-    selArrayFocusBlur->setVisible(false);
-    slayout->addWidget(selArrayFocusBlur);
-    selArrayFocusThresh=new val_selector(0.2, "2nd Derivative Exclusion Threshold: ", 0, 1, 4);
-    conf["selArrayFocusThresh"]=selArrayFocusThresh;
-    selArrayFocusThresh->setToolTip("Try out values in Depth Eval.");
-    selArrayFocusThresh->setVisible(false);
-    slayout->addWidget(selArrayFocusThresh);
-    slayout->addWidget(new QLabel("NOTE: runs abide by boundaries"));
-    slayout->addWidget(new hline);
-    slayout->addWidget(new QLabel("PROCESSING:"));
-    slayout->addWidget(new QLabel("Crop individual points (for shifted beams)(setting not saved):"));
-    cropTop =new QSpinBox;  cropTop->setRange(0,100);  cropTop->setPrefix("Top: ");  cropTop->setSuffix(" px");
-    cropBttm=new QSpinBox; cropBttm->setRange(0,100); cropBttm->setPrefix("Bottom: "); cropBttm->setSuffix(" px");
-    cropLeft=new QSpinBox; cropLeft->setRange(0,100); cropLeft->setPrefix("Left: "); cropLeft->setSuffix(" px");
-    cropRght=new QSpinBox; cropRght->setRange(0,100); cropRght->setPrefix("Right: "); cropRght->setSuffix(" px");
-    slayout->addWidget(new twid(cropTop,cropBttm));
-    slayout->addWidget(new twid(cropLeft,cropRght));
     slayout->addWidget(new hline);
     report=new QLabel("");
+    slayout->addWidget(new QLabel("Calibration run:"));
     slayout->addWidget(new twid(scheduleMultiWrite,btnWriteCalib,report));
 
+    slayout->addWidget(new hline);
+    slayout->addWidget(new QLabel("Calibration processing:"));
     btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements");
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
     slayout->addWidget(new twid(btnProcessFocusMes));
 }
 void pgCalib::onMultiarrayNChanged(double val){
-    selArrayFocusBlur->setVisible(val!=1);
-    selArrayFocusThresh->setVisible(val!=1);
     selArray(selArrayType->index, selMultiArrayType->index);
     btnWriteCalib->setEnabled(val==1);
     scheduleMultiWrite->setVisible(val!=1);
@@ -332,6 +312,7 @@ void pgCalib::WCFArray(std::string folder){
         if(WCFArrayOne(WArray, arrayPla.size()==1?arrayPla[0]:arrayPla[n], ROI, sROI, folder, static_cast<double>(n)/multiarrayN->val, isPlateau, selPeakXshift->val, selPeakYshift->val,n)){
             abort:QMessageBox::critical(gui_settings, "Error", "Calibration aborted. Measurements up to this point were saved.");
             btnWriteCalib->setChecked(false);
+            if(multiarrayN->val>1) btnWriteCalib->setEnabled(false);
             report->setText(QString::fromStdString(util::toString("Aborted at ",n,"/",multiarrayN->val)));
             return;
         }
@@ -339,8 +320,9 @@ void pgCalib::WCFArray(std::string folder){
             cv::transpose(WArray,WArray);
 
     }
-    report->setText(QString::fromStdString(util::toString(multiarrayN->val,"/",multiarrayN->val)));
+    report->setText(QString::fromStdString(util::toString("Done ",multiarrayN->val,"/",multiarrayN->val)));
     btnWriteCalib->setChecked(false);
+    if(multiarrayN->val>1) btnWriteCalib->setEnabled(false);
 }
 bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac, bool isPlateau, double peakXshift, double peakYshift, unsigned n){
     for(int i=1;;i++){
@@ -371,14 +353,14 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, discardMaskRoiThresh, maxRedoScanTries);
 
     res=scanRes->get();
-    pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-before"), false, true, savePic->val?1:0);
+    pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-before"), false, true, saveRF->val?1:0);
 
 
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
         cv::utils::fs::createDirectory(util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols));
         sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000,0);
         sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000,0);
-        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/before"), true, savePic->val?1:0);
+        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/before"), true, saveRF->val?1:0);
     }
 
     {std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_proc);
@@ -414,14 +396,14 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
         pgMGUI->chooseObj(true);
     }
 
-    pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, discardMaskRoiThresh, maxRedoScanTries,0,savePic->val?1:0);
+    pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, discardMaskRoiThresh, maxRedoScanTries,0,saveRF->val?1:0);
     res=scanRes->get();
-    pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-after"), false, true, savePic->val?1:0);
+    pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-after"), false, true, saveRF->val?1:0);
 
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
         sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000,0);
         sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000,0);
-        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/after"), true, savePic->val?1:0);
+        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/after"), true, saveRF->val?1:0);
     }
 
     delete scanRes;
@@ -561,12 +543,6 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     if(!pgScanGUI::loadScan(&scanBefore, util::toString(fldr,"/before.pfm"))) return;
     if(!pgScanGUI::loadScan(&scanAfter, util::toString(fldr,"/after.pfm"))) return;
     pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
-    if(cropTop->value()!=0 || cropBttm->value()!=0 || cropLeft->value()!=0 || cropRght->value()!=0){
-        if(cropTop->value()+cropBttm->value()>=scanDif.depth.rows || cropRght->value()+cropLeft->value()>=scanDif.depth.cols) {std::cerr<<"Cropped dimensions are larger than scan sizes. Aborting processing.\n"; return;}
-        scanDif.mask =scanDif.mask (cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
-        scanDif.depth=scanDif.depth(cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
-        scanDif.maskN=scanDif.maskN(cv::Rect(cropLeft->value(), cropTop->value(), scanDif.depth.cols-cropLeft->value()-cropRght->value(), scanDif.depth.rows-cropTop->value()-cropBttm->value()));
-    }
     pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
 
     std::vector<std::pair<input_vector, double>> data;

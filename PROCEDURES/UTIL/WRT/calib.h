@@ -42,7 +42,7 @@ private:
     val_selector* selArrayOneScanN;
     checkbox_gs* selArrayRandomize;
     checkbox_gs* saveMats;
-    checkbox_gs* savePic;
+    checkbox_gs* saveRF;
     smp_selector* selPrerunType;
     val_selector* selPlateauA;
     val_selector* selPlateauB;
@@ -50,8 +50,6 @@ private:
     val_selector* selPeakYshift;
     smp_selector* selMultiArrayType;
     val_selector* multiarrayN;
-    val_selector* selArrayFocusBlur;
-    val_selector* selArrayFocusThresh;
     std::string lastFolder{""};
     struct scheduled{
         void* ovlptr;
@@ -65,11 +63,6 @@ private:
 
     int measCounter{0};
     bool drawWriteAreaOn{false};
-
-    QSpinBox* cropTop;
-    QSpinBox* cropBttm;
-    QSpinBox* cropLeft;
-    QSpinBox* cropRght;
 
     //processing
     QPushButton* btnProcessFocusMes;
