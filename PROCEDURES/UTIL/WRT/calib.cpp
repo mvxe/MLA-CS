@@ -372,7 +372,7 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, discardMaskRoiThresh, maxRedoScanTries);
 
     res=scanRes->get();
-    pgScanGUI::saveScan(res, util::toString(folder,"/before"), false, true, savePic->val?1:0);
+    pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-before"), false, true, savePic->val?1:0);
 
 
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
@@ -417,7 +417,7 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
 
     pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, discardMaskRoiThresh, maxRedoScanTries,0,savePic->val?1:0);
     res=scanRes->get();
-    pgScanGUI::saveScan(res, util::toString(folder,"/after"), false, true, savePic->val?1:0);
+    pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-after"), false, true, savePic->val?1:0);
 
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
         sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000,0);
@@ -482,7 +482,7 @@ void pgCalib::onProcessFocusMes(){
                     if(strcmp(entry->d_name,"settings.txt")==0) dirHasMes[0]=true;
                     else if(strcmp(entry->d_name,"before.pfm")==0) dirHasMes[1]=true;
                     else if(strcmp(entry->d_name,"after.pfm")==0) dirHasMes[2]=true;
-                    else if(strcmp(entry->d_name,"after-RF.png")==0) dirHasMes[3]=true;       //nonessential for backward compatibility
+                    else if(strcmp(entry->d_name,"after-RF.png")==0) dirHasMes[3]=true;
                 }
             }
         }
@@ -509,7 +509,7 @@ void pgCalib::onProcessFocusMes(){
     wfile<<"# 10: XY offset(um)\n";
     wfile<<"# 11: plateau(nm)\n";
     wfile<<"# 12: duration(ms)\n";
-    wfile<<"# 13: MeanAbs.ReflectivityDeriv.(a.u.)\n";
+    wfile<<"# 13: Peak Center Reflectivity change (a.u.)\n";
     wfile<<"# 14: Max absolute 1st der. (nm/um)\n";
     wfile<<"# 15: Min Laplacian (nm/um^2)\n";
     wfile<<"# 16: Max Laplacian (nm/um^2)\n";
@@ -571,17 +571,16 @@ void pgCalib::onProcessFocusMes(){
            res(4)=tmp;
         }
 
-        double intReflDeriv{-1};
-        if(dirHasMes[4]){
-            cv::Mat refl=imread(util::toString(fldr,"/after-RF.png"), cv::IMREAD_GRAYSCALE);
-            if(refl.empty()) refl=imread(util::toString(fldr,"/pic.png"), cv::IMREAD_GRAYSCALE);         // pic.png for backward compatibility
-            cv::Mat reflS;
-            cv::Mat derv, dervy;
-            cv::bilateralFilter(refl, reflS, -1, 4, 4);  //smooth it a bit
-            cv::Sobel(reflS, derv, CV_32F,1,0);          //first derivative
-            cv::Sobel(reflS, dervy, CV_32F,0,1);
-            cv::add(derv, dervy, derv);
-            intReflDeriv=cv::mean(cv::abs(derv))[0];
+        int peakRefl{-1};
+        if(dirHasMes[3]){
+            int X=res(0)+scanDif.depth.cols/2;
+            int Y=res(1)+scanDif.depth.rows/2;
+            if(X<0 || Y<0 || X>=scanDif.depth.cols || Y>=scanDif.depth.rows) peakRefl=-1;
+            else{
+                cv::Mat reflb=imread(util::toString(fldr,"/before-RF.png"), cv::IMREAD_GRAYSCALE);
+                cv::Mat refla=imread(util::toString(fldr,"/after-RF.png"), cv::IMREAD_GRAYSCALE);
+                peakRefl=static_cast<int>(refla.at<uchar>(Y,X))-reflb.at<uchar>(Y,X);
+            }
         }
 
         //find max abs first derivative of depth (nm/um):
@@ -626,7 +625,7 @@ void pgCalib::onProcessFocusMes(){
         wfile<<XYofs<<" ";                      // 10: XY offset(um)
         wfile<<plateau<<" ";                    // 11: plateau(nm)
         wfile<<duration<<" ";                   // 12: duration(ms)
-        wfile<<intReflDeriv<<" ";               // 13: MeanAbs.ReflectivityDeriv.(a.u.)
+        wfile<<peakRefl<<" ";                   // 13: Peak Center Reflectivity change (a.u.)\n";
         wfile<<maxDepthDer<<" ";                // 14: Max absolute 1st der. (nm/um)
         wfile<<minDepthLaplacian<<" ";          // 15: Min Laplacian (nm/um^2)
         wfile<<maxDepthLaplacian<<" ";          // 16: Max Laplacian (nm/um^2)
