@@ -50,9 +50,15 @@ public:
                                                     // for cbTilt_override==0, cbTilt setting is used, if cbTilt_override=1 correct tilt, if cbTilt_override=-1 do not correct
                                                     // for cbRefl_override==0, cbRefl setting is used, if cbRefl_override=1 calc refl, if cbRefl_override=-1 do not calc refl
                                                     // this function is non blocking, check measurementInProgress to see if done
-    void doNRounds(int N, cv::Rect ROI={0,0,0,0}, double redoIfMaskHasMore=0.01, int redoN=3, bool force_disable_tilt_correction=false, char cbRefl_override=0);
-                                                    // does at least N measurements (and most N+1) with avg (cbAvg_override==1), if mask is more than redoIfMaskHasMore fraction of total pixels, redo mesurements, up to redoN times
+    bool doNRounds(unsigned N, cv::Rect ROI={0,0,0,0}, unsigned redoN=3, bool force_disable_tilt_correction=false, char cbRefl_override=0);
+                                                    // does at least N measurements (and most N+1) with avg (cbAvg_override==1), redo failed mesurements, up to redoN times
                                                     // this funtion is blocking, but processes qt events
+                                                    // returns true if failed to avg enough measurements
+    struct runTrack{
+        std::atomic<unsigned> running{0};       // _doOneRound only decrements this
+        std::atomic<unsigned> succeeded{0};     // _doOneRound only increments this
+        std::atomic<unsigned> failed{0};        // _doOneRound only increments this
+    };
 
     class scanRes{
     public:
@@ -179,7 +185,7 @@ private:
     int saveIter;
     std::atomic<bool> skipAvgSettingsChanged{false};
 
-    void _doOneRound(cv::Rect ROI={0,0,0,0}, char cbAvg_override=0, bool force_disable_tilt_correction=false, char cbRefl_override=0);
+    void _doOneRound(cv::Rect ROI={0,0,0,0}, char cbAvg_override=0, bool force_disable_tilt_correction=false, char cbRefl_override=0, runTrack* RT=nullptr);
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
     void _correctTilt(scanRes* res, bool force_disable_tilt_correction=false);
     void _savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames);

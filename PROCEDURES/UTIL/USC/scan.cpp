@@ -309,38 +309,22 @@ int NA=0;
 void pgScanGUI::doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disable_tilt_correction, char refl_override){
     if(!CORdy) recalculate();
     measurementInProgress=true;
-    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound, this, ROI,cbAvg_override, force_disable_tilt_correction, refl_override));
+    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound, this, ROI,cbAvg_override, force_disable_tilt_correction, refl_override, nullptr));
 }
 
-void pgScanGUI::doNRounds(int N, cv::Rect ROI, double redoIfMaskHasMore, int redoN, bool force_disable_tilt_correction, char refl_override){
+bool pgScanGUI::doNRounds(unsigned N, cv::Rect ROI, unsigned redoN, bool force_disable_tilt_correction, char refl_override){
     if(!CORdy) recalculate();
-    varShareClient<pgScanGUI::scanRes>* scanRes=result.getClient();
 
-    int doneN=0;
-    const pgScanGUI::scanRes* res;
-    do{
-        measurementInProgress=true;
-        go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound, this, ROI, -1,force_disable_tilt_correction, refl_override));
-        while(measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
-        res=scanRes->get();
-        doneN++;
-    }while(cv::countNonZero(res->mask)>res->mask.cols*res->mask.rows*redoIfMaskHasMore && doneN<=redoN);
-
-    while(res->avgNum<N){
-        if(MLP._lock_proc.try_lock()){
-            go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this, ROI, 1,force_disable_tilt_correction, refl_override));
-            MLP._lock_proc.unlock();
+    runTrack RT{0,0};
+    skipAvgSettingsChanged=true;
+    while(RT.succeeded<N && RT.failed<redoN){
+        if((RT.running<((RT.succeeded==N-1)?1:2)) && RT.succeeded<N && RT.failed<redoN){
+            RT.running++;
+            go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this, ROI, 1,force_disable_tilt_correction, refl_override, &RT));
         }
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        res=scanRes->get();
     }
-    delete scanRes;
-    while(!MLP._lock_proc.try_lock()) {QCoreApplication::processEvents(QEventLoop::AllEvents, 10); std::this_thread::sleep_for(std::chrono::milliseconds(100));}
-    MLP._lock_proc.unlock();
-    while(!MLP._lock_comp.try_lock()) {QCoreApplication::processEvents(QEventLoop::AllEvents, 10); std::this_thread::sleep_for(std::chrono::milliseconds(100));}
-    MLP._lock_comp.unlock();
-
+    return (RT.succeeded<N);
 }
 
 
@@ -465,14 +449,19 @@ void pgScanGUI::_savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames
     }
 }
 
-void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disable_tilt_correction, char cbRefl_override){
+void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disable_tilt_correction, char cbRefl_override, runTrack* RT){
     typedef cv::Mat tUMat;//cv::UMat    // TODO fix; use conditional on if opencl was detected
     if(ROI.width==0) ROI=sROI;
     if(ROI.width<=0) ROI=cv::Rect(0,0,go.pGCAM->iuScope->camCols,go.pGCAM->iuScope->camRows);
 
     MLP._lock_proc.lock();                       //wait for other measurements to complete
-    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) {measurementInProgress=false; return;}
-    if(!CORdy) {measurementInProgress=false; return;}
+    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) goto abort;
+    if(!CORdy) {
+    abort:  measurementInProgress=false;
+            if(RT!=nullptr) RT->running--;
+            if(RT!=nullptr) RT->failed++;
+            return;
+    }
     pgMGUI->chooseObj(true);    // switch to mirau
     scanRes* res=new scanRes;
 
@@ -525,6 +514,8 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
         Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
         if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
+        if(RT!=nullptr) RT->running--;
+        if(RT!=nullptr) RT->failed++;
         return;
     }
 
@@ -651,6 +642,8 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
         }
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
         if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
+        if(RT!=nullptr) RT->running--;
+        if(RT!=nullptr) RT->succeeded++;
         return;
     }
 
@@ -753,7 +746,7 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
     if((cbAvg->val && cbAvg_override==0) || cbAvg_override==1){         // averaging multiple measurements
         varShareClient<pgScanGUI::scanRes>* temp=result.getClient();
         const scanRes* oldScanRes=temp->get();
-        if(oldScanRes==nullptr);
+        if(oldScanRes==nullptr) skipAvgSettingsChanged=false;
         else if(oldScanRes->pos[0]!=res->pos[0] || oldScanRes->pos[1]!=res->pos[1] || oldScanRes->XYnmppx!=res->XYnmppx || oldScanRes->depth.cols!=nCols || oldScanRes->depth.rows!=nRows || skipAvgSettingsChanged) skipAvgSettingsChanged=false;
             //we moved or scan settings changed, no point to make average
         else{
@@ -788,6 +781,8 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
                 MLP.progress_comp=100;
                 if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
                 delete res;
+                if(RT!=nullptr) RT->running--;
+                if(RT!=nullptr) RT->failed++;
                 return;
             }
 
@@ -896,6 +891,8 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
 
     MLP.progress_comp=100;
     if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
+    if(RT!=nullptr) RT->running--;
+    if(RT!=nullptr) RT->succeeded++;
 }
 
 double pgScanGUI::avgDriftCorr(const cv::Mat* mavg, const cv::Mat* mnew, const cv::Mat* mask, cv::Mat* temp, double shiftX, double shiftY){

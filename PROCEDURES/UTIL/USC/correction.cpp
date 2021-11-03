@@ -87,7 +87,11 @@ void pgCorrection::onStartCalib(bool state){
                 return;
             }
             if(!useCorrLocked)useCorr.lock();   //disabling correction temporarily
-            pgSGUI->doNRounds((int)selAvgNum->val, {0,0,0,0}, discardMaskRoiThresh, maxRedoScanTries, -1);  // this does QT process events
+            if(pgSGUI->doNRounds((int)selAvgNum->val, {0,0,0,0}, maxRedoScanTries, -1)){
+                QMessageBox::critical(gui_settings, "Aborted.", "Calibration aborted because scan failed.");
+                preserveResult->setEnabled(true);
+                return;
+            }
             if(!useCorrLocked)useCorr.unlock();
             scans->emplace_back(*scanResC->get());
 

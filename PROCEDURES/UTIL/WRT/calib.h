@@ -68,11 +68,10 @@ private:
     QPushButton* btnProcessFocusMes;
 
     constexpr static int maxRedoScanTries=3;
-    constexpr static double discardMaskRoiThresh=0.001;     //if more than 0.1% of the pixels in the roi are bad, discard and try again, up to maxRedoScanTries. If it still fails accept it anyway
     constexpr static int maxRedoRefocusTries=3;
 
     void WCFArray(std::string folder);
-    bool WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac, bool isPlateau, double peakXshift, double peakYshift, unsigned n);
+    bool WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, bool isPlateau, double peakXshift, double peakYshift, unsigned n);
     void saveConf(std::string filename, double duration, double focus, double plateau, double peak, double peakXshift, double peakYshift);
     void saveMainConf(std::string filename);
     void selArray(int ArrayIndex, int MultiArrayIndex);

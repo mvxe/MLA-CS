@@ -42,7 +42,6 @@ private:
     checkbox_gs* enableCorrection;
 
     constexpr static int maxRedoScanTries=3;
-    constexpr static double discardMaskRoiThresh=0.001;     //if more than 0.1% of the pixels in the scan are bad, discard and try again, up to maxRedoScanTries. If it still fails accept it anyway
     const static std::string fileName;
 
     pgScanGUI* pgSGUI;

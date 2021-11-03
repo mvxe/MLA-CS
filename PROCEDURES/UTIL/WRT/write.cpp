@@ -304,7 +304,11 @@ QStandardItem* pgWrite::addScheduleItem(std::string text, bool toTop){
 void pgWrite::onScan(){
     pgMGUI->chooseObj(true);
     pgMGUI->move(scanCoords[0], scanCoords[1], scanCoords[2], true);
-    pgSGUI->doNRounds(scanRepeatN->val,scanROI);
+    if(pgSGUI->doNRounds(scanRepeatN->val,scanROI,maxRedoScanTries)){
+        QMessageBox::critical(gui_activation, "Error", "Scan failed.\n");
+        // TODO handle scheduling
+        return;
+    }
     res=scanRes->get();
     if(res==nullptr){QMessageBox::critical(gui_activation, "Error", "Somehow cannot find scan.\n");return;}
     saveB->setEnabled(true);

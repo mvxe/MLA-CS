@@ -131,6 +131,8 @@ private:
     QStandardItem* addScheduleItem(std::string text, bool toTop);
 
     void prepareSchedTagFrame(std::string name);
+
+    constexpr static int maxRedoScanTries=3;
 private Q_SLOTS:
     void onPulse();
     void onMenuChange(int index);

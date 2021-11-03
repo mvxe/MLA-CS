@@ -137,7 +137,10 @@ void pgCalib::selArray(int ArrayIndex, int MultiArrayIndex){
 }
 
 void pgCalib::onWCF(){
-    if(!btnWriteCalib->isChecked()) return;
+    if(!btnWriteCalib->isChecked()){
+        if(multiarrayN->val>scheduledPos.size()) btnWriteCalib->setEnabled(false);
+        return;
+    }
     if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
 
     std::time_t time=std::time(nullptr); std::tm ltime=*std::localtime(&time);
@@ -309,8 +312,8 @@ void pgCalib::WCFArray(std::string folder){
                 wfile.close();
             }
         }
-        if(WCFArrayOne(WArray, arrayPla.size()==1?arrayPla[0]:arrayPla[n], ROI, sROI, folder, static_cast<double>(n)/multiarrayN->val, isPlateau, selPeakXshift->val, selPeakYshift->val,n)){
-            abort:QMessageBox::critical(gui_settings, "Error", "Calibration aborted. Measurements up to this point were saved.");
+        if(WCFArrayOne(WArray, arrayPla.size()==1?arrayPla[0]:arrayPla[n], ROI, sROI, folder, isPlateau, selPeakXshift->val, selPeakYshift->val,n)){
+            QMessageBox::critical(gui_settings, "Error", "Calibration failed/aborted. Measurements up to this point were saved.");
             btnWriteCalib->setChecked(false);
             if(multiarrayN->val>1) btnWriteCalib->setEnabled(false);
             report->setText(QString::fromStdString(util::toString("Aborted at ",n,"/",multiarrayN->val)));
@@ -324,13 +327,10 @@ void pgCalib::WCFArray(std::string folder){
     btnWriteCalib->setChecked(false);
     if(multiarrayN->val>1) btnWriteCalib->setEnabled(false);
 }
-bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, double progressfac, bool isPlateau, double peakXshift, double peakYshift, unsigned n){
+bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, bool isPlateau, double peakXshift, double peakYshift, unsigned n){
     for(int i=1;;i++){
         if(!pgFGUI->doRefocus(true, ROI)) break;
-        if(i==maxRedoRefocusTries){
-            QMessageBox::critical(gui_settings, "Error", QString::fromStdString(util::toString("Refocusing failed ",i," times.\n")));
-            return true;
-        }
+        if(i==maxRedoRefocusTries) return true;
     }
 
     varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
@@ -350,11 +350,12 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     }
 
     const pgScanGUI::scanRes* res;
-    pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, discardMaskRoiThresh, maxRedoScanTries);
+    if(!btnWriteCalib->isChecked()){delete scanRes;return true;}        //abort
+    if(pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, maxRedoScanTries,0,saveRF->val?1:0)) return true;
+    if(!btnWriteCalib->isChecked()){delete scanRes;return true;}        //abort
 
     res=scanRes->get();
     pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-before"), false, true, saveRF->val?1:0);
-
 
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
         cv::utils::fs::createDirectory(util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols));
@@ -366,15 +367,11 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     {std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_proc);
         pgMGUI->chooseObj(false);
         pgMGUI->move(-xOfs,yOfs,0);
-        pgSGUI->MLP.progress_proc=100*progressfac;
         CTRL::CO CO(go.pRPTY);
         CO.clear(true);
         for(int j=0;j!=WArray.rows; j++){
             for(int i=0;i!=WArray.cols; i++){
-                if(!btnWriteCalib->isChecked()){   //abort
-                    delete scanRes;
-                    return true;
-                }
+                if(!btnWriteCalib->isChecked()){delete scanRes;return true;}        //abort
 
                 pgMGUI->corCOMove(CO,0,0,WArray.at<cv::Vec2d>(j,i)[1]/1000);
                 CO.addHold("X",CTRL::he_motion_ontarget);
@@ -396,7 +393,9 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
         pgMGUI->chooseObj(true);
     }
 
-    pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, discardMaskRoiThresh, maxRedoScanTries,0,saveRF->val?1:0);
+    if(!btnWriteCalib->isChecked()){delete scanRes;return true;}        //abort
+    if(pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, maxRedoScanTries,0,saveRF->val?1:0)) return true;
+    if(!btnWriteCalib->isChecked()){delete scanRes;return true;}        //abort
     res=scanRes->get();
     pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-after"), false, true, saveRF->val?1:0);
 
