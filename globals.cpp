@@ -34,16 +34,12 @@ void myterminate() {                                                        // i
 
 void globals::startup(int argc, char *argv[]){
     if (started) return; started=true;
-    cURLpp::initialize(CURL_GLOBAL_ALL);     //we init the curl lib needed for FTP
     std::set_terminate(myterminate);
-
     cinthr=new std::thread(&cinlisten::run, new cinlisten());            //so that I can kill it in the terminal if qt freezes, which is often over ssh -x
-    pXPS =newThread<XPS> ()->obj;
     pGCAM=newThread<GCAM>()->obj;
     pRPTY=newThread<RPTY>()->obj;
     pCNC=newThread<CNC>()->obj;
     //std::this_thread::sleep_for (std::chrono::milliseconds(100));
-    conf["XPS"]=pXPS->conf;
     conf["GCAM"]=pGCAM->conf;
     conf["RPTY"]=pRPTY->conf;
     conf["CNC"]=pCNC->conf;
@@ -90,7 +86,6 @@ void globals::cleanup(){
     while(!threads.empty())
         killThread(threads.front());        //this destroys them(safely calling their destructors)
 
-    cURLpp::terminate();                    //we terminate curl
     std::cout<<"All threads exited successfully!\n";
     go_mx.unlock();
 }

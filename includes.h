@@ -6,7 +6,6 @@
 #define INCLUDES_H
 
 #include "DEV/GCAM/frame_queues.h"
-#include "DEV/XPS/xps.h"
 #include "DEV/GCAM/gcam.h"
 #include "DEV/RPTY/rpty.h"
 #include "DEV/CNC/cnc.h"

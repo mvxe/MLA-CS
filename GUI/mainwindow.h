@@ -31,11 +31,6 @@ private Q_SLOTS:
     void updateCncMenu(QMenu* menuN);
     void program_exit();
 
-    void on_e_xps_ip_editingFinished();
-    void on_e_xps_port_editingFinished();
-    void on_e_xps_xyz_editingFinished();
-    void on_e_xps_timeout_editingFinished();
-
     void on_e_rpty_timeout_editingFinished();
     void on_e_rpty_ip_editingFinished();
     void on_e_rpty_port_editingFinished();
@@ -43,19 +38,6 @@ private Q_SLOTS:
     void on_tabWidget_currentChanged(int index);
     void on_cam1_select_triggered(QAction *arg1);
     void cam1_select_show();
-
-    void on_btn_X_dec_released();
-    void on_btn_Y_dec_released();
-    void on_btn_Z_dec_released();
-    void on_btn_X_min_released();
-    void on_btn_Y_min_released();
-    void on_btn_Z_min_released();
-    void on_btn_X_max_released();
-    void on_btn_Y_max_released();
-    void on_btn_Z_max_released();
-    void on_btn_X_inc_released();
-    void on_btn_Y_inc_released();
-    void on_btn_Z_inc_released();
 
     void cam2_select_show();
     void on_cam2_select_triggered(QAction *arg1);
@@ -106,7 +88,6 @@ private:
     QPixmap px_offline{":/emblem-nowrite.svg"};
 
     int dialval{0};
-    bool xps_con{false};
     bool iuScope_con{false};
     bool utilCam_con{false};
     bool rpty_con{false};

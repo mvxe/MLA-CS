@@ -53,7 +53,7 @@ void pgTiltGUI::init_gui_settings(){
 }
 
 void pgTiltGUI::doTilt(double magnitudeX, double magnitudeY, bool scale){
-    if(!go.pCNC->connected || !go.pXPS->connected) return;
+//TODO    if(!go.pCNC->connected || !go.pXPS->connected) return;
     if(!inited){
         go.pCNC->execCommand("M80\n");      //turn on PSU (this actually just inits the stepper drivers for now)
         go.pCNC->execCommand("M18 S10\n");  //set stepper disable inactivity to 10 seconds
@@ -89,7 +89,7 @@ void pgTiltGUI::doTilt(double magnitudeX, double magnitudeY, bool scale){
 
     if(magnitudeX!=0) dZ+=dX*focus_autoadjX->val;
     if(magnitudeY!=0) dZ+=dY*focus_autoadjY->val;
-    go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,dZ,-dZ);
+//TODO        go.pXPS->MoveRelative(XPS::mgroup_XYZF,0,0,dZ,-dZ);
     if(magnitudeX!=0) Tilt_cum_X+=dX;
     if(magnitudeY!=0) Tilt_cum_Y+=dY;
 }
@@ -98,9 +98,9 @@ void pgTiltGUI::onCalibrate(bool isStart, bool isX){
     if(isStart){
         if(isX) Tilt_cum_X=0;
         else    Tilt_cum_Y=0;
-        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[2];
+//TODO            Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[2];
     }else{
-        Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[2]-Z_cum;
+ //TODO           Z_cum=go.pXPS->getPos(XPS::mgroup_XYZF).pos[2]-Z_cum;
         if(isX) focus_autoadjX->setValue(Z_cum/Tilt_cum_X);
         else    focus_autoadjY->setValue(Z_cum/Tilt_cum_Y);
     }

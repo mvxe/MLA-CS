@@ -19,7 +19,6 @@
 #include <UTIL/.rtoml/rtoml.hpp>
 #include "DEV/controller.h"
 
-class XPS;
 class GCAM;
 class RPTY;
 class CNC;
@@ -81,7 +80,6 @@ public:
     globals();
     ~globals();
 
-    XPS* pXPS;      //you can access stages through this
     GCAM* pGCAM;    //you can access cameras and frame queues through this, see GCAM/_config.h for members
     RPTY* pRPTY;    //you can access red pitaya functions through this
     CNC* pCNC;      //you can access CNC functions through this

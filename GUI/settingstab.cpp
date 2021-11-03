@@ -4,10 +4,6 @@
 
 void MainWindow::sync_settings(){
     ui->sl_util_expo->blockSignals(true);
-    ui->e_xps_ip->setText(QString::fromStdString(go.pXPS->IP.get()));
-    ui->e_xps_port->setValue(go.pXPS->port.get());
-    ui->e_xps_xyz->setText(QString::fromStdString(go.pXPS->groupGetName(XPS::mgroup_XYZF)));
-    ui->e_xps_timeout->setValue(go.pXPS->keepalive.get());
 
     ui->e_rpty_ip->setText(QString::fromStdString(go.pRPTY->IP.get()));
     ui->e_rpty_port->setValue(go.pRPTY->port.get());
@@ -23,13 +19,6 @@ void MainWindow::sync_settings(){
 }
 
 
-void MainWindow::on_e_xps_ip_editingFinished()      {lineedit_fun(ui->e_xps_ip,&go.pXPS->IP);}
-void MainWindow::on_e_xps_port_editingFinished()    {spinbox_fun(ui->e_xps_port,&go.pXPS->port);}
-void MainWindow::on_e_xps_xyz_editingFinished()     {ui->e_xps_xyz->blockSignals(true); //this prevents two signals to emmit when pressing enter (a QT bug workaround)
-                                                     go.pXPS->groupSetName(XPS::mgroup_XYZF, ui->e_xps_xyz->text().toStdString());
-                                                     ui->e_xps_xyz->clearFocus();
-                                                     ui->e_xps_xyz->blockSignals(false);}
-void MainWindow::on_e_xps_timeout_editingFinished() {spinbox_fun(ui->e_xps_timeout,&go.pXPS->keepalive);}
 
 void MainWindow::on_e_rpty_ip_editingFinished()     {lineedit_fun(ui->e_rpty_ip,&go.pRPTY->IP);}
 void MainWindow::on_e_rpty_port_editingFinished()   {spinbox_fun(ui->e_rpty_port,&go.pRPTY->port);}
@@ -43,10 +32,6 @@ void MainWindow::on_sl_util_expo_valueChanged(int value){
 }
 int N=0;
 void MainWindow::GUI_update(){
-    if (xps_con!=go.pXPS->connected){
-        xps_con=go.pXPS->connected;
-        ui->si_XPS->setPixmap(xps_con?px_online:px_offline);
-    }
     if (iuScope_con!=go.pGCAM->iuScope->connected){
         iuScope_con=go.pGCAM->iuScope->connected;
         ui->si_iuScope->setPixmap(iuScope_con?px_online:px_offline);
@@ -64,9 +49,6 @@ void MainWindow::GUI_update(){
         cnc_con=go.pCNC->connected;
         ui->si_stepCtrl->setPixmap(cnc_con?px_online:px_offline);
     }
-
-    if (go.pXPS->IP.resolved.changed())
-        ui->e_xps_ip_resolved->setText(QString::fromStdString(go.pXPS->IP.is_name?go.pXPS->IP.resolved.get():" "));
     if (go.pRPTY->IP.resolved.changed())
         ui->e_rpty_ip_resolved->setText(QString::fromStdString(go.pRPTY->IP.is_name?go.pRPTY->IP.resolved.get():" "));
 

@@ -5,7 +5,6 @@ enum class device_type{
     Camera_Any,
     Camera_Genicam,
     Camera_Webcam,
-    Newport_XPS,
     RedPitaya_Generic
 };
 

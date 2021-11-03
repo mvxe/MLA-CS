@@ -104,7 +104,6 @@ private:
     std::string fileName;
     cv::Mat tagImage;
     int drawWriteAreaOn{0};     //1 is img, 2 is tag, 3 is frame
-    const double servoCycle{0.0001};    // The XPS servo cycle (in s)
     cv::Rect scanROI;
     void prepareScanROI();
     double scanCoords[3];

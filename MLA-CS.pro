@@ -52,7 +52,6 @@ HEADERS += \
     DEV/RPTY/motionDevices/simpleservo.h \
     DEV/RPTY/rpbbserial.h \
     DEV/RPTY/rpmotion.h \
-    DEV/XPS/xps.h \
     DEV/controller.h \
     UTIL/.rtoml/rtoml.hpp \
     UTIL/motioncalc.h \
@@ -62,8 +61,6 @@ HEADERS += \
     UTIL/utility.h \
     UTIL/containers.h \
     UTIL/containers_template.h \
-    DEV/XPS/xps_template.h \
-    DEV/XPS/_config.h \
     DEV/RPTY/rpty.h \
     GUI/mainwindow.h \
     GUI/gui_includes.h \
@@ -118,7 +115,6 @@ SOURCES += \
     DEV/RPTY/rpbbserial.cpp \
     DEV/RPTY/rpdevices.cpp \
     DEV/RPTY/rpmotion.cpp \
-    DEV/XPS/xps.cpp \
     main.cpp \
     globals.cpp \
     GUI/settingstab.cpp \
