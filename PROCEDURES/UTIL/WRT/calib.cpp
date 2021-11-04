@@ -568,8 +568,8 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     cv::Mat refla=imread(util::toString(fldr,"/after-RF.png"), cv::IMREAD_GRAYSCALE);
     if(!reflb.empty() && !refla.empty())
         for(int i=0;i!=reflb.cols;i++) for(int j=0;j!=reflb.rows;j++)
-            if(i>=(res(0)-abs(res(3))*toFWHM) && i<=(res(0)+abs(res(3))*toFWHM) && j>=(res(1)-abs(res(4))*toFWHM) && j<=(res(1)+abs(res(4))*toFWHM)){
-                peakRefl+=static_cast<double>(refla.at<uint8_t>(j,i))-reflb.at<uint8_t>(j,i);
+            if(pow((i-res(0)),2)+pow((j-res(1)),2)<=pow((res(3)+res(4))/2*toFWHM,2)){
+                peakRefl+=static_cast<double>(refla.at<uint8_t>(j,i))-static_cast<double>(reflb.at<uint8_t>(j,i));
                 nref++;
             }
     peakRefl/=nref;
