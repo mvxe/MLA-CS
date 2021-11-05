@@ -7,9 +7,14 @@
 #include "GUI/tab_monitor.h"    //for debug purposes
 #include <dirent.h>
 #include <sys/stat.h>
-#include <dlib/optimization.h>
 #include <algorithm>
 #include <random>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_blas.h>
+#include <gsl/gsl_multifit_nlinear.h>
 
 pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn, pgWrite* pgWr, overlay& ovl): pgSGUI(pgSGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgBeAn(pgBeAn), pgWr(pgWr), ovl(ovl){
     btnWriteCalib=new HQPushButton("Run Write Focus Calibration");
@@ -409,25 +414,6 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     return false;
 }
 
-typedef dlib::matrix<double,2,1> input_vector;
-typedef dlib::matrix<double,7,1> parameter_vector;
-double gaussResidual(const std::pair<input_vector, double>& data, const parameter_vector& params){
-    double x0=params(0);  double x=data.first(0);
-    double y0=params(1);  double y=data.first(1);
-    double a=params(2);
-    double wx=params(3);
-    double wy=params(4);
-    double an=params(5);
-    double i0=params(6);
-    //double model=i0+a*exp(-(pow(x-x0,2)+pow(y-y0,2))/2/pow(w,2));
-    //double model=i0+a*exp(-(  pow(x-x0,2)/2*(cos(an)/pow(wx,2)+sin(an)/pow(wy,2)) +  pow(y-y0,2)/2*(cos(an)/pow(wy,2)+sin(an)/pow(wx,2)) ));  //seems to be wrong
-    double A=pow(cos(an),2)/2/pow(wx,2)+pow(sin(an),2)/2/pow(wy,2);
-    double B=sin(2*an)/2/pow(wx,2)-sin(2*an)/2/pow(wy,2);
-    double C=pow(sin(an),2)/2/pow(wx,2)+pow(cos(an),2)/2/pow(wy,2);
-    double model=i0+a*exp(-A*pow(x-x0,2)-B*(x-x0)*(y-y0)-C*pow(y-y0,2));
-    //if(i0<0 || x0<0 || y0<0 || a<0 || a>255) return 9999;
-    return model-data.second;
-}
 bool folderSort(std::string i,std::string j){
     size_t posi=i.find_last_of("/");
     size_t posj=j.find_last_of("/");
@@ -503,6 +489,17 @@ void pgCalib::onProcessFocusMes(){
     wfile<<"# 24: prepeakYoffs(um)\n";
     wfile<<"# 25: Mirror tilt X(nm/nm)\n";
     wfile<<"# 26: Mirror tilt Y(nm/nm)\n";
+    wfile<<"# 27: asymptotic standard error for 3: peak height(nm)\n";
+    wfile<<"# 28: asymptotic standard error for 4: X width (1/e^2)(um)\n";
+    wfile<<"# 29: asymptotic standard error for 5: Y width (1/e^2)(um)\n";
+    wfile<<"# 30: asymptotic standard error for 6: ellipse angle(rad)\n";
+    wfile<<"# 31: asymptotic standard error for 7: XY width (1/e^2)(um)\n";
+    wfile<<"# 32: asymptotic standard error for 8: X offset(um)\n";
+    wfile<<"# 33: asymptotic standard error for 9: Y offset(um)\n";
+    wfile<<"# 34: asymptotic standard error for 10: XY offset(um)\n";
+    wfile<<"# 35: asymptotic standard error for 19: X width (FWHM)(um)\n";
+    wfile<<"# 36: asymptotic standard error for 20: Y width (FWHM)(um)\n";
+    wfile<<"# 37: asymptotic standard error for 21: XY width (FWHM)(um)\n";
 
     std::vector<std::string> results;
     std::atomic<unsigned> completed=0;
@@ -523,6 +520,73 @@ void pgCalib::onProcessFocusMes(){
     pgSGUI->MLP.progress_comp=100;
     wfile.close();
 }
+
+struct data {
+    size_t n;
+    double* x;
+    double* y;
+    double* h;
+};
+
+int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
+    size_t n=((struct data*)data)->n;
+    double* x=((struct data*)data)->x;
+    double* y=((struct data*)data)->y;
+    double* h=((struct data*)data)->h;
+
+    double x0=gsl_vector_get(pars, 0);
+    double y0=gsl_vector_get(pars, 1);
+    double a =gsl_vector_get(pars, 2);
+    double wx=gsl_vector_get(pars, 3);
+    double wy=gsl_vector_get(pars, 4);
+    double an=gsl_vector_get(pars, 5);
+    double i0=gsl_vector_get(pars, 6);
+    double A=pow(cos(an),2)/2/pow(wx,2)+pow(sin(an),2)/2/pow(wy,2);
+    double B=sin(2*an)/2/pow(wx,2)-sin(2*an)/2/pow(wy,2);
+    double C=pow(sin(an),2)/2/pow(wx,2)+pow(cos(an),2)/2/pow(wy,2);
+    for (size_t i=0; i!=n; i++){
+        double model=i0+a*exp(-A*pow(x[i]-x0,2)-B*(x[i]-x0)*(y[i]-y0)-C*pow(y[i]-y0,2));
+        gsl_vector_set(f, i, model-h[i]);
+    }
+    return GSL_SUCCESS;
+}
+
+int gauss2De_df (const gsl_vector* pars, void* data, gsl_matrix *J){
+    size_t n=((struct data*)data)->n;
+    double* x=((struct data*)data)->x;
+    double* y=((struct data*)data)->y;
+
+    double x0=gsl_vector_get(pars, 0);
+    double y0=gsl_vector_get(pars, 1);
+    double a =gsl_vector_get(pars, 2);
+    double wx=gsl_vector_get(pars, 3);
+    double wy=gsl_vector_get(pars, 4);
+    double an=gsl_vector_get(pars, 5);
+    double A=pow(cos(an),2)/2/pow(wx,2)+pow(sin(an),2)/2/pow(wy,2);
+    double B=sin(2*an)/2/pow(wx,2)-sin(2*an)/2/pow(wy,2);
+    double C=pow(sin(an),2)/2/pow(wx,2)+pow(cos(an),2)/2/pow(wy,2);
+    double dAdwx=-pow(cos(an),2)/pow(wx,3);
+    double dAdwy=-pow(sin(an),2)/pow(wy,3);
+    double dBdwx=-sin(2*an)/pow(wx,3);
+    double dBdwy=+sin(2*an)/pow(wy,3);
+    double dCdwx=-pow(sin(an),2)/pow(wx,3);
+    double dCdwy=-pow(cos(an),2)/pow(wy,3);
+    double dAdan=sin(an)*cos(an)*(1/pow(wy,2)-1/pow(wx,2));
+    double dBdan=cos(2*an)*(1/pow(wx,2)-1/pow(wy,2));
+    double dCdan=-dAdan;
+    for (size_t i=0; i!=n; i++){
+        double D=exp(-A*pow(x[i]-x0,2)-B*(x[i]-x0)*(y[i]-y0)-C*pow(y[i]-y0,2));
+        gsl_matrix_set (J, i, 0, a*D*(2*A*(x[i]-x0)+B*(y[i]-y0)));
+        gsl_matrix_set (J, i, 1, a*D*(2*C*(y[i]-y0)+B*(x[i]-x0)));
+        gsl_matrix_set (J, i, 2, D);
+        gsl_matrix_set (J, i, 3, a*D*(-pow((x[i]-x0),2)*dAdwx-(x[i]-x0)*(y[i]-y0)*dBdwx-pow((y[i]-y0),2)*dCdwx));
+        gsl_matrix_set (J, i, 4, a*D*(-pow((x[i]-x0),2)*dAdwy-(x[i]-x0)*(y[i]-y0)*dBdwy-pow((y[i]-y0),2)*dCdwy));
+        gsl_matrix_set (J, i, 5, a*D*(-pow((x[i]-x0),2)*dAdan-(x[i]-x0)*(y[i]-y0)*dBdan-pow((y[i]-y0),2)*dCdan));
+        gsl_matrix_set (J, i, 6, 1.);
+    }
+    return GSL_SUCCESS;
+}
+
 void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<unsigned>* completed){
     double focus;
     double duration;
@@ -544,20 +608,89 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
     pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
 
-    std::vector<std::pair<input_vector, double>> data;
+    const gsl_multifit_nlinear_type* T=gsl_multifit_nlinear_trust;
+    gsl_multifit_nlinear_workspace* w;
+    gsl_multifit_nlinear_fdf fdf;
+    gsl_multifit_nlinear_parameters fdf_params=gsl_multifit_nlinear_default_parameters();
+
+    const size_t p=7;
+
+    gsl_vector* f;
+    gsl_matrix* J;
+    gsl_matrix* covar = gsl_matrix_alloc (p, p);
+
+
+    double x_init[p] = { scanDif.depth.cols/2., scanDif.depth.rows/2., 1.0, 20, 20, 0.01, 1.0}; /* starting values */
+    gsl_vector_view xx=gsl_vector_view_array (x_init, p);
+
+    double chisq, chisq0;
+    int status, info;
+
+    const double xtol=1e-8;
+    const double gtol=1e-8;
+    const double ftol=0.0;
+
+    gsl_rng_env_setup();
+
+    size_t N=scanDif.depth.cols*scanDif.depth.rows;
+    double x[N], y[N], h[N], weights[N];
+    size_t n{0};
     for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++)
-        if(scanDif.mask.at<uchar>(j,i)==0) data.push_back(std::make_pair(input_vector{(double)i,(double)j},scanDif.depth.at<float>(j,i)));
+        if(scanDif.mask.at<uchar>(j,i)==0){
+            x[n]=i;
+            y[n]=j;
+            h[n]=scanDif.depth.at<float>(j,i);
+            weights[n]=1;
+            n++;
+        }
+    N=n;
+    if(N<p){(*completed)++;return;}
+    struct data d = { N, x, y, h};
+    gsl_vector_view wts = gsl_vector_view_array(weights, N);
 
-    parameter_vector res{(double)scanDif.depth.cols/2,(double)scanDif.depth.rows/2,scanDif.max-scanDif.min,(double)scanDif.depth.rows, (double)scanDif.depth.rows, 0.01, scanDif.min};
+    /* define the function to be minimized */
+    fdf.f = gauss2De_f;
+    fdf.df = gauss2De_df;       /* set to NULL for finite-difference Jacobian */
+    fdf.fvv = NULL;             /* not using geodesic acceleration */
+    fdf.n = N;
+    fdf.p = p;
+    fdf.params = &d;
 
-    dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7,100), gaussResidual, derivative(gaussResidual), data, res);
-    while(res(5)>M_PI) res(5)-=M_PI;
-    while(res(5)<0) res(5)+=M_PI;
-    if(res(5)>=M_PI/2){
-       res(5)-= M_PI/2;
-       double tmp=res(3);
-       res(3)=res(4);
-       res(4)=tmp;
+    /* allocate workspace with default parameters */
+    w=gsl_multifit_nlinear_alloc(T, &fdf_params, N, p);
+
+    /* initialize solver with starting point and weights */
+    gsl_multifit_nlinear_winit (&xx.vector, &wts.vector, &fdf, w);
+
+    /* compute initial cost function */
+    f=gsl_multifit_nlinear_residual(w);
+    gsl_blas_ddot(f, f, &chisq0);
+
+    /* solve the system with a maximum of 100 iterations */
+    status=gsl_multifit_nlinear_driver(100, xtol, gtol, ftol, NULL, NULL, &info, w);
+
+    /* compute covariance of best fit parameters */
+    J=gsl_multifit_nlinear_jac(w);
+    gsl_multifit_nlinear_covar (J, 0.0, covar);
+
+    /* compute final cost */
+    gsl_blas_ddot(f, f, &chisq);
+    double res[7], err[7];
+
+    for(int i=0;i!=7;i++){
+        res[i]=gsl_vector_get(w->x, i);
+        err[i]=GSL_MAX_DBL(1,sqrt(chisq/(N-p)))*sqrt(gsl_matrix_get(covar,i,i));
+    }
+    gsl_multifit_nlinear_free (w);
+    gsl_matrix_free (covar);
+
+    while(res[5]>M_PI) res[5]-=M_PI;
+    while(res[5]<0) res[5]+=M_PI;
+    if(res[5]>=M_PI/2){
+       res[5]-= M_PI/2;
+       double tmp=res[3];
+       res[3]=res[4];
+       res[4]=tmp;
     }
 
     const double toFWHM=sqrt(2*log(2));
@@ -568,7 +701,7 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     cv::Mat refla=imread(util::toString(fldr,"/after-RF.png"), cv::IMREAD_GRAYSCALE);
     if(!reflb.empty() && !refla.empty())
         for(int i=0;i!=reflb.cols;i++) for(int j=0;j!=reflb.rows;j++)
-            if(pow((i-res(0)),2)+pow((j-res(1)),2)<=pow((res(3)+res(4))/2*toFWHM,2)){
+            if(pow((i-res[0]),2)+pow((j-res[1]),2)<=pow((res[3]+res[4])/2*toFWHM,2)){
                 peakRefl+=static_cast<double>(refla.at<uint8_t>(j,i))-static_cast<double>(reflb.at<uint8_t>(j,i));
                 nref++;
             }
@@ -592,24 +725,25 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     minDepthLaplacian/=XYumppx;
     maxDepthLaplacian/=XYumppx;
 
-    double Xwidth=2*abs(res(3))*XYumppx;
-    double Ywidth=2*abs(res(4))*XYumppx;
-    double XYwidth=(Xwidth+Ywidth)/2;
-    double Xofs=(res(0)-scanDif.depth.cols/2.)*XYumppx;
-    double Yofs=(res(1)-scanDif.depth.rows/2.)*XYumppx;
-    double XYofs=sqrt(pow(Xofs,2)+pow(Yofs,2));
+    double Xwidth=2*abs(res[3])*XYumppx;                        double eXwidth=2*abs(err[3])*XYumppx;
+    double Ywidth=2*abs(res[4])*XYumppx;                        double eYwidth=2*abs(err[4])*XYumppx;
+    double XYwidth=(Xwidth+Ywidth)/2;                           double eXYwidth=(eXwidth+eYwidth)/2;
+    double Xofs=(res[0]-scanDif.depth.cols/2.)*XYumppx;         double eXofs=err[0]*XYumppx;
+    double Yofs=(res[1]-scanDif.depth.rows/2.)*XYumppx;         double eYofs=err[1]*XYumppx;
+    double XYofs=sqrt(pow(Xofs,2)+pow(Yofs,2));                 double eXYofs=eXofs*Xofs/XYofs+eYofs*Yofs/XYofs;
     double tiltX=scanBefore.tiltCor[0]/scanBefore.XYnmppx;
     double tiltY=scanBefore.tiltCor[1]/scanBefore.XYnmppx;
 
     int valid=1;
-    if(res(0)<0 || res(0)>scanDif.depth.cols || res(1)<0 || res(1)>scanDif.depth.rows || res(2)<=0) valid=0;    //center of the fit is out of frame or other things that indicate fit faliure
+    if(res[0]<0 || res[0]>scanDif.depth.cols || res[1]<0 || res[1]>scanDif.depth.rows || res[2]<=0 || status!=0) valid=0;    //fit failure
+    for(int i=0;i!=7;i++) if(err[i]>1e3) valid=0;    // fit failed if errors are arbitrarily high
     *output=util::toString(
         valid," ",                      // 1: valid measurement(=1)
         focus," ",                      // 2: focus distance(um)
-        res(2)," ",                     // 3: peak height(nm)
+        res[2]," ",                     // 3: peak height(nm)
         Xwidth," ",                     // 4: X width (1/e^2)(um)
         Ywidth," ",                     // 5: Y width (1/e^2)(um)
-        res(5)," ",                     // 6: ellipse angle(rad)
+        res[5]," ",                     // 6: ellipse angle(rad)
         XYwidth," ",                    // 7: XY width (1/e^2)(um)
         Xofs," ",                       // 8: X offset(um)
         Yofs," ",                       // 9: Y offset(um)
@@ -629,9 +763,22 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
         prepeakXofs," ",                // 23: prepeakXoffs(um)
         prepeakYofs," ",                // 24: prepeakYoffs(um)
         tiltX," ",                      // 25: Mirror tilt X(nm/nm)
-        tiltY,"\n"                      // 26: Mirror tilt Y(nm/nm)
+        tiltY," ",                      // 26: Mirror tilt Y(nm/nm)
+        err[2]," ",                     // 27: asymptotic standard error for 3: peak height(nm)
+        eXwidth," ",                    // 28: asymptotic standard error for 4: X width (1/e^2)(um)
+        eYwidth," ",                    // 29: asymptotic standard error for 5: Y width (1/e^2)(um)
+        err[2]," ",                     // 30: asymptotic standard error for 6: ellipse angle(rad)
+        eXYwidth," ",                   // 31: asymptotic standard error for 7: XY width (1/e^2)(um)
+        eXofs," ",                      // 32: asymptotic standard error for 8: X offset(um)
+        eYofs," ",                      // 33: asymptotic standard error for 9: Y offset(um)
+        eXYofs," ",                     // 34: asymptotic standard error for 10: XY offset(um)
+        eXwidth*toFWHM," ",             // 35: asymptotic standard error for 19: X width (FWHM)(um)
+        eYwidth*toFWHM," ",             // 36: asymptotic standard error for 20: Y width (FWHM)(um)
+        eXYwidth*toFWHM,"\n"            // 37: asymptotic standard error for 21: XY width (FWHM)(um)
                 );
+
     (*completed)++;
+    return;
 }
 
 
