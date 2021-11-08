@@ -11,6 +11,8 @@ class pgDepthEval;
 class pgBeamAnalysis;
 class pgWrite;
 class QSpinBox;
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_vector.h>
 
 class pgCalib: public QWidget{
     Q_OBJECT
@@ -87,6 +89,15 @@ private Q_SLOTS:
     void onMultiarrayNChanged(double val);
     void onPrerunTypeChanged(int);
 
+private:
+    static int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f);
+    static int gauss2De_df (const gsl_vector* pars, void* data, gsl_matrix* J);
+    struct fit_data {
+        size_t n;
+        double* x;
+        double* y;
+        double* h;
+    };
 };
 
 #endif // CALIB_H

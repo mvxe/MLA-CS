@@ -521,18 +521,13 @@ void pgCalib::onProcessFocusMes(){
     wfile.close();
 }
 
-struct data {
-    size_t n;
-    double* x;
-    double* y;
-    double* h;
-};
 
-int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
-    size_t n=((struct data*)data)->n;
-    double* x=((struct data*)data)->x;
-    double* y=((struct data*)data)->y;
-    double* h=((struct data*)data)->h;
+
+int pgCalib::gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
+    size_t n=((struct fit_data*)data)->n;
+    double* x=((struct fit_data*)data)->x;
+    double* y=((struct fit_data*)data)->y;
+    double* h=((struct fit_data*)data)->h;
 
     double x0=gsl_vector_get(pars, 0);
     double y0=gsl_vector_get(pars, 1);
@@ -551,10 +546,10 @@ int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
     return GSL_SUCCESS;
 }
 
-int gauss2De_df (const gsl_vector* pars, void* data, gsl_matrix *J){
-    size_t n=((struct data*)data)->n;
-    double* x=((struct data*)data)->x;
-    double* y=((struct data*)data)->y;
+int pgCalib::gauss2De_df (const gsl_vector* pars, void* data, gsl_matrix* J){
+    size_t n=((struct fit_data*)data)->n;
+    double* x=((struct fit_data*)data)->x;
+    double* y=((struct fit_data*)data)->y;
 
     double x0=gsl_vector_get(pars, 0);
     double y0=gsl_vector_get(pars, 1);
@@ -608,32 +603,17 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
     pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
 
-    const gsl_multifit_nlinear_type* T=gsl_multifit_nlinear_trust;
-    gsl_multifit_nlinear_workspace* w;
-    gsl_multifit_nlinear_fdf fdf;
-    gsl_multifit_nlinear_parameters fdf_params=gsl_multifit_nlinear_default_parameters();
-
-    const size_t p=7;
-
-    gsl_vector* f;
-    gsl_matrix* J;
-    gsl_matrix* covar = gsl_matrix_alloc (p, p);
 
 
-    double x_init[p] = { scanDif.depth.cols/2., scanDif.depth.rows/2., 1.0, 20, 20, 0.01, 1.0}; /* starting values */
-    gsl_vector_view xx=gsl_vector_view_array (x_init, p);
+
 
     double chisq, chisq0;
-    int status, info;
 
-    const double xtol=1e-8;
-    const double gtol=1e-8;
-    const double ftol=0.0;
-
-    gsl_rng_env_setup();
-
-    size_t N=scanDif.depth.cols*scanDif.depth.rows;
-    double x[N], y[N], h[N], weights[N];
+    const size_t parN=7;
+    double x_init[parN] = { scanDif.depth.cols/2., scanDif.depth.rows/2., 0, 4000/scanDif.XYnmppx, 4000/scanDif.XYnmppx, 0.01, 0}; /* starting values */
+    cv::minMaxIdx(scanDif.depth,&x_init[6],&x_init[2]);
+    size_t ptN=scanDif.depth.cols*scanDif.depth.rows;
+    double x[ptN], y[ptN], h[ptN], weights[ptN];
     size_t n{0};
     for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++)
         if(scanDif.mask.at<uchar>(j,i)==0){
@@ -643,45 +623,42 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
             weights[n]=1;
             n++;
         }
-    N=n;
-    if(N<p){(*completed)++;return;}
-    struct data d = { N, x, y, h};
-    gsl_vector_view wts = gsl_vector_view_array(weights, N);
+    ptN=n;
+    if(ptN<parN){(*completed)++;return;}
 
-    /* define the function to be minimized */
-    fdf.f = gauss2De_f;
-    fdf.df = gauss2De_df;       /* set to NULL for finite-difference Jacobian */
-    fdf.fvv = NULL;             /* not using geodesic acceleration */
-    fdf.n = N;
-    fdf.p = p;
-    fdf.params = &d;
+    struct fit_data data{ptN,x,y,h};
+    gsl_multifit_nlinear_fdf fdf{gauss2De_f,gauss2De_df,NULL,ptN,parN,&data,0,0,0};
+    gsl_multifit_nlinear_parameters fdf_params=gsl_multifit_nlinear_default_parameters();
+    gsl_multifit_nlinear_workspace* workspace=gsl_multifit_nlinear_alloc(gsl_multifit_nlinear_trust, &fdf_params, ptN, parN);
 
-    /* allocate workspace with default parameters */
-    w=gsl_multifit_nlinear_alloc(T, &fdf_params, N, p);
+    gsl_vector_view v_startp=gsl_vector_view_array(x_init, parN);
+    gsl_vector_view v_weights = gsl_vector_view_array(weights, ptN);
+    gsl_multifit_nlinear_winit (&v_startp.vector, &v_weights.vector, &fdf, workspace);
 
-    /* initialize solver with starting point and weights */
-    gsl_multifit_nlinear_winit (&xx.vector, &wts.vector, &fdf, w);
+    gsl_vector* fcost;
+    fcost=gsl_multifit_nlinear_residual(workspace);
+    gsl_blas_ddot(fcost, fcost, &chisq0);
 
-    /* compute initial cost function */
-    f=gsl_multifit_nlinear_residual(w);
-    gsl_blas_ddot(f, f, &chisq0);
+    int info;
+    const double xtol=1e-8;
+    const double gtol=1e-8;
+    const double ftol=0.0;
+    const unsigned maxIter=1000;
+    int status=gsl_multifit_nlinear_driver(maxIter, xtol, gtol, ftol, NULL, NULL, &info, workspace);
 
-    /* solve the system with a maximum of 100 iterations */
-    status=gsl_multifit_nlinear_driver(100, xtol, gtol, ftol, NULL, NULL, &info, w);
+    gsl_matrix* Jac;
+    Jac=gsl_multifit_nlinear_jac(workspace);
+    gsl_matrix* covar = gsl_matrix_alloc(parN, parN);
+    gsl_multifit_nlinear_covar (Jac, 0.0, covar);
 
-    /* compute covariance of best fit parameters */
-    J=gsl_multifit_nlinear_jac(w);
-    gsl_multifit_nlinear_covar (J, 0.0, covar);
-
-    /* compute final cost */
-    gsl_blas_ddot(f, f, &chisq);
+    gsl_blas_ddot(fcost, fcost, &chisq);
     double res[7], err[7];
 
     for(int i=0;i!=7;i++){
-        res[i]=gsl_vector_get(w->x, i);
-        err[i]=GSL_MAX_DBL(1,sqrt(chisq/(N-p)))*sqrt(gsl_matrix_get(covar,i,i));
+        res[i]=gsl_vector_get(workspace->x, i);
+        err[i]=GSL_MAX_DBL(1,sqrt(chisq/(ptN-parN)))*sqrt(gsl_matrix_get(covar,i,i));
     }
-    gsl_multifit_nlinear_free (w);
+    gsl_multifit_nlinear_free (workspace);
     gsl_matrix_free (covar);
 
     while(res[5]>M_PI) res[5]-=M_PI;
