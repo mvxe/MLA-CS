@@ -30,7 +30,8 @@ public:
     QTimer* timer;
 
     procLockProg& MLP;
-    bool doRefocus(bool block=true, cv::Rect ROI={0,0,0,0});            // returns true if focus failed (only if block==true), false if it succeeded
+    bool doRefocus(bool block=true, cv::Rect ROI={0,0,0,0}, unsigned redoN=0);           // returns true if focus failed (only if block==true), false if it succeeded
+                                                                                         // if focus fails, retries redoN times (only done if block==true)
 
     std::atomic<bool> focusInProgress{false};   //for outside calling functions
     cv::Rect& sROI;

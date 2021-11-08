@@ -318,6 +318,7 @@ bool pgScanGUI::doNRounds(unsigned N, cv::Rect ROI, unsigned redoN, bool force_d
     runTrack RT{0,0};
     skipAvgSettingsChanged=true;
     while(RT.succeeded<N && RT.failed<redoN){
+        while(!go.pGCAM->iuScope->connected) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   // if camera has bugged out and has been reset, wait for reconnect
         if((RT.running<((RT.succeeded==N-1)?1:2)) && RT.succeeded<N && RT.failed<redoN){
             RT.running++;
             go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound,this, ROI, 1,force_disable_tilt_correction, refl_override, &RT));

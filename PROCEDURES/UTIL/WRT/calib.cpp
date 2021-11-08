@@ -333,10 +333,7 @@ void pgCalib::WCFArray(std::string folder){
     if(multiarrayN->val>1) btnWriteCalib->setEnabled(false);
 }
 bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, bool isPlateau, double peakXshift, double peakYshift, unsigned n){
-    for(int i=1;;i++){
-        if(!pgFGUI->doRefocus(true, ROI)) break;
-        if(i==maxRedoRefocusTries) return true;
-    }
+    if(pgFGUI->doRefocus(true, ROI, maxRedoRefocusTries)) return true;
 
     varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
     double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;         //in mm

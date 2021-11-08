@@ -34,14 +34,21 @@ void pgFocusGUI::onRefocus(){
         go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this,sROI));
     }
 }
-bool pgFocusGUI::doRefocus(bool block, cv::Rect ROI){
+bool pgFocusGUI::doRefocus(bool block, cv::Rect ROI, unsigned redoN){
     if(!CORdy) recalculate();
     focusInProgress=true;
     focusFailed=false;
-    go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this,ROI));
-    if(block) while(focusInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-    else return false;
-    return focusFailed;
+    while(1){
+        go.OCL_threadpool.doJob(std::bind(&pgFocusGUI::refocus,this,ROI));
+        if(block) while(focusInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        else return false;
+        if(focusFailed==true){
+            if(redoN<=0) return true;
+            redoN--;
+            focusFailed=false;
+            while(!go.pGCAM->iuScope->connected) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   // if camera has bugged out and has been reset, wait for reconnect
+        }else return false;
+    }
 }
 void pgFocusGUI::init_gui_settings(){
     gui_settings=new QWidget;
