@@ -676,17 +676,17 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     peakRefl/=nref;
 
     //find max abs first derivative of depth (nm/um):
-    cv::Mat com, derv, dervy;
-    cv::bilateralFilter(scanDif.depth, com, -1, 3, 3);  //smooth it a bit
-    cv::Sobel(com, derv, CV_32F,1,0);                   //first derivative
-    cv::Sobel(com, dervy, CV_32F,0,1);                  //first derivative
+    const int ksize=5;
+    cv::Mat du, dx,dy;
+    cv::Sobel(scanDif.depth, dx, CV_32F,1,0,ksize);  //first derivative with smoothing
+    cv::Sobel(scanDif.depth, dy, CV_32F,0,1,ksize);
+    cv::magnitude(dx,dy,du);
     double maxDepthDer;
-    cv::add(derv, dervy, derv);
-    cv::minMaxIdx(derv, nullptr, &maxDepthDer);
+    cv::minMaxIdx(du, nullptr, &maxDepthDer);
     //find min, max laplacian of depth (nm/um^2):
-    cv::Laplacian(com, derv, CV_32F);
+    cv::Laplacian(scanDif.depth, du, CV_32F, ksize);
     double minDepthLaplacian, maxDepthLaplacian;
-    cv::minMaxIdx(derv, &minDepthLaplacian, &maxDepthLaplacian);
+    cv::minMaxIdx(du, &minDepthLaplacian, &maxDepthLaplacian);
 
     double XYumppx=scanDif.XYnmppx/1000;
     maxDepthDer/=XYumppx;

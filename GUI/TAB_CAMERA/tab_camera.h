@@ -99,6 +99,7 @@ private:
     pgScanGUI::scanRes scanBefore, scanAfter;   // for onDiff2Raw
 
     void scaleDisplay(cv::Mat img, QImage::Format format);
+    void _cropToSelection();
 private Q_SLOTS:
     void work_fun();
     void on_tab_change(int index);
@@ -119,6 +120,8 @@ private Q_SLOTS:
     void onSaveLine();
     void onPlotRect();
     void on2DFFT();
+    void onSobel();
+    void onLaplace();
     void onCrop();
     void onResetROI();
     void onChangeROI();

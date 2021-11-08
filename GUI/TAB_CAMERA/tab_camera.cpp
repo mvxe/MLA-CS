@@ -156,6 +156,8 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuDepthRight->addAction("Rotate DepthMap", this, SLOT(onRotateDepthMap()));
     clickMenuDepthRight->addAction("Crop", this, SLOT(onCrop()));
     clickMenuDepthRight->addAction("2D FFT", this, SLOT(on2DFFT()));
+    clickMenuDepthRight->addAction("Apply xy sobel", this, SLOT(onSobel()));
+    clickMenuDepthRight->addAction("Apply laplace", this, SLOT(onLaplace()));
 
     clickMenuDepthLeft=new QMenu;
     clickMenuDepthLeft->addAction("Plot Line (Gnuplot)", this, SLOT(onPlotLine()));
@@ -751,11 +753,7 @@ void tab_camera::onPlotRect(){
     tCG->plotRoi(res, cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height),selDisp->index);
 }
 
-void tab_camera::on2DFFT(){
-    if(!loadedScan.depth.empty() && loadedOnDisplay);
-    else if(scanRes->get()!=nullptr) loadedScan=*scanRes->get();
-    else return;
-
+void tab_camera::_cropToSelection(){
     if(selEndX!=selStartX && selEndY!=selStartY){
         int width=abs(selEndX-selStartX+1);
         int height=abs(selEndY-selStartY+1);
@@ -765,6 +763,13 @@ void tab_camera::on2DFFT(){
         if(!loadedScan.depthSS.empty())
             loadedScan.depthSS=loadedScan.depthSS(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height));
     }
+}
+void tab_camera::on2DFFT(){
+    if(!loadedScan.depth.empty() && loadedOnDisplay);
+    else if(scanRes->get()!=nullptr) loadedScan=*scanRes->get();
+    else return;
+
+    _cropToSelection();
 
     cv::Mat padded;
     int m=cv::getOptimalDFTSize(loadedScan.depth.rows);
@@ -814,6 +819,37 @@ void tab_camera::on2DFFT(){
     cv::multiply(magP,magP,loadedScan.depthSS); loadedScan.avgNum=2;    //these make it display properly as SD gets additional operations performed on it
     cv::minMaxLoc(magI,&loadedScan.min,&loadedScan.max);
 
+    updateDisp=true;
+    loadedOnDisplay=true;
+}
+void tab_camera::onSobel(){
+    if(!loadedScan.depth.empty() && loadedOnDisplay);
+    else if(scanRes->get()!=nullptr) loadedScan=*scanRes->get();
+    else return;
+
+    _cropToSelection();
+    const int ksize=5;
+    cv::dilate(loadedScan.mask,loadedScan.mask,cv::getStructuringElement(cv::MORPH_RECT, cv::Size(ksize+2,ksize+2), cv::Point((ksize+2)/2,(ksize+2)/2)));
+    cv::bitwise_not(loadedScan.mask, loadedScan.maskN);
+    cv::Mat sx,sy;
+    cv::Sobel(loadedScan.depth,sx, CV_32F,1,0,ksize);
+    cv::Sobel(loadedScan.depth,sy, CV_32F,0,1,ksize);
+    cv::magnitude(sx,sy,loadedScan.depth);
+    cv::minMaxLoc(loadedScan.depth,&loadedScan.min,&loadedScan.max);
+    updateDisp=true;
+    loadedOnDisplay=true;
+}
+void tab_camera::onLaplace(){
+    if(!loadedScan.depth.empty() && loadedOnDisplay);
+    else if(scanRes->get()!=nullptr) loadedScan=*scanRes->get();
+    else return;
+
+    _cropToSelection();
+    const int ksize=5;
+    cv::dilate(loadedScan.mask,loadedScan.mask,cv::getStructuringElement(cv::MORPH_RECT, cv::Size(ksize+2,ksize+2), cv::Point((ksize+2)/2,(ksize+2)/2)));
+    cv::bitwise_not(loadedScan.mask, loadedScan.maskN);
+    cv::Laplacian(loadedScan.depth,loadedScan.depth, CV_32F,ksize);
+    cv::minMaxLoc(loadedScan.depth,&loadedScan.min,&loadedScan.max);
     updateDisp=true;
     loadedOnDisplay=true;
 }
