@@ -603,15 +603,9 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
     pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
 
-
-
-
-
-    double chisq, chisq0;
-
     const size_t parN=7;
-    double x_init[parN] = { scanDif.depth.cols/2., scanDif.depth.rows/2., 0, 4000/scanDif.XYnmppx, 4000/scanDif.XYnmppx, 0.01, 0}; /* starting values */
-    cv::minMaxIdx(scanDif.depth,&x_init[6],&x_init[2]);
+    double initval[parN] = { scanDif.depth.cols/2., scanDif.depth.rows/2., 0, 4000/scanDif.XYnmppx, 4000/scanDif.XYnmppx, 0.01, 0};
+    cv::minMaxIdx(scanDif.depth,&initval[6],&initval[2]);
     size_t ptN=scanDif.depth.cols*scanDif.depth.rows;
     double x[ptN], y[ptN], h[ptN], weights[ptN];
     size_t n{0};
@@ -631,13 +625,12 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     gsl_multifit_nlinear_parameters fdf_params=gsl_multifit_nlinear_default_parameters();
     gsl_multifit_nlinear_workspace* workspace=gsl_multifit_nlinear_alloc(gsl_multifit_nlinear_trust, &fdf_params, ptN, parN);
 
-    gsl_vector_view v_startp=gsl_vector_view_array(x_init, parN);
+    gsl_vector_view v_startp=gsl_vector_view_array(initval, parN);
     gsl_vector_view v_weights = gsl_vector_view_array(weights, ptN);
     gsl_multifit_nlinear_winit (&v_startp.vector, &v_weights.vector, &fdf, workspace);
 
     gsl_vector* fcost;
     fcost=gsl_multifit_nlinear_residual(workspace);
-    gsl_blas_ddot(fcost, fcost, &chisq0);
 
     int info;
     const double xtol=1e-8;
@@ -651,10 +644,11 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     gsl_matrix* covar = gsl_matrix_alloc(parN, parN);
     gsl_multifit_nlinear_covar (Jac, 0.0, covar);
 
+    double chisq;
     gsl_blas_ddot(fcost, fcost, &chisq);
-    double res[7], err[7];
+    double res[parN], err[parN];
 
-    for(int i=0;i!=7;i++){
+    for(int i=0;i!=parN;i++){
         res[i]=gsl_vector_get(workspace->x, i);
         err[i]=GSL_MAX_DBL(1,sqrt(chisq/(ptN-parN)))*sqrt(gsl_matrix_get(covar,i,i));
     }

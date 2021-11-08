@@ -4,6 +4,8 @@
 #include "PROCEDURES/procedure.h"
 #include "UTIL/img_util.h"
 #include "DEV/controller.h"
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_vector.h>
 class QVBoxLayout;
 class QHBoxLayout;
 class val_selector;
@@ -149,6 +151,15 @@ private Q_SLOTS:
 Q_SIGNALS:
     void sigChooseObj(bool useMirau);
     void sigChooseObjExpo(bool useMirau);
+private:
+    static int calibFit_f(const gsl_vector* pars, void* data, gsl_vector* f);
+    struct fit_data {
+        size_t n;
+        double* DXpx;
+        double* DYpx;
+        double* DXmm;
+        double* DYmm;
+    };
 };
 
 #endif // MOVE_H

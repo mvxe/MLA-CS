@@ -1,7 +1,12 @@
 #include "move.h"
 #include "GUI/gui_includes.h"
 #include "includes.h"
-#include <dlib/optimization.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_blas.h>
+#include <gsl/gsl_multifit_nlinear.h>
 
 pgMoveGUI::pgMoveGUI(smp_selector* _selObjective): selObjective(_selObjective){
     init_gui_activation();
@@ -273,16 +278,21 @@ void pgMoveGUI::onMarkPointForCalib(bool state){
     }
 }
 
+int pgMoveGUI::calibFit_f (const gsl_vector* pars, void* data, gsl_vector* f){
+    size_t n=((struct fit_data*)data)->n;
+    double* DXpx=((struct fit_data*)data)->DXpx;
+    double* DYpx=((struct fit_data*)data)->DYpx;
+    double* DXmm=((struct fit_data*)data)->DXmm;
+    double* DYmm=((struct fit_data*)data)->DYmm;
 
-typedef dlib::matrix<double,4,1> input_vector;
-typedef dlib::matrix<double,3,1> parameter_vector;
-double residual(const std::pair<input_vector, double>& data, const parameter_vector& params){
-    double DXpx=data.first(0);  double mmPPx=params(0);
-    double DYpx=data.first(1);  double phi0=params(1);
-    double DXmm=data.first(2);  double phi1=params(2);
-    double DYmm=data.first(3);
-    double model=(abs(DXpx*cos(phi0)+DYpx*sin(phi0)-DXmm/abs(mmPPx))+abs(DXpx*cos(phi1+phi0)+DYpx*sin(phi1)*cos(phi0)-DYmm/abs(mmPPx)))*abs(mmPPx);
-    return model*model - data.second;
+    double mmPPx=gsl_vector_get(pars, 0);
+    double phi0 =gsl_vector_get(pars, 1);
+    double phi1 =gsl_vector_get(pars, 2);
+    for (size_t i=0; i!=n; i++){
+        double model=(abs(DXpx[i]*cos(phi0)+DYpx[i]*sin(phi0)-DXmm[i]/abs(mmPPx))+abs(DXpx[i]*cos(phi1+phi0)+DYpx[i]*sin(phi1)*cos(phi0)-DYmm[i]/abs(mmPPx)))*abs(mmPPx);
+        gsl_vector_set(f, i, model);
+    }
+    return GSL_SUCCESS;
 }
 
 void pgMoveGUI::onCalculateCalib(){
@@ -290,32 +300,76 @@ void pgMoveGUI::onCalculateCalib(){
         QMessageBox::critical(gui_settings, "Calibration aborted", "Fewer than 5 points selected! Select more points.");
         return;
     }
-    std::vector<std::pair<input_vector, double>> data;
-    while(!p4calib.empty()){
+
+    const size_t parN=3;
+    double initval[parN] = {0.001,0.001,M_PI};
+    size_t ptN=p4calib.size();
+    double DXpx[ptN], DYpx[ptN], DXmm[ptN], DYmm[ptN] ,weights[ptN];
+    for(size_t i=0;i!=ptN;i++){
         std::cout<<"points: "<<p4calib.back().DXpx<<" "<<p4calib.back().DYpx<<" "<<p4calib.back().DXmm<<" "<<p4calib.back().DYmm<<"\n";
-        input_vector input{p4calib.back().DXpx,p4calib.back().DYpx,p4calib.back().DXmm,p4calib.back().DYmm};
-        data.push_back(std::make_pair(input, 0));
+        DXpx[i]=p4calib.back().DXpx;
+        DYpx[i]=p4calib.back().DYpx;
+        DXmm[i]=p4calib.back().DXmm;
+        DYmm[i]=p4calib.back().DYmm;
+        weights[i]=1;
         p4calib.pop_back();
     }
     ptFeedback->setText("Have 0 points.");
-    parameter_vector res;
-    res={0.001,0.001,M_PI};
-    dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-12).be_verbose(), residual, derivative(residual), data, res);
-    std::cout << "inferred parameters: "<< dlib::trans(res) << "\n";
-    if(res(0)<0)
-        res(0)*=-1;
-    while(res(1)<=-M_PI) res(1)+=2*M_PI;
-    while(res(1) > M_PI) res(1)-=2*M_PI;
-    while(res(2)<=-M_PI) res(2)+=2*M_PI;
-    while(res(2) > M_PI) res(2)-=2*M_PI;
+
+    struct fit_data data{ptN,DXpx,DYpx,DXmm,DYmm};
+    gsl_multifit_nlinear_fdf fdf{calibFit_f,NULL,NULL,ptN,parN,&data,0,0,0};
+    gsl_multifit_nlinear_parameters fdf_params=gsl_multifit_nlinear_default_parameters();
+    gsl_multifit_nlinear_workspace* workspace=gsl_multifit_nlinear_alloc(gsl_multifit_nlinear_trust, &fdf_params, ptN, parN);
+
+    gsl_vector_view v_startp=gsl_vector_view_array(initval, parN);
+    gsl_vector_view v_weights = gsl_vector_view_array(weights, ptN);
+    gsl_multifit_nlinear_winit (&v_startp.vector, &v_weights.vector, &fdf, workspace);
+
+    gsl_vector* fcost;
+    fcost=gsl_multifit_nlinear_residual(workspace);
+
+    int info;
+    const double xtol=1e-8;
+    const double gtol=1e-8;
+    const double ftol=0.0;
+    const unsigned maxIter=1000;
+    gsl_multifit_nlinear_driver(maxIter, xtol, gtol, ftol, NULL, NULL, &info, workspace);
+
+    gsl_matrix* Jac;
+    Jac=gsl_multifit_nlinear_jac(workspace);
+    gsl_matrix* covar = gsl_matrix_alloc(parN, parN);
+    gsl_multifit_nlinear_covar (Jac, 0.0, covar);
+
+    double chisq;
+    gsl_blas_ddot(fcost, fcost, &chisq);
+    double res[parN], err[parN];
+
+    for(int i=0;i!=parN;i++){
+        res[i]=gsl_vector_get(workspace->x, i);
+        err[i]=GSL_MAX_DBL(1,sqrt(chisq/(ptN-parN)))*sqrt(gsl_matrix_get(covar,i,i));
+    }
+    gsl_multifit_nlinear_free (workspace);
+    gsl_matrix_free (covar);
+
+    if(res[0]<0)
+        res[0]*=-1;
+    while(res[1]<=-M_PI) res[1]+=2*M_PI;
+    while(res[1] > M_PI) res[1]-=2*M_PI;
+    while(res[2]<=-M_PI) res[2]+=2*M_PI;
+    while(res[2] > M_PI) res[2]-=2*M_PI;
+
+    std::cerr << "inferred parameters:\n";
+    std::cerr << "mmPPx="<<res[0]<<"\u00B1"<<err[0]<<" mm/px\n";
+    std::cerr << "phi0="<<res[1]<<"\u00B1"<<err[1]<<" rad\n";
+    std::cerr << "phi1="<<res[2]<<"\u00B1"<<err[2]<<" rad\n";
 
     if(settingsObjective->index==0){    // Mirau
-        calibNmPPx->setValue(res(0)*1000000);
-        calibAngCamToXMot->setValue(res(1));
-        calibAngYMotToXMot->setValue(res(2));
+        calibNmPPx->setValue(res[0]*1000000);
+        calibAngCamToXMot->setValue(res[1]);
+        calibAngYMotToXMot->setValue(res[2]);
     }else{  // Writing
-        calibNmPPx_writing->setValue(res(0)*1000000);
-        calibAngCamToXMot_writing->setValue(res(1));
+        calibNmPPx_writing->setValue(res[0]*1000000);
+        calibAngCamToXMot_writing->setValue(res[1]);
     }
 }
 double pgMoveGUI::getNmPPx(int index){
