@@ -8,6 +8,7 @@
 #include <QCheckBox>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QTimer>
 #include "UTIL/containers.h"
 
 class QHBoxLayout;
@@ -345,6 +346,31 @@ private:
     void leaveEvent(QEvent *event);
 Q_SIGNALS:
     void changed(bool hovering);
+};
+
+// popup
+
+class QStandardItemModel;
+class wpopup : private QLabel{
+    Q_OBJECT
+public:
+    static void show(const QPoint& pt, QString text="", int timeout_msec=0){
+        wpopup* tmp = new wpopup;
+        if(!text.isEmpty()) tmp->setText(text);
+        tmp->move(pt);
+        tmp->QLabel::show();
+        if(timeout_msec>0) tmp->timer.singleShot(timeout_msec, tmp, SLOT(hide()));
+    }
+private:
+    wpopup(){
+        setWindowFlags(Qt::ToolTip);
+        setStyleSheet("border: 1px solid black; background-color: yellow;");
+    }
+    QTimer timer;
+private Q_SLOTS:
+    void hide(){timer.stop(); QLabel::hide(); delete this;}
+private:
+    void mousePressEvent(QMouseEvent *event){hide();}
 };
 
 #endif // GUI_AUX_OBJECTS_H

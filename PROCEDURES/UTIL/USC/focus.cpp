@@ -15,10 +15,10 @@ pgFocusGUI::pgFocusGUI(procLockProg& MLP, cv::Rect& sROI, pgScanGUI* pgSGUI, pgM
     timer->setSingleShot(true);
     connect(timer, SIGNAL(timeout()), this, SLOT(recalculate()));
     connect(pgSGUI, SIGNAL(recalculateCOs()), this, SLOT(recalculate()));
-    connect(this, SIGNAL(signalQMessageBoxWarning(QString, QString)), this, SLOT(slotQMessageBoxWarning(QString, QString)));
+    connect(this, SIGNAL(signalQMessageBoxWarning(QString)), this, SLOT(slotQMessageBoxWarning(QString)));
 }
-void pgFocusGUI::slotQMessageBoxWarning(QString title, QString text){
-    QMessageBox::critical(gui_activation, title, text);
+void pgFocusGUI::slotQMessageBoxWarning(QString text){
+    wpopup::show(QCursor::pos(),text,60000);
 }
 void pgFocusGUI::init_gui_activation(){
     gui_activation=new twid(false);
@@ -217,7 +217,7 @@ void pgFocusGUI::refocus(cv::Rect ROI){
     MLP._lock_proc.unlock();
 
     if(frames!=nFrames){
-        Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: took ",frames," frames, expected ",nFrames,".")));
+        Q_EMIT signalQMessageBoxWarning(QString::fromStdString(util::toString("ERROR: took ",frames," frames, expected ",nFrames,".")));
         focusFailed=true;
     }else{
         double MEAN=cv::mean(mean)[0];
@@ -242,7 +242,7 @@ void pgFocusGUI::refocus(cv::Rect ROI){
 
         double Zcor=(maxLoc.x-nFrames/2.)*displacementOneFrame;
         if(abs(Zcor)>readRangeDis/2){
-            Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: abs of the calculated correction is larger than half the read range distance: ",Zcor," vs ",readRangeDis/2," . Did not apply correction.")));
+            Q_EMIT signalQMessageBoxWarning(QString::fromStdString(util::toString("ERROR: abs of the calculated correction is larger than half the read range distance: ",Zcor," vs ",readRangeDis/2," . Did not apply correction.")));
             focusFailed=true;
         }
         else go.pRPTY->motion("Z",Zcor,0,0,CTRL::MF_RELATIVE);

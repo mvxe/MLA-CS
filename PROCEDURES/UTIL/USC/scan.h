@@ -115,6 +115,7 @@ private:
     QVBoxLayout* slayout;
     hidCon* hideavg;
     hidCon* hidedbg;
+
 public:
     val_selector* led_wl;       // LED wavelength
     QPushButton* scanWl;        // performs a scan and calculates the wavelength
@@ -200,13 +201,13 @@ private Q_SLOTS:
     void onMenuChange(int index);
     void onBSaveAvgMess();
     void onBSaveNextMirrorBaselineHist();
-    void slotQMessageBoxWarning(QString title, QString text);
+    void slotQMessageBoxWarning(QString text);
     void onBTiltScan();
     void onTiltCorrection(int index);
 Q_SIGNALS:
     void doneExpMinmax(int min, int max);
     void recalculateCOs();  // for other procedures that might use some settings from this one (eg. focus)
-    void signalQMessageBoxWarning(QString title, QString text);
+    void signalQMessageBoxWarning(QString text);
 };
 
 class scanSettings: public QWidget{

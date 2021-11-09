@@ -31,15 +31,15 @@ pgScanGUI::pgScanGUI(procLockProg& MLP, cv::Rect& sROI): MLP(MLP), sROI(sROI){
     timerCM->setInterval(timerCM_delay);
     timerCM->setSingleShot(true);
     connect(timerCM, SIGNAL(timeout()), this, SLOT(onBScan()));
-    connect(this, SIGNAL(signalQMessageBoxWarning(QString, QString)), this, SLOT(slotQMessageBoxWarning(QString, QString)));
+    connect(this, SIGNAL(signalQMessageBoxWarning(QString)), this, SLOT(slotQMessageBoxWarning(QString)));
 }
 
 pgScanGUI::~pgScanGUI(){
     if(COmeasure!=nullptr) delete COmeasure;
 }
 
-void pgScanGUI::slotQMessageBoxWarning(QString title, QString text){
-    QMessageBox::critical(gui_activation, title, text);
+void pgScanGUI::slotQMessageBoxWarning(QString text){
+    wpopup::show(QCursor::pos(),text,60000);
 }
 
 void pgScanGUI::init_gui_activation(){
@@ -512,7 +512,7 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
     std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
 
     if(framequeue->getFullNumber()!=nFrames){
-        Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
+        Q_EMIT signalQMessageBoxWarning(QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
         if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
         if(RT!=nullptr) RT->running--;
@@ -634,7 +634,7 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
             next:;
         }
         MLP.progress_comp=100;
-        if(results.empty()) Q_EMIT signalQMessageBoxWarning("Error", QString::fromStdString(util::toString("ERROR: failed to correct wavelength.")));
+        if(results.empty()) Q_EMIT signalQMessageBoxWarning(QString::fromStdString(util::toString("ERROR: failed to correct wavelength.")));
         else{
             double mean=0;
             for(auto& res: results) mean+=res;

@@ -78,9 +78,9 @@ private Q_SLOTS:
     void onRefocus();
     void onMenuChange(int index);
     void onBtnSaveNextDebugFocus();
-    void slotQMessageBoxWarning(QString title, QString text);
+    void slotQMessageBoxWarning(QString text);
 Q_SIGNALS:
-    void signalQMessageBoxWarning(QString title, QString text);
+    void signalQMessageBoxWarning(QString text);
 };
 
 class focusSettings: public QWidget{
