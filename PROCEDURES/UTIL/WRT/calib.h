@@ -68,6 +68,7 @@ private:
 
     //processing
     QPushButton* btnProcessFocusMes;
+    QPushButton* fitAndPlot;
 
     constexpr static int maxRedoScanTries=3;
     constexpr static int maxRedoRefocusTries=3;
@@ -88,6 +89,7 @@ private Q_SLOTS:
     void onSelMultiArrayTypeChanged(int index);
     void onMultiarrayNChanged(double val);
     void onPrerunTypeChanged(int);
+    void onFitAndPlot();
 
 private:
     static int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f);

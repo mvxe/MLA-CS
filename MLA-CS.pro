@@ -15,7 +15,8 @@ TEMPLATE = app
 # any feature of Qt which has been marked as deprecated (the exact warnings
 # depend on your compiler). Please consult the documentation of the
 # deprecated API in order to know how to port your code away from it.
-DEFINES += QT_DEPRECATED_WARNINGS
+
+DEFINES += QT_DEPRECATED_WARNINGS CVPLOT_HEADER_ONLY=true
 
 # You can also make your code fail to compile if you use deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -43,7 +44,8 @@ unix:!macx: LIBS += -lcurlpp -lcurl -lserial -DVIENNACL_WITH_OPENCL  -lOpenCL -l
 #QMAKE_LFLAGS+="-fsanitize=address"
 
 INCLUDEPATH += /usr/include/glib-2.0 \
-        /usr/include/aravis-0.8
+        /usr/include/aravis-0.8 \
+        .CvPlot/CvPlot/inc/
 
 QT += charts
 

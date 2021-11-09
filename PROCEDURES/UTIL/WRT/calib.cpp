@@ -15,6 +15,7 @@
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_multifit_nlinear.h>
+#include <CvPlot/cvplot.h>
 
 pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn, pgWrite* pgWr, overlay& ovl): pgSGUI(pgSGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgBeAn(pgBeAn), pgWr(pgWr), ovl(ovl){
     btnWriteCalib=new HQPushButton("Run Write Focus Calibration");
@@ -107,6 +108,9 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements");
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
     slayout->addWidget(new twid(btnProcessFocusMes));
+    fitAndPlot=new QPushButton("Select processed measurements for plotting/fitting");
+    connect(fitAndPlot, SIGNAL(released()), this, SLOT(onFitAndPlot()));
+    slayout->addWidget(new twid(fitAndPlot));
 }
 void pgCalib::onMultiarrayNChanged(double val){
     selArray(selArrayType->index, selMultiArrayType->index);
@@ -420,7 +424,7 @@ void pgCalib::onProcessFocusMes(){
     std::vector<std::string> readFolders;   //folders still yet to be checked
     std::vector<std::string> measFolders;   //folders that contain the expected measurement files
 
-    readFolders.emplace_back(QFileDialog::getExistingDirectory(this, "Select Folder Contatining Measurements. It will be Searched Recursively.", QString::fromStdString(lastFolder)).toStdString());
+    readFolders.emplace_back(QFileDialog::getExistingDirectory(this, "Select Folder Containing Measurements. It will be Searched Recursively.", QString::fromStdString(lastFolder)).toStdString());
     if(readFolders.back().empty()) return;
     lastFolder=readFolders.back().substr(0,readFolders.back().find_last_of("/")+1);
     std::string saveName=readFolders.back()+"/proc.txt";
@@ -766,4 +770,71 @@ void pgCalib::drawWriteArea(cv::Mat* img){
     double clr[2]={0,255}; int thck[2]={3,1};
     for(int i=0;i!=2;i++)
         cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), img->rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY), xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
+}
+
+void pgCalib::onFitAndPlot(){
+    std::vector<std::string> readFolders;
+    std::vector<std::string> measFiles;
+
+    readFolders.emplace_back(QFileDialog::getExistingDirectory(this, "Select Folder Containing Processed Measurements. It will be Searched Recursively for proc.txt files.", QString::fromStdString(lastFolder)).toStdString());
+    if(readFolders.back().empty()) return;
+    lastFolder=readFolders.back().substr(0,readFolders.back().find_last_of("/")+1);
+    std::string saveName=readFolders.back()+"/proc.txt";
+    DIR *wp;
+    struct dirent *entry;
+    struct stat filetype;
+    std::string curFile;
+    std::string curFolder;
+    while(!readFolders.empty()){
+        curFolder=readFolders.back();
+        readFolders.pop_back();
+        wp=opendir(curFolder.c_str());
+        if(wp!=nullptr) while(entry=readdir(wp)){
+            curFile=entry->d_name;
+            if (curFile!="." && curFile!=".."){
+                curFile=curFolder+'/'+entry->d_name;
+
+                stat(curFile.data(),&filetype);
+                if(filetype.st_mode&S_IFDIR) readFolders.push_back(curFile);
+                else if(strcmp(entry->d_name,"proc.txt")==0) measFiles.push_back(curFile);
+            }
+        }
+        closedir(wp);
+    }
+
+    for(auto& item:measFiles) std::cerr<<"Using processed measurements from "<<item<<"\n";
+
+    std::vector<double> duration, height, height_err;
+    const size_t pos[4]={1,12,3,27};    // indices in data(starting from 1): valid, duration, height, height_err
+    const size_t maxpos=*std::max_element(pos,pos+4);
+    for(auto& item:measFiles){
+        std::ifstream ifs(item);
+        for(std::string line; std::getline(ifs, line);){
+            if(line[0]=='#') continue;
+            size_t sx=0, sxi;
+            bool valid;
+            double _duration, _height, _height_err;
+            for(size_t i=1;i<=maxpos;i++){
+                double tmp=std::stod(line.substr(sx),&sxi);
+                sx+=sxi;
+                if(i==pos[0]) valid=(tmp==1);
+                else if(i==pos[1]) _duration=tmp;
+                else if(i==pos[2]) _height=tmp;
+                else if(i==pos[3]) _height_err=tmp;
+            }
+            if(valid){
+                duration.push_back(_duration);
+                height.push_back(_height);
+                height_err.push_back(_height_err);
+            }
+        }
+        ifs.close();
+    }
+
+    auto axes = CvPlot::makePlotAxes();
+    axes.xLabel("Pulse Duration (ms)");
+    axes.yLabel("Peak Height (nm)");
+    axes.create<CvPlot::Series>(duration, height, "o");
+    CvPlot::show("Plot", axes);
+
 }

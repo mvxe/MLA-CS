@@ -55,6 +55,7 @@ void globals::startup(int argc, char *argv[]){
 
     qapp = new QApplicationQN(argc, argv);
     MainWindow w(qapp);
+    w.setWindowTitle("MLA-CS");
     w.show();
     try {
         qapp->exec();
