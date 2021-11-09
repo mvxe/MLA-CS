@@ -9,7 +9,7 @@ class pgBeamAnalysis;
 class QLineEdit;
 class procLockProg;
 class hidCon;
-class QListView;
+class QTreeView;
 class QStandardItemModel;
 class QStandardItem;
 class QFont;
@@ -52,8 +52,15 @@ private:
     val_selector* tagUInt;
     QPushButton* guessTagUInt;
     checkbox_gs* useWriteScheduling;
-    QListView* schedulelw;
+    twid* schedulelwtwid;
+    QTreeView* schedulelw;
     QStandardItemModel* schedulemod;
+    QPushButton* itemMoveTop;
+    QPushButton* itemMoveUp;
+    QPushButton* itemMoveDown;
+    QPushButton* itemMoveBottom;
+    QPushButton* itemRemove;
+
     struct schItem{
         QStandardItem* ptr;
         cv::Mat src;            // write source image
@@ -128,8 +135,7 @@ private:
 
     void saveConfig(std::string filename);
     std::string genConfig();
-    QStandardItem* addScheduleItem(std::string text, bool toTop);
-
+    QStandardItem* addScheduleItem(std::string status, std::string type, std::string name, bool toTop);
     void prepareSchedTagFrame(std::string name);
 
     constexpr static int maxRedoScanTries=3;
@@ -156,6 +162,12 @@ private Q_SLOTS:
     void onAbort();
     void guessAndUpdateNextTagUInt();
     void onNotes();
+
+    void onItemMoveTop();
+    void onItemMoveUp();
+    void onItemMoveDown();
+    void onItemMoveBottom();
+    void onItemRemove();
 };
 
 

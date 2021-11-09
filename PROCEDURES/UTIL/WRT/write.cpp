@@ -6,7 +6,7 @@
 #include "opencv2/core/utils/filesystem.hpp"
 #include <dirent.h>
 #include <sys/stat.h>
-#include <QListView>
+#include <QTreeView>
 #include <QStandardItemModel>
 
 pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI* pgSGUI, overlay& ovl): pgBeAn(pgBeAn), pgMGUI(pgMGUI), MLP(MLP), pgSGUI(pgSGUI), ovl(ovl){
@@ -87,16 +87,33 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     useWriteScheduling=new checkbox_gs(false,"Enable write scheduling");
     connect(useWriteScheduling, SIGNAL(changed(bool)), this, SLOT(onUseWriteScheduling(bool)));
     alayout->addWidget(new twid(useWriteScheduling));
-    schedulelw=new QListView;
-    schedulelw->setVisible(false);
-    alayout->addWidget(schedulelw);
-
-    schedulelw->setDragEnabled(true);
-    schedulelw->setDragDropMode(QAbstractItemView::InternalMove);
-    schedulelw->setDefaultDropAction(Qt::MoveAction);
-
-    schedulemod=new QStandardItemModel(0, 1);
+    schedulelw=new QTreeView;
+    schedulemod=new QStandardItemModel(0, 3);
+    schedulemod->setHorizontalHeaderLabels({"Status","Type","Name"});
     schedulelw->setModel(schedulemod);
+    schedulelw->setDragDropMode(QAbstractItemView::DropOnly);
+    schedulelw->setDefaultDropAction(Qt::MoveAction);
+    schedulelw->setItemsExpandable(false);
+    schedulelw->setDragDropOverwriteMode(false);
+
+    itemMoveTop=new QPushButton();
+    itemMoveTop->setIcon(QPixmap(":/top.svg"));
+    connect(itemMoveTop, SIGNAL(released()), this, SLOT(onItemMoveTop()));
+    itemMoveUp=new QPushButton();
+    itemMoveUp->setIcon(QPixmap(":/up.svg"));
+    connect(itemMoveUp, SIGNAL(released()), this, SLOT(onItemMoveUp()));
+    itemMoveDown=new QPushButton();
+    itemMoveDown->setIcon(QPixmap(":/down.svg"));
+    connect(itemMoveDown, SIGNAL(released()), this, SLOT(onItemMoveDown()));
+    itemMoveBottom=new QPushButton();
+    itemMoveBottom->setIcon(QPixmap(":/bottom.svg"));
+    connect(itemMoveBottom, SIGNAL(released()), this, SLOT(onItemMoveBottom()));
+    itemRemove=new QPushButton();
+    itemRemove->setIcon(QPixmap(":/stock_no.svg"));
+    connect(itemRemove, SIGNAL(released()), this, SLOT(onItemRemove()));
+    schedulelwtwid=new twid(schedulelw,new vtwid(itemMoveTop,itemMoveUp,itemMoveDown,itemMoveBottom,itemRemove,false,false),false,false);
+    schedulelwtwid->setVisible(false);
+    alayout->addWidget(schedulelwtwid);
 
     dTCcor=new val_selector(1, "Pulse duration correction", 0.1, 3, 3);
     conf["dTCcor"]=dTCcor;
@@ -195,6 +212,7 @@ void pgWrite::replacePlaceholdersInString(std::string& src){
     std::string placeholders[5]={"$T","$N","$F","$V","$X"};
     std::string replacements[5]={tagString->text().toStdString(),std::to_string(static_cast<int>(tagUInt->val)),fileName,std::to_string(lastDepth),std::to_string(imgUmPPx->val)};
     for(int i:{3,4}) if(replacements[i].find(".")!=std::string::npos) while(replacements[i].back()=='0') replacements[i].pop_back();    //remove extra zeroes
+    for(int i:{3,4}) if(replacements[i].back()=='.') replacements[i].pop_back();    //if integer remove point
     found=replacements[2].find_last_of("/");
     if(found!=std::string::npos) replacements[2].erase(0,found+1);
     found=replacements[2].find_last_of(".");
@@ -289,17 +307,60 @@ void pgWrite::guessAndUpdateNextTagUInt(){
 void pgWrite::onUseWriteScheduling(bool state){
     writeDM->setText(state?"Schedule Write":"Write");
     writeTag->setText(state?"Schedule Write Tag":"Write Tag");
-    schedulelw->setVisible(state);
+    schedulelwtwid->setVisible(state);
     saveB->setVisible(!state);
     scanB->setVisible(!state);
 }
-QStandardItem* pgWrite::addScheduleItem(std::string text, bool toTop){
+QStandardItem* pgWrite::addScheduleItem(std::string status, std::string type, std::string name, bool toTop){
     schedulemod->insertRows(toTop?0:schedulemod->rowCount(),1);
-    QStandardItem *item = new QStandardItem(QString::fromStdString(text));
-    item->setEditable(false);
-    item->setDropEnabled(false);
-    schedulemod->setItem(toTop?0:(schedulemod->rowCount()-1), 0, item);
-    return item;
+    int i=0;
+    for(auto text:{status,type,name}){
+        QStandardItem *item = new QStandardItem(QString::fromStdString(text));
+        item->setEditable(false);
+        schedulemod->setItem(toTop?0:(schedulemod->rowCount()-1), i, item);
+        schedulelw->resizeColumnToContents(i);
+        i++;
+    }
+    return schedulemod->item(toTop?0:(schedulemod->rowCount()-1), 0);
+}
+void pgWrite::onItemMoveTop(){
+    auto ci=schedulelw->currentIndex();
+    if(!ci.isValid()) return;
+    auto orow=schedulemod->takeRow(ci.row());
+    schedulemod->insertRow(0,orow);
+    schedulelw->setCurrentIndex(schedulemod->index(0,0));
+}
+void pgWrite::onItemMoveUp(){
+    auto ci=schedulelw->currentIndex();
+    if(!ci.isValid() || ci.row()<=0) return;
+    auto orow=schedulemod->takeRow(ci.row());
+    schedulemod->insertRow(ci.row()-1,orow);
+    schedulelw->setCurrentIndex(schedulemod->index(ci.row()-1,0));
+}
+void pgWrite::onItemMoveDown(){
+    auto ci=schedulelw->currentIndex();
+    if(!ci.isValid() || ci.row()>=schedulemod->rowCount()-1) return;
+    auto orow=schedulemod->takeRow(ci.row());
+    schedulemod->insertRow(ci.row()+1,orow);
+    schedulelw->setCurrentIndex(schedulemod->index(ci.row()+1,0));
+}
+void pgWrite::onItemMoveBottom(){
+    auto ci=schedulelw->currentIndex();
+    if(!ci.isValid()) return;
+    auto orow=schedulemod->takeRow(ci.row());
+    schedulemod->insertRow(schedulemod->rowCount(),orow);
+    schedulelw->setCurrentIndex(schedulemod->index(schedulemod->rowCount()-1,0));
+}
+void pgWrite::onItemRemove(){
+    auto ci=schedulelw->currentIndex();
+    if(!ci.isValid()) return;
+    for(std::vector<schItem>::iterator it=scheduled.begin();it!=scheduled.end();++it){
+        if(it->ptr==schedulemod->item(ci.row(),0)){
+            scheduled.erase(it);
+            break;
+        }
+    }
+    schedulemod->removeRow(ci.row());
 }
 void pgWrite::onScan(){
     pgMGUI->chooseObj(true);
@@ -498,7 +559,7 @@ void pgWrite::onWriteDM(){
         scheduled.back().writePars[3]=focus->val/1000;
         scheduled.back().writePars[4]=focusXcor->val/1000;
         scheduled.back().writePars[5]=focusYcor->val/1000;
-        scheduled.back().ptr=addScheduleItem(util::toString("Pending - Write       - ",filename),true);
+        scheduled.back().ptr=addScheduleItem("Pending","Write",filename,true);
         cv::Mat resized;
         double ratio=imgUmPPx->val;
         double xSize=round(ratio*WRImage.cols)*1000/pgMGUI->getNmPPx(0);
@@ -512,7 +573,7 @@ void pgWrite::onWriteDM(){
         scheduled.back().filename=util::toString(scan_default_folder->get(),"/",filename);
         scheduled.back().conf=genConfig();
         scheduled.back().scanROI=scanROI;
-        scheduled.back().ptr=addScheduleItem(util::toString("Pending - Scan        - ",filename),false);
+        scheduled.back().ptr=addScheduleItem("Pending","Scan",filename,false);
 
         return;
     }
@@ -653,7 +714,7 @@ void pgWrite::onWriteTag(){
         scheduled.back().writePars[3]=settingWdg[4]->focus->val/1000;
         scheduled.back().writePars[4]=settingWdg[4]->focusXcor->val/1000;
         scheduled.back().writePars[5]=settingWdg[4]->focusYcor->val/1000;
-        scheduled.back().ptr=addScheduleItem(util::toString("Pending - ","Write Tag   - ",filename),true);
+        scheduled.back().ptr=addScheduleItem("Pending","Write",util::toString("Tag: ",tagText->text().toStdString()),true);
         cv::Mat resized;
         double ratio=settingWdg[4]->imgUmPPx->val;
         double xSize=round(ratio*tagImage.cols)*1000/pgMGUI->getNmPPx(0);

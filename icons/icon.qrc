@@ -15,5 +15,8 @@
         <file>down.svg</file>
         <file>locked.svg</file>
         <file>color.svg</file>
+        <file>bottom.svg</file>
+        <file>top.svg</file>
+        <file>up.svg</file>
     </qresource>
 </RCC>
