@@ -22,5 +22,6 @@
 #include "globals.h"
 #include "PROCEDURES/_incl_procedures.h"
 #include "gui_aux_objects.h"
+#include "cvplotqwindow.h"
 
 #endif // GUI_INCLUDES_H

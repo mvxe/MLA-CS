@@ -11,6 +11,8 @@ class pgDepthEval;
 class pgBeamAnalysis;
 class pgWrite;
 class QSpinBox;
+class CvPlotQWindow;
+namespace CvPlot{class Window;}
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
 
@@ -18,6 +20,7 @@ class pgCalib: public QWidget{
     Q_OBJECT
 public:
     pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn, pgWrite* pgWr, overlay& ovl);
+    ~pgCalib();
     rtoml::vsr conf;                //configuration map
 
     QWidget* gui_settings;
@@ -68,7 +71,18 @@ private:
 
     //processing
     QPushButton* btnProcessFocusMes;
+
+    QPushButton* fpLoad;
+    QPushButton* fpClear;
     QPushButton* fitAndPlot;
+    QLabel* fpList;
+    CvPlotQWindow* cpwin{nullptr};
+    struct durhe_data{
+        double duration;
+        double height;
+        double height_err;
+    };
+    std::vector<durhe_data> fpLoadedData;
 
     constexpr static int maxRedoScanTries=3;
     constexpr static int maxRedoRefocusTries=3;
@@ -90,6 +104,8 @@ private Q_SLOTS:
     void onMultiarrayNChanged(double val);
     void onPrerunTypeChanged(int);
     void onFitAndPlot();
+    void onfpLoad();
+    void onfpClear();
 
 private:
     static int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f);

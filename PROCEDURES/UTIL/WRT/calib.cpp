@@ -10,12 +10,15 @@
 #include <algorithm>
 #include <random>
 #include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_multifit_nlinear.h>
+#include <gsl/gsl_bspline.h>
+#include <gsl/gsl_multifit.h>
+#include <gsl/gsl_statistics.h>
 #include <CvPlot/cvplot.h>
+#include <opencv2/highgui.hpp>
 
 pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn, pgWrite* pgWr, overlay& ovl): pgSGUI(pgSGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgBeAn(pgBeAn), pgWr(pgWr), ovl(ovl){
     btnWriteCalib=new HQPushButton("Run Write Focus Calibration");
@@ -108,9 +111,24 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements");
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
     slayout->addWidget(new twid(btnProcessFocusMes));
-    fitAndPlot=new QPushButton("Select processed measurements for plotting/fitting");
+
+    slayout->addWidget(new hline);
+    slayout->addWidget(new QLabel("Calibration curve fitting:"));
+    fpLoad=new QPushButton("Load");
+    connect(fpLoad, SIGNAL(released()), this, SLOT(onfpLoad()));
+    fpClear=new QPushButton("Clear");
+    fpClear->setEnabled(false);
+    connect(fpClear, SIGNAL(released()), this, SLOT(onfpClear()));
+    fitAndPlot=new QPushButton("Fit/Plot");
+    fitAndPlot->setEnabled(false);
     connect(fitAndPlot, SIGNAL(released()), this, SLOT(onFitAndPlot()));
-    slayout->addWidget(new twid(fitAndPlot));
+    slayout->addWidget(new twid(fpLoad,fpClear,fitAndPlot));
+    fpList=new QLabel("");
+    fpList->setVisible(false);
+    slayout->addWidget(fpList);
+}
+pgCalib::~pgCalib(){
+    if(cpwin!=nullptr) delete cpwin;
 }
 void pgCalib::onMultiarrayNChanged(double val){
     selArray(selArrayType->index, selMultiArrayType->index);
@@ -772,7 +790,7 @@ void pgCalib::drawWriteArea(cv::Mat* img){
         cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), img->rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY), xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
 }
 
-void pgCalib::onFitAndPlot(){
+void pgCalib::onfpLoad(){
     std::vector<std::string> readFolders;
     std::vector<std::string> measFiles;
 
@@ -802,9 +820,6 @@ void pgCalib::onFitAndPlot(){
         closedir(wp);
     }
 
-    for(auto& item:measFiles) std::cerr<<"Using processed measurements from "<<item<<"\n";
-
-    std::vector<double> duration, height, height_err;
     const size_t pos[4]={1,12,3,27};    // indices in data(starting from 1): valid, duration, height, height_err
     const size_t maxpos=*std::max_element(pos,pos+4);
     for(auto& item:measFiles){
@@ -823,18 +838,104 @@ void pgCalib::onFitAndPlot(){
                 else if(i==pos[3]) _height_err=tmp;
             }
             if(valid){
-                duration.push_back(_duration);
-                height.push_back(_height);
-                height_err.push_back(_height_err);
+                fpLoadedData.push_back({_duration,_height,_height_err});
             }
         }
         ifs.close();
     }
 
-    auto axes = CvPlot::makePlotAxes();
-    axes.xLabel("Pulse Duration (ms)");
-    axes.yLabel("Peak Height (nm)");
-    axes.create<CvPlot::Series>(duration, height, "o");
-    CvPlot::show("Plot", axes);
+    if(fpLoadedData.empty()) return;
 
+    // sort by pulse duration
+    std::sort(fpLoadedData.begin(), fpLoadedData.end(), [](durhe_data i,durhe_data j){return (i.duration<j.duration);});
+    fitAndPlot->setEnabled(true);
+    fpClear->setEnabled(true);
+    QString list=fpList->text();
+    for(auto& item:measFiles) {list+=item.substr(item.find_last_of('/',item.find_last_of('/')-1)+1).c_str(); list+="\n";}
+    fpList->setText(list);
+    fpList->setVisible(true);
+}
+void pgCalib::onfpClear(){
+    fpLoadedData.clear();
+    fitAndPlot->setEnabled(false);
+    fpClear->setEnabled(false);
+    fpList->setText("");
+    fpList->setVisible(false);
+}
+void pgCalib::onFitAndPlot(){
+    std::vector<double> duration, height, height_err;
+    for(auto& el:fpLoadedData){
+        duration.push_back(el.duration);
+        height.push_back(el.height);
+        height_err.push_back(el.height_err);
+    }
+
+    if(cpwin==nullptr) cpwin=new CvPlotQWindow;
+    cpwin->axes=CvPlot::makePlotAxes();
+    cpwin->axes.xLabel("Pulse Duration (ms)");
+    cpwin->axes.yLabel("Peak Height (nm)");
+    cpwin->axes.create<CvPlot::Series>(duration, height, "o");
+
+    const double min=0;
+    const double max=*std::max_element(duration.begin(),duration.end());
+
+    const size_t mesN = duration.size()+1;  // +1 for a point in (0,0)
+    const size_t ncoeffs = 25;
+    const size_t nbreak = ncoeffs-2;
+    gsl_bspline_workspace *bsplws=gsl_bspline_alloc(4, nbreak); // cubis bspline
+    gsl_vector *bsplcoef=gsl_vector_alloc(ncoeffs);
+    gsl_vector *fitpars=gsl_vector_alloc(ncoeffs);
+    gsl_vector *weights=gsl_vector_alloc(mesN);
+    gsl_vector *yvec=gsl_vector_alloc(mesN);
+    gsl_matrix *predVarMat=gsl_matrix_alloc(mesN, ncoeffs);
+    gsl_matrix *covmat=gsl_matrix_alloc(ncoeffs, ncoeffs);
+    gsl_multifit_linear_workspace *mfitws=gsl_multifit_linear_alloc(mesN, ncoeffs);
+
+    for(size_t i=0;i!=mesN;i++) gsl_vector_set(yvec, i, i==0?0:height[i-1]);
+    for(size_t i=0;i!=mesN;i++) gsl_vector_set(weights, i, i==0?1e9:(1/pow(height_err[i-1],2)));
+
+    gsl_bspline_knots_uniform(min, max, bsplws);    // make breakpoints
+
+    /* construct the fit matrix X */
+    for (size_t i=0;i!=mesN;i++){
+        gsl_bspline_eval(i==0?0:duration[i-1], bsplcoef, bsplws);   // compute bspline coefs
+        for (size_t j = 0; j < ncoeffs; ++j)
+            gsl_matrix_set(predVarMat, i, j, gsl_vector_get(bsplcoef, j));
+    }
+
+    double chisq;
+    gsl_multifit_wlinear(predVarMat, weights, yvec, fitpars, covmat, &chisq, mfitws); // fit
+
+    /* output the smoothed curve */
+    std::vector<double> fduration, fheight;
+    double nplot=1000;
+    double step=(max-min)/(nplot-1);
+    for(int i=0;i!=nplot;i++){
+        fduration.push_back(min+i*step);
+        fheight.emplace_back();
+        gsl_bspline_eval(fduration.back(), bsplcoef, bsplws);
+        double yerr;
+        gsl_multifit_linear_est(bsplcoef, fitpars, covmat, &fheight.back(), &yerr);
+    }
+
+    gsl_bspline_free(bsplws);
+    gsl_vector_free(bsplcoef);
+    gsl_vector_free(yvec);
+    gsl_matrix_free(predVarMat);
+    gsl_vector_free(fitpars);
+    gsl_vector_free(weights);
+    gsl_matrix_free(covmat);
+    gsl_multifit_linear_free(mfitws);
+
+    cpwin->axes.create<CvPlot::Series>(fduration, fheight, "-r");
+    cpwin->redraw();
+    cpwin->show();
+
+
+    //plotw.update();
+    //std::cerr<<"window valid:"<<plotw.valid()<<"\n";
+    //while(plotw.valid()){plotw.waitKey(1);std::this_thread::sleep_for(std::chrono::milliseconds(1));}
+    //std::cerr<<"window valid:"<<plotw.valid()<<"\n";
+    //std::cerr<<"done\n";
+    //cpwinupdater.singleShot(1000/30,this,SLOT(winWaitKey()));
 }
