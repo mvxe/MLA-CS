@@ -75,6 +75,7 @@ private:
     QPushButton* fpLoad;
     QPushButton* fpClear;
     QPushButton* fitAndPlot;
+    val_selector* nBSplineCoef;
     QLabel* fpList;
     CvPlotQWindow* cpwin{nullptr};
     struct durhe_data{
@@ -106,6 +107,7 @@ private Q_SLOTS:
     void onFitAndPlot();
     void onfpLoad();
     void onfpClear();
+    void onNBSplineCoefChanged();
 
 private:
     static int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f);

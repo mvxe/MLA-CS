@@ -122,7 +122,10 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     fitAndPlot=new QPushButton("Fit/Plot");
     fitAndPlot->setEnabled(false);
     connect(fitAndPlot, SIGNAL(released()), this, SLOT(onFitAndPlot()));
-    slayout->addWidget(new twid(fpLoad,fpClear,fitAndPlot));
+    nBSplineCoef=new val_selector(6, "NBsplineCoef", 4, 100, 0);
+    conf["nBSplineCoef"]=nBSplineCoef;
+    connect(nBSplineCoef, SIGNAL(changed()), this, SLOT(onNBSplineCoefChanged()));
+    slayout->addWidget(new twid(fpLoad,fpClear,fitAndPlot,nBSplineCoef));
     fpList=new QLabel("");
     fpList->setVisible(false);
     slayout->addWidget(fpList);
@@ -881,8 +884,8 @@ void pgCalib::onFitAndPlot(){
     const double max=*std::max_element(duration.begin(),duration.end());
 
     const size_t mesN = duration.size()+1;  // +1 for a point in (0,0)
-    const size_t ncoeffs = 25;
-    const size_t nbreak = ncoeffs-2;
+    const size_t ncoeffs = nBSplineCoef->val;
+    const size_t nbreak = ncoeffs-2;    // must be at least 2
     gsl_bspline_workspace *bsplws=gsl_bspline_alloc(4, nbreak); // cubis bspline
     gsl_vector *bsplcoef=gsl_vector_alloc(ncoeffs);
     gsl_vector *fitpars=gsl_vector_alloc(ncoeffs);
@@ -932,12 +935,11 @@ void pgCalib::onFitAndPlot(){
     sfit.setName("Spline fit");
     cpwin->redraw();
     cpwin->show();
-
-
-    //plotw.update();
-    //std::cerr<<"window valid:"<<plotw.valid()<<"\n";
-    //while(plotw.valid()){plotw.waitKey(1);std::this_thread::sleep_for(std::chrono::milliseconds(1));}
-    //std::cerr<<"window valid:"<<plotw.valid()<<"\n";
-    //std::cerr<<"done\n";
-    //cpwinupdater.singleShot(1000/30,this,SLOT(winWaitKey()));
+    cpwin->activateWindow();    // takes focus
+}
+void pgCalib::onNBSplineCoefChanged(){
+    if(fpLoadedData.empty()) return;
+    if(cpwin!=nullptr) if(cpwin->isVisible()){
+        onFitAndPlot();
+    }
 }
