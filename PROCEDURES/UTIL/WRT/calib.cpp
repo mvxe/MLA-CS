@@ -874,7 +874,8 @@ void pgCalib::onFitAndPlot(){
     cpwin->axes=CvPlot::makePlotAxes();
     cpwin->axes.xLabel("Pulse Duration (ms)");
     cpwin->axes.yLabel("Peak Height (nm)");
-    cpwin->axes.create<CvPlot::Series>(duration, height, "o");
+    auto& sdata=cpwin->axes.create<CvPlot::Series>(duration, height, "o");
+    sdata.setName("Data");
 
     const double min=0;
     const double max=*std::max_element(duration.begin(),duration.end());
@@ -927,7 +928,8 @@ void pgCalib::onFitAndPlot(){
     gsl_matrix_free(covmat);
     gsl_multifit_linear_free(mfitws);
 
-    cpwin->axes.create<CvPlot::Series>(fduration, fheight, "-r");
+    auto& sfit=cpwin->axes.create<CvPlot::Series>(fduration, fheight, "-r");
+    sfit.setName("Spline fit");
     cpwin->redraw();
     cpwin->show();
 

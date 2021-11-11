@@ -2,12 +2,16 @@
 #include <QPixmap>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QFileDialog>
 #include "UTIL/utility.h"
+#include <fstream>
 
 CvPlotQWindow::CvPlotQWindow(){
     setWindowFlag(Qt::Window);
     resize(QSize(1000,500));
     setMouseTracking(true);
+    menu.addAction("Save plot", this, SLOT(onSavePlot()));
+    menu.addAction("Save data", this, SLOT(onSaveData()));
 }
 void CvPlotQWindow::redraw(){
     wsize=cv::Size(size().width(), size().height());
@@ -74,12 +78,17 @@ void CvPlotQWindow::mouseReleaseEvent(QMouseEvent *event){
     activeMouseButton=Qt::NoButton;
     switch(event->button()){
     case(Qt::RightButton):
-        if(coordPress.x!=coordMove.x && coordPress.y-coordMove.y){
+        if(coordPress.x!=coordMove.x && coordPress.y!=coordMove.y){
             axes.find<selectionRect>("srect")->enabled=false;
             axes.zoom(wsize,(coordPress+coordMove)/2,std::abs(coordPress.x-coordMove.x)/static_cast<double>(cc.innerRect.width),std::abs(coordPress.y-coordMove.y)/static_cast<double>(cc.innerRect.height));
             redraw();
-        }else{
-            std::cerr<<"TODO implement menu\n";
+        }else menu.popup(QCursor::pos());
+        break;
+    case(Qt::MiddleButton):
+        if(coordPress.x==coordMove.x || coordPress.y==coordMove.y){
+            axes.setXLimAuto();
+            axes.setYLimAuto();
+            redraw();
         }
         break;
     default:;
@@ -90,4 +99,41 @@ void CvPlotQWindow::wheelEvent(QWheelEvent *event){
     axes.zoom(wsize,cv::Point(event->position().x(),event->position().y()),zoom,zoom);
     redraw();
 }
+void CvPlotQWindow::onSavePlot(){
+    std::string fileName=QFileDialog::getSaveFileName(this,"Save Plot to File", "","Images (*.png *.xpm *.jpg *.bmp)").toStdString();
+    if(fileName.empty()) return;
+    cv::imwrite(fileName, axes.render(wsize.height, wsize.width));
+}
+void CvPlotQWindow::onSaveData(){
+    std::string fileName=QFileDialog::getSaveFileName(this,"Save Data to File", "","Text files (*.txt *.dat)").toStdString();
+    if(fileName.empty()) return;
 
+    struct seriesData{
+        std::vector<cv::Point2d> points;
+        std::string name;
+    };
+    std::vector<seriesData> seriess;
+
+    for(auto& drawable:axes.drawables()){
+        auto series=dynamic_cast<CvPlot::Series*>(drawable.get());
+        if(series!=nullptr)
+            seriess.push_back({series->getPoints(), series->getName()});
+    }
+
+    if(seriess.empty()) return;
+    std::ofstream wfile(fileName);
+    std::sort(seriess.begin(), seriess.end(), [](seriesData i,seriesData j){return (i.points.size()>j.points.size());});
+    wfile<<"#";
+    for(auto& series:seriess) wfile<<" \""<<series.name<<"\".x \""<<series.name<<"\".y";
+    for(size_t i=0;i!=seriess[0].points.size();i++){
+        wfile<<"\n";
+        bool fst=true;
+        for(auto& series:seriess)
+            if(i<series.points.size()){
+                if(fst)fst=false;
+                else wfile<<" ";
+                wfile<<series.points[i].x<<" "<<series.points[i].y;
+            }
+    }
+    wfile.close();
+}

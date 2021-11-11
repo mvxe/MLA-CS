@@ -3,7 +3,7 @@
 #include "opencv2/opencv.hpp"
 #include <QLabel>
 #include <CvPlot/cvplot.h>
-
+#include <QMenu>
 
 
 class CvPlotQWindow : public QLabel{
@@ -22,6 +22,7 @@ protected:
     cv::Point coordMove;
     Qt::MouseButton activeMouseButton{Qt::NoButton};
     cv::Size wsize;
+    QMenu menu;
 
     class selectionRect : public CvPlot::Drawable{
     public:
@@ -47,6 +48,9 @@ protected:
         cv::Point posProj;
         cv::Point2d posUnProj;
     };
+private Q_SLOTS:
+    void onSavePlot();
+    void onSaveData();
 };
 
 
