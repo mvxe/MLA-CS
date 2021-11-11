@@ -18,8 +18,6 @@ protected:
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void wheelEvent(QWheelEvent *event);
-    cv::Point coordPress;
-    cv::Point coordMove;
     Qt::MouseButton activeMouseButton{Qt::NoButton};
     cv::Size wsize;
     QMenu menu;
@@ -43,11 +41,16 @@ protected:
     };
     class calcCoords{
     public:
+        calcCoords(){};
         calcCoords(QMouseEvent* event, CvPlotQWindow* parent);
+        cv::Point pos;
         cv::Rect innerRect;
         cv::Point posProj;
         cv::Point2d posUnProj;
     };
+
+    calcCoords ccPress;
+    calcCoords ccMove;
 private Q_SLOTS:
     void onSavePlot();
     void onSaveData();

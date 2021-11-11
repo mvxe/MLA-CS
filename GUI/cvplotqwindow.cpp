@@ -25,21 +25,20 @@ void CvPlotQWindow::resizeEvent(QResizeEvent *event){
     redraw();
 }
 CvPlotQWindow::calcCoords::calcCoords(QMouseEvent* event, CvPlotQWindow* parent){
+    pos.x=event->pos().x();
+    pos.y=event->pos().y();
     innerRect=parent->axes.getProjection(parent->wsize).innerRect();
-    posProj.x=event->pos().x()-innerRect.x;
-    posProj.y=event->pos().y()-innerRect.y;
+    posProj.x=pos.x-innerRect.x;
+    posProj.y=pos.y-innerRect.y;
     posUnProj=parent->axes.getProjection(parent->wsize).unproject(posProj);
 }
 void CvPlotQWindow::mousePressEvent(QMouseEvent *event){
-    calcCoords cc(event, this);
-
-    coordPress.x=event->pos().x();
-    coordPress.y=event->pos().y();
-    coordMove=coordPress;
+    ccPress=calcCoords(event, this);
+    ccMove=ccPress;
     activeMouseButton=event->button();
     switch(event->button()){
     case(Qt::RightButton):
-        axes.find<selectionRect>("srect")->startp=cc.posUnProj;
+        axes.find<selectionRect>("srect")->startp=ccPress.posUnProj;
         break;
     default:;
     }
@@ -50,11 +49,11 @@ void CvPlotQWindow::mouseMoveEvent(QMouseEvent *event){
 
     switch(activeMouseButton){
     case(Qt::MiddleButton):
-        axes.zoom(wsize,coordPress,1+(coordMove.x-event->pos().x())/static_cast<double>(cc.innerRect.width),1-(coordMove.y-event->pos().y())/static_cast<double>(cc.innerRect.height));
+        axes.zoom(wsize,ccPress.pos,1+(ccMove.pos.x-cc.pos.x)/static_cast<double>(cc.innerRect.width),1-(ccMove.pos.y-cc.pos.y)/static_cast<double>(cc.innerRect.height));
         redraw();
         break;
     case(Qt::LeftButton):
-        axes.pan(wsize,cv::Point(event->pos().x(),event->pos().y())-coordMove);
+        axes.pan(wsize,cv::Point(event->pos().x(),event->pos().y())-ccMove.pos);
         redraw();
         break;
     case(Qt::RightButton):
@@ -68,8 +67,7 @@ void CvPlotQWindow::mouseMoveEvent(QMouseEvent *event){
         break;
     default:;
     }
-    coordMove.x=event->pos().x();
-    coordMove.y=event->pos().y();
+    ccMove=cc;
 }
 
 void CvPlotQWindow::mouseReleaseEvent(QMouseEvent *event){
@@ -78,14 +76,15 @@ void CvPlotQWindow::mouseReleaseEvent(QMouseEvent *event){
     activeMouseButton=Qt::NoButton;
     switch(event->button()){
     case(Qt::RightButton):
-        if(coordPress.x!=coordMove.x && coordPress.y!=coordMove.y){
+        if(ccPress.pos.x!=ccMove.pos.x && ccPress.pos.y!=ccMove.pos.y){
             axes.find<selectionRect>("srect")->enabled=false;
-            axes.zoom(wsize,(coordPress+coordMove)/2,std::abs(coordPress.x-coordMove.x)/static_cast<double>(cc.innerRect.width),std::abs(coordPress.y-coordMove.y)/static_cast<double>(cc.innerRect.height));
+            axes.setXLim({std::min(cc.posUnProj.x,ccPress.posUnProj.x),std::max(cc.posUnProj.x,ccPress.posUnProj.x)});
+            axes.setYLim({std::min(cc.posUnProj.y,ccPress.posUnProj.y),std::max(cc.posUnProj.y,ccPress.posUnProj.y)});
             redraw();
         }else menu.popup(QCursor::pos());
         break;
     case(Qt::MiddleButton):
-        if(coordPress.x==coordMove.x || coordPress.y==coordMove.y){
+        if(ccPress.pos.x==ccMove.pos.x || ccPress.pos.y==ccMove.pos.y){
             axes.setXLimAuto();
             axes.setYLimAuto();
             redraw();
