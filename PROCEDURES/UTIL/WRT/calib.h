@@ -12,6 +12,7 @@ class pgBeamAnalysis;
 class pgWrite;
 class QSpinBox;
 class CvPlotQWindow;
+class QSlider;
 namespace CvPlot{class Window;}
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
@@ -24,6 +25,7 @@ public:
     rtoml::vsr conf;                //configuration map
 
     QWidget* gui_settings;
+    QWidget* gui_settings_proc;
     void drawWriteArea(cv::Mat* img);
 private:
     pgFocusGUI* pgFGUI;
@@ -70,6 +72,7 @@ private:
     bool drawWriteAreaOn{false};
 
     //processing
+    QVBoxLayout* splayout;
     QPushButton* btnProcessFocusMes;
 
     QPushButton* fpLoad;
@@ -78,6 +81,7 @@ private:
     val_selector* nBSplineCoef;
     checkbox_gs* showBP;
     checkbox_gs* optimizeBP;
+    QSlider* upperLim;
     QLabel* fpList;
     CvPlotQWindow* cpwin{nullptr};
     struct durhe_data{
@@ -131,7 +135,6 @@ private:
         double* fitpars;
         double* bsplcoef;
         double* covmat;
-        CvPlotQWindow* cpwin;
     };
 };
 
