@@ -125,7 +125,14 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     nBSplineCoef=new val_selector(6, "NBsplineCoef", 4, 100, 0);
     conf["nBSplineCoef"]=nBSplineCoef;
     connect(nBSplineCoef, SIGNAL(changed()), this, SLOT(onNBSplineCoefChanged()));
-    slayout->addWidget(new twid(fpLoad,fpClear,fitAndPlot,nBSplineCoef));
+    showBP=new checkbox_gs(false,"Show BP.");
+    conf["showBreakPoints"]=showBP;
+    connect(showBP, SIGNAL(changed()), this, SLOT(onNBSplineCoefChanged()));
+    optimizeBP=new checkbox_gs(true,"Optimize BP.");
+    conf["optimizeBreakPoints"]=optimizeBP;
+    connect(optimizeBP, SIGNAL(changed()), this, SLOT(onNBSplineCoefChanged()));
+    slayout->addWidget(new twid(fpLoad,fpClear,fitAndPlot));
+    slayout->addWidget(new twid(nBSplineCoef,showBP,optimizeBP));
     fpList=new QLabel("");
     fpList->setVisible(false);
     slayout->addWidget(fpList);
@@ -865,8 +872,60 @@ void pgCalib::onfpClear(){
     fpList->setText("");
     fpList->setVisible(false);
 }
+
+
+int pgCalib::bspline_f(const gsl_vector* pars, void* data, gsl_vector* f){
+    size_t mesN=((struct fit_data_och*)data)->n;
+    double* x=((struct fit_data_och*)data)->x;
+    double* y=((struct fit_data_och*)data)->y;
+    double* w=((struct fit_data_och*)data)->w;
+    double* _breakpts=((struct fit_data_och*)data)->breakpts;
+    double* _fitpars=((struct fit_data_och*)data)->fitpars;
+    double* _bsplcoef=((struct fit_data_och*)data)->bsplcoef;
+    double* _covmat=((struct fit_data_och*)data)->covmat;
+    size_t ncoeffs=((struct fit_data_och*)data)->ncoeffs;
+    size_t nbreak=ncoeffs-2;
+
+    double breakDis[nbreak-2];
+    for(size_t i=0;i!=nbreak-2;i++) breakDis[i]=gsl_vector_get(pars, i);
+
+    gsl_bspline_workspace *bsplws=gsl_bspline_alloc(4, nbreak); // cubis bspline
+    gsl_vector bsplcoef=gsl_vector_view_array(_bsplcoef,ncoeffs).vector;
+    gsl_vector fitpars=gsl_vector_view_array(_fitpars,ncoeffs).vector;
+    gsl_vector weights=gsl_vector_view_array(w,mesN).vector;
+    gsl_vector yvec=gsl_vector_view_array(y,mesN).vector;
+    gsl_matrix *predVarMat=gsl_matrix_alloc(mesN, ncoeffs);
+    gsl_matrix covmat=gsl_matrix_view_array(_covmat,ncoeffs,ncoeffs).matrix;
+    gsl_multifit_linear_workspace *mfitws=gsl_multifit_linear_alloc(mesN, ncoeffs);
+    gsl_vector breakpts=gsl_vector_view_array(_breakpts,nbreak).vector;
+    gsl_vector_set(&breakpts, 0, x[0]);
+    for(size_t i=0;i!=nbreak-2;i++) gsl_vector_set(&breakpts, i+1, breakpts.data[i]+abs(breakDis[i]));
+    gsl_vector_set(&breakpts, nbreak-1, x[mesN-1]);
+    gsl_bspline_knots(&breakpts,bsplws);
+    for (size_t i=0;i!=mesN;i++){
+        gsl_bspline_eval(x[i], &bsplcoef, bsplws);   // compute bspline coefs
+        for (size_t j=0;j!=ncoeffs;j++)
+            gsl_matrix_set(predVarMat, i, j, gsl_vector_get(&bsplcoef, j));  //  construct the fit matrix
+    }
+
+    double ybs, yerr, ign;
+    gsl_multifit_wlinear(predVarMat, &weights, &yvec, &fitpars, &covmat, &ign, mfitws); // fit
+
+    for (size_t i=0; i!=mesN; i++){
+        gsl_bspline_eval(x[i], &bsplcoef, bsplws);
+        gsl_multifit_linear_est(&bsplcoef, &fitpars, &covmat, &ybs, &yerr);
+        if(f!=nullptr) gsl_vector_set(f, i, ybs-y[i]);
+    }
+
+    gsl_bspline_free(bsplws);
+    gsl_matrix_free(predVarMat);
+    gsl_multifit_linear_free(mfitws);
+
+    return GSL_SUCCESS;
+}
+
 void pgCalib::onFitAndPlot(){
-    std::vector<double> duration, height, height_err;
+    std::vector<double> duration, height, height_err, weight;
     for(auto& el:fpLoadedData){
         duration.push_back(el.duration);
         height.push_back(el.height);
@@ -879,63 +938,87 @@ void pgCalib::onFitAndPlot(){
     cpwin->axes.yLabel("Peak Height (nm)");
     auto& sdata=cpwin->axes.create<CvPlot::Series>(duration, height, "o");
     sdata.setName("Data");
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+
+    duration.insert(duration.begin(),0);      // add a zero point for fitting
+    height.insert(height.begin(),0);
+    height_err.insert(height_err.begin(),1e-5);
 
     const double min=0;
     const double max=*std::max_element(duration.begin(),duration.end());
 
-    const size_t mesN = duration.size()+1;  // +1 for a point in (0,0)
-    const size_t ncoeffs = nBSplineCoef->val;
-    const size_t nbreak = ncoeffs-2;    // must be at least 2
-    gsl_bspline_workspace *bsplws=gsl_bspline_alloc(4, nbreak); // cubis bspline
+    const size_t ncoeffs=static_cast<size_t>(nBSplineCoef->val);
+    const size_t nMes=duration.size();
     gsl_vector *bsplcoef=gsl_vector_alloc(ncoeffs);
     gsl_vector *fitpars=gsl_vector_alloc(ncoeffs);
-    gsl_vector *weights=gsl_vector_alloc(mesN);
-    gsl_vector *yvec=gsl_vector_alloc(mesN);
-    gsl_matrix *predVarMat=gsl_matrix_alloc(mesN, ncoeffs);
     gsl_matrix *covmat=gsl_matrix_alloc(ncoeffs, ncoeffs);
-    gsl_multifit_linear_workspace *mfitws=gsl_multifit_linear_alloc(mesN, ncoeffs);
+    const size_t nbreak = ncoeffs-2;    // must be at least 2
+    std::vector<double>breakpts(nbreak,0);
+    gsl_vector gbreakpts=gsl_vector_view_array(breakpts.data(),nbreak).vector;
+    cv::divide(1.,height_err,weight,CV_64F);
+    cv::divide(weight,height_err,weight,CV_64F);
+    fit_data_och data{
+        nMes,
+        ncoeffs,
+        duration.data(),
+        height.data(),
+        weight.data(),
+        breakpts.data(),
+        fitpars->data,
+        bsplcoef->data,
+        covmat->data
+    };
+    gsl_vector *pars=gsl_vector_alloc(nbreak-2);
+    gsl_vector_set_all(pars,(max-min)/(nbreak-1));
+    if(nbreak==2 || !optimizeBP->val){
+        bspline_f(pars, &data);
+    }else{
+        gsl_multifit_nlinear_fdf fdf{bspline_f,NULL,NULL,nMes,nbreak-2,&data,0,0,0};
+        gsl_multifit_nlinear_parameters fdf_params=gsl_multifit_nlinear_default_parameters();
+        gsl_multifit_nlinear_workspace* workspace=gsl_multifit_nlinear_alloc(gsl_multifit_nlinear_trust, &fdf_params, nMes, nbreak-2);
 
-    for(size_t i=0;i!=mesN;i++) gsl_vector_set(yvec, i, i==0?0:height[i-1]);
-    for(size_t i=0;i!=mesN;i++) gsl_vector_set(weights, i, i==0?1e9:(1/pow(height_err[i-1],2)));
+        gsl_vector weights=gsl_vector_view_array(weight.data(),nMes).vector;
+        gsl_multifit_nlinear_winit (pars, &weights, &fdf, workspace);
 
-    gsl_bspline_knots_uniform(min, max, bsplws);    // make breakpoints
+        gsl_vector* fcost;
+        fcost=gsl_multifit_nlinear_residual(workspace);
 
-    /* construct the fit matrix X */
-    for (size_t i=0;i!=mesN;i++){
-        gsl_bspline_eval(i==0?0:duration[i-1], bsplcoef, bsplws);   // compute bspline coefs
-        for (size_t j = 0; j < ncoeffs; ++j)
-            gsl_matrix_set(predVarMat, i, j, gsl_vector_get(bsplcoef, j));
+        int info;
+        const double xtol=1e-8;
+        const double gtol=1e-8;
+        const double ftol=0.0;
+        const unsigned maxIter=1000;
+        gsl_multifit_nlinear_driver(maxIter, xtol, gtol, ftol, NULL, NULL, &info, workspace);
+        gsl_multifit_nlinear_free (workspace);
     }
 
-    double chisq;
-    gsl_multifit_wlinear(predVarMat, weights, yvec, fitpars, covmat, &chisq, mfitws); // fit
-
-    /* output the smoothed curve */
+    gsl_bspline_workspace *bsplws=gsl_bspline_alloc(4, nbreak); // cubis bspline
+    gsl_bspline_knots(&gbreakpts,bsplws);
     std::vector<double> fduration, fheight;
     double nplot=1000;
     double step=(max-min)/(nplot-1);
+    double yerr;
     for(int i=0;i!=nplot;i++){
         fduration.push_back(min+i*step);
         fheight.emplace_back();
         gsl_bspline_eval(fduration.back(), bsplcoef, bsplws);
-        double yerr;
         gsl_multifit_linear_est(bsplcoef, fitpars, covmat, &fheight.back(), &yerr);
     }
 
-    gsl_bspline_free(bsplws);
     gsl_vector_free(bsplcoef);
-    gsl_vector_free(yvec);
-    gsl_matrix_free(predVarMat);
     gsl_vector_free(fitpars);
-    gsl_vector_free(weights);
     gsl_matrix_free(covmat);
-    gsl_multifit_linear_free(mfitws);
 
+    if(showBP->val){
+        auto& sbp=cpwin->axes.create<CvPlot::Series>(breakpts, std::vector(nbreak,0), "og");
+        sbp.setName("Breakpoints");
+    }
     auto& sfit=cpwin->axes.create<CvPlot::Series>(fduration, fheight, "-r");
     sfit.setName("Spline fit");
     cpwin->redraw();
     cpwin->show();
     cpwin->activateWindow();    // takes focus
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
 }
 void pgCalib::onNBSplineCoefChanged(){
     if(fpLoadedData.empty()) return;

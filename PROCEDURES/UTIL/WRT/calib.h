@@ -76,6 +76,8 @@ private:
     QPushButton* fpClear;
     QPushButton* fitAndPlot;
     val_selector* nBSplineCoef;
+    checkbox_gs* showBP;
+    checkbox_gs* optimizeBP;
     QLabel* fpList;
     CvPlotQWindow* cpwin{nullptr};
     struct durhe_data{
@@ -117,6 +119,19 @@ private:
         double* x;
         double* y;
         double* h;
+    };
+    static int bspline_f(const gsl_vector* pars, void* data, gsl_vector* f=nullptr);
+    struct fit_data_och {
+        size_t n;
+        size_t ncoeffs;
+        double* x;
+        double* y;
+        double* w;
+        double* breakpts;
+        double* fitpars;
+        double* bsplcoef;
+        double* covmat;
+        CvPlotQWindow* cpwin;
     };
 };
 
