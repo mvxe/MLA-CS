@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <QTreeView>
 #include <QStandardItemModel>
+#include <gsl/gsl_multifit.h>
 
 pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI* pgSGUI, overlay& ovl): pgBeAn(pgBeAn), pgMGUI(pgMGUI), MLP(MLP), pgSGUI(pgSGUI), ovl(ovl){
     gui_activation=new QWidget;
@@ -115,13 +116,6 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     schedulelwtwid->setVisible(false);
     alayout->addWidget(schedulelwtwid);
 
-    dTCcor=new val_selector(1, "Pulse duration correction", 0.1, 3, 3);
-    conf["dTCcor"]=dTCcor;
-    corDTCor=new QPushButton("Correct Correction");
-    connect(corDTCor, SIGNAL(released()), this, SLOT(onCorDTCor()));
-    alayout->addWidget(new twid(dTCcor,corDTCor));
-
-
     writeDM->setEnabled(false);
 
     selectWriteSetting=new smp_selector("Select write setting: ", 0, {"Set0", "Set1", "Set2", "Set3", "Tag"});    //should have Nset strings
@@ -134,7 +128,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     }
     connect(selectWriteSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     onMenuChange(0);
-    QLabel* textl=new QLabel("Predicting height change with formula:\n\u0394H=A(\u0394T-\u0394T\u2080\u2080)exp[-B/(\u0394T-\u0394T\u2080\u2080)],\nwhere \u0394T and \u0394T\u2080\u2080 are pulse durations.");
+    QLabel* textl=new QLabel("The required pulse duration T to write a peak of height H is determined via T=A*H+C. If bsplines are defined, they overwrite this (only within their defined range).");
     textl->setWordWrap(true);
     slayout->addWidget(textl);
     slayout->addWidget(new hline());
@@ -185,6 +179,10 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     switchBack2mirau=new checkbox_gs(false,"Switch back to Mirau objective after writing operations.");
     conf["switchBack2mirau"]=switchBack2mirau;
     slayout->addWidget(switchBack2mirau);
+
+    p_coefs=new gsl_vector;
+    p_covmat=new gsl_matrix;
+    p_gbreakpts=new gsl_vector;
 }
 pgWrite::~pgWrite(){
     delete scanRes;
@@ -421,21 +419,12 @@ void pgWrite::on_scan_default_folder(){
     std::string folder=QFileDialog::getExistingDirectory(gui_settings, tr("Select autoscan destination default folder"), QString::fromStdString(scan_default_folder->get())).toStdString();
     if(!folder.empty()) scan_default_folder->set(folder);
 }
-void pgWrite::onCorDTCor(){
-    bool ok;
-    float preH=QInputDialog::getDouble(gui_activation, "Correct intensity correction", "Input actual written height (nm) for given expected height.", 0.001, 0, 1000, 3, &ok);
-    if(!ok) return;
-    float cDT=getDT(depthMaxval->val/1000000);
-    dTCcor->setValue(1);
-    float gDT=getDT(preH/1000000);
-    dTCcor->setValue(cDT/gDT);
-}
 void pgWrite::onCorPPR(){
     bool ok;
     float preH=QInputDialog::getDouble(gui_activation, "Correct plateau-peak ratio", "Input actual written plateau height (nm) for given expected peak height.", 0.001, 0, 1000, 3, &ok);
     if(!ok) return;
-    float cDT=getDT(depthMaxval->val/1000000);
-    float gDT=getDT(preH/1000000);
+    float cDT=predictDuration(depthMaxval->val);
+    float gDT=predictDuration(preH);
     plataeuPeakRatio->setValue(plataeuPeakRatio->val*gDT/cDT);
 }
 void pgWrite::onPulse(){
@@ -455,64 +444,84 @@ void pgWrite::onMenuChange(int index){
     focus=settingWdg[index]->focus;
     focusXcor=settingWdg[index]->focusXcor;
     focusYcor=settingWdg[index]->focusYcor;
+    usingBSpline=settingWdg[index]->usingBSpline;
     constA=settingWdg[index]->constA;
-    constB=settingWdg[index]->constB;
-    constX0=settingWdg[index]->constX0;
+    constC=settingWdg[index]->constC;
     plataeuPeakRatio=settingWdg[index]->plataeuPeakRatio;
     pointSpacing=settingWdg[index]->pointSpacing;
     writeZeros=settingWdg[index]->writeZeros;
+    bsplbreakpts=&settingWdg[index]->bsplbreakpts;
+    bsplcoefs=&settingWdg[index]->bsplcoefs;
+    bsplcov=&settingWdg[index]->bsplcov;
+    p_ready=false;
 }
-writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent){
+writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent), p_ready(parent->p_ready){
+    name=parent->selectWriteSetting->getLabel(num);
     slayout=new QVBoxLayout;
     this->setLayout(slayout);
-    focus=new val_selector(0, "Focus offset", -1000, 1000, 3, 0, {"um"});
-    parent->conf[parent->selectWriteSetting->getLabel(num)]["focus"]=focus;
+    focus=new val_selector(0, "Focus Z offset", -1000, 1000, 3, 0, {"um"});
+    parent->conf[name]["focus"]=focus;
     slayout->addWidget(focus);
-    focusXcor=new val_selector(0, "Focus X cor.", -1000, 1000, 3, 0, {"um"});
-    parent->conf[parent->selectWriteSetting->getLabel(num)]["focusXcor"]=focusXcor;
+    focusXcor=new val_selector(0, "Focus X offset", -1000, 1000, 3, 0, {"um"});
+    parent->conf[name]["focusXcor"]=focusXcor;
     slayout->addWidget(focusXcor);
-    focusYcor=new val_selector(0, "Focus Y cor", -1000, 1000, 3, 0, {"um"});
-    parent->conf[parent->selectWriteSetting->getLabel(num)]["focusYcor"]=focusYcor;
+    focusYcor=new val_selector(0, "Focus Y offset", -1000, 1000, 3, 0, {"um"});
+    parent->conf[name]["focusYcor"]=focusYcor;
     slayout->addWidget(focusYcor);
-    constA=new val_selector(100, "Constant A", 0, 100000, 3, 0, {"nm/ms"});
-    parent->conf[parent->selectWriteSetting->getLabel(num)]["constA"]=constA;
+    usingBSpline=new checkbox_gs(false,"Using bspline (uncheck to clear coefs.)");
+    connect(usingBSpline, SIGNAL(changed(bool)), this, SLOT(onUsingBSpline(bool)));
+    usingBSpline->setEnabled(false);
+    parent->conf[name]["usingBSpline"]=usingBSpline;
+    slayout->addWidget(usingBSpline);
+    parent->conf[name]["bsplbreakpts"]=bsplbreakpts;
+    parent->conf[name]["bsplcoefs"]=bsplcoefs;
+    parent->conf[name]["bsplcov"]=bsplcov;
+    constA=new val_selector(0.01, "Constant A", 0, 1000, 9, 0, {"ms/nm"});
+    parent->conf[name]["constA"]=constA;
     slayout->addWidget(constA);
-    constB=new val_selector(0, "Constant B", 0, 10000, 3, 0, {"ms"});
-    parent->conf[parent->selectWriteSetting->getLabel(num)]["constB"]=constB;
-    slayout->addWidget(constB);
-    constX0=new val_selector(0, "Constant \u0394T\u2080\u2080", 0, 1000, 5, 0, {"ms"});
-    parent->conf[parent->selectWriteSetting->getLabel(num)]["constT00"]=constX0;
-    slayout->addWidget(constX0);
+    constC=new val_selector(0, "Constant C", -1000, 1000, 9, 0, {"ms"});
+    parent->conf[name]["constC"]=constC;
+    slayout->addWidget(constC);
     plataeuPeakRatio=new val_selector(1, "Plataeu-Peak height ratio", 1, 10, 3);
-    parent->conf[parent->selectWriteSetting->getLabel(num)]["plataeuPeakRatio"]=plataeuPeakRatio;
+    parent->conf[name]["plataeuPeakRatio"]=plataeuPeakRatio;
     corPPR=new QPushButton("Correct PPR");
     slayout->addWidget(new twid(plataeuPeakRatio,corPPR));
     pointSpacing=new val_selector(1, "Point spacing", 0.01, 10, 3, 0, {"um"});
-    parent->conf[parent->selectWriteSetting->getLabel(num)]["pointSpacing"]=pointSpacing;
+    parent->conf[name]["pointSpacing"]=pointSpacing;
     slayout->addWidget(pointSpacing);
     writeZeros=new checkbox_gs(false,"Write zeros");
     writeZeros->setToolTip("If enabled, areas that do not need extra height will be written at threshold duration anyway (slower writing but can give more consistent zero levels if calibration is a bit off).");
-    parent->conf[parent->selectWriteSetting->getLabel(num)]["writeZeros"]=writeZeros;
+    parent->conf[name]["writeZeros"]=writeZeros;
     slayout->addWidget(writeZeros);
     if(num==4){ //tag settings
         fontFace=new smp_selector("Font ", 0, OCV_FF::qslabels());
-        parent->conf[parent->selectWriteSetting->getLabel(num)]["fontFace"]=fontFace;
+        parent->conf[name]["fontFace"]=fontFace;
         slayout->addWidget(fontFace);
         fontSize=new val_selector(1., "Font Size ", 0, 10., 2);
-        parent->conf[parent->selectWriteSetting->getLabel(num)]["fontSize"]=fontSize;
+        parent->conf[name]["fontSize"]=fontSize;
         slayout->addWidget(fontSize);
         fontThickness=new val_selector(1, "Font Thickness ", 1, 10, 0, 0, {"px"});
-        parent->conf[parent->selectWriteSetting->getLabel(num)]["fontThickness"]=fontThickness;
+        parent->conf[name]["fontThickness"]=fontThickness;
         slayout->addWidget(fontThickness);
         imgUmPPx=new val_selector(10, "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
-        parent->conf[parent->selectWriteSetting->getLabel(num)]["imgUmPPx"]=imgUmPPx;
+        parent->conf[name]["imgUmPPx"]=imgUmPPx;
         slayout->addWidget(imgUmPPx);
         depthMaxval=new val_selector(10, "Maxval=", 0.1, 500, 3, 0, {"nm"});
-        parent->conf[parent->selectWriteSetting->getLabel(num)]["depthMaxval"]=depthMaxval;
+        parent->conf[name]["depthMaxval"]=depthMaxval;
         slayout->addWidget(depthMaxval);
         frameDis=new val_selector(10, "Frame Distance=", 0.1, 500, 3, 0, {"um"});
-        parent->conf[parent->selectWriteSetting->getLabel(num)]["frameDis"]=frameDis;
+        parent->conf[name]["frameDis"]=frameDis;
         slayout->addWidget(frameDis);
+    }
+}
+void writeSettings::onUsingBSpline(bool state){
+    usingBSpline->setEnabled(state);
+    if(!state){
+        bsplbreakpts.clear();
+        bsplcoefs.clear();
+        constA->setValue(100);
+        constC->setValue(0);
+        p_ready=false;
     }
 }
 void pgWrite::onLoadImg(){
@@ -617,7 +626,7 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
     cv::Mat* src;
     double vdepthMaxval, vimgmmPPx, vpointSpacing, vfocus, vfocusXcor, vfocusYcor;
     src=(override!=nullptr)?override:&WRImage;
-    vdepthMaxval=(override_depthMaxval!=0)?override_depthMaxval:depthMaxval->val/1000000;
+    vdepthMaxval=(override_depthMaxval!=0)?override_depthMaxval:(depthMaxval->val.load());
     vimgmmPPx=(override_imgmmPPx!=0)?override_imgmmPPx:imgUmPPx->val/1000;
     vpointSpacing=(override_pointSpacing!=0)?override_pointSpacing:pointSpacing->val/1000;
     vfocus=(override_focus!=std::numeric_limits<double>::max())?override_focus:focus->val/1000;
@@ -630,6 +639,7 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
         src->convertTo(tmpWrite, CV_32F, vdepthMaxval/65536);
     }else if(src->type()==CV_32F) src->copyTo(tmpWrite);
     else {QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n"); return true;}
+    preparePredictor();
 
     double ratio=vimgmmPPx/vpointSpacing;
     if(vimgmmPPx==vpointSpacing) tmpWrite.copyTo(resizedWrite);
@@ -641,7 +651,6 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
     if(!go.pRPTY->connected) return true;
     wasMirau=pgMGUI->currentObj==0;
     pgMGUI->chooseObj(false);    // switch to writing
-    pulse_precision=go.pRPTY->getPulsePrecision();  // pulse duration unit
 
     double offsX,offsY;
     offsX=(resizedWrite.cols-1)*vpointSpacing;
@@ -662,13 +671,13 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
     abort->setVisible(true);
     for(int j=0;j!=resizedWrite.rows;j++){   // write row by row (so that processing for the next row is done while writing the previous one, and the operation can be terminated more easily)
         for(int i=0;i!=resizedWrite.cols;i++){
-            pulse=getDT(resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i));          // Y inverted because image formats have flipped Y
+            pulse=predictDuration(resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i));        // Y inverted because image formats have flipped Y
             if(i!=0) pgMGUI->corCOMove(CO,(xdir?-1:1)*vpointSpacing,0,0);
             if(pulse==0) continue;
             CO.addHold("X",CTRL::he_motion_ontarget);
             CO.addHold("Y",CTRL::he_motion_ontarget);
             CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
-            CO.pulseGPIO("wrLaser",pulse);
+            CO.pulseGPIO("wrLaser",pulse/1000);
         }
         if (j!=resizedWrite.rows-1) pgMGUI->corCOMove(CO,0,vpointSpacing,0);
         CO.execute();
@@ -722,31 +731,36 @@ void pgWrite::onWriteTag(){
         cv::resize(tagImage, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
         scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(coords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(coords[1]-pgBeAn->writeBeamCenterOfsY,0));
     }
-    else writeMat(&tagImage,settingWdg[4]->depthMaxval->val/1000000,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
-}
-float pgWrite::getDT(float H, float H0){
-    float min=(constX0->val/1000)*dTCcor->val/plataeuPeakRatio->val;
-    float ret=1;            // we limit pulse duration to 1 second
-    float mid;
-    if(H<=H0) return writeZeros->val?min:0;         //its already higher, dont need to write a pulse (if writeZeros is false)
-    while(ret-min>pulse_precision){
-        mid=(min+ret)/2;
-        if(calcH(mid,H0)>H-H0) ret=mid;
-        else min=mid;
-    }
-    return ret;
-}
-float pgWrite::calcH(float DT, float H0){   // we dont use H0 in this model though
-    float DDT=DT-(constX0->val/1000)*dTCcor->val/plataeuPeakRatio->val;
-    return (constA->val/1000)/dTCcor->val*DDT*expf(-(constB->val/1000)*dTCcor->val/DDT);
+    else writeMat(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
 }
 
-//float pgWrite::gaussian(float x, float y, float a, float wx, float wy, float an){
-//    float A=powf(cosf(an),2)/2/powf(wx,2)+powf(sinf(an),2)/2/powf(wy,2);
-//    float B=sinf(2*an)/2/powf(wx,2)-sinf(2*an)/2/powf(wy,2);
-//    float C=powf(sinf(an),2)/2/powf(wx,2)+powf(cosf(an),2)/2/powf(wy,2);
-//    return a*expf(-A*powf(x,2)-B*(x)*(y)-C*powf(y,2));
-//}
+void pgWrite::preparePredictor(){
+    if(p_basisfun!=nullptr) {gsl_vector_free(p_basisfun);p_basisfun=nullptr;}
+    if(p_bsplws!=nullptr) {gsl_bspline_free(p_bsplws);p_bsplws=nullptr;}
+
+    size_t ncoeffs=bsplcoefs->size();
+    if(ncoeffs>4){
+        size_t nbreak=ncoeffs-2;
+        *p_coefs=gsl_vector_view_array(bsplcoefs->data(),ncoeffs).vector;
+        *p_covmat=gsl_matrix_view_array(bsplcov->data(), ncoeffs, ncoeffs).matrix;
+        *p_gbreakpts=gsl_vector_view_array(bsplbreakpts->data(),nbreak).vector;
+        p_basisfun=gsl_vector_alloc(ncoeffs);
+        p_bsplws=gsl_bspline_alloc(4, nbreak); // cubic bspline
+        gsl_bspline_knots(p_gbreakpts,p_bsplws);
+    }
+    p_ready=true;
+}
+double pgWrite::predictDuration(double targetHeight){
+    if(!p_ready) preparePredictor();
+    double T{0},Terr;
+    if(targetHeight<0) return T;
+    if(p_coefs!=nullptr){
+        if(targetHeight>gsl_vector_get(p_gbreakpts,p_gbreakpts->size-1)) goto lin;
+        gsl_bspline_eval(targetHeight, p_basisfun, p_bsplws);
+        gsl_multifit_linear_est(p_basisfun, p_coefs, p_covmat, &T, &Terr);
+    }else lin: T=constA->val*targetHeight+constC->val;
+    return T/plataeuPeakRatio->val;
+}
 
 
 void pgWrite::onChangeDrawWriteAreaOn(bool status){

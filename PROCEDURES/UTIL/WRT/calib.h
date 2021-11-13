@@ -78,6 +78,8 @@ private:
     QPushButton* fpLoad;
     QPushButton* fpClear;
     QPushButton* fitAndPlot;
+    QPushButton* fpApply;
+    QMenu* applyMenu;
     val_selector* nBSplineCoef;
     checkbox_gs* showBP;
     checkbox_gs* optimizeBP;
@@ -90,7 +92,12 @@ private:
         double height_err;
     };
     std::vector<durhe_data> fpLoadedData;
-
+    bool fpLoadedDataSorted;
+    double focus[3];    // {focus, xofs, yofs}
+    std::vector<double> bsplbreakpts;   // last calculated coefs
+    std::vector<double> bsplcoefs;
+    std::vector<double> bsplcov;
+    double linA,linX;
     constexpr static int maxRedoScanTries=3;
     constexpr static int maxRedoRefocusTries=3;
 
@@ -114,6 +121,8 @@ private Q_SLOTS:
     void onfpLoad();
     void onfpClear();
     void onNBSplineCoefChanged();
+    void onApply();
+    void onApplyMenuTriggered(QAction* action);
 
 private:
     static int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f);
@@ -132,8 +141,7 @@ private:
         double* y;
         double* w;
         double* breakpts;
-        double* fitpars;
-        double* bsplcoef;
+        double* coefs;
         double* covmat;
     };
 };

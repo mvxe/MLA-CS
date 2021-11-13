@@ -4,6 +4,8 @@
 #include "PROCEDURES/procedure.h"
 #include "GUI/gui_aux_objects.h"
 #include "PROCEDURES/UTIL/USC/scan.h"
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_bspline.h>
 class writeSettings;
 class pgBeamAnalysis;
 class QLineEdit;
@@ -24,8 +26,9 @@ public:
     void drawWriteArea(cv::Mat* img);
     bool writeMat(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgmmPPx=0, double override_pointSpacing=0, double override_focus=std::numeric_limits<double>::max(), double ov_fxcor=std::numeric_limits<double>::max(), double ov_fycor=std::numeric_limits<double>::max());
             // matrix depth, if CV_32F, is in mm, likewise override_depthMaxval is in mm too
-            // override_depthMaxval overrides only if matrix is CV_8U or CV_16U
+            // override_depthMaxval overrides only if matrix is CV_8U or CV_16U, also in nm
             // return true if failed/aborted
+
 private:
     //activation
     QVBoxLayout* alayout;
@@ -79,17 +82,21 @@ private:
 
     smp_selector* selectWriteSetting;
     std::vector<writeSettings*> settingWdg;
+    friend class pgCalib;
     friend class writeSettings;
     constexpr static unsigned Nset{5};
     val_selector* focus;
     val_selector* focusXcor;
     val_selector* focusYcor;
+    checkbox_gs* usingBSpline;
     val_selector* constA;
-    val_selector* constB;
-    val_selector* constX0;
+    val_selector* constC;
     val_selector* plataeuPeakRatio;
     val_selector* pointSpacing;
     checkbox_gs* writeZeros;
+    std::vector<double>* bsplbreakpts;
+    std::vector<double>* bsplcoefs;
+    std::vector<double>* bsplcov;
 
     hidCon* folderhcon;
     btnlabel_gs* write_default_folder;
@@ -123,10 +130,14 @@ private:
     varShareClient<pgScanGUI::scanRes>* scanRes;
     const pgScanGUI::scanRes* res;
 
-    float getDT(float H, float H0=0);
-    float calcH(float DT, float H0=0);
-    double pulse_precision;
-//    float gaussian(float x, float y, float a, float wx, float wy, float an);
+    void preparePredictor();    // call before using predictDuration
+    gsl_vector* p_basisfun{nullptr};
+    gsl_bspline_workspace* p_bsplws{nullptr};
+    gsl_vector* p_coefs;
+    gsl_matrix* p_covmat;
+    gsl_vector* p_gbreakpts;
+    bool p_ready{false};
+    double predictDuration(double targetHeight);    // targetHeight in nm, return is in ms
     void replacePlaceholdersInString(std::string& src);
     void stripDollarSigns(std::string &str);
     bool firstImageLoaded{false};
@@ -147,7 +158,6 @@ private Q_SLOTS:
     void onChangeDrawWriteAreaOn(bool status);
     void onChangeDrawScanAreaOn(bool status);
     void onChangeDrawWriteAreaOnTag(bool status);
-    void onCorDTCor();
     void onCorPPR();
     void on_write_default_folder();
     void on_scan_default_folder();
@@ -162,7 +172,6 @@ private Q_SLOTS:
     void onAbort();
     void guessAndUpdateNextTagUInt();
     void onNotes();
-
     void onItemMoveTop();
     void onItemMoveUp();
     void onItemMoveDown();
@@ -176,18 +185,22 @@ class writeSettings: public QWidget{
     //GUI
 public:
     writeSettings(uint num, pgWrite* parent);
+    std::string name;
     QVBoxLayout* slayout;
     pgWrite* parent;
     val_selector* focus;
     val_selector* focusXcor;
     val_selector* focusYcor;
+    checkbox_gs* usingBSpline;
     val_selector* constA;
-    val_selector* constB;
-    val_selector* constX0;
+    val_selector* constC;
     val_selector* plataeuPeakRatio;
     QPushButton* corPPR;
     val_selector* pointSpacing;
     checkbox_gs* writeZeros;
+    std::vector<double> bsplbreakpts;
+    std::vector<double> bsplcoefs;
+    std::vector<double> bsplcov;
 
     //tag:
     smp_selector* fontFace;
@@ -196,6 +209,11 @@ public:
     val_selector* imgUmPPx;
     val_selector* depthMaxval;
     val_selector* frameDis;
+
+    bool& p_ready;
+
+private Q_SLOTS:
+    void onUsingBSpline(bool state);
 };
 
 #endif // PGWRITE_H
