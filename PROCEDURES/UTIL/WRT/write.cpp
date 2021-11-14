@@ -22,7 +22,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
 
     pulse=new QPushButton("Pulse");
     connect(pulse, SIGNAL(released()), this, SLOT(onPulse()));
-    pulseDur=new val_selector(1, "Duration:", 0.001, 10000, 3, 0, {"ms"});
+    pulseDur=new val_selector(1, "Duration:", 0.001, 10000, 3, 0, {"ms","nm"});
     conf["pulseDur"]=pulseDur;
     pulseh=new hidCon(pulse);
     pulseh->addWidget(new twid(pulseDur));
@@ -470,11 +470,22 @@ void pgWrite::onPulse(){
     if(!go.pRPTY->connected) return;
     wasMirau=pgMGUI->currentObj==0;
     pgMGUI->chooseObj(false);    // switch to writing
+    double pulse, vfocus{0}, vfocusXcor{0}, vfocusYcor{0};
+    if(pulseDur->index==0) pulse=pulseDur->val;
+    else{
+        preparePredictor();
+        pulse=predictDuration(pulseDur->val);
+        vfocus=focus->val/1000;
+        vfocusXcor=focusXcor->val/1000;
+        vfocusYcor=focusYcor->val/1000;
+    }
     CTRL::CO co(go.pRPTY);
     co.addHold("X",CTRL::he_motion_ontarget);
     co.addHold("Y",CTRL::he_motion_ontarget);
     co.addHold("Z",CTRL::he_motion_ontarget);
-    co.pulseGPIO("wrLaser",pulseDur->val/1000);
+    pgMGUI->corCOMove(co,vfocusXcor,vfocusYcor,vfocus);
+    co.pulseGPIO("wrLaser",pulse/1000);
+    pgMGUI->corCOMove(co,-vfocusXcor,-vfocusYcor,-vfocus);
     co.execute();
     if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true);
 }
