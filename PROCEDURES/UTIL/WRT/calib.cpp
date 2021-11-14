@@ -75,25 +75,14 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     conf["saveRF"]=saveRF;
     slayout->addWidget(saveRF);
     slayout->addWidget(new hline);
-    selPrerunType=new smp_selector("Prerun type ", 0, {"Plateau","Peak"});
-    connect(selPrerunType, SIGNAL(changed(int)), this, SLOT(onPrerunTypeChanged(int)));
-    conf["selPrerunType"]=selPrerunType;
-    slayout->addWidget(selPrerunType);
-    selPlateauA=new val_selector(0, "Height", 0, 1000, 3, 0, {"nm"});
+    selPlateauA=new val_selector(0, "Plateau", 0, 1000, 3, 0, {"nm"});
     conf["selPlateauA"]=selPlateauA;
     slayout->addWidget(selPlateauA);
-    selPlateauB=new val_selector(0, "Height upper limit", 0, 1000, 3, 0, {"nm"});
+    selPlateauB=new val_selector(0, "Plateau upper limit", 0, 1000, 3, 0, {"nm"});
     conf["selPlateauB"]=selPlateauB;
     slayout->addWidget(selPlateauB);
-    selPeakXshift=new val_selector(0, "Peak shift X", -100, 100, 3, 0, {"um"});
-    conf["selPeakXshift"]=selPeakXshift;
-    slayout->addWidget(selPeakXshift);
-    selPeakYshift=new val_selector(0, "Peak shift Y", -100, 100, 3, 0, {"um"});
-    conf["selPeakYshift"]=selPeakYshift;
-    slayout->addWidget(selPeakYshift);
-    selPeakYshift->setToolTip("NOTE: baseline calibration needed for plateau/peak.\nNOTE: set height to 0 to disable.");
     slayout->addWidget(new hline);
-    selMultiArrayType=new smp_selector("Multiple runs variable parameter: ", 0, {"none","Focus","Duration", "Plateau/Peak"});
+    selMultiArrayType=new smp_selector("Multiple runs variable parameter: ", 0, {"none","Focus","Duration", "Plateau"});
     connect(selMultiArrayType, SIGNAL(changed(int)), this, SLOT(onSelMultiArrayTypeChanged(int)));
     conf["selMultiArrayType"]=selMultiArrayType;
     slayout->addWidget(selMultiArrayType);
@@ -169,10 +158,6 @@ void pgCalib::onSelArrayTypeChanged(int index){
 void pgCalib::onSelMultiArrayTypeChanged(int index){
     selArray(selArrayType->index, index);
 }
-void pgCalib::onPrerunTypeChanged(int type){
-    selPeakXshift->setVisible(type==1);
-    selPeakYshift->setVisible(type==1);
-}
 void pgCalib::selArray(int ArrayIndex, int MultiArrayIndex){
     if(multiarrayN->val==1) MultiArrayIndex=0;
     bool foc=ArrayIndex==1 || ArrayIndex==2 || ArrayIndex==4 || MultiArrayIndex==1;
@@ -180,7 +165,7 @@ void pgCalib::selArray(int ArrayIndex, int MultiArrayIndex){
     bool pla=MultiArrayIndex==3;
     selArrayFocA->setLabel(foc?"Focus lower limit":"Focus");
     selArrayDurA->setLabel(dur?"Duration lower limit":"Duration");
-    selPlateauA->setLabel(pla?"Height lower limit":"Height");
+    selPlateauA->setLabel(pla?"Plateau lower limit":"Height");
     selArrayFocB->setVisible(foc);
     selArrayDurB->setVisible(dur);
     selPlateauB->setVisible(pla);
@@ -238,14 +223,12 @@ void pgCalib::saveMainConf(std::string filename){
     setFile << std::defaultfloat <<pgMGUI->getNmPPx()/1000000<<"\n";
     setFile.close();
 }
-void pgCalib::saveConf(std::string filename, double duration, double focus, double plateau, double peak, double peakXshift, double peakYshift){
+void pgCalib::saveConf(std::string filename, double duration, double focus, double plateau){
     std::ofstream setFile(filename);            //this file contains some settings:
     setFile <<"#Duration(ms) Focus(um)";
-    if(peak!=0 || plateau!=0) setFile <<" Plateau(nm)";
-    if(peak!=0) setFile<<" Peak(nm) PeakXShift(um) PeakYShift(um)";
+    setFile <<" Plateau(nm)";
     setFile <<"\n"<<duration<<" "<<focus;
-    if(peak!=0 || plateau!=0) setFile <<" "<<plateau;
-    if(peak!=0) setFile<<" "<<peak<<" "<<peakXshift<<" "<<peakYshift;
+    setFile <<" "<<plateau;
     setFile <<"\n";
     setFile.close();
 }
@@ -326,9 +309,8 @@ void pgCalib::WCFArray(std::string folder){
     }
 
     saveMainConf(util::toString(folder,"/main-settings.txt"));
-    bool isPlateau=selPrerunType->index==0;
-    if(multiarrayN->val>1){
-        std::ofstream wfile(util::toString(folder,isPlateau?"/Plateau.txt":"/Peak.txt"));
+    if(multiarrayN->val>1 && arrayPla.size()>1){
+        std::ofstream wfile(util::toString("/Plateau.txt"));
         for(int i=0;i!=arrayPla.size(); i++){
             wfile<<arrayPla[i]<<"\n";
         }wfile.close();
@@ -367,7 +349,7 @@ void pgCalib::WCFArray(std::string folder){
                 wfile.close();
             }
         }
-        if(WCFArrayOne(WArray, arrayPla.size()==1?arrayPla[0]:arrayPla[n], ROI, sROI, folder, isPlateau, selPeakXshift->val, selPeakYshift->val,n)){
+        if(WCFArrayOne(WArray, arrayPla.size()==1?arrayPla[0]:arrayPla[n], ROI, sROI, folder,n)){
             QMessageBox::critical(gui_settings, "Error", "Calibration failed/aborted. Measurements up to this point were saved.");
             report->setText(QString::fromStdString(util::toString("Aborted at ",n,"/",multiarrayN->val)));
             return;
@@ -378,26 +360,19 @@ void pgCalib::WCFArray(std::string folder){
     }
     report->setText(QString::fromStdString(util::toString("Done ",multiarrayN->val,"/",multiarrayN->val)));
 }
-bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, bool isPlateau, double peakXshift, double peakYshift, unsigned n){
+bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, unsigned n){
     if(pgFGUI->doRefocus(true, ROI, maxRedoRefocusTries)) return true;
 
     varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
     double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;         //in mm
     double yOfs=((WArray.rows-1)*selArraySpacing->val)/2000;
 
+    const pgScanGUI::scanRes* res;
     if(plateau!=0){
-        if(isPlateau){
-            cv::Mat mplateau(WArray.rows+1, WArray.cols+1, CV_32F, cv::Scalar(plateau/1000000));
-            pgWr->writeMat(&mplateau, 0, selArraySpacing->val/1000);
-        }else{
-            cv::Mat mplateau(WArray.rows, WArray.cols, CV_32F, cv::Scalar(plateau/1000000));
-            pgMGUI->move(peakXshift/1000,peakYshift/1000,0);
-            pgWr->writeMat(&mplateau, 0, selArraySpacing->val/1000, selArraySpacing->val/1000);
-            pgMGUI->move(-peakXshift/1000,-peakYshift/1000,0);
-        }
+        cv::Mat mplateau(WArray.rows+1, WArray.cols+1, CV_32F, cv::Scalar(plateau/1000000));
+        pgWr->writeMat(&mplateau, 0, selArraySpacing->val/1000);
     }
 
-    const pgScanGUI::scanRes* res;
     if(wcabort){delete scanRes;return true;}        //abort
     if(pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, maxRedoScanTries,0,saveRF->val?1:0)) return true;
     if(wcabort){delete scanRes;return true;}        //abort
@@ -427,7 +402,7 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
                 CO.addHold("Z",CTRL::he_motion_ontarget);
                 CO.pulseGPIO("wrLaser",WArray.at<cv::Vec2d>(j,i)[0]/1000);
                 pgMGUI->corCOMove(CO,0,0,-WArray.at<cv::Vec2d>(j,i)[1]/1000);
-                saveConf(util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/settings.txt"), WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1], isPlateau?plateau:0, isPlateau?0:plateau, isPlateau?0:static_cast<double>(selArraySpacing->val), isPlateau?0:static_cast<double>(selArraySpacing->val));
+                saveConf(util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/settings.txt"), WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1], plateau);
 
                 CO.execute();
                 CO.clear(true);
@@ -635,9 +610,6 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     ifs>>duration;
     ifs>>focus;
     ifs>>plateau;
-    ifs>>prepeak;
-    ifs>>prepeakXofs;
-    ifs>>prepeakYofs;
     ifs.close();
 
     pgScanGUI::scanRes scanBefore, scanAfter;
