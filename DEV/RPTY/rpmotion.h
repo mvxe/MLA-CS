@@ -37,7 +37,7 @@ public:
     const std::string type{"md_none"};
     std::string axisID;
 
-    double position;
+    double position{0};
 
     double minPosition;
     double maxPosition;
