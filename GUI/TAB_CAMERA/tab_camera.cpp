@@ -70,7 +70,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgBeAn=new pgBeamAnalysis(pgMGUI);
     conf["pgBeamAnalysis"]=pgBeAn->conf;
     ovl.emplace_back();
-    pgWrt=new pgWrite(pgBeAn, pgMGUI, MLP, pgSGUI, ovl.back());
+    pgWrt=new pgWrite(pgBeAn, pgMGUI, MLP, pgSGUI, ovl.back(), pgFGUI);
     conf["pgWrite"]=pgWrt->conf;
     ovl.emplace_back();
     pgCal=new pgCalib(pgSGUI, pgFGUI, pgMGUI, pgBeAn, pgWrt, ovl.back());

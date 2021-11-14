@@ -10,7 +10,7 @@
 #include <QStandardItemModel>
 #include <gsl/gsl_multifit.h>
 
-pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI* pgSGUI, overlay& ovl): pgBeAn(pgBeAn), pgMGUI(pgMGUI), MLP(MLP), pgSGUI(pgSGUI), ovl(ovl){
+pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI* pgSGUI, overlay& ovl, pgFocusGUI* pgFGUI): pgBeAn(pgBeAn), pgMGUI(pgMGUI), MLP(MLP), pgSGUI(pgSGUI), ovl(ovl), pgFGUI(pgFGUI){
     gui_activation=new QWidget;
     gui_settings=new QWidget;
     scanRes=pgSGUI->result.getClient();
@@ -142,6 +142,9 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     QLabel* textl=new QLabel("The required pulse duration T to write a peak of height H is determined via T=A*H+C. If bsplines are defined, they overwrite this (only within their defined range).");
     textl->setWordWrap(true);
     slayout->addWidget(textl);
+    refocusBeforeWrite=new checkbox_gs(false,"Refocus before each write");
+    conf["refocusBeforeWrite"]=refocusBeforeWrite;
+    slayout->addWidget(refocusBeforeWrite);
     slayout->addWidget(new hline());
 
 
@@ -634,6 +637,7 @@ void pgWrite::onWriteDM(){
     writeDM->setText("Abort");
     onChangeDrawWriteAreaOn(false);
     //write:
+    if(refocusBeforeWrite->val) pgFGUI->doRefocus(true, scanROI, maxRedoRefocusTries);
     if(writeMat()) firstWritten=false;
 
     if(firstWritten){
@@ -891,6 +895,7 @@ void pgWrite::onScheduleWriteStart(){
             bool failed;
             if(it->isWrite){
                 pgMGUI->move(it->coords[0], it->coords[1], it->coords[2], true);
+                if(refocusBeforeWrite->val) pgFGUI->doRefocus(true, scanROI, maxRedoRefocusTries);
                 failed=writeMat(&it->src, it->writePars[0], it->writePars[1], it->writePars[2], it->writePars[3], it->writePars[4], it->writePars[5]);
             }else{
                 saveB->setEnabled(false);

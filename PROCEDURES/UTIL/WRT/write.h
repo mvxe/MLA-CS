@@ -15,10 +15,11 @@ class QTreeView;
 class QStandardItemModel;
 class QStandardItem;
 class QFont;
+class pgFocusGUI;
 class pgWrite: public QObject{
     Q_OBJECT
 public:
-    pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI *pgSGUI, overlay& ovl);
+    pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI *pgSGUI, overlay& ovl, pgFocusGUI* pgFGUI);
     ~pgWrite();
     rtoml::vsr conf;                //configuration map
     QWidget* gui_activation;
@@ -96,6 +97,7 @@ private:
     val_selector* plataeuPeakRatio;
     val_selector* pointSpacing;
     checkbox_gs* writeZeros;
+    checkbox_gs* refocusBeforeWrite;
     std::vector<double>* bsplbreakpts;
     std::vector<double>* bsplcoefs;
     std::vector<double>* bsplcov;
@@ -129,6 +131,7 @@ private:
     procLockProg& MLP;
     pgScanGUI* pgSGUI;
     overlay& ovl;
+    pgFocusGUI* pgFGUI;
     varShareClient<pgScanGUI::scanRes>* scanRes;
     const pgScanGUI::scanRes* res;
 
@@ -153,6 +156,7 @@ private:
     unsigned pendingInScheduleList();
 
     constexpr static int maxRedoScanTries=3;
+    constexpr static int maxRedoRefocusTries=3;
 private Q_SLOTS:
     void onPulse();
     void onMenuChange(int index);
