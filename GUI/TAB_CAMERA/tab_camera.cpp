@@ -69,9 +69,11 @@ tab_camera::tab_camera(QWidget* parent){
 
     pgBeAn=new pgBeamAnalysis(pgMGUI);
     conf["pgBeamAnalysis"]=pgBeAn->conf;
-    pgWrt=new pgWrite(pgBeAn, pgMGUI, MLP, pgSGUI, ovl);
+    ovl.emplace_back();
+    pgWrt=new pgWrite(pgBeAn, pgMGUI, MLP, pgSGUI, ovl.back());
     conf["pgWrite"]=pgWrt->conf;
-    pgCal=new pgCalib(pgSGUI, pgFGUI, pgMGUI, pgBeAn, pgWrt, ovl);
+    ovl.emplace_back();
+    pgCal=new pgCalib(pgSGUI, pgFGUI, pgMGUI, pgBeAn, pgWrt, ovl.back());
     conf["pgCalib"]=pgCal->conf;
 
     addInfo=new QLabel; addInfo->setMargin(10);
@@ -193,11 +195,18 @@ void tab_camera::work_fun(){
         if(onDisplay!=nullptr){
             long ipos[2];
             bool hasOverlay=false;
-            if(ovl.enabled && !ovl.empty() && camSet->isMirau){
+            if(camSet->isMirau)
+                for(auto& _ovl:ovl){
+                    if(_ovl.enabled)if(!_ovl.empty()){
+                        hasOverlay=true;
+                        break;
+                    }
+                }
+            if(hasOverlay){
                 double pos[2];
                 pgMGUI->getPos(&pos[0],&pos[1]);
                 for(int i:{0,1}) ipos[i]=static_cast<long>(pgMGUI->mm2px(pos[i]));
-                hasOverlay=ovl.check(*onDisplay,ipos[0],ipos[1]);
+                for(auto& _ovl:ovl) _ovl.visible=_ovl.enabled?_ovl.check(*onDisplay,ipos[0],ipos[1]):false;
             }
 
             if(hasOverlay || main_show_target->isChecked() || main_show_scale->isChecked() || selectingFlag || lastSelectingFlag || sROI.width!=0){
@@ -206,7 +215,7 @@ void tab_camera::work_fun(){
                     auto CLAHE=cv::createCLAHE(camSet->CLAHE_clipLimit->val, {(int)camSet->CLAHE_tileGridSize->val,(int)camSet->CLAHE_tileGridSize->val});
                     CLAHE->apply(temp,temp);
                 }
-                if(hasOverlay) ovl.drawOverlays(temp,ipos[0],ipos[1]);
+                if(hasOverlay) for(auto& _ovl:ovl) if(_ovl.visible) _ovl.drawOverlays(temp,ipos[0],ipos[1]);
                 if(main_show_target->isChecked()) cMap->draw_bw_target(&temp, pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX), pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY));
                 if(main_show_scale->isChecked()) cMap->draw_bw_scalebar(&temp, pgMGUI->getNmPPx(), pgMGUI->currentObj==1?(static_cast<double>(camSet->wrsbar_unit->val)):0);
                 if(selectingFlag){

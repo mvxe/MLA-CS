@@ -65,6 +65,7 @@ private:
     std::list<scheduled> scheduledPos;
 
     HQPushButton* btnWriteCalib;
+    bool wcabort;
     HQPushButton* scheduleMultiWrite;
     QLabel* report;
 

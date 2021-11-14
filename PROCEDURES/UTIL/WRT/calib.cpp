@@ -22,10 +22,9 @@
 #include <opencv2/highgui.hpp>
 
 pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn, pgWrite* pgWr, overlay& ovl): pgSGUI(pgSGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgBeAn(pgBeAn), pgWr(pgWr), ovl(ovl){
-    btnWriteCalib=new HQPushButton("Run Write Focus Calibration");
+    btnWriteCalib=new HQPushButton("Run calibration");
     connect(btnWriteCalib, SIGNAL(released()), this, SLOT(onWCF()));
     connect(btnWriteCalib, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
-    btnWriteCalib->setCheckable(true);
     scheduleMultiWrite=new HQPushButton("Schedule");
     connect(scheduleMultiWrite, SIGNAL(released()), this, SLOT(onSchedule()));
     connect(scheduleMultiWrite, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOnSch(bool)));
@@ -111,7 +110,6 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     splayout=new QVBoxLayout;
     gui_settings_proc->setLayout(splayout);
 
-    slayout->addWidget(new QLabel("Calibration processing:"));
     btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements");
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
     splayout->addWidget(new twid(btnProcessFocusMes));
@@ -189,26 +187,32 @@ void pgCalib::selArray(int ArrayIndex, int MultiArrayIndex){
 }
 
 void pgCalib::onWCF(){
-    if(!btnWriteCalib->isChecked()){
-        if(multiarrayN->val>scheduledPos.size()) btnWriteCalib->setEnabled(false);
+    if(btnWriteCalib->text()=="Abort calibration"){
+        btnWriteCalib->setEnabled(false);
+        wcabort=true;
         return;
     }
     if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
+
+    btnWriteCalib->setText("Abort calibration");
+    wcabort=false;
+    drawWriteAreaOn=false;
 
     std::time_t time=std::time(nullptr); std::tm ltime=*std::localtime(&time);
     std::stringstream ifolder;
     ifolder<<lastFolder;
     ifolder<<std::put_time(&ltime, "%Y-%m-%d-%H-%M-%S");
     std::string saveFolderName=QFileDialog::getSaveFileName(this, tr("Select Folder for Saving Calibration Data"),QString::fromStdString(ifolder.str()),tr("Folders")).toStdString();
-    if(saveFolderName.empty()){
-        btnWriteCalib->setChecked(false);
-        return;
-    }
-    lastFolder=saveFolderName.substr(0,saveFolderName.find_last_of("/")+1);
-    saveFolderName+="/";
-    cv::utils::fs::createDirectory(saveFolderName);
+    if(!saveFolderName.empty()){
+        lastFolder=saveFolderName.substr(0,saveFolderName.find_last_of("/")+1);
+        saveFolderName+="/";
+        cv::utils::fs::createDirectory(saveFolderName);
 
-    WCFArray(saveFolderName);
+        WCFArray(saveFolderName);
+    }
+
+    btnWriteCalib->setText("Run calibration");
+    btnWriteCalib->setEnabled((multiarrayN->val<=scheduledPos.size() || multiarrayN->val==1));
 }
 void pgCalib::onSchedule(){
     pgMGUI->wait4motionToComplete();
@@ -318,7 +322,6 @@ void pgCalib::WCFArray(std::string folder){
     }
     if(err){
         QMessageBox::critical(gui_settings, "Error", "The calibration ROI does not fit the viewport, aborting calibration.\n");
-        btnWriteCalib->setChecked(false);
         return;
     }
 
@@ -366,8 +369,6 @@ void pgCalib::WCFArray(std::string folder){
         }
         if(WCFArrayOne(WArray, arrayPla.size()==1?arrayPla[0]:arrayPla[n], ROI, sROI, folder, isPlateau, selPeakXshift->val, selPeakYshift->val,n)){
             QMessageBox::critical(gui_settings, "Error", "Calibration failed/aborted. Measurements up to this point were saved.");
-            btnWriteCalib->setChecked(false);
-            if(multiarrayN->val>1) btnWriteCalib->setEnabled(false);
             report->setText(QString::fromStdString(util::toString("Aborted at ",n,"/",multiarrayN->val)));
             return;
         }
@@ -376,8 +377,6 @@ void pgCalib::WCFArray(std::string folder){
 
     }
     report->setText(QString::fromStdString(util::toString("Done ",multiarrayN->val,"/",multiarrayN->val)));
-    btnWriteCalib->setChecked(false);
-    if(multiarrayN->val>1) btnWriteCalib->setEnabled(false);
 }
 bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, bool isPlateau, double peakXshift, double peakYshift, unsigned n){
     if(pgFGUI->doRefocus(true, ROI, maxRedoRefocusTries)) return true;
@@ -399,9 +398,9 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     }
 
     const pgScanGUI::scanRes* res;
-    if(!btnWriteCalib->isChecked()){delete scanRes;return true;}        //abort
+    if(wcabort){delete scanRes;return true;}        //abort
     if(pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, maxRedoScanTries,0,saveRF->val?1:0)) return true;
-    if(!btnWriteCalib->isChecked()){delete scanRes;return true;}        //abort
+    if(wcabort){delete scanRes;return true;}        //abort
 
     res=scanRes->get();
     pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-before"), false, true, saveRF->val?1:0);
@@ -420,7 +419,7 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
         CO.clear(true);
         for(int j=0;j!=WArray.rows; j++){
             for(int i=0;i!=WArray.cols; i++){
-                if(!btnWriteCalib->isChecked()){delete scanRes;return true;}        //abort
+                if(wcabort){delete scanRes;return true;}        //abort
 
                 pgMGUI->corCOMove(CO,0,0,WArray.at<cv::Vec2d>(j,i)[1]/1000);
                 CO.addHold("X",CTRL::he_motion_ontarget);
@@ -442,9 +441,9 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
         pgMGUI->chooseObj(true);
     }
 
-    if(!btnWriteCalib->isChecked()){delete scanRes;return true;}        //abort
+    if(wcabort){delete scanRes;return true;}        //abort
     if(pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, maxRedoScanTries,0,saveRF->val?1:0)) return true;
-    if(!btnWriteCalib->isChecked()){delete scanRes;return true;}        //abort
+    if(wcabort){delete scanRes;return true;}        //abort
     res=scanRes->get();
     pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-after"), false, true, saveRF->val?1:0);
 
@@ -798,7 +797,7 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
 
 
 void pgCalib::onChangeDrawWriteAreaOn(bool status){
-    drawWriteAreaOn=status&(multiarrayN->val==1);
+    drawWriteAreaOn=status&(multiarrayN->val==1)&(btnWriteCalib->text()!="Abort calibration");
 }
 void pgCalib::onChangeDrawWriteAreaOnSch(bool status){
     drawWriteAreaOn=status;
