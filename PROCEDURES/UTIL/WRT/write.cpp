@@ -41,11 +41,6 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     importh->addWidget(imgUmPPx);
     alayout->addWidget(importh);
 
-    abort=new QPushButton("Abort");
-    abort->setVisible(false);
-    connect(abort, SIGNAL(released()), this, SLOT(onAbort()));
-    alayout->addWidget(new twid(abort));
-
     writeDM=new HQPushButton("Write");
     connect(writeDM, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOn(bool)));
     connect(writeDM, SIGNAL(released()), this, SLOT(onWriteDM()));
@@ -96,25 +91,41 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     schedulelw->setDefaultDropAction(Qt::MoveAction);
     schedulelw->setItemsExpandable(false);
     schedulelw->setDragDropOverwriteMode(false);
+    schedulelw->setRootIsDecorated(false);
 
     itemMoveTop=new QPushButton();
     itemMoveTop->setIcon(QPixmap(":/top.svg"));
     connect(itemMoveTop, SIGNAL(released()), this, SLOT(onItemMoveTop()));
+    itemMoveTop->setToolTip("Move selected item to top.");
     itemMoveUp=new QPushButton();
     itemMoveUp->setIcon(QPixmap(":/up.svg"));
     connect(itemMoveUp, SIGNAL(released()), this, SLOT(onItemMoveUp()));
+    itemMoveUp->setToolTip("Move selected item one row up.");
     itemMoveDown=new QPushButton();
     itemMoveDown->setIcon(QPixmap(":/down.svg"));
     connect(itemMoveDown, SIGNAL(released()), this, SLOT(onItemMoveDown()));
+    itemMoveDown->setToolTip("Move selected item one row down.");
     itemMoveBottom=new QPushButton();
     itemMoveBottom->setIcon(QPixmap(":/bottom.svg"));
     connect(itemMoveBottom, SIGNAL(released()), this, SLOT(onItemMoveBottom()));
+    itemMoveBottom->setToolTip("Move selected item to bottom.");
     itemRemove=new QPushButton();
     itemRemove->setIcon(QPixmap(":/stock_no.svg"));
     connect(itemRemove, SIGNAL(released()), this, SLOT(onItemRemove()));
-    schedulelwtwid=new twid(schedulelw,new vtwid(itemMoveTop,itemMoveUp,itemMoveDown,itemMoveBottom,itemRemove,false,false),false,false);
+    itemRemove->setToolTip("Remove selected item.");
+    clearNonPending=new QPushButton();
+    clearNonPending->setIcon(QPixmap(":/edit-clear.svg"));
+    connect(clearNonPending, SIGNAL(released()), this, SLOT(onClearNonPending()));
+    clearNonPending->setToolTip("Remove all non-pending items.");
+    schedulelwtwid=new twid(schedulelw,new vtwid(itemMoveTop,itemMoveUp,itemMoveDown,itemMoveBottom,itemRemove,clearNonPending,false,false),false,false);
     schedulelwtwid->setVisible(false);
     alayout->addWidget(schedulelwtwid);
+
+    scheduleWriteStart=new QPushButton("Execute list");
+    scheduleWriteStart->setVisible(false);
+    scheduleWriteStart->setEnabled(false);
+    connect(scheduleWriteStart, SIGNAL(released()), this, SLOT(onScheduleWriteStart()));
+    alayout->addWidget(new twid(scheduleWriteStart));
 
     writeDM->setEnabled(false);
 
@@ -186,9 +197,6 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
 }
 pgWrite::~pgWrite(){
     delete scanRes;
-}
-void pgWrite::onAbort(){
-    wabort=true;
 }
 void pgWrite::onNotes(){
     bool ok;
@@ -308,6 +316,9 @@ void pgWrite::onUseWriteScheduling(bool state){
     schedulelwtwid->setVisible(state);
     saveB->setVisible(!state);
     scanB->setVisible(!state);
+    scheduleWriteStart->setVisible(state);
+    scheduleWriteStart->setEnabled(pendingInScheduleList());
+    ovl.enabled=state;
 }
 QStandardItem* pgWrite::addScheduleItem(std::string status, std::string type, std::string name, bool toTop){
     schedulemod->insertRows(toTop?0:schedulemod->rowCount(),1);
@@ -319,6 +330,7 @@ QStandardItem* pgWrite::addScheduleItem(std::string status, std::string type, st
         schedulelw->resizeColumnToContents(i);
         i++;
     }
+    scheduleWriteStart->setEnabled(pendingInScheduleList());
     return schedulemod->item(toTop?0:(schedulemod->rowCount()-1), 0);
 }
 void pgWrite::onItemMoveTop(){
@@ -354,28 +366,49 @@ void pgWrite::onItemRemove(){
     if(!ci.isValid()) return;
     for(std::vector<schItem>::iterator it=scheduled.begin();it!=scheduled.end();++it){
         if(it->ptr==schedulemod->item(ci.row(),0)){
+            if(it->overlay!=nullptr) ovl.rm_overlay(it->overlay);
             scheduled.erase(it);
             break;
         }
     }
     schedulemod->removeRow(ci.row());
+    scheduleWriteStart->setEnabled(pendingInScheduleList());
+}
+void pgWrite::onClearNonPending(){
+    for(int i=0;i!=schedulemod->rowCount();i++){
+        if(schedulemod->item(i,0)->text()!="Pending"){
+            schedulemod->removeRow(i);
+            i--;
+        }
+    }
+}
+unsigned pgWrite::pendingInScheduleList(){
+    unsigned ret=0;
+    for(std::vector<schItem>::iterator it=scheduled.begin();it!=scheduled.end();++it){
+        if(it->pending) ret++;
+    }
+    return ret;
 }
 void pgWrite::onScan(){
+    if(_onScan()) QMessageBox::critical(gui_activation, "Error", "Scan failed.\n");
+    else saveB->setEnabled(true);
+}
+bool pgWrite::_onScan(cv::Rect ROI, double* coords){
     pgMGUI->chooseObj(true);
-    pgMGUI->move(scanCoords[0], scanCoords[1], scanCoords[2], true);
-    if(pgSGUI->doNRounds(scanRepeatN->val,scanROI,maxRedoScanTries)){
-        QMessageBox::critical(gui_activation, "Error", "Scan failed.\n");
-        // TODO handle scheduling
-        return;
-    }
+    if(coords!=nullptr) pgMGUI->move(coords[0], coords[1], coords[2], true);
+    else pgMGUI->move(scanCoords[0], scanCoords[1], scanCoords[2], true);
+    if(pgSGUI->doNRounds(scanRepeatN->val,ROI.width==0?scanROI:ROI,maxRedoScanTries)) return true;
     res=scanRes->get();
-    if(res==nullptr){QMessageBox::critical(gui_activation, "Error", "Somehow cannot find scan.\n");return;}
-    saveB->setEnabled(true);
+    if(res==nullptr){std::cerr<<"Somehow cannot find scan in pgWrite::_onScan()\n";return true;}
+    return false;
 }
 void pgWrite::onSave(){
+    _onSave(true);
+}
+bool pgWrite::_onSave(bool ask, std::string filename){
     res=scanRes->get();
-    if(res==nullptr){saveB->setEnabled(false);return;}
-    std::string filename=filenaming->get();
+    if(res==nullptr){saveB->setEnabled(false);return true;}
+    if(filename=="") filename=filenaming->get();
     replacePlaceholdersInString(filename);
     std::string path=util::toString(scan_default_folder->get(),"/",filename);
     size_t found=path.find_last_of("/");
@@ -383,10 +416,13 @@ void pgWrite::onSave(){
         path.erase(found,path.size()+found);
         cv::utils::fs::createDirectory(path);
     }
-    filename=QFileDialog::getSaveFileName(gui_activation,"Save scan to file.",QString::fromStdString(util::toString(scan_default_folder->get(),"/",filename,".pfm")),"Images (*.pfm)").toStdString();
-    if(filename.empty()) return;
+    if(ask){
+        filename=QFileDialog::getSaveFileName(gui_activation,"Save scan to file.",QString::fromStdString(util::toString(scan_default_folder->get(),"/",filename,".pfm")),"Images (*.pfm)").toStdString();
+        if(filename.empty()) return true;
+    }
     pgScanGUI::saveScan(res,filename);
     saveConfig(filename);
+    return false;
 }
 void pgWrite::saveConfig(std::string filename){
     if(filename.size()>4) filename.replace(filename.size()-4,4,".cfg");
@@ -543,6 +579,12 @@ void pgWrite::onLoadImg(){
     writeDM->setEnabled(true);
 }
 void pgWrite::onWriteDM(){
+    if(!useWriteScheduling->val && writeDM->text()=="Abort"){
+         wabort=true;
+         writeDM->setEnabled(false);
+         return;
+    }
+
     // save coords for scan
     pgMGUI->wait4motionToComplete();
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
@@ -562,7 +604,7 @@ void pgWrite::onWriteDM(){
         for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
         WRImage.copyTo(scheduled.back().src);
         scheduled.back().isWrite=true;
-        scheduled.back().writePars[0]=depthMaxval->val/1000000;
+        scheduled.back().writePars[0]=depthMaxval->val;
         scheduled.back().writePars[1]=imgUmPPx->val/1000;
         scheduled.back().writePars[2]=pointSpacing->val/1000;
         scheduled.back().writePars[3]=focus->val/1000;
@@ -589,12 +631,17 @@ void pgWrite::onWriteDM(){
 
     scanB->setEnabled(false);
     saveB->setEnabled(false);
+    writeDM->setText("Abort");
+    onChangeDrawWriteAreaOn(false);
     //write:
-    if(writeMat()){
-        firstWritten=false;
-        return;
+    if(writeMat()) firstWritten=false;
+
+    if(firstWritten){
+        scanB->setEnabled(true);
+        writeDM->setEnabled(true);
     }
-    scanB->setEnabled(true);
+    writeDM->setText("Write");
+    writeDM->setEnabled(true);
 }
 void pgWrite::prepareScanROI(){
     int xSize=pgMGUI->mm2px(round(imgUmPPx->val*WRImage.cols+2)/1000,0);
@@ -668,7 +715,6 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
 
     double pulse;
     bool xdir=0;
-    abort->setVisible(true);
     for(int j=0;j!=resizedWrite.rows;j++){   // write row by row (so that processing for the next row is done while writing the previous one, and the operation can be terminated more easily)
         for(int i=0;i!=resizedWrite.cols;i++){
             pulse=predictDuration(resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i));        // Y inverted because image formats have flipped Y
@@ -686,7 +732,7 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
 
         while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
         MLP.progress_proc=100./resizedWrite.rows*j;
-        if(wabort) {if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true); abort->setVisible(false); return true;}
+        if(wabort) {pgMGUI->move(0,0,-vfocus); if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true); return true;}
     }
 
     pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
@@ -697,10 +743,15 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
     while(CO.getProgress()<1) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     MLP.progress_proc=100;
     if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true);
-    abort->setVisible(false);
     return false;
 }
 void pgWrite::onWriteTag(){
+    if(!useWriteScheduling->val && writeTag->text()=="Abort"){
+         wabort=true;
+         writeTag->setEnabled(false);
+         return;
+    }
+
     cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
     tagImage=cv::Mat(size.height+4,size.width+4,CV_8U,cv::Scalar(0));
     cv::putText(tagImage,tagText->text().toStdString(), {0,size.height+1}, OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, cv::Scalar(255), settingWdg[4]->fontThickness->val, cv::LINE_AA);
@@ -731,7 +782,13 @@ void pgWrite::onWriteTag(){
         cv::resize(tagImage, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
         scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(coords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(coords[1]-pgBeAn->writeBeamCenterOfsY,0));
     }
-    else writeMat(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
+    else{
+        writeTag->setText("Abort");
+        onChangeDrawWriteAreaOnTag(false);
+        writeMat(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
+        writeTag->setText("Write Tag");
+        writeTag->setEnabled(true);
+    }
 }
 
 void pgWrite::preparePredictor(){
@@ -764,10 +821,10 @@ double pgWrite::predictDuration(double targetHeight){
 
 
 void pgWrite::onChangeDrawWriteAreaOn(bool status){
-    drawWriteAreaOn=status?1:0;
+    drawWriteAreaOn=status?(writeDM->text()=="Abort"?0:1):0;
 }
 void pgWrite::onChangeDrawWriteAreaOnTag(bool status){
-    drawWriteAreaOn=status?2:0;
+    drawWriteAreaOn=status?(writeTag->text()=="Abort"?0:2):0;
 }
 void pgWrite::onChangeDrawScanAreaOn(bool status){
     drawWriteAreaOn=status?3:0;
@@ -803,4 +860,62 @@ void pgWrite::drawWriteArea(cv::Mat* img){
     double clr[2]={0,255}; int thck[2]={3,1};
     for(int i=0;i!=2;i++)
         cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX+xShiftmm), img->rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY+yShiftmm), xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
+}
+void pgWrite::onScheduleWriteStart(){
+    if(scheduleWriteStart->text()=="Abort current"){
+        wabort=true;
+        scheduleWriteStart->setEnabled(false);
+        return;
+    }
+    if(scheduleWriteStart->text()=="Pause execution"){
+        scheduleWriteStart->setText("Abort current");
+        return;
+    }
+    scheduleWriteStart->setText("Pause execution");
+
+    for(int i=0;i!=schedulemod->rowCount();i++){
+        if(schedulemod->item(i,0)->text()!="Pending"){
+            schedulemod->removeRow(i);
+            i--;
+        }
+    }
+    for(int i=0;i!=schedulemod->rowCount();i++){
+        if(schedulemod->item(i,0)->text()=="Pending"){
+            std::vector<schItem>::iterator it;
+            for(it=scheduled.begin();it!=scheduled.end();++it)
+                if(it->ptr==schedulemod->item(i,0)) break;
+
+            schedulemod->item(i,0)->setText("Running");
+            schedulelw->resizeColumnToContents(0);
+
+            bool failed;
+            if(it->isWrite){
+                pgMGUI->move(it->coords[0], it->coords[1], it->coords[2], true);
+                failed=writeMat(&it->src, it->writePars[0], it->writePars[1], it->writePars[2], it->writePars[3], it->writePars[4], it->writePars[5]);
+            }else{
+                saveB->setEnabled(false);
+                failed=_onScan(it->scanROI, it->coords);
+                if(!failed){
+                    if(_onSave(false, it->filename)){
+                        failed=true;
+                        break;
+                    }
+                }
+            }
+
+            ovl.rm_overlay(it->overlay);
+            scheduled.erase(it);
+            if(failed){
+                schedulemod->item(i,0)->setText("Failed");
+                break;
+            }else{
+                schedulemod->item(i,0)->setText("Success");
+                schedulelw->resizeColumnToContents(0);
+                if(scheduleWriteStart->text()=="Abort current") break;
+            }
+        }
+    }
+
+    scheduleWriteStart->setText("Execute list");
+    scheduleWriteStart->setEnabled(pendingInScheduleList());
 }

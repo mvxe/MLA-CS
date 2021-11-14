@@ -89,6 +89,7 @@ public:
     void drawOverlays(cv::Mat& mat, long posx, long posy);
     bool empty(){return overlayElements.empty();}
     bool check(const cv::Mat& mat, long posx, long posy);
+    bool enabled{false};
 private:
     struct overlayElement{
         long posx;        // in px

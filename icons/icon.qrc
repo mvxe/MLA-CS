@@ -18,5 +18,6 @@
         <file>bottom.svg</file>
         <file>top.svg</file>
         <file>up.svg</file>
+        <file>edit-clear.svg</file>
     </qresource>
 </RCC>

@@ -193,7 +193,7 @@ void tab_camera::work_fun(){
         if(onDisplay!=nullptr){
             long ipos[2];
             bool hasOverlay=false;
-            if(!ovl.empty() && camSet->isMirau){
+            if(ovl.enabled && !ovl.empty() && camSet->isMirau){
                 double pos[2];
                 pgMGUI->getPos(&pos[0],&pos[1]);
                 for(int i:{0,1}) ipos[i]=static_cast<long>(pgMGUI->mm2px(pos[i]));

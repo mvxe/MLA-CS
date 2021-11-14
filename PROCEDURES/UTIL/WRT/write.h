@@ -42,7 +42,6 @@ private:
     double lastDepth;
     val_selector* imgUmPPx;
 
-    QPushButton* abort;
     val_selector* dTCcor;
     QPushButton* corDTCor;
     HQPushButton* writeDM;
@@ -63,6 +62,8 @@ private:
     QPushButton* itemMoveDown;
     QPushButton* itemMoveBottom;
     QPushButton* itemRemove;
+    QPushButton* clearNonPending;
+    QPushButton* scheduleWriteStart;
 
     struct schItem{
         QStandardItem* ptr;
@@ -74,6 +75,7 @@ private:
         cv::Rect scanROI;       // if scan, ROI
         double writePars[6];    // write parameters
         void* overlay{nullptr};
+        bool pending{true};
     };
     std::vector<schItem> scheduled;
 
@@ -148,6 +150,7 @@ private:
     std::string genConfig();
     QStandardItem* addScheduleItem(std::string status, std::string type, std::string name, bool toTop);
     void prepareSchedTagFrame(std::string name);
+    unsigned pendingInScheduleList();
 
     constexpr static int maxRedoScanTries=3;
 private Q_SLOTS:
@@ -169,7 +172,6 @@ private Q_SLOTS:
     void onRecomputeTagUInt();
     void onRecomputeTag();
     void onWriteDM();
-    void onAbort();
     void guessAndUpdateNextTagUInt();
     void onNotes();
     void onItemMoveTop();
@@ -177,6 +179,11 @@ private Q_SLOTS:
     void onItemMoveDown();
     void onItemMoveBottom();
     void onItemRemove();
+    void onScheduleWriteStart();
+    void onClearNonPending();
+private:
+    bool _onScan(cv::Rect ROI={0,0,0,0}, double* coords=nullptr);
+    bool _onSave(bool ask=false, std::string filename="");
 };
 
 
