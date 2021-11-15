@@ -66,10 +66,10 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     connect(transposeMat, SIGNAL(changed()), this, SLOT(updateOverlappingCalibEnabled()));
     slayout->addWidget(transposeMat);
     slayout->addWidget(new QLabel("The Variable Parameters Will be Within the Specified Range."));
-    selArrayDurA=new val_selector(1, "Duration", 0.001, 1000, 3, 0, {"ms"});
+    selArrayDurA=new val_selector(1, "Duration", 0.0001, 1000, 4, 0, {"ms"});
     conf["selArrayDurA"]=selArrayDurA;
     slayout->addWidget(selArrayDurA);
-    selArrayDurB=new val_selector(1, "Duration upper limit", 0.001, 1000, 3, 0, {"ms"});
+    selArrayDurB=new val_selector(1, "Duration upper limit", 0.0001, 1000, 4, 0, {"ms"});
     conf["selArrayDurB"]=selArrayDurB;
     slayout->addWidget(selArrayDurB);
     selArrayFocA=new val_selector(-1, "Focus", -1000, 1000, 3, 0, {"um"});
