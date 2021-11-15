@@ -29,6 +29,18 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     connect(scheduleMultiWrite, SIGNAL(released()), this, SLOT(onSchedule()));
     connect(scheduleMultiWrite, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOnSch(bool)));
     scheduleMultiWrite->setVisible(false);
+    overlappingCalib=new QPushButton("Overlapping run");
+    overlappingCalib->setToolTip("After a successful calibration run, you may do a rerun with overlapping points. Note that if you have randomize enabled and change focus, the points may not be aligned.\n"
+                                 "The following parameters must stay the same: 'Array Size X&Y', 'Array Spacing', 'N of runs' and 'Transpose matrix'. Plateau will be ignored for subsequent runs.\n"
+                                 "The data will be saved in the same folder as the previous run. Multiple reruns may be done.");
+    connect(overlappingCalib, SIGNAL(released()), this, SLOT(onOverlappingCalib()));
+    overlappingCalib->setEnabled(false);
+    ovl_xofs=new val_selector(0, "offsets X:", -100, 100, 2, 0, {"um"});
+    ovl_yofs=new val_selector(0, "Y:", -100, 100, 2, 0, {"um"});
+    ovl_xofs->setEnabled(false);
+    ovl_yofs->setEnabled(false);
+    ovl_xofs->setToolTip("NOTE: the offset is relative in relation to the original calibration!");
+    ovl_yofs->setToolTip(ovl_xofs->toolTip());
 
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
@@ -36,11 +48,14 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
 
     selArrayXsize=new val_selector(10, "Array Size X", 1, 1000, 0);
     conf["selArrayXsize"]=selArrayXsize;
+    connect(selArrayXsize, SIGNAL(changed()), this, SLOT(updateOverlappingCalibEnabled()));
     selArrayYsize=new val_selector(10, "Array Size Y", 1, 1000, 0);
     conf["selArrayYsize"]=selArrayYsize;
+    connect(selArrayYsize, SIGNAL(changed()), this, SLOT(updateOverlappingCalibEnabled()));
     slayout->addWidget(new twid{selArrayXsize,selArrayYsize});
     selArraySpacing=new val_selector(5, "Array Spacing", 0.001, 100, 3, 0, {"um"});
     conf["selArraySpacing"]=selArraySpacing;
+    connect(selArraySpacing, SIGNAL(changed()), this, SLOT(updateOverlappingCalibEnabled()));
     slayout->addWidget(selArraySpacing);
     selArrayType=new smp_selector("Variable Parameters (X-Y): ", 0, {"Duration(X,Y), no repeat","Focus(X,Y), no repeat","Duration(X)-Focus(Y)", "Duration(X,Y), repeat","Focus(X,Y), repeat"});
     connect(selArrayType, SIGNAL(changed(int)), this, SLOT(onSelArrayTypeChanged(int)));
@@ -48,6 +63,7 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     slayout->addWidget(selArrayType);
     transposeMat=new checkbox_gs(false,"Transpose matrix.");
     conf["transposeMat"]=transposeMat;
+    connect(transposeMat, SIGNAL(changed()), this, SLOT(updateOverlappingCalibEnabled()));
     slayout->addWidget(transposeMat);
     slayout->addWidget(new QLabel("The Variable Parameters Will be Within the Specified Range."));
     selArrayDurA=new val_selector(1, "Duration", 0.001, 1000, 3, 0, {"ms"});
@@ -89,11 +105,13 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     multiarrayN=new val_selector(1, "N of runs:", 1, 10000, 0);
     connect(multiarrayN, SIGNAL(changed(double)), this, SLOT(onMultiarrayNChanged(double)));
     conf["multiarrayN"]=multiarrayN;
+    connect(multiarrayN, SIGNAL(changed()), this, SLOT(updateOverlappingCalibEnabled()));
     slayout->addWidget(multiarrayN);
     slayout->addWidget(new hline);
     report=new QLabel("");
     slayout->addWidget(new QLabel("Calibration run:"));
     slayout->addWidget(new twid(scheduleMultiWrite,btnWriteCalib,report));
+    slayout->addWidget(new twid(overlappingCalib,ovl_xofs,ovl_yofs));
 
     gui_settings_proc=new QWidget;
     splayout=new QVBoxLayout;
@@ -175,6 +193,7 @@ void pgCalib::onWCF(){
     if(btnWriteCalib->text()=="Abort calibration"){
         btnWriteCalib->setEnabled(false);
         wcabort=true;
+        pgWr->wabort=true;
         return;
     }
     if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
@@ -192,16 +211,31 @@ void pgCalib::onWCF(){
         lastFolder=saveFolderName.substr(0,saveFolderName.find_last_of("/")+1);
         saveFolderName+="/";
         cv::utils::fs::createDirectory(saveFolderName);
-
+        cv::utils::fs::createDirectory(util::toString(saveFolderName,"fullScans/"));
         WCFArray(saveFolderName);
     }
 
     btnWriteCalib->setText("Run calibration");
     btnWriteCalib->setEnabled((multiarrayN->val<=scheduledPos.size() || multiarrayN->val==1));
 }
+void pgCalib::onOverlappingCalib(){
+    if(overlappingCalib->text()=="Abort calibration"){
+        overlappingCalib->setEnabled(false);
+        wcabort=true;
+        return;
+    }
+    if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
+
+    overlappingCalib->setText("Abort calibration");
+    wcabort=false;
+
+    WCFArray(ovrData.folder, true);
+
+    overlappingCalib->setText("Overlapping run");
+    updateOverlappingCalibEnabled();
+}
 void pgCalib::onSchedule(){
-    pgMGUI->wait4motionToComplete();
-    QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+    while(go.pRPTY->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     double coords[3];
     pgMGUI->getPos(&coords[0], &coords[1], &coords[2]);
     if(scheduledPos.size()==multiarrayN->val){
@@ -213,27 +247,28 @@ void pgCalib::onSchedule(){
     scheduledPos.push_back({ovl.add_overlay(mat,pgMGUI->mm2px(coords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(coords[1]-pgBeAn->writeBeamCenterOfsY,0)),{coords[0],coords[1],coords[2]}});
     report->setText(QString::fromStdString(util::toString("Scheduled ",scheduledPos.size(),"/",multiarrayN->val)));
     if(scheduledPos.size()==multiarrayN->val) btnWriteCalib->setEnabled(true);
+    ovrData.success=false;
+    updateOverlappingCalibEnabled();
 }
-
-void pgCalib::saveMainConf(std::string filename){
-    std::ofstream setFile(filename);     //this file contains some settings:
-    setFile <<"#Objective_displacement_X(mm) Objective_displacement_Y(mm) Objective_displacement_Z(mm) MirauXYmmppx(mm/px)\n";
-    setFile << std::fixed << std::setprecision(6);
-    setFile <<pgMGUI->objectiveDisplacementX<<" "<<pgMGUI->objectiveDisplacementY<<" "<<pgMGUI->objectiveDisplacementZ<<" ";
-    setFile << std::defaultfloat <<pgMGUI->getNmPPx()/1000000<<"\n";
-    setFile.close();
+void pgCalib::updateOverlappingCalibEnabled(){
+    overlappingCalib->setEnabled(ovrData.success && ovrData.multiarrayN==multiarrayN->val && ovrData.selArraySpacing==selArraySpacing->val && ovrData.selArrayXsize==selArrayXsize->val
+            && ovrData.selArrayYsize==selArrayYsize->val && ovrData.transpose==transposeMat->val && ovrData.pos.size()==ovrData.multiarrayN);
+    ovl_xofs->setEnabled(overlappingCalib->isEnabled());
+    ovl_yofs->setEnabled(overlappingCalib->isEnabled());
 }
-void pgCalib::saveConf(std::string filename, double duration, double focus, double plateau){
-    std::ofstream setFile(filename);            //this file contains some settings:
-    setFile <<"#Duration(ms) Focus(um)";
-    setFile <<" Plateau(nm)";
-    setFile <<"\n"<<duration<<" "<<focus;
-    setFile <<" "<<plateau;
-    setFile <<"\n";
-    setFile.close();
-}
-
-void pgCalib::WCFArray(std::string folder){
+void pgCalib::WCFArray(std::string folder, bool isOverlap){
+    ovrData.success=false;
+    if(!isOverlap){
+        updateOverlappingCalibEnabled();
+        ovrData.folder=folder;
+        ovrData.multiarrayN=multiarrayN->val;
+        ovrData.selArraySpacing=selArraySpacing->val;
+        ovrData.selArrayXsize=selArrayXsize->val;
+        ovrData.selArrayYsize=selArrayYsize->val;
+        ovrData.transpose=transposeMat->val;
+        ovrData.ovrIter=0;
+        ovrData.pos.clear();
+    }
     cv::Mat WArray(selArrayYsize->val,selArrayXsize->val,CV_64FC2,cv::Scalar(0,0));         //Duration(ms), Focus(um)
     int arraySizeDur{1}, arraySizeFoc{1}, arraySizePla{1};
     int index=selArrayType->index;
@@ -308,7 +343,19 @@ void pgCalib::WCFArray(std::string folder){
         return;
     }
 
-    saveMainConf(util::toString(folder,"/main-settings.txt"));
+    if(!isOverlap){
+        std::ofstream setFile(util::toString(folder,"/main-settings.txt"));     //this file contains some settings:
+        setFile <<"#Objective_displacement_X(mm) Objective_displacement_Y(mm) Objective_displacement_Z(mm) MirauXYmmppx(mm/px)\n";
+        setFile << std::fixed << std::setprecision(6);
+        setFile <<pgMGUI->objectiveDisplacementX<<" "<<pgMGUI->objectiveDisplacementY<<" "<<pgMGUI->objectiveDisplacementZ<<" ";
+        setFile << std::defaultfloat <<pgMGUI->getNmPPx()/1000000<<"\n";
+        setFile.close();
+    }else{
+        std::ofstream setFile(util::toString(folder,"/offset-ovr",ovrData.ovrIter,".txt"));
+        setFile <<"#X_offset(um) Y_offset(um) #Offsets are relative to the first calib run!#\n";
+        setFile <<ovl_xofs->val<<" "<<ovl_yofs->val<<"\n";
+        setFile.close();
+    }
     if(multiarrayN->val>1 && arrayPla.size()>1){
         std::ofstream wfile(util::toString("/Plateau.txt"));
         for(int i=0;i!=arrayPla.size(); i++){
@@ -339,7 +386,7 @@ void pgCalib::WCFArray(std::string folder){
         if(saveMats->val){      //export values as matrices, for convenience
             std::string names[2]={"Duration","Focus"};
             for(int k=0;k!=2;k++){
-                std::ofstream wfile(util::toString(folder,"/", names[k],".txt"), std::ofstream::out | std::ofstream::app);
+                std::ofstream wfile(isOverlap?util::toString(folder,"/", names[k],"-ovr",ovrData.ovrIter,".txt"):util::toString(folder,"/", names[k],".txt"), std::ofstream::out | std::ofstream::app);
                 for(int i=0;i!=WArray.cols; i++){
                     for(int j=0;j!=WArray.rows; j++)
                         wfile<<WArray.at<cv::Vec2d>(j,i)[k]<<" ";
@@ -349,7 +396,7 @@ void pgCalib::WCFArray(std::string folder){
                 wfile.close();
             }
         }
-        if(WCFArrayOne(WArray, arrayPla.size()==1?arrayPla[0]:arrayPla[n], ROI, sROI, folder,n)){
+        if(WCFArrayOne(WArray, arrayPla.size()==1?arrayPla[0]:arrayPla[n], ROI, sROI, folder,n,isOverlap)){
             QMessageBox::critical(gui_settings, "Error", "Calibration failed/aborted. Measurements up to this point were saved.");
             report->setText(QString::fromStdString(util::toString("Aborted at ",n,"/",multiarrayN->val)));
             return;
@@ -359,32 +406,48 @@ void pgCalib::WCFArray(std::string folder){
 
     }
     report->setText(QString::fromStdString(util::toString("Done ",multiarrayN->val,"/",multiarrayN->val)));
+    ovrData.success=true;
+    if(isOverlap)ovrData.ovrIter++;
+    updateOverlappingCalibEnabled();
 }
-bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, unsigned n){
-    if(pgFGUI->doRefocus(true, ROI, maxRedoRefocusTries)) return true;
+bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, unsigned n, bool isOverlap){
+    if(!isOverlap){
+        if(pgFGUI->doRefocus(true, ROI, maxRedoRefocusTries)) return true;
+
+        // take pos for reruns
+        while(go.pRPTY->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+        ovrData.pos.emplace_back();
+        pgMGUI->getPos(&ovrData.pos.back().x, &ovrData.pos.back().y, &ovrData.pos.back().z);
+    }else{
+        pgMGUI->move(ovrData.pos[n].x,ovrData.pos[n].y,ovrData.pos[n].z,true);
+        pgMGUI->move(ovl_xofs->val/1000,ovl_yofs->val/1000,0);  // separate relative move so that it corrects Z, if calibrated to do so
+    }
 
     varShareClient<pgScanGUI::scanRes>* scanRes=pgSGUI->result.getClient();
     double xOfs=((WArray.cols-1)*selArraySpacing->val)/2000;         //in mm
     double yOfs=((WArray.rows-1)*selArraySpacing->val)/2000;
 
     const pgScanGUI::scanRes* res;
-    if(plateau!=0){
-        cv::Mat mplateau(WArray.rows+1, WArray.cols+1, CV_32F, cv::Scalar(plateau/1000000));
-        pgWr->writeMat(&mplateau, 0, selArraySpacing->val/1000);
-    }
+    if(!isOverlap){ // no need to scan before for overlaps, as the before is the previous run's after; also no plateau
+        if(plateau!=0){
+            cv::Mat mplateau(WArray.rows+1, WArray.cols+1, CV_32F, cv::Scalar(plateau/1000000));
+            if(wcabort){delete scanRes;return true;}        //abort
+            if(pgWr->writeMat(&mplateau, 0, selArraySpacing->val/1000)){delete scanRes;return true;}    //abort/fail
+        }
 
-    if(wcabort){delete scanRes;return true;}        //abort
-    if(pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, maxRedoScanTries,0,saveRF->val?1:0)) return true;
-    if(wcabort){delete scanRes;return true;}        //abort
+        if(wcabort){delete scanRes;return true;}        //abort
+        if(pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, maxRedoScanTries,0,saveRF->val?1:0)) return true;
+        if(wcabort){delete scanRes;return true;}        //abort
 
-    res=scanRes->get();
-    pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-before"), false, true, saveRF->val?1:0);
+        res=scanRes->get();
+        pgScanGUI::saveScan(res, util::toString(folder,"/fullScans/",n,"-before"), false, true, saveRF->val?1:0);
 
-    for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
-        cv::utils::fs::createDirectory(util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols));
-        sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000,0);
-        sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000,0);
-        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/before"), true, saveRF->val?1:0);
+        for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
+            cv::utils::fs::createDirectory(util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols));
+            sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000,0);
+            sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000,0);
+            pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/before"), true, saveRF->val?1:0);
+        }
     }
 
     {std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_proc);
@@ -402,7 +465,13 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
                 CO.addHold("Z",CTRL::he_motion_ontarget);
                 CO.pulseGPIO("wrLaser",WArray.at<cv::Vec2d>(j,i)[0]/1000);
                 pgMGUI->corCOMove(CO,0,0,-WArray.at<cv::Vec2d>(j,i)[1]/1000);
-                saveConf(util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/settings.txt"), WArray.at<cv::Vec2d>(j,i)[0], WArray.at<cv::Vec2d>(j,i)[1], plateau);
+                std::ofstream setFile(util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,isOverlap?util::toString("/settings-ovr",ovrData.ovrIter,".txt"):"/settings.txt"));            //this file contains some settings:
+                setFile <<"#Duration(ms) Focus(um)";
+                setFile <<" Plateau(nm)";
+                setFile <<"\n"<<WArray.at<cv::Vec2d>(j,i)[0]<<" "<<WArray.at<cv::Vec2d>(j,i)[1];
+                setFile <<" "<<plateau;
+                setFile <<"\n";
+                setFile.close();
 
                 CO.execute();
                 CO.clear(true);
@@ -420,12 +489,12 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     if(pgSGUI->doNRounds((int)selArrayOneScanN->val, ROI, maxRedoScanTries,0,saveRF->val?1:0)) return true;
     if(wcabort){delete scanRes;return true;}        //abort
     res=scanRes->get();
-    pgScanGUI::saveScan(res, util::toString(folder,"/",n,"-after"), false, true, saveRF->val?1:0);
+    pgScanGUI::saveScan(res, util::toString(folder,"/fullScans/",n,isOverlap?util::toString("-after-ovr",ovrData.ovrIter):"-after"), false, true, saveRF->val?1:0);
 
     for(int j=0;j!=WArray.rows; j++) for(int i=0;i!=WArray.cols; i++){   // separate them into individual scans
         sROI.x=pgMGUI->mm2px(i*selArraySpacing->val/1000,0);
         sROI.y=pgMGUI->mm2px(j*selArraySpacing->val/1000,0);
-        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,"/after"), true, saveRF->val?1:0);
+        pgScanGUI::saveScan(res, sROI, util::toString(folder,"/",n*WArray.cols*WArray.rows+i+j*WArray.cols,isOverlap?util::toString("/after-ovr",ovrData.ovrIter):"/after"), true, saveRF->val?1:0);
     }
 
     delete scanRes;

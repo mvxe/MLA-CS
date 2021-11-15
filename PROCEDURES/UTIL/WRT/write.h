@@ -29,6 +29,7 @@ public:
             // matrix depth, if CV_32F, is in mm, likewise override_depthMaxval is in mm too
             // override_depthMaxval overrides only if matrix is CV_8U or CV_16U, also in nm
             // return true if failed/aborted
+    bool wabort; // set to true to abort current running writeMat
 
 private:
     //activation
@@ -147,7 +148,6 @@ private:
     void stripDollarSigns(std::string &str);
     bool firstImageLoaded{false};
     bool firstWritten{false};
-    bool wabort;
 
     void saveConfig(std::string filename);
     std::string genConfig();

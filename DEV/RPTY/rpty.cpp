@@ -255,6 +255,7 @@ std::vector<std::string> RPTY::getDevices(){
 
 double RPTY::getMotionSetting(std::string ID, mst setting){
     std::lock_guard<std::recursive_mutex>lock(mux);
+    if(setting==mst_position_update_pending) return recheck_position;
     _motionDeviceThrowExc(ID,"getMotionSetting");
     switch (setting){
     case mst_position: return motionAxes[ID].dev->position;
@@ -267,6 +268,7 @@ double RPTY::getMotionSetting(std::string ID, mst setting){
     case mst_defaultAcceleration: return motionAxes[ID].dev->defaultAcceleration;
     case mst_maximumAcceleration: return motionAxes[ID].dev->maximumAcceleration;
     case mst_mininumStep: return motionAxes[ID].dev->minimumStep;
+    default:;
     }
 }
 

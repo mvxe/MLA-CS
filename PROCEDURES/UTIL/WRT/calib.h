@@ -65,6 +65,21 @@ private:
     bool wcabort;
     HQPushButton* scheduleMultiWrite;
     QLabel* report;
+    QPushButton* overlappingCalib;
+    val_selector* ovl_xofs;
+    val_selector* ovl_yofs;
+    struct forOvr{
+        std::vector<cv::Point3d> pos;
+        unsigned selArrayXsize;
+        unsigned selArrayYsize;
+        double selArraySpacing;
+        bool transpose;
+        unsigned multiarrayN;
+        std::string folder;
+        bool success{false};
+        unsigned ovrIter{0};
+    };
+    forOvr ovrData;
 
     int measCounter{0};
     bool drawWriteAreaOn{false};
@@ -99,10 +114,8 @@ private:
     constexpr static int maxRedoScanTries=3;
     constexpr static int maxRedoRefocusTries=3;
 
-    void WCFArray(std::string folder);
-    bool WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, unsigned n);
-    void saveConf(std::string filename, double duration, double focus, double plateau);
-    void saveMainConf(std::string filename);
+    void WCFArray(std::string folder, bool isOverlap=false);
+    bool WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, unsigned n, bool isOverlap);
     void selArray(int ArrayIndex, int MultiArrayIndex);
     void calcParameters(std::string fldr, std::string* output, std::atomic<unsigned>* completed);
 private Q_SLOTS:
@@ -120,6 +133,8 @@ private Q_SLOTS:
     void onNBSplineCoefChanged();
     void onApply();
     void onApplyMenuTriggered(QAction* action);
+    void updateOverlappingCalibEnabled();
+    void onOverlappingCalib();
 
 private:
     static int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f);

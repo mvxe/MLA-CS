@@ -600,7 +600,7 @@ void pgWrite::onWriteDM(){
     }
 
     // save coords for scan
-    pgMGUI->wait4motionToComplete();
+    while(go.pRPTY->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
 

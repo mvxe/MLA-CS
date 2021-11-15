@@ -42,10 +42,12 @@ public:
             // #### higher level functions: ####
 
     // motion settings:
-    enum mst{mst_position, mst_minPosition, mst_maxPosition, mst_lastPosition, mst_restPosition, mst_defaultVelocity, mst_maximumVelocity, mst_defaultAcceleration, mst_maximumAcceleration, mst_mininumStep};
+    enum mst{mst_position, mst_position_update_pending, mst_minPosition, mst_maxPosition, mst_lastPosition, mst_restPosition, mst_defaultVelocity, mst_maximumVelocity, mst_defaultAcceleration, mst_maximumAcceleration, mst_mininumStep};
 
     virtual double getMotionSetting(std::string ID, mst setting)=0;
     // ID has to be a device of type dt_motion
+    // if getMotionSetting(..., mst_position_update_pending) returns non-zero, calling getMotionSetting(..., mst_position) may give an outdated result, otherwise mst_position will return the current actual position
+    //      furthermore if ID="" with  mst_position_update_pending, it will return 0 only if all positions are up to date
 
     // motion flags:
     typedef uint16_t motionFlags;
