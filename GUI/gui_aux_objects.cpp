@@ -45,22 +45,27 @@ void val_selector::setLabel(QString label){
 }
 
 void val_selector::init1(){
-    unit = new QScrollToolButton();
-    layout->addWidget(unit);
-    unit->setAutoRaise(true);
-    unit->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    unit->setPopupMode(QToolButton::InstantPopup);
-    unit->setMenu(new QMenu);
-    for(int i=0;i!=labels.size();i++){
-        QAction* action=new QAction;
-        action->setText(labels[i]);
-        unit->menu()->addAction(action);
-    }
-    connect(unit->menu(), SIGNAL(aboutToHide()), this, SLOT(on_menu_change()));
+    if(labels.size()==1) {
+        layout->addWidget(new QLabel(labels.back()));
+        unitIndex=0;
+    }else{
+        unit = new QScrollToolButton();
+        layout->addWidget(unit);
+        unit->setAutoRaise(true);
+        unit->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        unit->setPopupMode(QToolButton::InstantPopup);
+        unit->setMenu(new QMenu);
+        for(int i=0;i!=labels.size();i++){
+            QAction* action=new QAction;
+            action->setText(labels[i]);
+            unit->menu()->addAction(action);
+        }
+        connect(unit->menu(), SIGNAL(aboutToHide()), this, SLOT(on_menu_change()));
 
-    if (unitIndex>=labels.size()) unitIndex=0;
-    unit->activeAction=unit->menu()->actions()[unitIndex];
-    unit->setText(unit->activeAction->text());
+        if (unitIndex>=labels.size()) unitIndex=0;
+        unit->activeAction=unit->menu()->actions()[unitIndex];
+        unit->setText(unit->activeAction->text());
+    }
 }
 
 
@@ -87,7 +92,7 @@ void val_selector::on_value_change(double nvalue){
 
 void val_selector::setValue(double nvalue, int index){
     spinbox->setValue(nvalue);
-    if(index>=0 && index<labels.size()){
+    if(index>=0 && index<labels.size() && labels.size()>1){
         unit->activeAction=unit->menu()->actions()[index];
         unit->setText(unit->activeAction->text());
     }
