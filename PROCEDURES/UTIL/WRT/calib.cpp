@@ -35,8 +35,8 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
                                  "The data will be saved in the same folder as the previous run. Multiple reruns may be done.");
     connect(overlappingCalib, SIGNAL(released()), this, SLOT(onOverlappingCalib()));
     overlappingCalib->setEnabled(false);
-    ovl_xofs=new val_selector(0, "offsets X:", -100, 100, 2, 0, {"um"});
-    ovl_yofs=new val_selector(0, "Y:", -100, 100, 2, 0, {"um"});
+    ovl_xofs=new val_selector(0, "offsets X:", -1, 1, 3, 0, {"um"});
+    ovl_yofs=new val_selector(0, "Y:", -1, 1, 3, 0, {"um"});
     ovl_xofs->setEnabled(false);
     ovl_yofs->setEnabled(false);
     ovl_xofs->setToolTip("NOTE: the offset is relative in relation to the original calibration!");
@@ -501,28 +501,29 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     return false;
 }
 
-bool folderSort(std::string i,std::string j){
-    size_t posi=i.find_last_of("/");
-    size_t posj=j.find_last_of("/");
-    return (std::stoi(i.substr(posi+1,9))<std::stoi(j.substr(posj+1,9)));
+bool pgCalib::folderSort(measFolder i,measFolder j){
+    size_t posi=i.folder.find_last_of("/");
+    size_t posj=j.folder.find_last_of("/");
+    return (std::stoi(i.folder.substr(posi+1,9))<std::stoi(j.folder.substr(posj+1,9)));
 }
 void pgCalib::onProcessFocusMes(){
     std::vector<std::string> readFolders;   //folders still yet to be checked
-    std::vector<std::string> measFolders;   //folders that contain the expected measurement files
+    std::vector<measFolder> measFolders;   //folders that contain the expected measurement files
 
     readFolders.emplace_back(QFileDialog::getExistingDirectory(this, "Select Folder Containing Measurements. It will be Searched Recursively.", QString::fromStdString(lastFolder)).toStdString());
     if(readFolders.back().empty()) return;
     lastFolder=readFolders.back().substr(0,readFolders.back().find_last_of("/")+1);
-    std::string saveName=readFolders.back()+"/proc.txt";
+    std::string root=readFolders.back();
     DIR *wp;
     struct dirent *entry;
     struct stat filetype;
     std::string curFile;
     std::string curFolder;
-    bool dirHasMes[5]{false,false,false,false};
     while(!readFolders.empty()){
         curFolder=readFolders.back();
         readFolders.pop_back();
+        bool dirHasMes[3]{false,false,false};
+        unsigned overlapping=0;
         wp=opendir(curFolder.c_str());
         if(wp!=nullptr) while(entry=readdir(wp)){
             curFile=entry->d_name;
@@ -532,80 +533,103 @@ void pgCalib::onProcessFocusMes(){
                 stat(curFile.data(),&filetype);
                 if(filetype.st_mode&S_IFDIR) readFolders.push_back(curFile);
                 else if (filetype.st_mode&S_IFREG){
-                    if(strcmp(entry->d_name,"settings.txt")==0) dirHasMes[0]=true;
-                    else if(strcmp(entry->d_name,"before.pfm")==0) dirHasMes[1]=true;
-                    else if(strcmp(entry->d_name,"after.pfm")==0) dirHasMes[2]=true;
-                    else if(strcmp(entry->d_name,"after-RF.png")==0) dirHasMes[3]=true;
+                    std::string str=entry->d_name;
+                    if(str.compare("settings.txt")==0) dirHasMes[0]=true;
+                    else if(str.compare("before.pfm")==0) dirHasMes[1]=true;
+                    else if(str.compare("after.pfm")==0) dirHasMes[2]=true;
+                    else if(util::toString("after-ovr",overlapping,".pfm").compare(entry->d_name)==0) overlapping++;
+                    auto it=str.find("after-ovr");
+                    unsigned tmp{0};
+                    if(it!=std::string::npos){
+                        tmp=std::stoi(str.substr(it+9));
+                        if(tmp>overlapping)overlapping=tmp;
+                    }
                 }
             }
         }
         closedir(wp);
-        if(dirHasMes[0]&dirHasMes[1]&dirHasMes[2]) measFolders.push_back(curFolder);
+        if(dirHasMes[0]&dirHasMes[1]&dirHasMes[2]) measFolders.push_back({curFolder,overlapping});
     }
     std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_comp);
     pgSGUI->MLP.progress_comp=0;
 
     //sort folders by number
-    std::sort(measFolders.begin(), measFolders.end(), folderSort);
+    std::sort(measFolders.begin(), measFolders.end(), pgCalib::folderSort);
+    unsigned maxovl=0;
+    for(auto& fldr: measFolders) if(fldr.overlaps>maxovl) maxovl=fldr.overlaps;
 
-    std::ofstream wfile(saveName);
+    std::vector<double>prepeaks(measFolders.size(),0);
+    for(unsigned i=0;i!=maxovl+1;i++){
+        std::string saveName=root+((i==0)?"/proc.txt":util::toString("/proc-ovr",i-1,".txt"));
+        std::ofstream wfile(saveName);
 
-    wfile<<"# 1: valid measurement(=1)\n";
-    wfile<<"# 2: focus distance(um)\n";
-    wfile<<"# 3: peak height(nm)\n";
-    wfile<<"# 4: X width (1/e^2)(um)\n";
-    wfile<<"# 5: Y width (1/e^2)(um)\n";
-    wfile<<"# 6: ellipse angle(rad)\n";
-    wfile<<"# 7: XY width (1/e^2)(um)\n";
-    wfile<<"# 8: X offset(um)\n";
-    wfile<<"# 9: Y offset(um)\n";
-    wfile<<"# 10: XY offset(um)\n";
-    wfile<<"# 11: plateau(nm)\n";
-    wfile<<"# 12: duration(ms)\n";
-    wfile<<"# 13: Peak Center Reflectivity change (averaged within FWHM)(a.u.)\n";
-    wfile<<"# 14: Max absolute 1st der. (nm/um)\n";
-    wfile<<"# 15: Min Laplacian (nm/um^2)\n";
-    wfile<<"# 16: Max Laplacian (nm/um^2)\n";
-    wfile<<"# 17: peak height(nm)(max)\n";
-    wfile<<"# 18: peak height(nm)(max-min)\n";
-    wfile<<"# 19: X width (FWHM)(um)\n";
-    wfile<<"# 20: Y width (FWHM)(um)\n";
-    wfile<<"# 21: XY width (FWHM)(um)\n";
-    wfile<<"# 22: prepeak(nm)\n";
-    wfile<<"# 23: prepeakXoffs(um)\n";
-    wfile<<"# 24: prepeakYoffs(um)\n";
-    wfile<<"# 25: Mirror tilt X(nm/nm)\n";
-    wfile<<"# 26: Mirror tilt Y(nm/nm)\n";
-    wfile<<"# 27: asymptotic standard error for 3: peak height(nm)\n";
-    wfile<<"# 28: asymptotic standard error for 4: X width (1/e^2)(um)\n";
-    wfile<<"# 29: asymptotic standard error for 5: Y width (1/e^2)(um)\n";
-    wfile<<"# 30: asymptotic standard error for 6: ellipse angle(rad)\n";
-    wfile<<"# 31: asymptotic standard error for 7: XY width (1/e^2)(um)\n";
-    wfile<<"# 32: asymptotic standard error for 8: X offset(um)\n";
-    wfile<<"# 33: asymptotic standard error for 9: Y offset(um)\n";
-    wfile<<"# 34: asymptotic standard error for 10: XY offset(um)\n";
-    wfile<<"# 35: asymptotic standard error for 19: X width (FWHM)(um)\n";
-    wfile<<"# 36: asymptotic standard error for 20: Y width (FWHM)(um)\n";
-    wfile<<"# 37: asymptotic standard error for 21: XY width (FWHM)(um)\n";
+        wfile<<"# 1: valid measurement(=1)\n";
+        wfile<<"# 2: focus distance(um)\n";
+        wfile<<"# 3: peak height(nm)\n";
+        wfile<<"# 4: X width (1/e^2)(um)\n";
+        wfile<<"# 5: Y width (1/e^2)(um)\n";
+        wfile<<"# 6: ellipse angle(rad)\n";
+        wfile<<"# 7: XY width (1/e^2)(um)\n";
+        wfile<<"# 8: X offset(um)\n";
+        wfile<<"# 9: Y offset(um)\n";
+        wfile<<"# 10: XY offset(um)\n";
+        wfile<<"# 11: plateau(nm)\n";
+        wfile<<"# 12: duration(ms)\n";
+        wfile<<"# 13: Peak Center Reflectivity change (averaged within FWHM)(a.u.)\n";
+        wfile<<"# 14: Max absolute 1st der. (nm/um)\n";
+        wfile<<"# 15: Min Laplacian (nm/um^2)\n";
+        wfile<<"# 16: Max Laplacian (nm/um^2)\n";
+        wfile<<"# 17: peak height(nm)(max)\n";
+        wfile<<"# 18: peak height(nm)(max-min)\n";
+        wfile<<"# 19: X width (FWHM)(um)\n";
+        wfile<<"# 20: Y width (FWHM)(um)\n";
+        wfile<<"# 21: XY width (FWHM)(um)\n";
+        wfile<<"# 22: prepeak(nm)\n";
+        wfile<<"# 23: prepeakXoffs(um)\n";
+        wfile<<"# 24: prepeakYoffs(um)\n";
+        wfile<<"# 25: Mirror tilt X(nm/nm)\n";
+        wfile<<"# 26: Mirror tilt Y(nm/nm)\n";
+        wfile<<"# 27: asymptotic standard error for 3: peak height(nm)\n";
+        wfile<<"# 28: asymptotic standard error for 4: X width (1/e^2)(um)\n";
+        wfile<<"# 29: asymptotic standard error for 5: Y width (1/e^2)(um)\n";
+        wfile<<"# 30: asymptotic standard error for 6: ellipse angle(rad)\n";
+        wfile<<"# 31: asymptotic standard error for 7: XY width (1/e^2)(um)\n";
+        wfile<<"# 32: asymptotic standard error for 8: X offset(um)\n";
+        wfile<<"# 33: asymptotic standard error for 9: Y offset(um)\n";
+        wfile<<"# 34: asymptotic standard error for 10: XY offset(um)\n";
+        wfile<<"# 35: asymptotic standard error for 19: X width (FWHM)(um)\n";
+        wfile<<"# 36: asymptotic standard error for 20: Y width (FWHM)(um)\n";
+        wfile<<"# 37: asymptotic standard error for 21: XY width (FWHM)(um)\n";
 
-    std::vector<std::string> results;
-    std::atomic<unsigned> completed=0;
-    int n=0;
-    for(auto& fldr:measFolders){
-        results.emplace_back();
-        results.back().reserve(26*100);
+        std::vector<std::string> results;
+        std::atomic<unsigned> completed=0;
+        int n=0;
+        for(auto& fldr:measFolders){
+            results.emplace_back();
+            results.back().reserve(26*100);
+        }
+
+        double prepeakxy[2]{0,0};
+        if(i>0){
+            std::ifstream ifs(util::toString(root,"/offset-ovr",i-1,".txt"));
+            ifs.ignore(std::numeric_limits<std::streamsize>::max(),'\n');       // ignore header
+            ifs>>prepeakxy[0];
+            ifs>>prepeakxy[1];
+            ifs.close();
+        }
+
+        for(auto& fldr:measFolders) if(fldr.overlaps>=i){
+            go.OCL_threadpool.doJob(std::bind(&pgCalib::calcParameters, this, fldr, &results[n], &completed, prepeakxy[0], prepeakxy[1], i, &prepeaks[n]));
+            n++;
+        }
+        while(completed!=n){
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+            pgSGUI->MLP.progress_comp=100./n*completed/(maxovl+1)+100/(maxovl+1)*i;
+        }
+        for(int i=0;i!=n;i++) wfile<<results[i];
+        pgSGUI->MLP.progress_comp=100./(maxovl+1)*(i+1);
+        wfile.close();
     }
-    for(auto& fldr:measFolders){
-        go.OCL_threadpool.doJob(std::bind(&pgCalib::calcParameters, this, fldr, &results[n], &completed));
-        n++;
-    }
-    while(completed!=n){
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-        pgSGUI->MLP.progress_comp=100./n*completed;
-    }
-    for(int i=0;i!=n;i++) wfile<<results[i];
-    pgSGUI->MLP.progress_comp=100;
-    wfile.close();
 }
 
 
@@ -669,12 +693,16 @@ int pgCalib::gauss2De_df (const gsl_vector* pars, void* data, gsl_matrix* J){
     return GSL_SUCCESS;
 }
 
-void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<unsigned>* completed){
+void pgCalib::calcParameters(measFolder fldr, std::string* output, std::atomic<unsigned>* completed, double prepeakXofs, double prepeakYofs, unsigned overlap, double* prepeak){
     double focus;
     double duration;
     double plateau{0};
-    double prepeak{0}, prepeakXofs{0}, prepeakYofs{0};
-    std::ifstream ifs(util::toString(fldr,"/settings.txt"));
+    double _prepeak=0;
+    if(prepeak!=nullptr){
+        _prepeak=*prepeak;
+        *prepeak=0;
+    }
+    std::ifstream ifs(util::toString((overlap==0)?util::toString(fldr.folder,"/settings.txt"):util::toString(fldr.folder,"/settings-ovr",overlap-1,".txt")));
     ifs.ignore(std::numeric_limits<std::streamsize>::max(),'\n');       // ignore header
     ifs>>duration;
     ifs>>focus;
@@ -682,10 +710,12 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
     ifs.close();
 
     pgScanGUI::scanRes scanBefore, scanAfter;
-    if(!pgScanGUI::loadScan(&scanBefore, util::toString(fldr,"/before.pfm"))) return;
-    if(!pgScanGUI::loadScan(&scanAfter, util::toString(fldr,"/after.pfm"))) return;
+    if(!pgScanGUI::loadScan(&scanBefore, util::toString(fldr.folder,"/before.pfm"))) {(*completed)++;return;}
+    if(!pgScanGUI::loadScan(&scanAfter, (overlap==0)?util::toString(fldr.folder,"/after.pfm"):util::toString(fldr.folder,"/after-ovr",overlap-1,".pfm")))
+        return;
+
     pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
-    pgScanGUI::saveScan(&scanDif, util::toString(fldr,"/scandif.pfm"));
+    pgScanGUI::saveScan(&scanDif, util::toString(fldr.folder,(overlap==0)?"/scandif.pfm":util::toString(fldr.folder,"/scandif-ovr",overlap-1,".pfm")));
 
     const size_t parN=7;
     double initval[parN] = { scanDif.depth.cols/2., scanDif.depth.rows/2., 0, 4000/scanDif.XYnmppx, 4000/scanDif.XYnmppx, 0.01, 0};
@@ -752,8 +782,8 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
 
     double peakRefl{0};
     int nref=0;
-    cv::Mat reflb=imread(util::toString(fldr,"/before-RF.png"), cv::IMREAD_GRAYSCALE);
-    cv::Mat refla=imread(util::toString(fldr,"/after-RF.png"), cv::IMREAD_GRAYSCALE);
+    cv::Mat reflb=imread(util::toString(fldr.folder,"/before-RF.png"), cv::IMREAD_GRAYSCALE);
+    cv::Mat refla=imread((overlap==0)?util::toString(fldr.folder,"/after-RF.png"):util::toString(fldr.folder,"/after-ovr",overlap-1,"-RF.png"), cv::IMREAD_GRAYSCALE);
     if(!reflb.empty() && !refla.empty())
         for(int i=0;i!=reflb.cols;i++) for(int j=0;j!=reflb.rows;j++)
             if(pow((i-res[0]),2)+pow((j-res[1]),2)<=pow((res[3]+res[4])/2*toFWHM,2)){
@@ -814,7 +844,7 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
         Xwidth*toFWHM," ",              // 19: X width (FWHM)(um)
         Ywidth*toFWHM," ",              // 20: Y width (FWHM)(um)
         XYwidth*toFWHM," ",             // 21: XY width (FWHM)(um)
-        prepeak," ",                    // 22: prepeak(nm)
+        _prepeak," ",                   // 22: prepeak(nm)
         prepeakXofs," ",                // 23: prepeakXoffs(um)
         prepeakYofs," ",                // 24: prepeakYoffs(um)
         tiltX," ",                      // 25: Mirror tilt X(nm/nm)
@@ -831,6 +861,7 @@ void pgCalib::calcParameters(std::string fldr, std::string* output, std::atomic<
         eYwidth*toFWHM," ",             // 36: asymptotic standard error for 20: Y width (FWHM)(um)
         eXYwidth*toFWHM,"\n"            // 37: asymptotic standard error for 21: XY width (FWHM)(um)
                 );
+    if(prepeak!=nullptr)*prepeak=res[2];
 
     (*completed)++;
     return;

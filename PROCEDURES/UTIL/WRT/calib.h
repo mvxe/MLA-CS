@@ -114,10 +114,16 @@ private:
     constexpr static int maxRedoScanTries=3;
     constexpr static int maxRedoRefocusTries=3;
 
+    struct measFolder{
+        std::string folder;
+        unsigned overlaps;
+    };
+
     void WCFArray(std::string folder, bool isOverlap=false);
     bool WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, unsigned n, bool isOverlap);
     void selArray(int ArrayIndex, int MultiArrayIndex);
-    void calcParameters(std::string fldr, std::string* output, std::atomic<unsigned>* completed);
+    void calcParameters(measFolder fldr, std::string* output, std::atomic<unsigned>* completed, double prepeakXofs=0, double prepeakYofs=0, unsigned overlap=0, double* prepeak=nullptr);
+    static bool folderSort(measFolder i,measFolder j);
 private Q_SLOTS:
     void onWCF();
     void onSchedule();
