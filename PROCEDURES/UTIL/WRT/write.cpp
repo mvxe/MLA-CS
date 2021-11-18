@@ -480,10 +480,10 @@ void pgWrite::onPulse(){
         vfocusYcor=focusYcor->val/1000;
     }
     CTRL::CO co(go.pRPTY);
+    pgMGUI->corCOMove(co,vfocusXcor,vfocusYcor,vfocus);
     co.addHold("X",CTRL::he_motion_ontarget);
     co.addHold("Y",CTRL::he_motion_ontarget);
     co.addHold("Z",CTRL::he_motion_ontarget);
-    pgMGUI->corCOMove(co,vfocusXcor,vfocusYcor,vfocus);
     co.pulseGPIO("wrLaser",pulse/1000);
     pgMGUI->corCOMove(co,-vfocusXcor,-vfocusYcor,-vfocus);
     co.execute();
@@ -819,7 +819,7 @@ void pgWrite::preparePredictor(){
         p_basisfun=gsl_vector_alloc(ncoeffs);
         p_bsplws=gsl_bspline_alloc(4, nbreak); // cubic bspline
         gsl_bspline_knots(p_gbreakpts,p_bsplws);
-    }
+    }else p_coefs=nullptr;
     p_ready=true;
 }
 double pgWrite::predictDuration(double targetHeight){

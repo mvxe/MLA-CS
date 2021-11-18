@@ -139,7 +139,7 @@ private:
     void preparePredictor();    // call before using predictDuration
     gsl_vector* p_basisfun{nullptr};
     gsl_bspline_workspace* p_bsplws{nullptr};
-    gsl_vector* p_coefs;
+    gsl_vector* p_coefs{nullptr};
     gsl_matrix* p_covmat;
     gsl_vector* p_gbreakpts;
     bool p_ready{false};
