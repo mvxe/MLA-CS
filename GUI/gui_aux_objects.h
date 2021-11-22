@@ -10,6 +10,7 @@
 #include <QLineEdit>
 #include <QTimer>
 #include "UTIL/containers.h"
+#include "UTIL/utility.h"
 
 class QHBoxLayout;
 class QVBoxLayout;
@@ -354,23 +355,22 @@ class QStandardItemModel;
 class wpopup : private QLabel{
     Q_OBJECT
 public:
-    static void show(const QPoint& pt, QString text="", int timeout_msec=0){
+    static void show(const QPoint& pt, QString text="", int timeout_msec=0, std::string bgcolor="yellow"){
         wpopup* tmp = new wpopup;
+        tmp->setWindowFlags(Qt::ToolTip);
+        tmp->setStyleSheet(QString::fromStdString(util::toString("border: 1px solid black; background-color: ",bgcolor,";")));
         if(!text.isEmpty()) tmp->setText(text);
         tmp->move(pt);
         tmp->QLabel::show();
         if(timeout_msec>0) tmp->timer.singleShot(timeout_msec, tmp, SLOT(hide()));
     }
 private:
-    wpopup(){
-        setWindowFlags(Qt::ToolTip);
-        setStyleSheet("border: 1px solid black; background-color: yellow;");
-    }
+    wpopup(){}
     QTimer timer;
 private Q_SLOTS:
     void hide(){timer.stop(); QLabel::hide(); delete this;}
 private:
-    void mousePressEvent(QMouseEvent *event){hide();}
+    void mouseReleaseEvent(QMouseEvent *event){hide();}
 };
 
 #endif // GUI_AUX_OBJECTS_H

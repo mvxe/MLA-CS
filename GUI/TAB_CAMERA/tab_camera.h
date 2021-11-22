@@ -100,6 +100,8 @@ private:
 
     void scaleDisplay(cv::Mat img, QImage::Format format);
     void _cropToSelection();
+
+    std::string fitSaveFilename{""};
 private Q_SLOTS:
     void work_fun();
     void on_tab_change(int index);
@@ -125,6 +127,7 @@ private Q_SLOTS:
     void onCrop();
     void onResetROI();
     void onChangeROI();
+    void onPeakFit();
 
     void updateImgF();
 

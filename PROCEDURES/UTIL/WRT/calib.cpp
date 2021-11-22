@@ -506,6 +506,46 @@ bool pgCalib::folderSort(measFolder i,measFolder j){
     size_t posj=j.folder.find_last_of("/");
     return (std::stoi(i.folder.substr(posi+1,9))<std::stoi(j.folder.substr(posj+1,9)));
 }
+void pgCalib::writeProcessHeader(std::ofstream& wfile){
+    wfile<<"# 1: valid measurement(=1)\n";
+    wfile<<"# 2: focus distance(um)\n";
+    wfile<<"# 3: peak height(nm)\n";
+    wfile<<"# 4: X width (1/e^2)(um)\n";
+    wfile<<"# 5: Y width (1/e^2)(um)\n";
+    wfile<<"# 6: ellipse angle(rad)\n";
+    wfile<<"# 7: XY width (1/e^2)(um)\n";
+    wfile<<"# 8: X offset(um)\n";
+    wfile<<"# 9: Y offset(um)\n";
+    wfile<<"# 10: XY offset(um)\n";
+    wfile<<"# 11: plateau(nm)\n";
+    wfile<<"# 12: duration(ms)\n";
+    wfile<<"# 13: Peak Center Reflectivity change (averaged within FWHM)(a.u.)\n";
+    wfile<<"# 14: Max absolute 1st der. (nm/um)\n";
+    wfile<<"# 15: Min Laplacian (nm/um^2)\n";
+    wfile<<"# 16: Max Laplacian (nm/um^2)\n";
+    wfile<<"# 17: peak height(nm)(max)\n";
+    wfile<<"# 18: peak height(nm)(max-min)\n";
+    wfile<<"# 19: X width (FWHM)(um)\n";
+    wfile<<"# 20: Y width (FWHM)(um)\n";
+    wfile<<"# 21: XY width (FWHM)(um)\n";
+    wfile<<"# 22: prepeak(nm)\n";
+    wfile<<"# 23: prepeakXoffs(um)\n";
+    wfile<<"# 24: prepeakYoffs(um)\n";
+    wfile<<"# 25: Mirror tilt X(nm/nm)\n";
+    wfile<<"# 26: Mirror tilt Y(nm/nm)\n";
+    wfile<<"# 27: asymptotic standard error for 3: peak height(nm)\n";
+    wfile<<"# 28: asymptotic standard error for 4: X width (1/e^2)(um)\n";
+    wfile<<"# 29: asymptotic standard error for 5: Y width (1/e^2)(um)\n";
+    wfile<<"# 30: asymptotic standard error for 6: ellipse angle(rad)\n";
+    wfile<<"# 31: asymptotic standard error for 7: XY width (1/e^2)(um)\n";
+    wfile<<"# 32: asymptotic standard error for 8: X offset(um)\n";
+    wfile<<"# 33: asymptotic standard error for 9: Y offset(um)\n";
+    wfile<<"# 34: asymptotic standard error for 10: XY offset(um)\n";
+    wfile<<"# 35: asymptotic standard error for 19: X width (FWHM)(um)\n";
+    wfile<<"# 36: asymptotic standard error for 20: Y width (FWHM)(um)\n";
+    wfile<<"# 37: asymptotic standard error for 21: XY width (FWHM)(um)\n";
+}
+
 void pgCalib::onProcessFocusMes(){
     std::vector<std::string> readFolders;   //folders still yet to be checked
     std::vector<measFolder> measFolders;   //folders that contain the expected measurement files
@@ -563,43 +603,7 @@ void pgCalib::onProcessFocusMes(){
         std::string saveName=root+((i==0)?"/proc.txt":util::toString("/proc-ovr",i-1,".txt"));
         std::ofstream wfile(saveName);
 
-        wfile<<"# 1: valid measurement(=1)\n";
-        wfile<<"# 2: focus distance(um)\n";
-        wfile<<"# 3: peak height(nm)\n";
-        wfile<<"# 4: X width (1/e^2)(um)\n";
-        wfile<<"# 5: Y width (1/e^2)(um)\n";
-        wfile<<"# 6: ellipse angle(rad)\n";
-        wfile<<"# 7: XY width (1/e^2)(um)\n";
-        wfile<<"# 8: X offset(um)\n";
-        wfile<<"# 9: Y offset(um)\n";
-        wfile<<"# 10: XY offset(um)\n";
-        wfile<<"# 11: plateau(nm)\n";
-        wfile<<"# 12: duration(ms)\n";
-        wfile<<"# 13: Peak Center Reflectivity change (averaged within FWHM)(a.u.)\n";
-        wfile<<"# 14: Max absolute 1st der. (nm/um)\n";
-        wfile<<"# 15: Min Laplacian (nm/um^2)\n";
-        wfile<<"# 16: Max Laplacian (nm/um^2)\n";
-        wfile<<"# 17: peak height(nm)(max)\n";
-        wfile<<"# 18: peak height(nm)(max-min)\n";
-        wfile<<"# 19: X width (FWHM)(um)\n";
-        wfile<<"# 20: Y width (FWHM)(um)\n";
-        wfile<<"# 21: XY width (FWHM)(um)\n";
-        wfile<<"# 22: prepeak(nm)\n";
-        wfile<<"# 23: prepeakXoffs(um)\n";
-        wfile<<"# 24: prepeakYoffs(um)\n";
-        wfile<<"# 25: Mirror tilt X(nm/nm)\n";
-        wfile<<"# 26: Mirror tilt Y(nm/nm)\n";
-        wfile<<"# 27: asymptotic standard error for 3: peak height(nm)\n";
-        wfile<<"# 28: asymptotic standard error for 4: X width (1/e^2)(um)\n";
-        wfile<<"# 29: asymptotic standard error for 5: Y width (1/e^2)(um)\n";
-        wfile<<"# 30: asymptotic standard error for 6: ellipse angle(rad)\n";
-        wfile<<"# 31: asymptotic standard error for 7: XY width (1/e^2)(um)\n";
-        wfile<<"# 32: asymptotic standard error for 8: X offset(um)\n";
-        wfile<<"# 33: asymptotic standard error for 9: Y offset(um)\n";
-        wfile<<"# 34: asymptotic standard error for 10: XY offset(um)\n";
-        wfile<<"# 35: asymptotic standard error for 19: X width (FWHM)(um)\n";
-        wfile<<"# 36: asymptotic standard error for 20: Y width (FWHM)(um)\n";
-        wfile<<"# 37: asymptotic standard error for 21: XY width (FWHM)(um)\n";
+        writeProcessHeader(wfile);
 
         std::vector<std::string> results;
         std::atomic<unsigned> completed=0;
@@ -619,7 +623,7 @@ void pgCalib::onProcessFocusMes(){
         }
 
         for(auto& fldr:measFolders) if(fldr.overlaps>=i){
-            go.OCL_threadpool.doJob(std::bind(&pgCalib::calcParameters, this, fldr, &results[n], &completed, prepeakxy[0], prepeakxy[1], i, &prepeaks[n]));
+            go.OCL_threadpool.doJob(std::bind(&pgCalib::prepCalcParameters, this, fldr, &results[n], &completed, prepeakxy[0], prepeakxy[1], i, &prepeaks[n]));
             n++;
         }
         while(completed!=n){
@@ -693,15 +697,11 @@ int pgCalib::gauss2De_df (const gsl_vector* pars, void* data, gsl_matrix* J){
     return GSL_SUCCESS;
 }
 
-void pgCalib::calcParameters(measFolder fldr, std::string* output, std::atomic<unsigned>* completed, double prepeakXofs, double prepeakYofs, unsigned overlap, double* prepeak){
-    double focus;
-    double duration;
+void pgCalib::prepCalcParameters(measFolder fldr, std::string* output, std::atomic<unsigned>* completed, double prepeakXofs, double prepeakYofs, unsigned overlap, double* prepeak){
+    double focus{0};
+    double duration{0};
     double plateau{0};
-    double _prepeak=0;
-    if(prepeak!=nullptr){
-        _prepeak=*prepeak;
-        *prepeak=0;
-    }
+
     std::ifstream ifs(util::toString((overlap==0)?util::toString(fldr.folder,"/settings.txt"):util::toString(fldr.folder,"/settings-ovr",overlap-1,".txt")));
     ifs.ignore(std::numeric_limits<std::streamsize>::max(),'\n');       // ignore header
     ifs>>duration;
@@ -717,9 +717,27 @@ void pgCalib::calcParameters(measFolder fldr, std::string* output, std::atomic<u
     pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
     pgScanGUI::saveScan(&scanDif, util::toString(fldr.folder,(overlap==0)?"/scandif.pfm":util::toString(fldr.folder,"/scandif-ovr",overlap-1,".pfm")));
 
+    if(!scanAfter.refl.empty() && !scanBefore.refl.empty())
+        cv::subtract(scanAfter.refl,scanBefore.refl,scanDif.refl,cv::noArray(),CV_32F);     // we put this refl in float format only temporarily in this case, for conveninece
+    scanDif.tiltCor[0]=scanBefore.tiltCor[0];   // for convenience
+    scanDif.tiltCor[1]=scanBefore.tiltCor[1];
+
+    calcParameters(scanDif, output, prepeakXofs, prepeakYofs, prepeak, focus, duration, plateau);
+
+    (*completed)++;
+    return;
+}
+
+void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, double prepeakXofs, double prepeakYofs , double* prepeak, double focus, double duration, double plateau){
+    double _prepeak{0};
+    if(prepeak!=nullptr){
+        _prepeak=*prepeak;
+        *prepeak=0;
+    }
     const size_t parN=7;
     double initval[parN] = { scanDif.depth.cols/2., scanDif.depth.rows/2., 0, 4000/scanDif.XYnmppx, 4000/scanDif.XYnmppx, 0.01, 0};
-    cv::minMaxIdx(scanDif.depth,&initval[6],&initval[2]);
+    initval[6]=scanDif.min;
+    initval[2]=scanDif.max;
     size_t ptN=scanDif.depth.cols*scanDif.depth.rows;
     double x[ptN], y[ptN], h[ptN], weights[ptN];
     size_t n{0};
@@ -732,7 +750,7 @@ void pgCalib::calcParameters(measFolder fldr, std::string* output, std::atomic<u
             n++;
         }
     ptN=n;
-    if(ptN<parN){(*completed)++;return;}
+    if(ptN<parN) return;
 
     struct fit_data data{ptN,x,y,h};
     gsl_multifit_nlinear_fdf fdf{gauss2De_f,gauss2De_df,NULL,ptN,parN,&data,0,0,0};
@@ -781,16 +799,7 @@ void pgCalib::calcParameters(measFolder fldr, std::string* output, std::atomic<u
     const double toFWHM=sqrt(2*log(2));
 
     double peakRefl{0};
-    int nref=0;
-    cv::Mat reflb=imread(util::toString(fldr.folder,"/before-RF.png"), cv::IMREAD_GRAYSCALE);
-    cv::Mat refla=imread((overlap==0)?util::toString(fldr.folder,"/after-RF.png"):util::toString(fldr.folder,"/after-ovr",overlap-1,"-RF.png"), cv::IMREAD_GRAYSCALE);
-    if(!reflb.empty() && !refla.empty())
-        for(int i=0;i!=reflb.cols;i++) for(int j=0;j!=reflb.rows;j++)
-            if(pow((i-res[0]),2)+pow((j-res[1]),2)<=pow((res[3]+res[4])/2*toFWHM,2)){
-                peakRefl+=static_cast<double>(refla.at<uint8_t>(j,i))-static_cast<double>(reflb.at<uint8_t>(j,i));
-                nref++;
-            }
-    peakRefl/=nref;
+    if(!scanDif.refl.empty()) peakRefl=cv::mean(scanDif.refl)[0];
 
     //find max abs first derivative of depth (nm/um):
     const int ksize=5;
@@ -816,8 +825,8 @@ void pgCalib::calcParameters(measFolder fldr, std::string* output, std::atomic<u
     double Xofs=(res[0]-scanDif.depth.cols/2.)*XYumppx;         double eXofs=err[0]*XYumppx;
     double Yofs=(res[1]-scanDif.depth.rows/2.)*XYumppx;         double eYofs=err[1]*XYumppx;
     double XYofs=sqrt(pow(Xofs,2)+pow(Yofs,2));                 double eXYofs=eXofs*Xofs/XYofs+eYofs*Yofs/XYofs;
-    double tiltX=scanBefore.tiltCor[0]/scanBefore.XYnmppx;
-    double tiltY=scanBefore.tiltCor[1]/scanBefore.XYnmppx;
+    double tiltX=scanDif.tiltCor[0]/scanDif.XYnmppx;    // these tilts are actually from scanBefore
+    double tiltY=scanDif.tiltCor[1]/scanDif.XYnmppx;
 
     int valid=1;
     if(res[0]<0 || res[0]>scanDif.depth.cols || res[1]<0 || res[1]>scanDif.depth.rows || res[2]<=0 || status!=0) valid=0;    //fit failure
@@ -863,7 +872,6 @@ void pgCalib::calcParameters(measFolder fldr, std::string* output, std::atomic<u
                 );
     if(prepeak!=nullptr)*prepeak=res[2];
 
-    (*completed)++;
     return;
 }
 

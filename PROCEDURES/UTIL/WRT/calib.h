@@ -122,8 +122,11 @@ private:
     void WCFArray(std::string folder, bool isOverlap=false);
     bool WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, unsigned n, bool isOverlap);
     void selArray(int ArrayIndex, int MultiArrayIndex);
-    void calcParameters(measFolder fldr, std::string* output, std::atomic<unsigned>* completed, double prepeakXofs=0, double prepeakYofs=0, unsigned overlap=0, double* prepeak=nullptr);
+    void prepCalcParameters(measFolder fldr, std::string* output, std::atomic<unsigned>* completed, double prepeakXofs=0, double prepeakYofs=0, unsigned overlap=0, double* prepeak=nullptr);
     static bool folderSort(measFolder i,measFolder j);
+public:
+    void calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, double prepeakXofs=0, double prepeakYofs=0, double* prepeak=nullptr, double focus=0, double duration=0, double plateau=0);
+    void writeProcessHeader(std::ofstream& wfile);
 private Q_SLOTS:
     void onWCF();
     void onSchedule();

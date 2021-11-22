@@ -161,6 +161,7 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuDepthRight->addAction("2D FFT", this, SLOT(on2DFFT()));
     clickMenuDepthRight->addAction("Apply xy sobel", this, SLOT(onSobel()));
     clickMenuDepthRight->addAction("Apply laplace", this, SLOT(onLaplace()));
+    clickMenuDepthRight->addAction("Fit peak", this, SLOT(onPeakFit()));
 
     clickMenuDepthLeft=new QMenu;
     clickMenuDepthLeft->addAction("Plot Line (Gnuplot)", this, SLOT(onPlotLine()));
@@ -862,4 +863,37 @@ void tab_camera::onLaplace(){
     cv::minMaxLoc(loadedScan.depth,&loadedScan.min,&loadedScan.max);
     updateDisp=true;
     loadedOnDisplay=true;
+}
+
+void tab_camera::onPeakFit(){
+    pgScanGUI::scanRes scan;
+    if(selEndX!=selStartX && selEndY!=selStartY){
+        int width=abs(selEndX-selStartX+1);
+        int height=abs(selEndY-selStartY+1);
+        scan.depth=loadedScan.depth(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height));
+        scan.mask =loadedScan.mask (cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height));
+        scan.maskN=loadedScan.maskN(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height));
+        scan.XYnmppx=loadedScan.XYnmppx;
+        for(int i:{0,1}) scan.tiltCor[i]=loadedScan.tiltCor[i];
+        cv::minMaxIdx(scan.depth,&scan.min,&scan.max, nullptr, nullptr, scan.maskN);
+
+        std::string res;
+        pgCal->calcParameters(scan, &res);
+        std::cerr<<res<<"\n";
+
+        QMenu menu;
+        if(!fitSaveFilename.empty()) menu.addAction("Append fit results to last chosen file.");
+        auto mns=menu.addAction("Make new save file (with header) and append fit results.");
+        auto ats=menu.addAction("Append fit results to existing file.");
+        auto chs=menu.exec(QCursor::pos());
+        if(chs==nullptr) return;
+        std::ofstream wfile;
+        if     (chs==mns) fitSaveFilename=QFileDialog::getSaveFileName(this, tr("Select file for saving fit results.")   ,fitSaveFilename.c_str(),tr("Text (*.txt *.dat *.csv)")).toStdString();
+        else if(chs==ats) fitSaveFilename=QFileDialog::getOpenFileName(this, tr("Select file for appending fit results."),fitSaveFilename.c_str(),tr("Text (*.txt *.dat *.csv)")).toStdString();
+        if(fitSaveFilename.empty()) return;
+        wfile=std::ofstream(fitSaveFilename, (chs==mns?std::ofstream::trunc:std::ofstream::app));
+        if(chs==mns) pgCal->writeProcessHeader(wfile);
+        wfile<<res;
+        wfile.close();
+    }
 }
