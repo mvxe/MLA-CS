@@ -867,33 +867,34 @@ void tab_camera::onLaplace(){
 
 void tab_camera::onPeakFit(){
     pgScanGUI::scanRes scan;
-    if(selEndX!=selStartX && selEndY!=selStartY){
-        int width=abs(selEndX-selStartX+1);
-        int height=abs(selEndY-selStartY+1);
-        scan.depth=loadedScan.depth(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height));
-        scan.mask =loadedScan.mask (cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height));
-        scan.maskN=loadedScan.maskN(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height));
-        scan.XYnmppx=loadedScan.XYnmppx;
-        for(int i:{0,1}) scan.tiltCor[i]=loadedScan.tiltCor[i];
-        cv::minMaxIdx(scan.depth,&scan.min,&scan.max, nullptr, nullptr, scan.maskN);
+    int width=abs(selEndX-selStartX+1);
+    int height=abs(selEndY-selStartY+1);
+    cv::Rect ROI;
+    if(width<=1 || height<=1) ROI={0,0,loadedScan.depth.cols,loadedScan.depth.rows};
+    else ROI=cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height);
+    scan.depth=loadedScan.depth(ROI);
+    scan.mask =loadedScan.mask (ROI);
+    scan.maskN=loadedScan.maskN(ROI);
+    scan.XYnmppx=loadedScan.XYnmppx;
+    for(int i:{0,1}) scan.tiltCor[i]=loadedScan.tiltCor[i];
+    cv::minMaxIdx(scan.depth,&scan.min,&scan.max, nullptr, nullptr, scan.maskN);
 
-        std::string res;
-        pgCal->calcParameters(scan, &res);
-        std::cerr<<res<<"\n";
+    std::string res;
+    pgCal->calcParameters(scan, &res);
+    std::cerr<<res<<"\n";
 
-        QMenu menu;
-        if(!fitSaveFilename.empty()) menu.addAction("Append fit results to last chosen file.");
-        auto mns=menu.addAction("Make new save file (with header) and append fit results.");
-        auto ats=menu.addAction("Append fit results to existing file.");
-        auto chs=menu.exec(QCursor::pos());
-        if(chs==nullptr) return;
-        std::ofstream wfile;
-        if     (chs==mns) fitSaveFilename=QFileDialog::getSaveFileName(this, tr("Select file for saving fit results.")   ,fitSaveFilename.c_str(),tr("Text (*.txt *.dat *.csv)")).toStdString();
-        else if(chs==ats) fitSaveFilename=QFileDialog::getOpenFileName(this, tr("Select file for appending fit results."),fitSaveFilename.c_str(),tr("Text (*.txt *.dat *.csv)")).toStdString();
-        if(fitSaveFilename.empty()) return;
-        wfile=std::ofstream(fitSaveFilename, (chs==mns?std::ofstream::trunc:std::ofstream::app));
-        if(chs==mns) pgCal->writeProcessHeader(wfile);
-        wfile<<res;
-        wfile.close();
-    }
+    QMenu menu;
+    if(!fitSaveFilename.empty()) menu.addAction("Append fit results to last chosen file.");
+    auto mns=menu.addAction("Make new save file (with header) and append fit results.");
+    auto ats=menu.addAction("Append fit results to existing file.");
+    auto chs=menu.exec(QCursor::pos());
+    if(chs==nullptr) return;
+    std::ofstream wfile;
+    if     (chs==mns) fitSaveFilename=QFileDialog::getSaveFileName(this, tr("Select file for saving fit results.")   ,fitSaveFilename.c_str(),tr("Text (*.txt *.dat *.csv)")).toStdString();
+    else if(chs==ats) fitSaveFilename=QFileDialog::getOpenFileName(this, tr("Select file for appending fit results."),fitSaveFilename.c_str(),tr("Text (*.txt *.dat *.csv)")).toStdString();
+    if(fitSaveFilename.empty()) return;
+    wfile=std::ofstream(fitSaveFilename, (chs==mns?std::ofstream::trunc:std::ofstream::app));
+    if(chs==mns) pgCal->writeProcessHeader(wfile);
+    wfile<<res;
+    wfile.close();
 }
