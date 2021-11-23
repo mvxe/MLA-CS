@@ -866,6 +866,10 @@ void tab_camera::onLaplace(){
 }
 
 void tab_camera::onPeakFit(){
+    if(!loadedScan.depth.empty() && loadedOnDisplay);
+    else if(scanRes->get()!=nullptr) loadedScan=*scanRes->get();
+    else return;
+
     pgScanGUI::scanRes scan;
     int width=abs(selEndX-selStartX+1);
     int height=abs(selEndY-selStartY+1);
