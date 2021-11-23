@@ -885,7 +885,6 @@ void tab_camera::onPeakFit(){
 
     std::string res;
     pgCal->calcParameters(scan, &res);
-    std::cerr<<res<<"\n";
 
     QMenu menu;
     if(!fitSaveFilename.empty()) menu.addAction("Append fit results to last chosen file.");
