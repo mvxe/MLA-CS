@@ -208,7 +208,6 @@ public:
     val_selector* plataeuPeakRatio;
     QPushButton* corPPR;
     val_selector* pointSpacing;
-    checkbox_gs* writeZeros;
     std::vector<double> bsplbreakpts;
     std::vector<double> bsplcoefs;
     std::vector<double> bsplcov;

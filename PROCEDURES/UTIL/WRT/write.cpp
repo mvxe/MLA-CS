@@ -142,9 +142,15 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     QLabel* textl=new QLabel("The required pulse duration T to write a peak of height H is determined via T=A*H+C. If bsplines are defined, they overwrite this (only within their defined range).");
     textl->setWordWrap(true);
     slayout->addWidget(textl);
+    slayout->addWidget(new hline());
     refocusBeforeWrite=new checkbox_gs(false,"Refocus before each write");
     conf["refocusBeforeWrite"]=refocusBeforeWrite;
     slayout->addWidget(refocusBeforeWrite);
+    writeZeros=new checkbox_gs(false,"Write zeros");
+    writeZeros->setToolTip("If enabled, areas that do not need extra height will be written at threshold duration anyway (slower writing but can give more consistent zero levels if calibration is a bit off).");
+    conf["writeZeros"]=writeZeros;
+    slayout->addWidget(writeZeros);
+
     slayout->addWidget(new hline());
 
 
@@ -499,7 +505,6 @@ void pgWrite::onMenuChange(int index){
     constC=settingWdg[index]->constC;
     plataeuPeakRatio=settingWdg[index]->plataeuPeakRatio;
     pointSpacing=settingWdg[index]->pointSpacing;
-    writeZeros=settingWdg[index]->writeZeros;
     bsplbreakpts=&settingWdg[index]->bsplbreakpts;
     bsplcoefs=&settingWdg[index]->bsplcoefs;
     bsplcov=&settingWdg[index]->bsplcov;
@@ -539,10 +544,6 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent), p_ready
     pointSpacing=new val_selector(1, "Point spacing", 0.01, 10, 3, 0, {"um"});
     parent->conf[name]["pointSpacing"]=pointSpacing;
     slayout->addWidget(pointSpacing);
-    writeZeros=new checkbox_gs(false,"Write zeros");
-    writeZeros->setToolTip("If enabled, areas that do not need extra height will be written at threshold duration anyway (slower writing but can give more consistent zero levels if calibration is a bit off).");
-    parent->conf[name]["writeZeros"]=writeZeros;
-    slayout->addWidget(writeZeros);
     if(num==4){ //tag settings
         fontFace=new smp_selector("Font ", 0, OCV_FF::qslabels());
         parent->conf[name]["fontFace"]=fontFace;
