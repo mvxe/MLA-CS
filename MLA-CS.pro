@@ -23,7 +23,8 @@ DEFINES += QT_DEPRECATED_WARNINGS CVPLOT_HEADER_ONLY=true
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-
+QMAKE_CC = gcc-10
+QMAKE_CXX = g++-10
 CONFIG += object_parallel_to_source no_keywords           #without object_parallel_to_source you cmake doesnt diferentiate between same named files in different folders, no_keywords solves a conflict with glibc
 QMAKE_CXXFLAGS += -std=c++20
 
@@ -38,7 +39,7 @@ RESOURCES += \
     icons/icon.qrc \
     icons/icon.qrc
 
-unix:!macx: LIBS += -lcurlpp -lcurl -lserial -DVIENNACL_WITH_OPENCL  -lOpenCL -lgsl
+unix:!macx: LIBS += -lserial -DVIENNACL_WITH_OPENCL  -lOpenCL -lgsl
 #QMAKE_CXXFLAGS += -g -gdwarf        # for debugging purposes (using heaptrack)
 #QMAKE_CFLAGS+="-fsanitize=address -fno-omit-frame-pointer"       # for debugging purposes : asan
 #QMAKE_LFLAGS+="-fsanitize=address"

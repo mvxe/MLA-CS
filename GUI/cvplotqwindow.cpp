@@ -95,7 +95,7 @@ void CvPlotQWindow::mouseReleaseEvent(QMouseEvent *event){
 }
 void CvPlotQWindow::wheelEvent(QWheelEvent *event){
     double zoom=1-0.01*event->angleDelta().y()/8;
-    axes.zoom(wsize,cv::Point(event->position().x(),event->position().y()),zoom,zoom);
+    axes.zoom(wsize,cv::Point(event->pos().x(),event->pos().y()),zoom,zoom);
     redraw();
 }
 void CvPlotQWindow::onSavePlot(){
