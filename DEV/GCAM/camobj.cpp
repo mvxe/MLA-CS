@@ -42,10 +42,10 @@ void camobj::new_frame_ready (ArvStream *stream, camobj* camm)
     else std::cerr<<"WARNING: this shouldnt happen, see camobj::new_frame_ready\n";
 }
 void camobj::start(){
-    payload=arv_camera_get_payload(cam, NULL);
     arv_camera_set_acquisition_mode(cam, ARV_ACQUISITION_MODE_CONTINUOUS, NULL);
     arv_camera_get_sensor_size(cam,&Xsize,&Ysize, NULL);
     arv_camera_set_region(cam,0,0,Xsize,Ysize, NULL);
+    payload=arv_camera_get_payload(cam, NULL);
     format=arv_camera_get_pixel_format_as_string(cam, NULL);
     set_trigger("none");
 
