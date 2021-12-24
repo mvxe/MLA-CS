@@ -4,8 +4,7 @@
 #include "GUI/tab_monitor.h"    //for debug purposes
 #include <time.h>
 #include "opencv2/core/utils/filesystem.hpp"
-#include <dirent.h>
-#include <sys/stat.h>
+#include <filesystem>
 #include <QTreeView>
 #include <QStandardItemModel>
 #include <gsl/gsl_multifit.h>
@@ -274,48 +273,36 @@ void pgWrite::onRecomputeTag(){
     }
 }
 void pgWrite::guessAndUpdateNextTagUInt(){
-    std::vector<std::string> folders;
-    std::vector<std::string> files;
+    std::vector<std::filesystem::path> folders;
+
     folders.push_back(scan_default_folder->get());
-    std::string folder; DIR *wp;
-    std::string curFile;
-    struct dirent *entry;
-    struct stat filetype;
     int newTagN=-1;
     while(!folders.empty()){
-        folder=folders.back();
+        std::vector<std::filesystem::directory_entry> files;
+        for(auto const& dir_entry: std::filesystem::directory_iterator{folders.back()}) files.push_back(dir_entry);
         folders.pop_back();
-        wp=opendir(folder.c_str());
-        if(wp!=nullptr) while((entry=readdir(wp))){
-            curFile=entry->d_name;
-            if (curFile!="." && curFile!=".."){
-                curFile=folder+'/'+entry->d_name;
-                stat(curFile.data(),&filetype);
-                if(filetype.st_mode&S_IFDIR) folders.push_back(curFile);
-                else if (filetype.st_mode&S_IFREG){
-                    if(curFile.size()>3) if(curFile.substr(curFile.size()-4,4).compare(".cfg")==0){
-                        std::ifstream ifile(curFile);
-                        std::string line;
-                        bool right_tag=false;
-                        int num=-1;
-                        while(!ifile.eof()){
-                            std::getline(ifile,line);
-                            if(line.find("Tag String: ")!=std::string::npos){
-                                line.erase(0,sizeof("Tag String: ")-1);
-                                while(std::isspace(line.back())) line.pop_back();
-                                right_tag=(line.compare(tagString->text().toStdString())==0);
-                            }else if (line.find("Tag UInt: ")!=std::string::npos){
-                                line.erase(0,sizeof("Tag UInt: ")-1);
-                                num=std::stoi(line);
-                            }
-                        }
-                        if(right_tag && num>newTagN) newTagN=num;
-                        ifile.close();
+        for(auto& path: files){
+            if(path.is_directory()) folders.push_back(path);
+            else if(path.path().extension().string()==".cfg"){
+                std::ifstream ifile(path.path());
+                std::string line;
+                bool right_tag=false;
+                int num=-1;
+                while(!ifile.eof()){
+                    std::getline(ifile,line);
+                    if(line.find("Tag String: ")!=std::string::npos){
+                        line.erase(0,sizeof("Tag String: ")-1);
+                        while(std::isspace(line.back())) line.pop_back();
+                        right_tag=(line.compare(tagString->text().toStdString())==0);
+                    }else if (line.find("Tag UInt: ")!=std::string::npos){
+                        line.erase(0,sizeof("Tag UInt: ")-1);
+                        num=std::stoi(line);
                     }
                 }
+                if(right_tag && num>newTagN) newTagN=num;
+                ifile.close();
             }
         }
-        closedir(wp);
     }
     if(newTagN>-1) tagUInt->setValue(newTagN+1);
 }

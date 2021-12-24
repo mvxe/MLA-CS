@@ -5,8 +5,6 @@
 #include "PROCEDURES/UTIL/USC/move.h"
 #include "opencv2/core/utils/filesystem.hpp"
 #include "GUI/tab_monitor.h"    //for debug purposes
-#include <dirent.h>
-#include <sys/stat.h>
 #include <algorithm>
 #include <random>
 #include <gsl/gsl_rng.h>
@@ -20,6 +18,7 @@
 #include <gsl/gsl_statistics.h>
 #include <CvPlot/cvplot.h>
 #include <opencv2/highgui.hpp>
+#include <filesystem>
 
 pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBeamAnalysis* pgBeAn, pgWrite* pgWr, overlay& ovl): pgSGUI(pgSGUI), pgFGUI(pgFGUI), pgMGUI(pgMGUI), pgBeAn(pgBeAn), pgWr(pgWr), ovl(ovl){
     btnWriteCalib=new HQPushButton("Run calibration");
@@ -57,7 +56,7 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     conf["selArraySpacing"]=selArraySpacing;
     connect(selArraySpacing, SIGNAL(changed()), this, SLOT(updateOverlappingCalibEnabled()));
     slayout->addWidget(selArraySpacing);
-    selArrayType=new smp_selector("Variable Parameters (X-Y): ", 0, {"Duration(X,Y), no repeat","Focus(X,Y), no repeat","Duration(X)-Focus(Y)", "Duration(X,Y), repeat","Focus(X,Y), repeat"});
+    selArrayType=new smp_selector("Variable Parameters (X-Y): ", 0, {"Duration(X,Y), no repeat","Focus(X,Y), no repeat","Duration(X)-Focus(Y)", "Duration(X,Y), repeat","Focus(X,Y), repeat", "none (for prepeak)"});
     connect(selArrayType, SIGNAL(changed(int)), this, SLOT(onSelArrayTypeChanged(int)));
     conf["selArrayType"]=selArrayType;
     slayout->addWidget(selArrayType);
@@ -91,7 +90,7 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     conf["saveRF"]=saveRF;
     slayout->addWidget(saveRF);
     slayout->addWidget(new hline);
-    selPlateauA=new val_selector(0, "Plateau", 0, 1000, 3, 0, {"nm"});
+    selPlateauA=new val_selector(0, "Plateau Height", 0, 1000, 3, 0, {"nm"});
     conf["selPlateauA"]=selPlateauA;
     slayout->addWidget(selPlateauA);
     selPlateauB=new val_selector(0, "Plateau upper limit", 0, 1000, 3, 0, {"nm"});
@@ -183,7 +182,7 @@ void pgCalib::selArray(int ArrayIndex, int MultiArrayIndex){
     bool pla=MultiArrayIndex==3;
     selArrayFocA->setLabel(foc?"Focus lower limit":"Focus");
     selArrayDurA->setLabel(dur?"Duration lower limit":"Duration");
-    selPlateauA->setLabel(pla?"Plateau lower limit":"Height");
+    selPlateauA->setLabel(pla?"Plateau lower limit":"Plateau Height");
     selArrayFocB->setVisible(foc);
     selArrayDurB->setVisible(dur);
     selPlateauB->setVisible(pla);
@@ -547,48 +546,35 @@ void pgCalib::writeProcessHeader(std::ofstream& wfile){
 }
 
 void pgCalib::onProcessFocusMes(){
-    std::vector<std::string> readFolders;   //folders still yet to be checked
-    std::vector<measFolder> measFolders;   //folders that contain the expected measurement files
+    std::vector<std::filesystem::path> readFolders; //folders still yet to be checked
+    std::vector<measFolder> measFolders;            //folders that contain the expected measurement files
 
-    readFolders.emplace_back(QFileDialog::getExistingDirectory(this, "Select Folder Containing Measurements. It will be Searched Recursively.", QString::fromStdString(lastFolder)).toStdString());
-    if(readFolders.back().empty()) return;
-    lastFolder=readFolders.back().substr(0,readFolders.back().find_last_of("/")+1);
-    std::string root=readFolders.back();
-    DIR *wp;
-    struct dirent *entry;
-    struct stat filetype;
-    std::string curFile;
-    std::string curFolder;
+    std::string root=QFileDialog::getExistingDirectory(this, "Select Folder Containing Measurements. It will be Searched Recursively.", QString::fromStdString(lastFolder)).toStdString();
+    if(root.empty()) return;
+    readFolders.push_back(std::filesystem::path(root));
+    lastFolder=readFolders.back().parent_path().string()+"/";
     while(!readFolders.empty()){
-        curFolder=readFolders.back();
+        std::vector<std::filesystem::directory_entry> files;
+        auto current=readFolders.back();
+        for(auto const& dir_entry: std::filesystem::directory_iterator{current}) files.push_back(dir_entry);
         readFolders.pop_back();
+
         bool dirHasMes[3]{false,false,false};
         unsigned overlapping=0;
-        wp=opendir(curFolder.c_str());
-        if(wp!=nullptr) while(entry=readdir(wp)){
-            curFile=entry->d_name;
-            if (curFile!="." && curFile!=".."){
-                curFile=curFolder+'/'+entry->d_name;
-
-                stat(curFile.data(),&filetype);
-                if(filetype.st_mode&S_IFDIR) readFolders.push_back(curFile);
-                else if (filetype.st_mode&S_IFREG){
-                    std::string str=entry->d_name;
-                    if(str.compare("settings.txt")==0) dirHasMes[0]=true;
-                    else if(str.compare("before.pfm")==0) dirHasMes[1]=true;
-                    else if(str.compare("after.pfm")==0) dirHasMes[2]=true;
-                    else if(util::toString("after-ovr",overlapping,".pfm").compare(entry->d_name)==0) overlapping++;
-                    auto it=str.find("after-ovr");
-                    unsigned tmp{0};
-                    if(it!=std::string::npos){
-                        tmp=std::stoi(str.substr(it+9));
-                        if(tmp>overlapping)overlapping=tmp;
-                    }
-                }
+        for(auto& path: files){
+            if(path.is_directory()) readFolders.push_back(path);
+            else if(path.path().filename().string()=="settings.txt") dirHasMes[0]=true;
+            else if(path.path().filename().string()=="before.pfm") dirHasMes[1]=true;
+            else if(path.path().filename().string()=="after.pfm") dirHasMes[2]=true;
+            else if(path.path().filename().string()==util::toString("after-ovr",overlapping,".pfm")) overlapping++;
+            auto it=path.path().filename().string().find("after-ovr");
+            unsigned tmp{0};
+            if(it!=std::string::npos){
+                tmp=std::stoi(path.path().filename().string().substr(it+9));
+                if(tmp>overlapping)overlapping=tmp;
             }
         }
-        closedir(wp);
-        if(dirHasMes[0]&dirHasMes[1]&dirHasMes[2]) measFolders.push_back({curFolder,overlapping});
+        if(dirHasMes[0]&dirHasMes[1]&dirHasMes[2]) measFolders.push_back({current.string(),overlapping});
     }
     std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_comp);
     pgSGUI->MLP.progress_comp=0;
@@ -895,33 +881,21 @@ void pgCalib::drawWriteArea(cv::Mat* img){
 }
 
 void pgCalib::onfpLoad(){
-    std::vector<std::string> readFolders;
-    std::vector<std::string> measFiles;
+    std::vector<std::filesystem::path> readFolders;
+    std::vector<std::filesystem::path> measFiles;
 
-    readFolders.emplace_back(QFileDialog::getExistingDirectory(this, "Select Folder Containing Processed Measurements. It will be Searched Recursively for proc.txt files.", QString::fromStdString(lastFolder)).toStdString());
-    if(readFolders.back().empty()) return;
-    lastFolder=readFolders.back().substr(0,readFolders.back().find_last_of("/")+1);
-    std::string saveName=readFolders.back()+"/proc.txt";
-    DIR *wp;
-    struct dirent *entry;
-    struct stat filetype;
-    std::string curFile;
-    std::string curFolder;
+    std::string path=QFileDialog::getExistingDirectory(this, "Select Folder Containing Processed Measurements. It will be Searched Recursively for proc.txt files.", QString::fromStdString(lastFolder)).toStdString();
+    if(path.empty()) return;
+    readFolders.push_back(std::filesystem::path(path));
+    lastFolder=readFolders.back().parent_path().string()+"/";
     while(!readFolders.empty()){
-        curFolder=readFolders.back();
+        std::vector<std::filesystem::directory_entry> files;
+        for(auto const& dir_entry: std::filesystem::directory_iterator{readFolders.back()}) files.push_back(dir_entry);
         readFolders.pop_back();
-        wp=opendir(curFolder.c_str());
-        if(wp!=nullptr) while(entry=readdir(wp)){
-            curFile=entry->d_name;
-            if (curFile!="." && curFile!=".."){
-                curFile=curFolder+'/'+entry->d_name;
-
-                stat(curFile.data(),&filetype);
-                if(filetype.st_mode&S_IFDIR) readFolders.push_back(curFile);
-                else if(strcmp(entry->d_name,"proc.txt")==0) measFiles.push_back(curFile);
-            }
+        for(auto& path: files){
+            if(path.is_directory()) readFolders.push_back(path);
+            else if(path.path().stem().string().find("proc")!=std::string::npos && path.path().extension().string()==".txt") measFiles.push_back(path);
         }
-        closedir(wp);
     }
 
     const size_t pos[]={1,12,3,27,2,8,9};     // indices in data(starting from 1): valid, duration, height, height_err, focus, xofs, yofs
@@ -960,7 +934,7 @@ void pgCalib::onfpLoad(){
     fitAndPlot->setEnabled(true);
     fpClear->setEnabled(true);
     QString list=fpList->text();
-    for(auto& item:measFiles) {list+=item.substr(item.find_last_of('/',item.find_last_of('/')-1)+1).c_str(); list+="\n";}
+    for(auto& item:measFiles) {list+=item.parent_path().filename().c_str(); list+="/"; list+=item.filename().c_str(); list+="\n";}
     fpList->setText(list);
     fpList->setVisible(true);
 

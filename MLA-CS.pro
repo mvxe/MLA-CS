@@ -56,6 +56,7 @@ HEADERS += \
     DEV/RPTY/rpbbserial.h \
     DEV/RPTY/rpmotion.h \
     DEV/controller.h \
+    GUI/cvplotauxobj.h \
     GUI/cvplotqwindow.h \
     UTIL/.rtoml/rtoml.hpp \
     UTIL/motioncalc.h \
@@ -119,6 +120,7 @@ SOURCES += \
     DEV/RPTY/rpbbserial.cpp \
     DEV/RPTY/rpdevices.cpp \
     DEV/RPTY/rpmotion.cpp \
+    GUI/cvplotauxobj.cpp \
     GUI/cvplotqwindow.cpp \
     main.cpp \
     globals.cpp \
