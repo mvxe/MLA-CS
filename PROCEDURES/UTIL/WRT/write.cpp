@@ -149,6 +149,15 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     writeZeros->setToolTip("If enabled, areas that do not need extra height will be written at threshold duration anyway (slower writing but can give more consistent zero levels if calibration is a bit off).");
     conf["writeZeros"]=writeZeros;
     slayout->addWidget(writeZeros);
+    selPScheduling=new smp_selector("Point scheduling: ", 0, {"ZigZag","Nearest - Minimum Delay/Distance"});
+    connect(selPScheduling, SIGNAL(changed(int)), this, SLOT(onSelPSchedulingChange(int)));
+    conf["selPScheduling"]=selPScheduling;
+    slayout->addWidget(selPScheduling);
+    minDelDis=new val_selector(0, "Minimum Delay/Distance: ", 0, 999999, 9, 0, {"ms/um"});
+    minDelDis->setToolTip("Cooldown delay - does not include pulse duration! Also may not include settle time, depending on move controler implementation.");
+    conf["minDelDis"]=minDelDis;
+    minDelDis->setVisible(false);
+    slayout->addWidget(minDelDis);
 
     slayout->addWidget(new hline());
 
@@ -205,6 +214,9 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
 }
 pgWrite::~pgWrite(){
     delete scanRes;
+}
+void pgWrite::onSelPSchedulingChange(int index){
+    minDelDis->setVisible(index==1);
 }
 void pgWrite::onNotes(){
     bool ok;
@@ -702,49 +714,132 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
     wasMirau=pgMGUI->currentObj==0;
     pgMGUI->chooseObj(false);    // switch to writing
 
+    CTRL::CO CO(go.pRPTY);
     double offsX,offsY;
     offsX=(resizedWrite.cols-1)*vpointSpacing;
     offsY=(resizedWrite.rows-1)*vpointSpacing;
-    CTRL::CO CO(go.pRPTY);
         // move to target and correct for focus (this can happen simultaneously with objective switch)
     pgMGUI->corCOMove(CO,vfocusXcor,vfocusYcor,vfocus);
     pgMGUI->corCOMove(CO,-offsX/2,-offsY/2,0);
-        // wait till motion completes
-    CO.addHold("X",CTRL::he_motion_ontarget);
-    CO.addHold("Y",CTRL::he_motion_ontarget);
-    CO.addHold("Z",CTRL::he_motion_ontarget);
-    CO.execute();
-    CO.clear(true);
+    if(selPScheduling->index==0){   //ZigZag
 
-    double pulse;
-    bool xdir=0;
-    for(int j=0;j!=resizedWrite.rows;j++){   // write row by row (so that processing for the next row is done while writing the previous one, and the operation can be terminated more easily)
-        for(int i=0;i!=resizedWrite.cols;i++){
-            pulse=predictDuration(resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i));        // Y inverted because image formats have flipped Y
-            if(i!=0) pgMGUI->corCOMove(CO,(xdir?-1:1)*vpointSpacing,0,0);
-            if(pulse==0) continue;
+            // wait till motion completes
+        CO.addHold("X",CTRL::he_motion_ontarget);
+        CO.addHold("Y",CTRL::he_motion_ontarget);
+        CO.addHold("Z",CTRL::he_motion_ontarget);
+        CO.execute();
+        CO.clear(true);
+
+        double pulse;
+        bool xdir=0;
+        for(int j=0;j!=resizedWrite.rows;j++){   // write row by row (so that processing for the next row is done while writing the previous one, and the operation can be terminated more easily)
+            for(int i=0;i!=resizedWrite.cols;i++){
+                pulse=predictDuration(resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i));        // Y inverted because image formats have flipped Y
+                if(i!=0) pgMGUI->corCOMove(CO,(xdir?-1:1)*vpointSpacing,0,0);
+                if(writeZeros->val==false && resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i)==0) continue;
+                if(pulse==0) continue;
+                CO.addHold("X",CTRL::he_motion_ontarget);
+                CO.addHold("Y",CTRL::he_motion_ontarget);
+                CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
+                CO.pulseGPIO("wrLaser",pulse/1000);
+            }
+            if (j!=resizedWrite.rows-1) pgMGUI->corCOMove(CO,0,vpointSpacing,0);
+            CO.execute();
+            CO.clear(true);
+            xdir^=1;
+
+            while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+            MLP.progress_proc=100./resizedWrite.rows*j;
+            if(wabort) {pgMGUI->move(0,0,-vfocus); if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true); return true;}
+        }
+
+        pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
+        pgMGUI->corCOMove(CO,(xdir?-1:1)*offsX/2,-offsY/2,0);
+        CO.execute();
+        CO.clear(true);
+    }else if(selPScheduling->index==1){ //Nearest - Minimum Delay/Distance
+        cv::Mat completed=cv::Mat::zeros(resizedWrite.size(), CV_8U);
+        if(writeZeros->val==false) cv::compare(resizedWrite,0,completed,cv::CMP_EQ);
+        cv::Mat pulseMat=cv::Mat::zeros(resizedWrite.size(), CV_32F);
+        for(int j=0;j!=resizedWrite.rows;j++) for(int i=0;i!=resizedWrite.cols;i++) pulseMat.at<float>(j,i)=predictDuration(resizedWrite.at<float>(j,i));
+        int last_i=0, last_j=0;
+        int next_i=last_i, next_j=last_j;
+
+        long unsigned todo=completed.rows*completed.cols-cv::countNonZero(completed);
+        if(todo==0) goto abort;
+
+        struct pt{
+            int i,j;
+            double delay;       // in ms
+            double distance;    // in um
+        };
+        std::vector<pt> lut_h, lut_l;
+        const double velX=go.pRPTY->getMotionSetting("X",CTRL::mst_defaultVelocity);
+        const double velY=go.pRPTY->getMotionSetting("Y",CTRL::mst_defaultVelocity);
+        const double accX=go.pRPTY->getMotionSetting("X",CTRL::mst_defaultAcceleration);
+        const double accY=go.pRPTY->getMotionSetting("Y",CTRL::mst_defaultAcceleration);
+        double timeX,timeY;
+
+        for(int j=0;j!=resizedWrite.rows;j++) for(int i=0;i!=resizedWrite.cols;i++){
+            mcutil::evalAccMotion(i*vpointSpacing, accX, velX, &timeX);
+            mcutil::evalAccMotion(j*vpointSpacing, accY, velY, &timeY);
+            auto& lut=(std::max(timeX,timeY)/sqrt(pow(i*vpointSpacing,2)+pow(j*vpointSpacing,2))>=minDelDis->val)?lut_h:lut_l;
+            lut.push_back({i,j,std::max(timeX,timeY),sqrt(pow(i*vpointSpacing,2)+pow(j*vpointSpacing,2))});
+        }
+        std::sort(lut_l.begin(), lut_l.end(), [](pt i,pt j){return (i.distance<j.distance);});
+        std::sort(lut_h.begin(), lut_h.end(), [](pt i,pt j){return (i.distance<j.distance);});
+        std::cerr<<"lut_h size="<<lut_h.size()<<"\n";
+        std::cerr<<"lut_l size="<<lut_l.size()<<"\n";
+
+        if(completed.at<uint8_t>(next_j,next_i)==255) for(auto& lut: {lut_l, lut_h}) for(auto& el: lut)
+            if(completed.at<uint8_t>(el.j,el.i)==0){
+                next_j=el.j;
+                next_i=el.i;
+                goto _out;
+            }_out:;
+        while(1){
+            pgMGUI->corCOMove(CO,(next_i-last_i)*vpointSpacing,(next_j-last_j)*vpointSpacing,0);
+            last_i=next_i;
+            last_j=next_j;
             CO.addHold("X",CTRL::he_motion_ontarget);
             CO.addHold("Y",CTRL::he_motion_ontarget);
             CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
-            CO.pulseGPIO("wrLaser",pulse/1000);
+            CO.pulseGPIO("wrLaser",predictDuration(resizedWrite.at<float>(next_j,next_i))/1000);
+            completed.at<uint8_t>(next_j,next_i)=255;
+            todo--;
+
+            if(todo==0) break;
+            for(auto& el: lut_h) for(int tmp_i:{last_i-el.i,last_i+el.i}) for(int tmp_j:{last_j-el.j,last_j+el.j}){     // there is some redundancy
+                if(tmp_i<0 || tmp_i>=completed.cols || tmp_j<0 || tmp_j>=completed.rows) continue;
+                if(completed.at<uint8_t>(tmp_j,tmp_i)==0){
+                    next_i=tmp_i;
+                    next_j=tmp_j;
+                    goto next;
+                }
+            }
+            for (auto el = lut_l.rbegin(); el != lut_l.rend(); el++) for(int tmp_i:{last_i-el->i,last_i+el->i}) for(int tmp_j:{last_j-el->j,last_j+el->j}){     // need to wait as well
+                if(tmp_i<0 || tmp_i>=completed.cols || tmp_j<0 || tmp_j>=completed.rows) continue;
+                if(completed.at<uint8_t>(tmp_j,tmp_i)==0){
+                    next_i=tmp_i;
+                    next_j=tmp_j;
+                    mcutil::evalAccMotion(tmp_i*vpointSpacing, accX, velX, &timeX);
+                    mcutil::evalAccMotion(tmp_j*vpointSpacing, accY, velY, &timeY);
+                    CO.addDelay(minDelDis->val*el->distance-std::max(timeX,timeY));
+                    goto next;
+                }
+            }
+            QMessageBox::critical(gui_activation, "Error", "Cannot find a point in pgWrite::writeMat; this shouldn't happen!"); goto abort; // in case there is an unforseen bug, TODO remove
+            next:;
         }
-        if (j!=resizedWrite.rows-1) pgMGUI->corCOMove(CO,0,vpointSpacing,0);
+
+        pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
+        pgMGUI->corCOMove(CO,-last_i*vpointSpacing+offsX/2,-last_j*vpointSpacing+offsY/2,0);
         CO.execute();
         CO.clear(true);
-        xdir^=1;
-
-        while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
-        MLP.progress_proc=100./resizedWrite.rows*j;
-        if(wabort) {pgMGUI->move(0,0,-vfocus); if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true); return true;}
     }
 
-    pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
-    pgMGUI->corCOMove(CO,(xdir?-1:1)*offsX/2,-offsY/2,0);
-    CO.execute();
-    CO.clear(true);
-
     while(CO.getProgress()<1) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
-    MLP.progress_proc=100;
+    abort: MLP.progress_proc=100;
     if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true);
     return false;
 }

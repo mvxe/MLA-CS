@@ -98,6 +98,8 @@ private:
     val_selector* plataeuPeakRatio;
     val_selector* pointSpacing;
     checkbox_gs* writeZeros;
+    smp_selector* selPScheduling;
+    val_selector* minDelDis;
     checkbox_gs* refocusBeforeWrite;
     std::vector<double>* bsplbreakpts;
     std::vector<double>* bsplcoefs;
@@ -185,6 +187,7 @@ private Q_SLOTS:
     void onItemRemove();
     void onScheduleWriteStart();
     void onClearNonPending();
+    void onSelPSchedulingChange(int);
 private:
     bool _onScan(cv::Rect ROI={0,0,0,0}, double* coords=nullptr);
     bool _onSave(bool ask=false, std::string filename="");
