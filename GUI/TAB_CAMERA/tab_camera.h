@@ -102,6 +102,8 @@ private:
     void _cropToSelection();
 
     std::string fitSaveFilename{""};
+    CvPlotQWindow* cpwin{nullptr};
+
 private Q_SLOTS:
     void work_fun();
     void on_tab_change(int index);

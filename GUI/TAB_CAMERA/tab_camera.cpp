@@ -883,6 +883,20 @@ void tab_camera::onPeakFit(){
     for(int i:{0,1}) scan.tiltCor[i]=loadedScan.tiltCor[i];
     cv::minMaxIdx(scan.depth,&scan.min,&scan.max, nullptr, nullptr, scan.maskN);
 
+
+    if(cpwin==nullptr) cpwin=new CvPlotQWindow;
+    cpwin->axes=CvPlot::makePlotAxes();
+    //cpwin->axes.xLabel("");
+    //cpwin->axes.yLabel("Peak Height (nm)");
+    //cpwin->axes=CvPlot::plotImage(scan.depth);
+    auto& sdata=cpwin->axes.create<CvPlot::Image>(scan.depth);
+    sdata.setColormap(cv::COLORMAP_TURBO);
+
+    cpwin->redraw();
+    cpwin->show();
+    cpwin->activateWindow();    // takes focus
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+
     std::string res;
     pgCal->calcParameters(scan, &res);
 
