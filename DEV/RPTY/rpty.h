@@ -77,8 +77,8 @@ private:
         cqueue main;
         cqueue timer;
         std::map<std::string, double> motionRemainders;
-        uint64_t TODO;
-        uint32_t ELNUM;
+        int64_t TODO;
+        int32_t ELNUM;
     };
     std::map<CO*, cqus> commandObjects;
 

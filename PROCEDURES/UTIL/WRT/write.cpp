@@ -149,15 +149,9 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     writeZeros->setToolTip("If enabled, areas that do not need extra height will be written at threshold duration anyway (slower writing but can give more consistent zero levels if calibration is a bit off).");
     conf["writeZeros"]=writeZeros;
     slayout->addWidget(writeZeros);
-    selPScheduling=new smp_selector("Point scheduling: ", 0, {"ZigZag","Nearest - Minimum Delay/Distance"});
-    connect(selPScheduling, SIGNAL(changed(int)), this, SLOT(onSelPSchedulingChange(int)));
+    selPScheduling=new smp_selector("Point scheduling: ", 0, {"ZigZag","Nearest"});
     conf["selPScheduling"]=selPScheduling;
     slayout->addWidget(selPScheduling);
-    minDelDis=new val_selector(0, "Minimum Delay/Distance: ", 0, 999999, 9, 0, {"ms/um"});
-    minDelDis->setToolTip("Cooldown delay - does not include pulse duration! Also may not include settle time, depending on move controler implementation.");
-    conf["minDelDis"]=minDelDis;
-    minDelDis->setVisible(false);
-    slayout->addWidget(minDelDis);
 
     slayout->addWidget(new hline());
 
@@ -214,9 +208,6 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
 }
 pgWrite::~pgWrite(){
     delete scanRes;
-}
-void pgWrite::onSelPSchedulingChange(int index){
-    minDelDis->setVisible(index==1);
 }
 void pgWrite::onNotes(){
     bool ok;
@@ -757,7 +748,8 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
         pgMGUI->corCOMove(CO,(xdir?-1:1)*offsX/2,-offsY/2,0);
         CO.execute();
         CO.clear(true);
-    }else if(selPScheduling->index==1){ //Nearest - Minimum Delay/Distance
+    }else if(selPScheduling->index==1){ //Nearest
+        cv::flip(resizedWrite,resizedWrite,0);
         cv::Mat completed=cv::Mat::zeros(resizedWrite.size(), CV_8U);
         if(writeZeros->val==false) cv::compare(resizedWrite,0,completed,cv::CMP_EQ);
         cv::Mat pulseMat=cv::Mat::zeros(resizedWrite.size(), CV_32F);
@@ -765,15 +757,15 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
         int last_i=0, last_j=0;
         int next_i=last_i, next_j=last_j;
 
-        long unsigned todo=completed.rows*completed.cols-cv::countNonZero(completed);
+        long todo=completed.rows*completed.cols-cv::countNonZero(completed);
+        const long total=completed.rows*completed.cols;
         if(todo==0) goto abort;
 
         struct pt{
             int i,j;
-            double delay;       // in ms
             double distance;    // in um
         };
-        std::vector<pt> lut_h, lut_l;
+        std::vector<pt> lut;
         const double velX=go.pRPTY->getMotionSetting("X",CTRL::mst_defaultVelocity);
         const double velY=go.pRPTY->getMotionSetting("Y",CTRL::mst_defaultVelocity);
         const double accX=go.pRPTY->getMotionSetting("X",CTRL::mst_defaultAcceleration);
@@ -783,15 +775,11 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
         for(int j=0;j!=resizedWrite.rows;j++) for(int i=0;i!=resizedWrite.cols;i++){
             mcutil::evalAccMotion(i*vpointSpacing, accX, velX, &timeX);
             mcutil::evalAccMotion(j*vpointSpacing, accY, velY, &timeY);
-            auto& lut=(std::max(timeX,timeY)/sqrt(pow(i*vpointSpacing,2)+pow(j*vpointSpacing,2))>=minDelDis->val)?lut_h:lut_l;
-            lut.push_back({i,j,std::max(timeX,timeY),sqrt(pow(i*vpointSpacing,2)+pow(j*vpointSpacing,2))});
+            lut.push_back({i,j,sqrt(pow(i*vpointSpacing,2)+pow(j*vpointSpacing,2))});
         }
-        std::sort(lut_l.begin(), lut_l.end(), [](pt i,pt j){return (i.distance<j.distance);});
-        std::sort(lut_h.begin(), lut_h.end(), [](pt i,pt j){return (i.distance<j.distance);});
-        std::cerr<<"lut_h size="<<lut_h.size()<<"\n";
-        std::cerr<<"lut_l size="<<lut_l.size()<<"\n";
+        std::sort(lut.begin(), lut.end(), [](pt i,pt j){return (i.distance<j.distance);});
 
-        if(completed.at<uint8_t>(next_j,next_i)==255) for(auto& lut: {lut_l, lut_h}) for(auto& el: lut)
+        if(completed.at<uint8_t>(next_j,next_i)==255) for(auto& el: lut)
             if(completed.at<uint8_t>(el.j,el.i)==0){
                 next_j=el.j;
                 next_i=el.i;
@@ -809,27 +797,18 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
             todo--;
 
             if(todo==0) break;
-            for(auto& el: lut_h) for(int tmp_i:{last_i-el.i,last_i+el.i}) for(int tmp_j:{last_j-el.j,last_j+el.j}){     // there is some redundancy
+            for(auto& el: lut) for(int tmp_i:{last_i-el.i,last_i+el.i}) for(int tmp_j:{last_j-el.j,last_j+el.j}){     // there is some redundancy
                 if(tmp_i<0 || tmp_i>=completed.cols || tmp_j<0 || tmp_j>=completed.rows) continue;
                 if(completed.at<uint8_t>(tmp_j,tmp_i)==0){
                     next_i=tmp_i;
                     next_j=tmp_j;
-                    goto next;
-                }
-            }
-            for (auto el = lut_l.rbegin(); el != lut_l.rend(); el++) for(int tmp_i:{last_i-el->i,last_i+el->i}) for(int tmp_j:{last_j-el->j,last_j+el->j}){     // need to wait as well
-                if(tmp_i<0 || tmp_i>=completed.cols || tmp_j<0 || tmp_j>=completed.rows) continue;
-                if(completed.at<uint8_t>(tmp_j,tmp_i)==0){
-                    next_i=tmp_i;
-                    next_j=tmp_j;
-                    mcutil::evalAccMotion(tmp_i*vpointSpacing, accX, velX, &timeX);
-                    mcutil::evalAccMotion(tmp_j*vpointSpacing, accY, velY, &timeY);
-                    CO.addDelay(minDelDis->val*el->distance-std::max(timeX,timeY));
                     goto next;
                 }
             }
             QMessageBox::critical(gui_activation, "Error", "Cannot find a point in pgWrite::writeMat; this shouldn't happen!"); goto abort; // in case there is an unforseen bug, TODO remove
             next:;
+            while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+            MLP.progress_proc=100./total*(total-todo);
         }
 
         pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
@@ -838,7 +817,10 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
         CO.clear(true);
     }
 
-    while(CO.getProgress()<1) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+    while(CO.getProgress()<1){
+        QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+        MLP.progress_proc=100*CO.getProgress();
+    }
     abort: MLP.progress_proc=100;
     if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true);
     return false;
