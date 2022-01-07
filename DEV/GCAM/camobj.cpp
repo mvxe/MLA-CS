@@ -6,6 +6,12 @@ camobj::camobj(std::string strID) : camobj_config(strID), selected_ID(&mkmx,strI
     conf["cameraTimeout"].comments().push_back(" Camera timeout in ms");
 }
 GCAM *camobj::cobj;
+camobj::~camobj(){
+    while(!FullBuffers.empty()){
+        g_clear_object(&FullBuffers.front());
+        FullBuffers.pop_front();
+    }
+}
 
 void camobj::new_frame_ready (ArvStream *stream, camobj* camm)
 {
@@ -145,10 +151,6 @@ void camobj::end(){
     while(!FreeBuffers.empty()){
         g_clear_object(&FreeBuffers.front());
         FreeBuffers.pop();
-    }
-    if(FQsPCcam.user_queues.empty()) while(!FullBuffers.empty()){
-        g_clear_object(&FullBuffers.front());
-        FullBuffers.pop_front();
     }
     if(control_lost) cobj->MVM_list=true;
     control_lost=false;

@@ -47,6 +47,7 @@ public:
 private:
     std::atomic<bool> _connected{false};
     camobj(std::string strID);
+    ~camobj();
     static void control_lost_cb (ArvDevice *ldev);
     static void new_frame_ready (ArvStream *stream, camobj* camm);
     std::atomic<bool> control_lost{false};

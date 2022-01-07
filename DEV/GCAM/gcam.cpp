@@ -21,9 +21,11 @@ void GCAM::run(){    //this is the GCAM thread loop
             MVM_list=false;
         }
 
+        auto b4=std::chrono::system_clock::now();
         for(int i=0;i!=_CAM_NUM;i++)
             _c[i].ptr->work();
-        //std::this_thread::sleep_for (std::chrono::milliseconds(1));               //TODO fix this delay with timers
+        if(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now()-b4).count()<1000)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
         if(end){
             for(int i=0;i!=_CAM_NUM;i++)
