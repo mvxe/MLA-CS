@@ -889,6 +889,10 @@ void tab_camera::onPeakFit(){
     //cpwin->axes.xLabel("");
     //cpwin->axes.yLabel("Peak Height (nm)");
     //cpwin->axes=CvPlot::plotImage(scan.depth);
+    //cpwin->axes.setMargins(0,0,0,0);
+    //cpwin->axes.setTightBox(true);
+    cpwin->axes.setXTight(true);
+    cpwin->axes.setYTight(true);
     auto& sdata=cpwin->axes.create<CvPlot::Image>(scan.depth);
     sdata.setColormap(cv::COLORMAP_TURBO);
 
