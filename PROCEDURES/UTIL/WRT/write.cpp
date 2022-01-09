@@ -785,28 +785,35 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
                 next_i=el.i;
                 goto _out;
             }_out:;
-        while(1){
-            pgMGUI->corCOMove(CO,(next_i-last_i)*vpointSpacing,(next_j-last_j)*vpointSpacing,0);
-            last_i=next_i;
-            last_j=next_j;
-            CO.addHold("X",CTRL::he_motion_ontarget);
-            CO.addHold("Y",CTRL::he_motion_ontarget);
-            CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
-            CO.pulseGPIO("wrLaser",predictDuration(resizedWrite.at<float>(next_j,next_i))/1000);
-            completed.at<uint8_t>(next_j,next_i)=255;
-            todo--;
 
-            if(todo==0) break;
-            for(auto& el: lut) for(int tmp_i:{last_i-el.i,last_i+el.i}) for(int tmp_j:{last_j-el.j,last_j+el.j}){     // there is some redundancy
-                if(tmp_i<0 || tmp_i>=completed.cols || tmp_j<0 || tmp_j>=completed.rows) continue;
-                if(completed.at<uint8_t>(tmp_j,tmp_i)==0){
-                    next_i=tmp_i;
-                    next_j=tmp_j;
-                    goto next;
+        int nPerRun=sqrt(resizedWrite.rows*resizedWrite.cols);
+        if(nPerRun<100) nPerRun=100;
+        while(1){
+            for(int i=0;i!=nPerRun; i++){
+                pgMGUI->corCOMove(CO,(next_i-last_i)*vpointSpacing,(next_j-last_j)*vpointSpacing,0);
+                last_i=next_i;
+                last_j=next_j;
+                CO.addHold("X",CTRL::he_motion_ontarget);
+                CO.addHold("Y",CTRL::he_motion_ontarget);
+                CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
+                CO.pulseGPIO("wrLaser",predictDuration(resizedWrite.at<float>(next_j,next_i))/1000);
+                completed.at<uint8_t>(next_j,next_i)=255;
+                todo--;
+
+                if(todo==0) break;
+                for(auto& el: lut) for(int tmp_i:{last_i-el.i,last_i+el.i}) for(int tmp_j:{last_j-el.j,last_j+el.j}){     // there is some redundancy
+                    if(tmp_i<0 || tmp_i>=completed.cols || tmp_j<0 || tmp_j>=completed.rows) continue;
+                    if(completed.at<uint8_t>(tmp_j,tmp_i)==0){
+                        next_i=tmp_i;
+                        next_j=tmp_j;
+                        goto next;
+                    }
                 }
+                QMessageBox::critical(gui_activation, "Error", "Cannot find a point in pgWrite::writeMat; this shouldn't happen!"); goto abort; // in case there is an unforseen bug, TODO remove
+                next:;
             }
-            QMessageBox::critical(gui_activation, "Error", "Cannot find a point in pgWrite::writeMat; this shouldn't happen!"); goto abort; // in case there is an unforseen bug, TODO remove
-            next:;
+            CO.execute();
+            CO.clear(true);
             while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
             MLP.progress_proc=100./total*(total-todo);
         }
@@ -817,10 +824,6 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
         CO.clear(true);
     }
 
-    while(CO.getProgress()<1){
-        QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
-        MLP.progress_proc=100*CO.getProgress();
-    }
     abort: MLP.progress_proc=100;
     if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true);
     return false;
