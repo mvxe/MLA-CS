@@ -300,7 +300,7 @@ void pgCalib::WCFArray(std::string folder, bool isOverlap){
 
     std::vector<double> arrayDur; arrayDur.reserve(arraySizeDur);
     std::vector<double> arrayFoc; arrayFoc.reserve(arraySizeFoc);
-    std::vector<double> arrayPla; arrayFoc.reserve(arraySizePla);
+    std::vector<double> arrayPla; arrayPla.reserve(arraySizePla);
     if(arraySizeDur==1) arrayDur.push_back(selArrayDurA->val);
     else for(int i=0;i!=arraySizeDur; i++) arrayDur.push_back(selArrayDurA->val*(1-(double)i/(arraySizeDur-1))+selArrayDurB->val*((double)i/(arraySizeDur-1)));
     if(arraySizeFoc==1) arrayFoc.push_back(selArrayFocA->val);
@@ -356,7 +356,7 @@ void pgCalib::WCFArray(std::string folder, bool isOverlap){
         setFile.close();
     }
     if(multiarrayN->val>1 && arrayPla.size()>1){
-        std::ofstream wfile(util::toString("/Plateau.txt"));
+        std::ofstream wfile(util::toString(folder,"/Plateau.txt"));
         for(int i=0;i!=arrayPla.size(); i++){
             wfile<<arrayPla[i]<<"\n";
         }wfile.close();
@@ -429,7 +429,7 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     const pgScanGUI::scanRes* res;
     if(!isOverlap){ // no need to scan before for overlaps, as the before is the previous run's after; also no plateau
         if(plateau!=0){
-            cv::Mat mplateau(WArray.rows+1, WArray.cols+1, CV_32F, cv::Scalar(plateau/1000000));
+            cv::Mat mplateau(WArray.rows+1, WArray.cols+1, CV_32F, cv::Scalar(plateau));
             if(wcabort){delete scanRes;return true;}        //abort
             if(pgWr->writeMat(&mplateau, 0, selArraySpacing->val/1000)){delete scanRes;return true;}    //abort/fail
         }
