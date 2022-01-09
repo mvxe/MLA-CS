@@ -816,6 +816,7 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
             CO.clear(true);
             while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
             MLP.progress_proc=100./total*(total-todo);
+            if(todo==0) break;
         }
 
         pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
