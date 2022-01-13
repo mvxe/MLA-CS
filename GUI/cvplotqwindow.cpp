@@ -101,7 +101,9 @@ void CvPlotQWindow::wheelEvent(QWheelEvent *event){
 void CvPlotQWindow::onSavePlot(){
     std::string fileName=QFileDialog::getSaveFileName(this,"Save Plot to File", "","Images (*.png *.xpm *.jpg *.bmp)").toStdString();
     if(fileName.empty()) return;
-    cv::imwrite(fileName, axes.render(wsize.height, wsize.width));
+    cv::Mat mat;
+    cv::cvtColor(axes.render(wsize.height, wsize.width), mat, cv::COLOR_BGR2RGB);
+    cv::imwrite(fileName, mat);
 }
 void CvPlotQWindow::onSaveData(){
     std::string fileName=QFileDialog::getSaveFileName(this,"Save Data to File", "","Text files (*.txt *.dat)").toStdString();
