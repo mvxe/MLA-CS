@@ -893,8 +893,14 @@ void tab_camera::onPeakFit(){
     //cpwin->axes.setTightBox(true);
     cpwin->axes.setXTight(true);
     cpwin->axes.setYTight(true);
+//    cv::Mat temp;
+//    scan.depth.convertTo(temp,CV_8U,((1<<8)-1)/(scan.max-scan.min),-scan.min*((1<<8)-1)/(scan.max-scan.min));
+//    cv::applyColorMap(temp, temp, cv::COLORMAP_TURBO);
+//    cv::cvtColor(temp, temp, cv::COLOR_RGB2BGR);
+//    auto& sdata=cpwin->axes.create<CvPlot::Image>(temp);
     auto& sdata=cpwin->axes.create<CvPlot::Image>(scan.depth);
     sdata.setColormap(cv::COLORMAP_TURBO);
+    sdata.setPosition({10.5,0.5,15,1});
 
     cpwin->redraw();
     cpwin->show();
