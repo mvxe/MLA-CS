@@ -886,8 +886,20 @@ void tab_camera::onPeakFit(){
 
     if(cpwin==nullptr) cpwin=new CvPlotQWindow;
     cpwin->axes=CvPlot::makePlotAxes();
-    //cpwin->axes.xLabel("");
-    //cpwin->axes.yLabel("Peak Height (nm)");
+    cpwin->axes=CvPlot::Axes();
+    cpwin->axes.create<CvPlot::Border>();
+    cpwin->axes.create<CvPlot::XAxis>();
+    //auto& a=cpwin->axes.create<CvPlot::YAxis>();
+    //a.setLocateRight(true);
+    cpwin->axes.create<CvPlot::YAxis>();
+    cpwin->axes.setMargins(80,110,45,45);
+
+    cpwin->axes.xLabel("test");
+    cpwin->axes.yLabel("Peak Height (nm)");
+    //auto& cb=cpwin->axes.create<CvPlot::CBox>(cv::COLORMAP_TURBO,scan.min,scan.max,scan.min,(scan.max+scan.min)/2);
+    auto& cb=cpwin->axes.create<CvPlot::CBox>(cv::COLORMAP_TURBO,scan.min,scan.max);
+    cb.setLabel("Height / nm");
+
     //cpwin->axes=CvPlot::plotImage(scan.depth);
     //cpwin->axes.setMargins(0,0,0,0);
     //cpwin->axes.setTightBox(true);
@@ -900,7 +912,7 @@ void tab_camera::onPeakFit(){
 //    auto& sdata=cpwin->axes.create<CvPlot::Image>(temp);
     auto& sdata=cpwin->axes.create<CvPlot::Image>(scan.depth);
     sdata.setColormap(cv::COLORMAP_TURBO);
-    sdata.setPosition({10.5,0.5,15,1});
+    sdata.setPosition({10.5,0.5,15,-1});
 
     cpwin->redraw();
     cpwin->show();
