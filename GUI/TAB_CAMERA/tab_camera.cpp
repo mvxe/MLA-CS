@@ -876,13 +876,17 @@ void tab_camera::onPeakFit(){
     cv::Rect ROI;
     if(width<=1 || height<=1) ROI={0,0,loadedScan.depth.cols,loadedScan.depth.rows};
     else ROI=cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height);
-    scan.depth=loadedScan.depth(ROI);
+    scan.depth=loadedScan.depth(ROI).clone();
     scan.mask =loadedScan.mask (ROI);
     scan.maskN=loadedScan.maskN(ROI);
     scan.XYnmppx=loadedScan.XYnmppx;
     for(int i:{0,1}) scan.tiltCor[i]=loadedScan.tiltCor[i];
     cv::minMaxIdx(scan.depth,&scan.min,&scan.max, nullptr, nullptr, scan.maskN);
-
+    if(!showAbsHeight->val){
+        scan.depth-=scan.min;
+        scan.max-=scan.min;
+        scan.min=0;
+    }
 
     if(cpwin==nullptr) cpwin=new CvPlotQWindow;
     cpwin->axes=CvPlot::makePlotAxes();
@@ -913,6 +917,8 @@ void tab_camera::onPeakFit(){
     auto& sdata=cpwin->axes.create<CvPlot::Image>(scan.depth);
     sdata.setColormap(cv::COLORMAP_TURBO);
     sdata.setPosition({10.5,0.5,15,-1});
+    sdata.setMinMaxOverride(50, 200);
+    cb.setMinMax(50, 200);
 
     cpwin->redraw();
     cpwin->show();
