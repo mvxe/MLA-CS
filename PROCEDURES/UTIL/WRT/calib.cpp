@@ -1034,6 +1034,7 @@ void pgCalib::onFitAndPlot(){
     cpwin->axes.xLabel("Pulse Duration (ms)");
     cpwin->axes.yLabel("Peak Height (nm)");
     auto& sdata=cpwin->axes.create<CvPlot::Series>(duration, height, "o");
+    sdata.setYErr(height_err);
     sdata.setColor(cv::Scalar(255, 0, 0));//red
     sdata.setName("Data");
     QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
