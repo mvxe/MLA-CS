@@ -714,7 +714,7 @@ void pgCalib::prepCalcParameters(measFolder fldr, std::string* output, std::atom
     return;
 }
 
-void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, double prepeakXofs, double prepeakYofs , double* prepeak, double focus, double duration, double plateau){
+void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, double prepeakXofs, double prepeakYofs , double* prepeak, double focus, double duration, double plateau, cv::Mat* output_mat){
     double _prepeak{0};
     if(prepeak!=nullptr){
         _prepeak=*prepeak;
@@ -770,8 +770,25 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
         res[i]=gsl_vector_get(workspace->x, i);
         err[i]=GSL_MAX_DBL(1,sqrt(chisq/(ptN-parN)))*sqrt(gsl_matrix_get(covar,i,i));
     }
+
+    if(output_mat!=nullptr){
+        *output_mat=cv::Mat::zeros(scanDif.depth.rows, scanDif.depth.cols, scanDif.depth.type());
+        int n=0;
+        for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++){
+            if(scanDif.mask.at<uchar>(j,i)==0){
+                output_mat->at<float>(j,i)=gsl_vector_get(workspace->f, n);
+                n++;
+                if(n>ptN) throw std::out_of_range("FIXME: in pgCalib::calcParameters when calculation output_mat: too many points.\n");
+            }else{
+                output_mat->at<float>(j,i)=0;
+            }
+        }
+    }
+
     gsl_multifit_nlinear_free (workspace);
     gsl_matrix_free (covar);
+
+
 
     while(res[5]>M_PI) res[5]-=M_PI;
     while(res[5]<0) res[5]+=M_PI;

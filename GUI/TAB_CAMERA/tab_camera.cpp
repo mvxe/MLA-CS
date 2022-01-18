@@ -888,45 +888,38 @@ void tab_camera::onPeakFit(){
         scan.min=0;
     }
 
+
+
+    std::string res;
+    cv::Mat difMat;
+    pgCal->calcParameters(scan, &res, 0, 0, nullptr, 0, 0, 0, &difMat);
+
     if(cpwin==nullptr) cpwin=new CvPlotQWindow;
     cpwin->axes=CvPlot::makePlotAxes();
     cpwin->axes=CvPlot::Axes();
     cpwin->axes.create<CvPlot::Border>();
     cpwin->axes.create<CvPlot::XAxis>();
-    //auto& a=cpwin->axes.create<CvPlot::YAxis>();
-    //a.setLocateRight(true);
     cpwin->axes.create<CvPlot::YAxis>();
     cpwin->axes.setMargins(80,110,45,45);
 
-    cpwin->axes.xLabel("test");
-    cpwin->axes.yLabel("Peak Height (nm)");
+    cpwin->axes.xLabel("X (um)");
+    cpwin->axes.yLabel("Y (nm)");
     //auto& cb=cpwin->axes.create<CvPlot::CBox>(cv::COLORMAP_TURBO,scan.min,scan.max,scan.min,(scan.max+scan.min)/2);
-    auto& cb=cpwin->axes.create<CvPlot::CBox>(cv::COLORMAP_TURBO,scan.min,scan.max);
-    cb.setLabel("Height / nm");
-
-    //cpwin->axes=CvPlot::plotImage(scan.depth);
-    //cpwin->axes.setMargins(0,0,0,0);
-    //cpwin->axes.setTightBox(true);
+    double min,max;
+    cv::minMaxIdx(difMat,&min,&max, nullptr, nullptr, scan.maskN);
+    auto& cb=cpwin->axes.create<CvPlot::CBox>(cv::COLORMAP_TURBO,min,max);
+    cb.setLabel("Height error (model-measured) (nm)");
     cpwin->axes.setXTight(true);
     cpwin->axes.setYTight(true);
-//    cv::Mat temp;
-//    scan.depth.convertTo(temp,CV_8U,((1<<8)-1)/(scan.max-scan.min),-scan.min*((1<<8)-1)/(scan.max-scan.min));
-//    cv::applyColorMap(temp, temp, cv::COLORMAP_TURBO);
-//    cv::cvtColor(temp, temp, cv::COLOR_RGB2BGR);
-//    auto& sdata=cpwin->axes.create<CvPlot::Image>(temp);
-    auto& sdata=cpwin->axes.create<CvPlot::Image>(scan.depth);
+    auto& sdata=cpwin->axes.create<CvPlot::Image>(difMat);
     sdata.setColormap(cv::COLORMAP_TURBO);
-    sdata.setPosition({10.5,0.5,15,-1});
-    sdata.setMinMaxOverride(50, 200);
-    cb.setMinMax(50, 200);
+    sdata.setPosition({0,0,difMat.cols*scan.XYnmppx/1000,difMat.rows*scan.XYnmppx/1000});
+    sdata.setMinMaxOverride(min, max);
 
     cpwin->redraw();
     cpwin->show();
     cpwin->activateWindow();    // takes focus
     QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-
-    std::string res;
-    pgCal->calcParameters(scan, &res);
 
     QMenu menu;
     if(!fitSaveFilename.empty()) menu.addAction("Append fit results to last chosen file.");

@@ -125,7 +125,7 @@ private:
     void prepCalcParameters(measFolder fldr, std::string* output, std::atomic<unsigned>* completed, double prepeakXofs=0, double prepeakYofs=0, unsigned overlap=0, double* prepeak=nullptr);
     static bool folderSort(measFolder i,measFolder j);
 public:
-    void calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, double prepeakXofs=0, double prepeakYofs=0, double* prepeak=nullptr, double focus=0, double duration=0, double plateau=0);
+    void calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, double prepeakXofs=0, double prepeakYofs=0, double* prepeak=nullptr, double focus=0, double duration=0, double plateau=0, cv::Mat* output_mat=nullptr);
     void writeProcessHeader(std::ofstream& wfile);
 private Q_SLOTS:
     void onWCF();
