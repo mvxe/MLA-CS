@@ -87,6 +87,7 @@ private:
     //processing
     QVBoxLayout* splayout;
     QPushButton* btnProcessFocusMes;
+    val_selector* nPeakFit;
 
     QPushButton* fpLoad;
     QPushButton* fpClear;
@@ -147,9 +148,9 @@ private Q_SLOTS:
 
 private:
     static int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f);
-    static int gauss2De_df (const gsl_vector* pars, void* data, gsl_matrix* J);
     struct fit_data {
         size_t n;
+        size_t nPeaks;
         double* x;
         double* y;
         double* h;

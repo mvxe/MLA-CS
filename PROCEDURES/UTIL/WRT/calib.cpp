@@ -119,6 +119,9 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements");
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
     splayout->addWidget(new twid(btnProcessFocusMes));
+    nPeakFit=new val_selector(1, "Overlapping fit peak number", 1, 100, 0);
+    conf["nPeakFit"]=nPeakFit;
+    splayout->addWidget(nPeakFit);
 
     splayout->addWidget(new hline);
     splayout->addWidget(new QLabel("Calibration curve fitting (duration-height):"));
@@ -626,59 +629,38 @@ void pgCalib::onProcessFocusMes(){
 
 int pgCalib::gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
     size_t n=((struct fit_data*)data)->n;
+    size_t nPeaks=((struct fit_data*)data)->nPeaks;
     double* x=((struct fit_data*)data)->x;
     double* y=((struct fit_data*)data)->y;
     double* h=((struct fit_data*)data)->h;
 
-    double x0=gsl_vector_get(pars, 0);
-    double y0=gsl_vector_get(pars, 1);
-    double a =gsl_vector_get(pars, 2);
-    double wx=gsl_vector_get(pars, 3);
-    double wy=gsl_vector_get(pars, 4);
-    double an=gsl_vector_get(pars, 5);
-    double i0=gsl_vector_get(pars, 6);
-    double A=pow(cos(an),2)/2/pow(wx,2)+pow(sin(an),2)/2/pow(wy,2);
-    double B=sin(2*an)/2/pow(wx,2)-sin(2*an)/2/pow(wy,2);
-    double C=pow(sin(an),2)/2/pow(wx,2)+pow(cos(an),2)/2/pow(wy,2);
-    for (size_t i=0; i!=n; i++){
-        double model=i0+a*exp(-A*pow(x[i]-x0,2)-B*(x[i]-x0)*(y[i]-y0)-C*pow(y[i]-y0,2));
-        gsl_vector_set(f, i, model-h[i]);
+    size_t v=0;
+    double x0=gsl_vector_get(pars, v++);
+    double y0=gsl_vector_get(pars, v++);
+    double a0=gsl_vector_get(pars, v++);    // background height
+    double ar=gsl_vector_get(pars, v++);    // aspect ratio wx/wy
+    double an=gsl_vector_get(pars, v++);    // angle x/y
+
+    double a[nPeaks];
+    double w[nPeaks];
+
+    double A[nPeaks];
+    double B[nPeaks];
+    double C[nPeaks];
+    for(size_t i=0;i!=nPeaks;i++){
+        w[i]=gsl_vector_get(pars, v++);     // width 1/e = wx
+        a[i]=gsl_vector_get(pars, v++);     // height
+
+        A[i]=pow(cos(an),2)/2/pow(w[i],2)+pow(sin(an),2)/2/pow(w[i]/ar,2);
+        B[i]=sin(2*an)/2/pow(w[i],2)-sin(2*an)/2/pow(w[i]/ar,2);
+        C[i]=pow(sin(an),2)/2/pow(w[i],2)+pow(cos(an),2)/2/pow(w[i]/ar,2);
     }
-    return GSL_SUCCESS;
-}
 
-int pgCalib::gauss2De_df (const gsl_vector* pars, void* data, gsl_matrix* J){
-    size_t n=((struct fit_data*)data)->n;
-    double* x=((struct fit_data*)data)->x;
-    double* y=((struct fit_data*)data)->y;
-
-    double x0=gsl_vector_get(pars, 0);
-    double y0=gsl_vector_get(pars, 1);
-    double a =gsl_vector_get(pars, 2);
-    double wx=gsl_vector_get(pars, 3);
-    double wy=gsl_vector_get(pars, 4);
-    double an=gsl_vector_get(pars, 5);
-    double A=pow(cos(an),2)/2/pow(wx,2)+pow(sin(an),2)/2/pow(wy,2);
-    double B=sin(2*an)/2/pow(wx,2)-sin(2*an)/2/pow(wy,2);
-    double C=pow(sin(an),2)/2/pow(wx,2)+pow(cos(an),2)/2/pow(wy,2);
-    double dAdwx=-pow(cos(an),2)/pow(wx,3);
-    double dAdwy=-pow(sin(an),2)/pow(wy,3);
-    double dBdwx=-sin(2*an)/pow(wx,3);
-    double dBdwy=+sin(2*an)/pow(wy,3);
-    double dCdwx=-pow(sin(an),2)/pow(wx,3);
-    double dCdwy=-pow(cos(an),2)/pow(wy,3);
-    double dAdan=sin(an)*cos(an)*(1/pow(wy,2)-1/pow(wx,2));
-    double dBdan=cos(2*an)*(1/pow(wx,2)-1/pow(wy,2));
-    double dCdan=-dAdan;
     for (size_t i=0; i!=n; i++){
-        double D=exp(-A*pow(x[i]-x0,2)-B*(x[i]-x0)*(y[i]-y0)-C*pow(y[i]-y0,2));
-        gsl_matrix_set (J, i, 0, a*D*(2*A*(x[i]-x0)+B*(y[i]-y0)));
-        gsl_matrix_set (J, i, 1, a*D*(2*C*(y[i]-y0)+B*(x[i]-x0)));
-        gsl_matrix_set (J, i, 2, D);
-        gsl_matrix_set (J, i, 3, a*D*(-pow((x[i]-x0),2)*dAdwx-(x[i]-x0)*(y[i]-y0)*dBdwx-pow((y[i]-y0),2)*dCdwx));
-        gsl_matrix_set (J, i, 4, a*D*(-pow((x[i]-x0),2)*dAdwy-(x[i]-x0)*(y[i]-y0)*dBdwy-pow((y[i]-y0),2)*dCdwy));
-        gsl_matrix_set (J, i, 5, a*D*(-pow((x[i]-x0),2)*dAdan-(x[i]-x0)*(y[i]-y0)*dBdan-pow((y[i]-y0),2)*dCdan));
-        gsl_matrix_set (J, i, 6, 1.);
+        double model=a0;
+        for(size_t j=0;j!=nPeaks;j++)
+            model+=abs(a[j])*exp(-A[j]*pow(x[i]-x0,2)-B[j]*(x[i]-x0)*(y[i]-y0)-C[j]*pow(y[i]-y0,2));
+        gsl_vector_set(f, i, model-h[i]);
     }
     return GSL_SUCCESS;
 }
@@ -720,10 +702,21 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
         _prepeak=*prepeak;
         *prepeak=0;
     }
-    const size_t parN=7;
-    double initval[parN] = { scanDif.depth.cols/2., scanDif.depth.rows/2., 0, 4000/scanDif.XYnmppx, 4000/scanDif.XYnmppx, 0.01, 0};
-    initval[6]=scanDif.min;
-    initval[2]=scanDif.max;
+    // shared pars: x0, y0, a0 , ar (aspect ratio wx/wy), an (angle x/y)
+    // pars per each peak: w (width 1/e), a (height)
+    const size_t peakNum=nPeakFit->val;
+    const size_t parN=5+2*peakNum;
+    double initval[parN];// = { 0, 4000/scanDif.XYnmppx, 4000/scanDif.XYnmppx, 0.01, 0};
+    size_t v=0;
+    initval[v++]=scanDif.depth.cols/2.; // x0
+    initval[v++]=scanDif.depth.rows/2.; // y0
+    initval[v++]=scanDif.min;           // a0 (background height)
+    initval[v++]=1;                     // ar (aspect ratio wx/wy)
+    initval[v++]=0.01;                  // an (angle x/y)
+    for(size_t i=0;i!=peakNum;i++){
+        initval[v++]=4000/scanDif.XYnmppx;              // w=wx (width 1/e)
+        initval[v++]=(scanDif.max-scanDif.min)/peakNum; // a (height)
+    }
     size_t ptN=scanDif.depth.cols*scanDif.depth.rows;
     double x[ptN], y[ptN], h[ptN], weights[ptN];
     size_t n{0};
@@ -738,8 +731,8 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
     ptN=n;
     if(ptN<parN) return;
 
-    struct fit_data data{ptN,x,y,h};
-    gsl_multifit_nlinear_fdf fdf{gauss2De_f,gauss2De_df,NULL,ptN,parN,&data,0,0,0};
+    struct fit_data data{ptN,peakNum,x,y,h};
+    gsl_multifit_nlinear_fdf fdf{gauss2De_f,NULL,NULL,ptN,parN,&data,0,0,0};
     gsl_multifit_nlinear_parameters fdf_params=gsl_multifit_nlinear_default_parameters();
     gsl_multifit_nlinear_workspace* workspace=gsl_multifit_nlinear_alloc(gsl_multifit_nlinear_trust, &fdf_params, ptN, parN);
 
