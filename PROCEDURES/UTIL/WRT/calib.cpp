@@ -635,14 +635,16 @@ int pgCalib::gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
     double* h=((struct fit_data*)data)->h;
 
     size_t v=0;
-    double x0=gsl_vector_get(pars, v++);
-    double y0=gsl_vector_get(pars, v++);
+    //double x0=gsl_vector_get(pars, v++);
+    //double y0=gsl_vector_get(pars, v++);
     double a0=gsl_vector_get(pars, v++);    // background height
     double ar=gsl_vector_get(pars, v++);    // aspect ratio wx/wy
     double an=gsl_vector_get(pars, v++);    // angle x/y
 
     double a[nPeaks];
     double w[nPeaks];
+    double x0[nPeaks];
+    double y0[nPeaks];
 
     double A[nPeaks];
     double B[nPeaks];
@@ -650,6 +652,8 @@ int pgCalib::gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
     for(size_t i=0;i!=nPeaks;i++){
         w[i]=gsl_vector_get(pars, v++);     // width 1/e = wx
         a[i]=gsl_vector_get(pars, v++);     // height
+        x0[i]=gsl_vector_get(pars, v++);
+        y0[i]=gsl_vector_get(pars, v++);
 
         A[i]=pow(cos(an),2)/2/pow(w[i],2)+pow(sin(an),2)/2/pow(w[i]/ar,2);
         B[i]=sin(2*an)/2/pow(w[i],2)-sin(2*an)/2/pow(w[i]/ar,2);
@@ -659,7 +663,7 @@ int pgCalib::gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
     for (size_t i=0; i!=n; i++){
         double model=a0;
         for(size_t j=0;j!=nPeaks;j++)
-            model+=abs(a[j])*exp(-A[j]*pow(x[i]-x0,2)-B[j]*(x[i]-x0)*(y[i]-y0)-C[j]*pow(y[i]-y0,2));
+            model+=abs(a[j])*exp(-A[j]*pow(x[i]-x0[j],2)-B[j]*(x[i]-x0[j])*(y[i]-y0[j])-C[j]*pow(y[i]-y0[j],2));
         gsl_vector_set(f, i, model-h[i]);
     }
     return GSL_SUCCESS;
@@ -705,18 +709,20 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
     // shared pars: x0, y0, a0 , ar (aspect ratio wx/wy), an (angle x/y)
     // pars per each peak: w (width 1/e), a (height)
     const size_t peakNum=nPeakFit->val;
-    const size_t parN=5+2*peakNum;
-    double initval[parN];// = { 0, 4000/scanDif.XYnmppx, 4000/scanDif.XYnmppx, 0.01, 0};
+    double initval[100];// = { 0, 4000/scanDif.XYnmppx, 4000/scanDif.XYnmppx, 0.01, 0};
     size_t v=0;
-    initval[v++]=scanDif.depth.cols/2.; // x0
-    initval[v++]=scanDif.depth.rows/2.; // y0
+   // initval[v++]=scanDif.depth.cols/2.; // x0
+    //initval[v++]=scanDif.depth.rows/2.; // y0
     initval[v++]=scanDif.min;           // a0 (background height)
     initval[v++]=1;                     // ar (aspect ratio wx/wy)
     initval[v++]=0.01;                  // an (angle x/y)
     for(size_t i=0;i!=peakNum;i++){
         initval[v++]=4000/scanDif.XYnmppx;              // w=wx (width 1/e)
         initval[v++]=(scanDif.max-scanDif.min)/peakNum; // a (height)
+        initval[v++]=scanDif.depth.cols/2.; // x0
+        initval[v++]=scanDif.depth.rows/2.; // y0
     }
+    const size_t parN=v;
     size_t ptN=scanDif.depth.cols*scanDif.depth.rows;
     double x[ptN], y[ptN], h[ptN], weights[ptN];
     size_t n{0};
