@@ -119,9 +119,23 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     btnProcessFocusMes=new QPushButton("Select Folders to Process Focus Measurements");
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
     splayout->addWidget(new twid(btnProcessFocusMes));
-    nPeakFit=new val_selector(1, "Overlapping fit peak number", 1, 100, 0);
-    conf["nPeakFit"]=nPeakFit;
-    splayout->addWidget(nPeakFit);
+
+    fitPar_nPeakGauss=new val_selector(1, "Fit Gaussian peak number", 0, 10, 0);
+    conf["fitPar_nPeakGauss"]=fitPar_nPeakGauss;
+    splayout->addWidget(fitPar_nPeakGauss);
+    fitPar_nPeakLorentz=new val_selector(0, "Fit Lorentzian peak number", 0, 10, 0);
+    conf["fitPar_nPeakLorentz"]=fitPar_nPeakLorentz;
+    splayout->addWidget(fitPar_nPeakLorentz);
+    fitPar_independentWidths=new checkbox_gs(true,"Independent peak widths");
+    fitPar_independentWidths->setToolTip("If false, the X and Y widths of all peaks follow the same ratio.");
+    conf["fitPar_independentWidths"]=fitPar_independentWidths;
+    splayout->addWidget(fitPar_independentWidths);
+    fitPar_independentAngles=new checkbox_gs(false,"Independent peak angles");
+    conf["fitPar_independentAngles"]=fitPar_independentAngles;
+    splayout->addWidget(fitPar_independentAngles);
+    fitPar_independentCentres=new checkbox_gs(true,"Independent peak centres");
+    conf["fitPar_independentCentres"]=fitPar_independentCentres;
+    splayout->addWidget(fitPar_independentCentres);
 
     splayout->addWidget(new hline);
     splayout->addWidget(new QLabel("Calibration curve fitting (duration-height):"));
@@ -628,42 +642,75 @@ void pgCalib::onProcessFocusMes(){
 
 
 int pgCalib::gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
-    size_t n=((struct fit_data*)data)->n;
-    size_t nPeaks=((struct fit_data*)data)->nPeaks;
+    const size_t n=((struct fit_data*)data)->n;
+    const size_t gaussPeakNum=((struct fit_data*)data)->gaussPeakNum;
+    const size_t lorentzPeakNum=((struct fit_data*)data)->lorentzPeakNum;
+    const bool independentWidths=((struct fit_data*)data)->independentWidths;
+    const bool independentAngles=((struct fit_data*)data)->independentAngles;
+    const bool independentCentres=((struct fit_data*)data)->independentCentres;
     double* x=((struct fit_data*)data)->x;
     double* y=((struct fit_data*)data)->y;
     double* h=((struct fit_data*)data)->h;
 
+    double a[gaussPeakNum+lorentzPeakNum];
+    double wx[gaussPeakNum+lorentzPeakNum];
+    double wy[gaussPeakNum+lorentzPeakNum];
+    double x0[independentCentres?(gaussPeakNum+lorentzPeakNum):1];
+    double y0[independentCentres?(gaussPeakNum+lorentzPeakNum):1];
+    double an[independentAngles?(gaussPeakNum+lorentzPeakNum):1];
+    double ar, a0;
     size_t v=0;
-    //double x0=gsl_vector_get(pars, v++);
-    //double y0=gsl_vector_get(pars, v++);
-    double a0=gsl_vector_get(pars, v++);    // background height
-    double ar=gsl_vector_get(pars, v++);    // aspect ratio wx/wy
-    double an=gsl_vector_get(pars, v++);    // angle x/y
-
-    double a[nPeaks];
-    double w[nPeaks];
-    double x0[nPeaks];
-    double y0[nPeaks];
-
-    double A[nPeaks];
-    double B[nPeaks];
-    double C[nPeaks];
-    for(size_t i=0;i!=nPeaks;i++){
-        w[i]=gsl_vector_get(pars, v++);     // width 1/e = wx
-        a[i]=gsl_vector_get(pars, v++);     // height
-        x0[i]=gsl_vector_get(pars, v++);
-        y0[i]=gsl_vector_get(pars, v++);
-
-        A[i]=pow(cos(an),2)/2/pow(w[i],2)+pow(sin(an),2)/2/pow(w[i]/ar,2);
-        B[i]=sin(2*an)/2/pow(w[i],2)-sin(2*an)/2/pow(w[i]/ar,2);
-        C[i]=pow(sin(an),2)/2/pow(w[i],2)+pow(cos(an),2)/2/pow(w[i]/ar,2);
+    if(!independentCentres){
+        x0[0]=gsl_vector_get(pars, v++); // x0
+        y0[0]=gsl_vector_get(pars, v++); // y0
     }
+    if(!independentAngles){
+        an[0]=gsl_vector_get(pars, v++); // an (angle x/y for Gauss)
+    }
+    if(!independentWidths){
+        ar=gsl_vector_get(pars, v++);    // ar (aspect ratio wx/wy)
+    }
+    a0=gsl_vector_get(pars, v++);        // a0 (background height)
+
+    double A[gaussPeakNum];
+    double B[gaussPeakNum];
+    double C[gaussPeakNum];
+    for(size_t i=0;i!=gaussPeakNum+lorentzPeakNum;i++){
+        if(independentCentres){
+            x0[i]=gsl_vector_get(pars, v++);    // x0
+            y0[i]=gsl_vector_get(pars, v++);    // y0
+        }
+        if(i<gaussPeakNum && independentAngles){
+            an[i]=gsl_vector_get(pars, v++);    // an (angle x/y for Gauss)
+        }
+        wx[i]=gsl_vector_get(pars, v++);        // w=wx (width 1/e for Gauss or HWHM for Lortentz)
+        if(i<gaussPeakNum && independentWidths){
+            wy[i]=gsl_vector_get(pars, v++);    // wy (width 1/e for Gauss)
+        }else{
+            wy[i]=wx[i]/ar;
+        }
+        a[i]=gsl_vector_get(pars, v++);         // a (height)
+
+        if(i<gaussPeakNum){
+            double _an=an[independentAngles?i:0];
+            A[i]=pow(cos(_an),2)/2/pow(wx[i],2)+pow(sin(_an),2)/2/pow(wy[i],2);
+            B[i]=sin(2*_an)/2/pow(wx[i],2)-sin(2*_an)/2/pow(wy[i],2);
+            C[i]=pow(sin(_an),2)/2/pow(wx[i],2)+pow(cos(_an),2)/2/pow(wy[i],2);
+        }
+    }
+
 
     for (size_t i=0; i!=n; i++){
         double model=a0;
-        for(size_t j=0;j!=nPeaks;j++)
-            model+=abs(a[j])*exp(-A[j]*pow(x[i]-x0[j],2)-B[j]*(x[i]-x0[j])*(y[i]-y0[j])-C[j]*pow(y[i]-y0[j],2));
+        for(size_t j=0;j!=gaussPeakNum+lorentzPeakNum;j++){
+            double _x0=x0[independentCentres?j:0];
+            double _y0=y0[independentCentres?j:0];
+            if(j<gaussPeakNum)
+                model+=abs(a[j])*exp(-A[j]*pow(x[i]-_x0,2)-B[j]*(x[i]-_x0)*(y[i]-_y0)-C[j]*pow(y[i]-_y0,2));
+            else
+                model+=abs(a[j])*pow(wx[j],2)/(pow((x[i]-_x0),2)+pow((y[i]-_y0),2)+pow(wx[j],2));
+        }
+
         gsl_vector_set(f, i, model-h[i]);
     }
     return GSL_SUCCESS;
@@ -708,19 +755,40 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
     }
     // shared pars: x0, y0, a0 , ar (aspect ratio wx/wy), an (angle x/y)
     // pars per each peak: w (width 1/e), a (height)
-    const size_t peakNum=nPeakFit->val;
+    const size_t gaussPeakNum=fitPar_nPeakGauss->val;
+    const size_t lorentzPeakNum=fitPar_nPeakLorentz->val;
+    if(gaussPeakNum+lorentzPeakNum==0) return;
+    const bool independentWidths=fitPar_independentWidths->val;
+    const bool independentAngles=fitPar_independentAngles->val;
+    const bool independentCentres=fitPar_independentCentres->val;
     double initval[100];// = { 0, 4000/scanDif.XYnmppx, 4000/scanDif.XYnmppx, 0.01, 0};
     size_t v=0;
-   // initval[v++]=scanDif.depth.cols/2.; // x0
-    //initval[v++]=scanDif.depth.rows/2.; // y0
-    initval[v++]=scanDif.min;           // a0 (background height)
-    initval[v++]=1;                     // ar (aspect ratio wx/wy)
-    initval[v++]=0.01;                  // an (angle x/y)
-    for(size_t i=0;i!=peakNum;i++){
-        initval[v++]=4000/scanDif.XYnmppx;              // w=wx (width 1/e)
-        initval[v++]=(scanDif.max-scanDif.min)/peakNum; // a (height)
+    if(!independentCentres){
         initval[v++]=scanDif.depth.cols/2.; // x0
         initval[v++]=scanDif.depth.rows/2.; // y0
+    }
+    if(!independentAngles){
+        initval[v++]=0.01;      // an (angle x/y for Gauss)
+    }
+    if(!independentWidths){
+        initval[v++]=1;         // ar (aspect ratio wx/wy)
+    }
+    initval[v++]=scanDif.min;   // a0 (background height)
+
+
+    for(size_t i=0;i!=gaussPeakNum+lorentzPeakNum;i++){
+        if(independentCentres){
+            initval[v++]=scanDif.depth.cols/((i>=gaussPeakNum)?10.:2.);  // x0
+            initval[v++]=scanDif.depth.rows/((i>=gaussPeakNum)?10.:2.);  // y0
+        }
+        if(i<gaussPeakNum && independentAngles){
+            initval[v++]=0.01;      // an (angle x/y for Gauss)
+        }
+        initval[v++]=4000/scanDif.XYnmppx;              // w=wx (width 1/e for Gauss or HWHM for Lortentz)
+        if(i<gaussPeakNum && independentWidths){
+            initval[v++]=4000/scanDif.XYnmppx;          // wy (width 1/e for Gauss)
+        }
+        initval[v++]=(scanDif.max-scanDif.min)/(gaussPeakNum+lorentzPeakNum);   // a (height)
     }
     const size_t parN=v;
     size_t ptN=scanDif.depth.cols*scanDif.depth.rows;
@@ -737,7 +805,7 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
     ptN=n;
     if(ptN<parN) return;
 
-    struct fit_data data{ptN,peakNum,x,y,h};
+    struct fit_data data{ptN,gaussPeakNum,lorentzPeakNum,independentWidths,independentAngles,independentCentres,x,y,h};
     gsl_multifit_nlinear_fdf fdf{gauss2De_f,NULL,NULL,ptN,parN,&data,0,0,0};
     gsl_multifit_nlinear_parameters fdf_params=gsl_multifit_nlinear_default_parameters();
     gsl_multifit_nlinear_workspace* workspace=gsl_multifit_nlinear_alloc(gsl_multifit_nlinear_trust, &fdf_params, ptN, parN);
@@ -979,7 +1047,7 @@ int pgCalib::bspline_f(const gsl_vector* pars, void* data, gsl_vector* f){
     size_t ncoeffs=((struct fit_data_och*)data)->ncoeffs;
     size_t nbreak=ncoeffs-2;
 
-    gsl_bspline_workspace *bsplws=gsl_bspline_alloc(4, nbreak); // cubis bspline
+    gsl_bspline_workspace *bsplws=gsl_bspline_alloc(4, nbreak); // cubic bspline
     gsl_vector *basisfun=gsl_vector_alloc(ncoeffs);
     gsl_vector coefs=gsl_vector_view_array(_coefs,ncoeffs).vector;
     gsl_vector weights=gsl_vector_view_array(w,mesN).vector;

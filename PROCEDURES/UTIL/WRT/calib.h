@@ -87,7 +87,11 @@ private:
     //processing
     QVBoxLayout* splayout;
     QPushButton* btnProcessFocusMes;
-    val_selector* nPeakFit;
+    val_selector* fitPar_nPeakGauss;
+    val_selector* fitPar_nPeakLorentz;
+    checkbox_gs* fitPar_independentWidths;
+    checkbox_gs* fitPar_independentAngles;
+    checkbox_gs* fitPar_independentCentres;
 
     QPushButton* fpLoad;
     QPushButton* fpClear;
@@ -149,8 +153,12 @@ private Q_SLOTS:
 private:
     static int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f);
     struct fit_data {
-        size_t n;
-        size_t nPeaks;
+        const size_t n;
+        const size_t gaussPeakNum;
+        const size_t lorentzPeakNum;
+        const bool independentWidths;
+        const bool independentAngles;
+        const bool independentCentres;
         double* x;
         double* y;
         double* h;
