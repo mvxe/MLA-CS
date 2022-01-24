@@ -893,6 +893,7 @@ void tab_camera::onPeakFit(){
     std::string res;
     cv::Mat difMat;
     pgCal->calcParameters(scan, &res, 0, 0, nullptr, 0, 0, 0, &difMat);
+    if(res.empty()) return;
 
     if(cpwin==nullptr) cpwin=new CvPlotQWindow;
     cpwin->axes=CvPlot::makePlotAxes();

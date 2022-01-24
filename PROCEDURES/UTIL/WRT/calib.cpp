@@ -126,14 +126,14 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     fitPar_nPeakLorentz=new val_selector(0, "Fit Lorentzian peak number", 0, 10, 0);
     conf["fitPar_nPeakLorentz"]=fitPar_nPeakLorentz;
     splayout->addWidget(fitPar_nPeakLorentz);
-    fitPar_independentWidths=new checkbox_gs(true,"Independent peak widths");
+    fitPar_independentWidths=new checkbox_gs(true,"Independent peak widths (Gaussian)");
     fitPar_independentWidths->setToolTip("If false, the X and Y widths of all peaks follow the same ratio.");
     conf["fitPar_independentWidths"]=fitPar_independentWidths;
     splayout->addWidget(fitPar_independentWidths);
-    fitPar_independentAngles=new checkbox_gs(false,"Independent peak angles");
+    fitPar_independentAngles=new checkbox_gs(false,"Independent peak angles (Gaussian)");
     conf["fitPar_independentAngles"]=fitPar_independentAngles;
     splayout->addWidget(fitPar_independentAngles);
-    fitPar_independentCentres=new checkbox_gs(true,"Independent peak centres");
+    fitPar_independentCentres=new checkbox_gs(true,"Independent peak centres (Both)");
     conf["fitPar_independentCentres"]=fitPar_independentCentres;
     splayout->addWidget(fitPar_independentCentres);
 
@@ -523,43 +523,91 @@ bool pgCalib::folderSort(measFolder i,measFolder j){
     return (std::stoi(i.folder.substr(posi+1,9))<std::stoi(j.folder.substr(posj+1,9)));
 }
 void pgCalib::writeProcessHeader(std::ofstream& wfile){
-    wfile<<"# 1: valid measurement(=1)\n";
-    wfile<<"# 2: focus distance(um)\n";
-    wfile<<"# 3: peak height(nm)\n";
-    wfile<<"# 4: X width (1/e^2)(um)\n";
-    wfile<<"# 5: Y width (1/e^2)(um)\n";
-    wfile<<"# 6: ellipse angle(rad)\n";
-    wfile<<"# 7: XY width (1/e^2)(um)\n";
-    wfile<<"# 8: X offset(um)\n";
-    wfile<<"# 9: Y offset(um)\n";
-    wfile<<"# 10: XY offset(um)\n";
-    wfile<<"# 11: plateau(nm)\n";
-    wfile<<"# 12: duration(ms)\n";
-    wfile<<"# 13: Peak Center Reflectivity change (averaged within FWHM)(a.u.)\n";
-    wfile<<"# 14: Max absolute 1st der. (nm/um)\n";
-    wfile<<"# 15: Min Laplacian (nm/um^2)\n";
-    wfile<<"# 16: Max Laplacian (nm/um^2)\n";
-    wfile<<"# 17: peak height(nm)(max)\n";
-    wfile<<"# 18: peak height(nm)(max-min)\n";
-    wfile<<"# 19: X width (FWHM)(um)\n";
-    wfile<<"# 20: Y width (FWHM)(um)\n";
-    wfile<<"# 21: XY width (FWHM)(um)\n";
-    wfile<<"# 22: prepeak(nm)\n";
-    wfile<<"# 23: prepeakXoffs(um)\n";
-    wfile<<"# 24: prepeakYoffs(um)\n";
-    wfile<<"# 25: Mirror tilt X(nm/nm)\n";
-    wfile<<"# 26: Mirror tilt Y(nm/nm)\n";
-    wfile<<"# 27: asymptotic standard error for 3: peak height(nm)\n";
-    wfile<<"# 28: asymptotic standard error for 4: X width (1/e^2)(um)\n";
-    wfile<<"# 29: asymptotic standard error for 5: Y width (1/e^2)(um)\n";
-    wfile<<"# 30: asymptotic standard error for 6: ellipse angle(rad)\n";
-    wfile<<"# 31: asymptotic standard error for 7: XY width (1/e^2)(um)\n";
-    wfile<<"# 32: asymptotic standard error for 8: X offset(um)\n";
-    wfile<<"# 33: asymptotic standard error for 9: Y offset(um)\n";
-    wfile<<"# 34: asymptotic standard error for 10: XY offset(um)\n";
-    wfile<<"# 35: asymptotic standard error for 19: X width (FWHM)(um)\n";
-    wfile<<"# 36: asymptotic standard error for 20: Y width (FWHM)(um)\n";
-    wfile<<"# 37: asymptotic standard error for 21: XY width (FWHM)(um)\n";
+    const size_t gaussPeakNum=fitPar_nPeakGauss->val;
+    const size_t lorentzPeakNum=fitPar_nPeakLorentz->val;
+    const bool independentWidths=(gaussPeakNum<=1)|fitPar_independentWidths->val;
+    const bool independentAngles=fitPar_independentAngles->val;
+    const bool independentCentres=fitPar_independentCentres->val;
+    size_t v=1;
+    wfile<<"# gaussPeakNum="<<gaussPeakNum<<"\n";
+    wfile<<"# lorentzPeakNum="<<lorentzPeakNum<<"\n";
+    wfile<<"# independentWidths="<<independentWidths<<"\n";
+    wfile<<"# independentAngles="<<independentAngles<<"\n";
+    wfile<<"# independentCentres="<<independentCentres<<"\n";
+    wfile<<"# "<<v++<<" Valid Measurement (=1)\n";
+    wfile<<"# "<<v++<<" Focus Distance (um)\n";
+    wfile<<"# "<<v++<<" Duration (ms)\n";
+    wfile<<"# "<<v++<<" Plateau (nm)\n";
+    wfile<<"# "<<v++<<" Peak Center Reflectivity change (averaged within FWHM)(a.u.)\n";
+    wfile<<"# "<<v++<<" Max absolute 1st der. (nm/um)\n";
+    wfile<<"# "<<v++<<" Min Laplacian (nm/um^2)\n";
+    wfile<<"# "<<v++<<" Max Laplacian (nm/um^2)\n";
+    wfile<<"# "<<v++<<" Peak Height (nm)(max)\n";
+    wfile<<"# "<<v++<<" Peak Height (nm)(max-min)\n";
+    wfile<<"# "<<v++<<" Prepeak (nm)\n";
+    wfile<<"# "<<v++<<" PrepeakXoffs (um)\n";
+    wfile<<"# "<<v++<<" PrepeakYoffs (um)\n";
+    wfile<<"# "<<v++<<" Mirror Tilt X (nm/nm)\n";
+    wfile<<"# "<<v++<<" Mirror Tilt Y (nm/nm)\n";
+    wfile<<"# "<<v++<<" FIT result: Combined peak height (nm)\n";
+    wfile<<"# "<<v++<<" FIT Asymptotic standard error: Combined peak height (nm)\n";
+    wfile<<"# "<<v++<<" FIT result: Combined peak FWHM (um)\n";
+    wfile<<"# "<<v++<<" FIT Asymptotic standard error: Combined peak FWHM (um)\n";
+    if(!independentCentres){
+        wfile<<"# "<<v++<<" FIT result: X offset (um)\n";
+        wfile<<"# "<<v++<<" FIT Asymptotic standard error: X offset (um)\n";
+        wfile<<"# "<<v++<<" FIT result: Y offset (um)\n";
+        wfile<<"# "<<v++<<" FIT Asymptotic standard error: Y offset (um)\n";
+    }
+    if(gaussPeakNum>0 && !independentAngles){
+        wfile<<"# "<<v++<<" FIT result: Gaussian Ellipse Angle (rad)\n";
+        wfile<<"# "<<v++<<" FIT Asymptotic standard error: Gaussian Ellipse Angle (rad)\n";
+    }
+    if(gaussPeakNum>0 && !independentWidths){
+        wfile<<"# "<<v++<<" FIT result: Gaussian Width Aspect Ratio Wx/Wy\n";
+        wfile<<"# "<<v++<<" FIT Asymptotic standard error: Gaussian Width Aspect Ratio Wx/Wy\n";
+    }
+    wfile<<"# "<<v++<<" FIT result: Background Height (nm)\n";
+    wfile<<"# "<<v++<<" FIT Asymptotic standard error: Background Height (nm)\n";
+
+
+    for(size_t i=0;i!=gaussPeakNum;i++){
+        wfile<<"# "<<v++<<" FIT result for Gaussian peak #"<<i<<": Peak Height (nm)\n";
+        wfile<<"# "<<v++<<" FIT Asymptotic standard error for Gaussian peak #"<<i<<": Peak Height (nm)\n";
+        if(independentCentres){
+            wfile<<"# "<<v++<<" FIT result for Gaussian peak #"<<i<<": X offset (um)\n";
+            wfile<<"# "<<v++<<" FIT Asymptotic standard error for Gaussian peak #"<<i<<": X offset (um)\n";
+            wfile<<"# "<<v++<<" FIT result for Gaussian peak #"<<i<<": Y offset (um)\n";
+            wfile<<"# "<<v++<<" FIT Asymptotic standard error for Gaussian peak #"<<i<<": Y offset (um)\n";
+        }
+        if(independentAngles){
+            wfile<<"# "<<v++<<" FIT result for Gaussian peak #"<<i<<": Gaussian Ellipse Angle (rad)\n";
+            wfile<<"# "<<v++<<" FIT Asymptotic standard error for Gaussian peak #"<<i<<": Gaussian Ellipse Angle (rad)\n";
+        }
+        wfile<<"# "<<v++<<" FIT result for Gaussian peak #"<<i<<": X width (1/e^2)(um)\n";
+        wfile<<"# "<<v++<<" FIT Asymptotic standard error for Gaussian peak #"<<i<<": X width (1/e^2)(um)\n";
+        wfile<<"# "<<v++<<" FIT result for Gaussian peak #"<<i<<": X width (FWHM)(um)\n";
+        wfile<<"# "<<v++<<" FIT Asymptotic standard error for Gaussian peak #"<<i<<": X width (FWHM)(um)\n";
+        if(independentWidths){
+            wfile<<"# "<<v++<<" FIT result for Gaussian peak #"<<i<<": Y width (1/e^2)(um)\n";
+            wfile<<"# "<<v++<<" FIT Asymptotic standard error for Gaussian peak #"<<i<<": Y width (1/e^2)(um)\n";
+            wfile<<"# "<<v++<<" FIT result for Gaussian peak #"<<i<<": Y width (FWHM)(um)\n";
+            wfile<<"# "<<v++<<" FIT Asymptotic standard error for Gaussian peak #"<<i<<": Y width (FWHM)(um)\n";
+        }
+    }
+
+    for(size_t i=0;i!=lorentzPeakNum;i++){
+        wfile<<"# "<<v++<<" FIT result for Lorentzian peak #"<<i<<": Peak Height (nm)\n";
+        wfile<<"# "<<v++<<" FIT Asymptotic standard error for Lorentzian peak #"<<i<<": Peak Height (nm)\n";
+        if(independentCentres){
+            wfile<<"# "<<v++<<" FIT result for Lorentzian peak #"<<i<<": X offset (um)\n";
+            wfile<<"# "<<v++<<" FIT Asymptotic standard error for Lorentzian peak #"<<i<<": X offset (um)\n";
+            wfile<<"# "<<v++<<" FIT result for Lorentzian peak #"<<i<<": Y offset (um)\n";
+            wfile<<"# "<<v++<<" FIT Asymptotic standard error for Lorentzian peak #"<<i<<": Y offset (um)\n";
+        }
+        wfile<<"# "<<v++<<" FIT result for Lorentzian peak #"<<i<<": Width (FWHM)(um)\n";
+        wfile<<"# "<<v++<<" FIT Asymptotic standard error for Lorentzian peak #"<<i<<": Width (FWHM)(um)\n";
+    }
 }
 
 void pgCalib::onProcessFocusMes(){
@@ -664,10 +712,10 @@ int pgCalib::gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
         x0[0]=gsl_vector_get(pars, v++); // x0
         y0[0]=gsl_vector_get(pars, v++); // y0
     }
-    if(!independentAngles){
+    if(gaussPeakNum>0 && !independentAngles){
         an[0]=gsl_vector_get(pars, v++); // an (angle x/y for Gauss)
     }
-    if(!independentWidths){
+    if(gaussPeakNum>0 && !independentWidths){
         ar=gsl_vector_get(pars, v++);    // ar (aspect ratio wx/wy)
     }
     a0=gsl_vector_get(pars, v++);        // a0 (background height)
@@ -676,6 +724,7 @@ int pgCalib::gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
     double B[gaussPeakNum];
     double C[gaussPeakNum];
     for(size_t i=0;i!=gaussPeakNum+lorentzPeakNum;i++){
+        a[i]=gsl_vector_get(pars, v++);         // a (height)
         if(independentCentres){
             x0[i]=gsl_vector_get(pars, v++);    // x0
             y0[i]=gsl_vector_get(pars, v++);    // y0
@@ -689,7 +738,6 @@ int pgCalib::gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
         }else{
             wy[i]=wx[i]/ar;
         }
-        a[i]=gsl_vector_get(pars, v++);         // a (height)
 
         if(i<gaussPeakNum){
             double _an=an[independentAngles?i:0];
@@ -753,30 +801,29 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
         _prepeak=*prepeak;
         *prepeak=0;
     }
-    // shared pars: x0, y0, a0 , ar (aspect ratio wx/wy), an (angle x/y)
-    // pars per each peak: w (width 1/e), a (height)
     const size_t gaussPeakNum=fitPar_nPeakGauss->val;
     const size_t lorentzPeakNum=fitPar_nPeakLorentz->val;
     if(gaussPeakNum+lorentzPeakNum==0) return;
-    const bool independentWidths=fitPar_independentWidths->val;
+    const bool independentWidths=(gaussPeakNum<=1)|fitPar_independentWidths->val;
     const bool independentAngles=fitPar_independentAngles->val;
     const bool independentCentres=fitPar_independentCentres->val;
-    double initval[100];// = { 0, 4000/scanDif.XYnmppx, 4000/scanDif.XYnmppx, 0.01, 0};
+    double initval[100];
     size_t v=0;
     if(!independentCentres){
         initval[v++]=scanDif.depth.cols/2.; // x0
         initval[v++]=scanDif.depth.rows/2.; // y0
     }
-    if(!independentAngles){
+    if(gaussPeakNum>0 && !independentAngles){
         initval[v++]=0.01;      // an (angle x/y for Gauss)
     }
-    if(!independentWidths){
+    if(gaussPeakNum>0 && !independentWidths){
         initval[v++]=1;         // ar (aspect ratio wx/wy)
     }
     initval[v++]=scanDif.min;   // a0 (background height)
 
 
     for(size_t i=0;i!=gaussPeakNum+lorentzPeakNum;i++){
+        initval[v++]=(scanDif.max-scanDif.min)/(gaussPeakNum+lorentzPeakNum);   // a (height)
         if(independentCentres){
             initval[v++]=scanDif.depth.cols/((i>=gaussPeakNum)?10.:2.);  // x0
             initval[v++]=scanDif.depth.rows/((i>=gaussPeakNum)?10.:2.);  // y0
@@ -788,7 +835,6 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
         if(i<gaussPeakNum && independentWidths){
             initval[v++]=4000/scanDif.XYnmppx;          // wy (width 1/e for Gauss)
         }
-        initval[v++]=(scanDif.max-scanDif.min)/(gaussPeakNum+lorentzPeakNum);   // a (height)
     }
     const size_t parN=v;
     size_t ptN=scanDif.depth.cols*scanDif.depth.rows;
@@ -843,27 +889,12 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
         int n=0;
         for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++){
             if(scanDif.mask.at<uchar>(j,i)==0){
-                output_mat->at<float>(j,i)=gsl_vector_get(workspace->f, n);
-                n++;
+                output_mat->at<float>(j,i)=gsl_vector_get(workspace->f, n++);
                 if(n>ptN) throw std::out_of_range("FIXME: in pgCalib::calcParameters when calculation output_mat: too many points.\n");
             }else{
                 output_mat->at<float>(j,i)=0;
             }
         }
-    }
-
-    gsl_multifit_nlinear_free (workspace);
-    gsl_matrix_free (covar);
-
-
-
-    while(res[5]>M_PI) res[5]-=M_PI;
-    while(res[5]<0) res[5]+=M_PI;
-    if(res[5]>=M_PI/2){
-       res[5]-= M_PI/2;
-       double tmp=res[3];
-       res[3]=res[4];
-       res[4]=tmp;
     }
 
     const double toFWHM=sqrt(2*log(2));
@@ -889,58 +920,212 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
     minDepthLaplacian/=XYumppx;
     maxDepthLaplacian/=XYumppx;
 
-    double Xwidth=2*abs(res[3])*XYumppx;                        double eXwidth=2*abs(err[3])*XYumppx;
-    double Ywidth=2*abs(res[4])*XYumppx;                        double eYwidth=2*abs(err[4])*XYumppx;
-    double XYwidth=(Xwidth+Ywidth)/2;                           double eXYwidth=(eXwidth+eYwidth)/2;
-    double Xofs=(res[0]-scanDif.depth.cols/2.)*XYumppx;         double eXofs=err[0]*XYumppx;
-    double Yofs=(res[1]-scanDif.depth.rows/2.)*XYumppx;         double eYofs=err[1]*XYumppx;
-    double XYofs=sqrt(pow(Xofs,2)+pow(Yofs,2));                 double eXYofs=eXofs*Xofs/XYofs+eYofs*Yofs/XYofs;
     double tiltX=scanDif.tiltCor[0]/scanDif.XYnmppx;    // these tilts are actually from scanBefore
     double tiltY=scanDif.tiltCor[1]/scanDif.XYnmppx;
 
+    std::vector<double> shared;
+    std::vector<std::vector<double>> gpeaks, lpeaks;
+    size_t w=0;
+    bool flip=false;
     int valid=1;
-    if(res[0]<0 || res[0]>scanDif.depth.cols || res[1]<0 || res[1]>scanDif.depth.rows || res[2]<=0 || status!=0) valid=0;    //fit failure
-    for(int i=0;i!=7;i++) if(err[i]>1e3) valid=0;    // fit failed if errors are arbitrarily high
-    *output=util::toString(
-        valid," ",                      // 1: valid measurement(=1)
-        focus," ",                      // 2: focus distance(um)
-        res[2]," ",                     // 3: peak height(nm)
-        Xwidth," ",                     // 4: X width (1/e^2)(um)
-        Ywidth," ",                     // 5: Y width (1/e^2)(um)
-        res[5]," ",                     // 6: ellipse angle(rad)
-        XYwidth," ",                    // 7: XY width (1/e^2)(um)
-        Xofs," ",                       // 8: X offset(um)
-        Yofs," ",                       // 9: Y offset(um)
-        XYofs," ",                      // 10: XY offset(um)
-        plateau," ",                    // 11: plateau(nm)
-        duration," ",                   // 12: duration(ms)
-        peakRefl," ",                   // 13: Peak Center Reflectivity change (averaged within FWHM)(a.u.)\n";
-        maxDepthDer," ",                // 14: Max absolute 1st der. (nm/um)
-        minDepthLaplacian," ",          // 15: Min Laplacian (nm/um^2)
-        maxDepthLaplacian," ",          // 16: Max Laplacian (nm/um^2)
-        scanDif.max," ",                // 17: peak height(nm)(max)
-        scanDif.max-scanDif.min," ",    // 18: peak height(nm)(max-min)
-        Xwidth*toFWHM," ",              // 19: X width (FWHM)(um)
-        Ywidth*toFWHM," ",              // 20: Y width (FWHM)(um)
-        XYwidth*toFWHM," ",             // 21: XY width (FWHM)(um)
-        _prepeak," ",                   // 22: prepeak(nm)
-        prepeakXofs," ",                // 23: prepeakXoffs(um)
-        prepeakYofs," ",                // 24: prepeakYoffs(um)
-        tiltX," ",                      // 25: Mirror tilt X(nm/nm)
-        tiltY," ",                      // 26: Mirror tilt Y(nm/nm)
-        err[2]," ",                     // 27: asymptotic standard error for 3: peak height(nm)
-        eXwidth," ",                    // 28: asymptotic standard error for 4: X width (1/e^2)(um)
-        eYwidth," ",                    // 29: asymptotic standard error for 5: Y width (1/e^2)(um)
-        err[2]," ",                     // 30: asymptotic standard error for 6: ellipse angle(rad)
-        eXYwidth," ",                   // 31: asymptotic standard error for 7: XY width (1/e^2)(um)
-        eXofs," ",                      // 32: asymptotic standard error for 8: X offset(um)
-        eYofs," ",                      // 33: asymptotic standard error for 9: Y offset(um)
-        eXYofs," ",                     // 34: asymptotic standard error for 10: XY offset(um)
-        eXwidth*toFWHM," ",             // 35: asymptotic standard error for 19: X width (FWHM)(um)
-        eYwidth*toFWHM," ",             // 36: asymptotic standard error for 20: Y width (FWHM)(um)
-        eXYwidth*toFWHM,"\n"            // 37: asymptotic standard error for 21: XY width (FWHM)(um)
-                );
-    if(prepeak!=nullptr)*prepeak=res[2];
+    if(!independentCentres){
+        if(res[w]<0 || res[w]>scanDif.depth.cols) valid=0;
+        shared.push_back(res[w]*XYumppx);                           // FIT result: X offset(um)
+        shared.push_back(err[w++]*XYumppx);                         // FIT Asymptotic standard error: X offset(um)
+        if(res[w]<0 || res[w]>scanDif.depth.rows) valid=0;
+        shared.push_back(res[w]*XYumppx);                           // FIT result: Y offset(um)
+        shared.push_back(err[w++]*XYumppx);                         // FIT Asymptotic standard error: Y offset(um)
+    }
+    if(gaussPeakNum>0 && !independentAngles){
+        double an=res[w];
+        while(an>M_PI) an-=M_PI;
+        while(an<0) an+=M_PI;
+        flip=(an>M_PI/2);
+        if(flip) an-=M_PI/2;
+        shared.push_back(an);                                       // FIT result: Gaussian Ellipse Angle(rad)
+        shared.push_back(err[w++]);                                 // FIT Asymptotic standard error: Gaussian Ellipse Angle(rad)
+    }
+    if(gaussPeakNum>0 && !independentWidths){
+        if(flip){
+            shared.push_back(1/res[w]);
+            shared.push_back(1/pow(res[w],2)*err[w]);
+            w++;
+        }else{
+            shared.push_back(res[w]);                               // FIT result: Gaussian Width Aspect Ratio Wx/Wy
+            shared.push_back(err[w++]);                             // FIT Asymptotic standard error: Gaussian Width Aspect Ratio Wx/Wy
+        }
+    }
+    shared.push_back(res[w]);                                       // FIT result: Background Height (nm)
+    shared.push_back(err[w++]);                                     // FIT Asymptotic standard error: Background Height (nm)
+    for(size_t i=0;i!=gaussPeakNum;i++){
+        gpeaks.emplace_back();
+        gpeaks.back().push_back(abs(res[w]));                       // FIT result for Gaussian peak i: Peak Height (nm)
+        gpeaks.back().push_back(err[w++]);                          // FIT Asymptotic standard error for Gaussian peak i: Peak Height (nm)
+        if(independentCentres){
+            if(res[w]<0 || res[w]>scanDif.depth.cols) valid=0;
+            gpeaks.back().push_back(res[w]*XYumppx);                // FIT result for Gaussian peak i: X offset(um)
+            gpeaks.back().push_back(err[w++]*XYumppx);              // FIT Asymptotic standard error for Gaussian peak i: X offset(um)
+            if(res[w]<0 || res[w]>scanDif.depth.rows) valid=0;
+            gpeaks.back().push_back(res[w]*XYumppx);                // FIT result for Gaussian peak i: Y offset(um)
+            gpeaks.back().push_back(err[w++]*XYumppx);              // FIT Asymptotic standard error for Gaussian peak i: Y offset(um)
+        }
+        if(independentAngles){
+            double an=res[w];
+            while(an>M_PI) an-=M_PI;
+            while(an<0) an+=M_PI;
+            flip=(an>M_PI/2);
+            if(flip) an-=M_PI/2;
+            gpeaks.back().push_back(an);                            // FIT result for Gaussian peak i: Gaussian Ellipse Angle(rad)
+            gpeaks.back().push_back(err[w++]);                      // FIT Asymptotic standard error for Gaussian peak i: Gaussian Ellipse Angle(rad)
+        }
+        gpeaks.back().push_back(2*abs(res[w])*XYumppx);                             // FIT result for Gaussian peak i: X width (1/e^2)(um)
+        gpeaks.back().push_back(2*err[w++]*XYumppx);                                // FIT Asymptotic standard error for Gaussian peak i: X width (1/e^2)(um)
+        gpeaks.back().push_back(gpeaks.back()[gpeaks.back().size()-2]*toFWHM);      // FIT result for Gaussian peak i: X width (FWHM)(um)
+        gpeaks.back().push_back(gpeaks.back()[gpeaks.back().size()-2]*toFWHM);      // FIT Asymptotic standard error for Gaussian peak i: X width (FWHM)(um)
+        if(independentWidths){
+            gpeaks.back().push_back(2*abs(res[w])*XYumppx);                         // FIT result for Gaussian peak i: Y width (1/e^2)(um)
+            gpeaks.back().push_back(2*err[w++]*XYumppx);                            // FIT Asymptotic standard error for Gaussian peak i: Y width (1/e^2)(um)
+            gpeaks.back().push_back(gpeaks.back()[gpeaks.back().size()-2]*toFWHM);  // FIT result for Gaussian peak i: Y width (FWHM)(um)
+            gpeaks.back().push_back(gpeaks.back()[gpeaks.back().size()-2]*toFWHM);  // FIT Asymptotic standard error for Gaussian peak i: Y width (FWHM)(um)
+        }
+        if(flip){
+            if(independentWidths){
+                double tmp;
+                for(int j:{1,2,3,4}){
+                    tmp=gpeaks.back()[gpeaks.back().size()-j];
+                    gpeaks.back()[gpeaks.back().size()-j]=gpeaks.back()[gpeaks.back().size()-j-4];
+                    gpeaks.back()[gpeaks.back().size()-j-4]=tmp;
+                }
+            }else{
+                for(int j:{1,2,3,4})
+                    gpeaks.back()[gpeaks.back().size()-j]*=shared[shared.size()-4];
+            }
+        }
+    }
+    for(size_t i=0;i!=lorentzPeakNum;i++){
+        lpeaks.emplace_back();
+        lpeaks.back().push_back(abs(res[w]));                       // FIT result for Lorentzian peak i: Peak Height (nm)
+        lpeaks.back().push_back(err[w++]);                          // FIT Asymptotic standard error for Lorentzian peak i: Peak Height (nm)
+        if(independentCentres){
+            lpeaks.back().push_back(res[w]*XYumppx);                // FIT result for Lorentzian peak i: X offset(um)
+            lpeaks.back().push_back(err[w++]*XYumppx);              // FIT Asymptotic standard error for Lorentzian peak i: X offset(um)
+            lpeaks.back().push_back(res[w]*XYumppx);                // FIT result for Lorentzian peak i: Y offset(um)
+            lpeaks.back().push_back(err[w++]*XYumppx);              // FIT Asymptotic standard error for Lorentzian peak i: Y offset(um)
+        }
+        lpeaks.back().push_back(2*abs(res[w])*XYumppx);             // FIT result for Lorentzian peak i: Width (FWHM)(um)
+        lpeaks.back().push_back(2*err[w++]*XYumppx);                // FIT Asymptotic standard error for Lorentzian peak i: Width (FWHM)(um)
+    }
+    if(gpeaks.size()>1)
+        std::sort(gpeaks.begin(), gpeaks.end(), [](std::vector<double>& i,std::vector<double>& j){return (i.front()>j.front());});      // sort by peak height
+    if(lpeaks.size()>1)
+        std::sort(lpeaks.begin(), lpeaks.end(), [](std::vector<double>& i,std::vector<double>& j){return (i.front()>j.front());});      // sort by peak height
+
+    double comboHeight{0}, comboHeightErr{0};
+    double comboFWHM{0}, comboFWHMErr{0};
+    if(gaussPeakNum+lorentzPeakNum==1){
+        std::vector<double> peak=(gaussPeakNum==1)?gpeaks.front():lpeaks.front();
+        size_t u=0;
+        comboHeight=peak[u++];
+        comboHeightErr=peak[u++];
+        if(independentCentres) u+=4;
+        if(lorentzPeakNum==1){
+            comboFWHM=peak[u++];
+            comboFWHMErr=peak[u++];
+        }else{
+            if(independentAngles) u+=2;
+            u+=2;
+            comboFWHM=(peak[u]+peak[u+4])/2;
+            comboFWHMErr=sqrt(pow(peak[u+1],2)+pow(peak[u+5],2))/2;
+        }
+    }else{
+        cv::Mat hMat=scanDif.depth.clone();
+        int n=0;
+        for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++){
+            if(scanDif.mask.at<uchar>(j,i)==0){
+                hMat.at<float>(j,i)+=gsl_vector_get(workspace->f, n++);
+            }
+        }
+        hMat-=shared[shared.size()-2];  // subtract background
+        cv::Point ctr;
+        cv::minMaxLoc(hMat, nullptr, &comboHeight,nullptr, &ctr, scanDif.maskN);
+        cv::Mat ring=cv::Mat::zeros(scanDif.depth.rows, scanDif.depth.cols, CV_8U);
+        cv::Mat tmp;
+        cv::compare(hMat,comboHeight/2,ring,cv::CMP_GE);
+        cv::compare(hMat,comboHeight/2,tmp,cv::CMP_LE);
+        cv::dilate(ring,ring,cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3,3), cv::Point(1,1)));
+        cv::dilate(tmp,tmp,cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3,3), cv::Point(1,1)));
+        ring=ring&tmp;
+        n=0;
+        for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++){
+            if(scanDif.mask.at<uchar>(j,i)==0 && ring.at<uchar>(j,i)==255){
+                comboFWHM+=(sqrt(pow(i-ctr.x,2)+pow(j-ctr.y,2))*2*XYumppx);
+                n++;
+            }
+        }
+        comboFWHM/=n;
+
+        // now calculate errors, we estimate using weights
+        for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++){
+            if(scanDif.mask.at<uchar>(j,i)==0 && ring.at<uchar>(j,i)==255){
+                comboFWHMErr+=pow((sqrt(pow(i-ctr.x,2)+pow(j-ctr.y,2))*2*XYumppx)-comboFWHM,2);
+            }
+        }
+        comboFWHMErr=sqrt(comboFWHMErr/n/(n-1));    //SE
+
+        double sumAmp=0;
+        for(auto& peaks: {gpeaks,lpeaks}) for(auto& peak: peaks)
+            sumAmp+=peak[0];
+        for(auto& peaks: {gpeaks,lpeaks}) for(auto& peak: peaks){
+            double weight=peak[0]/sumAmp;
+            comboHeightErr+=weight*peak[1];
+            if(&peaks==&lpeaks) comboFWHMErr+=weight*peak[3+(independentCentres?4:0)];      // we add these errors as well to get a conservative estimate
+            else{
+                size_t u=2+(independentCentres?4:0)+(independentAngles?2:0)+2+1;
+                if(independentWidths)
+                    comboFWHMErr+=weight*sqrt(pow(peak[u],2)+pow(peak[u+4],2))/2;
+                else{
+                    size_t v=(independentCentres?0:4)+((gaussPeakNum>0 && !independentAngles)?2:0);
+                    comboFWHMErr+=weight*sqrt(pow((1+1/shared[v])*peak[u]/2,2)+pow(shared[v+1]*peak[u-1]/pow(shared[v],2)/2,2));
+                }
+            }
+
+        }
+        comboHeightErr=sqrt(pow(comboHeightErr,2)+pow(shared.back(),2));    // add background height error
+
+    }
+    for(auto& var: shared) if(var>1e6 || var<-1e6) valid=0;
+    for(auto& _var: gpeaks) for(auto& var: _var) if(var>1e6 || var<-1e6) valid=0;
+    for(auto& _var: lpeaks) for(auto& var: _var) if(var>1e6 || var<-1e6) valid=0;
+
+    gsl_multifit_nlinear_free (workspace);
+    gsl_matrix_free (covar);
+
+    *output+=util::toString(
+        valid," ",                      // Valid Measurement (=1)
+        focus," ",                      // Focus Distance (um)
+        duration," ",                   // Duration (ms)
+        plateau," ",                    // Plateau (nm)
+        peakRefl," ",                   // Peak Center Reflectivity change (averaged within FWHM)(a.u.)
+        maxDepthDer," ",                // Max Absolute 1st Der. (nm/um)
+        minDepthLaplacian," ",          // Min Laplacian (nm/um^2)
+        maxDepthLaplacian," ",          // Max Laplacian (nm/um^2)
+        scanDif.max," ",                // Peak Height (nm)(max)
+        scanDif.max-scanDif.min," ",    // Peak Height (nm)(max-min)
+        _prepeak," ",                   // Prepeak (nm)
+        prepeakXofs," ",                // PrepeakXoffs (um)
+        prepeakYofs," ",                // PrepeakYoffs (um)
+        tiltX," ",                      // Mirror Tilt X (nm/nm)
+        tiltY," ",                      // Mirror Tilt Y (nm/nm)
+        comboHeight," ",                // FIT result: Combined peak height(nm)\n";
+        comboHeightErr," ",             // FIT Asymptotic standard error: Combined peak height(nm)\n";
+        comboFWHM," ",                  // FIT result: Combined peak FWHM(um)\n";
+        comboFWHMErr," ");              // FIT Asymptotic standard error: Combined peak FWHM(um)\n";
+    for(auto& var: shared) *output+=util::toString(var," ");
+    for(auto& _var: gpeaks) for(auto& var: _var) *output+=util::toString(var," ");
+    for(auto& _var: lpeaks) for(auto& var: _var) *output+=util::toString(var," ");
+    *output+="\n";
+
+    if(prepeak!=nullptr)*prepeak=comboHeight;
 
     return;
 }
@@ -982,18 +1167,34 @@ void pgCalib::onfpLoad(){
         }
     }
 
-    const size_t pos[]={1,12,3,27,2,8,9};     // indices in data(starting from 1): valid, duration, height, height_err, focus, xofs, yofs
-    const size_t maxpos=*std::max_element(pos,pos+sizeof(pos)/sizeof(size_t));
+    std::array<size_t,7> pos;   // indices in data(starting from 1): valid, duration, height, height_err, focus, xofs, yofs
+    pos.fill(0);
     for(size_t i:{0,1,2}) focus[i]=0;
     for(auto& item:measFiles){
         std::ifstream ifs(item);
         for(std::string line; std::getline(ifs, line);){
-            if(line[0]=='#') continue;
+            if(line[0]=='#'){
+                if(std::isdigit(line[2])){
+                    size_t idx=std::stoi(line.substr(2));
+                    if(line.find("Valid Measurement (=1)")!=std::string::npos) pos[0]=idx;
+                    else if(line.find("Duration (ms)")!=std::string::npos) pos[1]=idx;
+                    else if(line.find("FIT result: Combined peak height (nm)")!=std::string::npos) pos[2]=idx;
+                    else if(line.find("FIT Asymptotic standard error: Combined peak height (nm)")!=std::string::npos) pos[3]=idx;
+                    else if(line.find("Focus Distance (um)")!=std::string::npos) pos[4]=idx;
+                    else if(line.find("FIT result for Gaussian peak #0: X offset (um)")!=std::string::npos) pos[5]=idx;
+                    else if(line.find("FIT result for Gaussian peak #0: Y offset (um)")!=std::string::npos) pos[6]=idx;
+                    else if(line.find("FIT result for Lorentzian peak #0: X offset (um)")!=std::string::npos && pos[5]==0) pos[5]=idx;      // if no gaussian
+                    else if(line.find("FIT result for Lorentzian peak #0: Y offset (um)")!=std::string::npos && pos[6]==0) pos[6]=idx;
+                }
+                continue;
+            }
             size_t sx=0, sxi;
-            bool valid;
+            bool valid=false;
             double _duration, _height, _height_err, _focus[3];
-            for(size_t i=1;i<=maxpos;i++){
-                double tmp=std::stod(line.substr(sx),&sxi);
+            for(size_t i=1;;i++){
+                std::string substr=line.substr(sx);
+                if(std::none_of(substr.begin(), substr.end(), [](char c){return std::isalnum(c);})) break;
+                double tmp=std::stod(substr,&sxi);
                 sx+=sxi;
                 if(i==pos[0]) valid=(tmp==1);
                 else if(i==pos[1]) _duration=tmp;
@@ -1010,7 +1211,6 @@ void pgCalib::onfpLoad(){
         }
         ifs.close();
     }
-
     if(fpLoadedData.empty()) return;
     for(size_t i:{0,1,2}) focus[i]/=fpLoadedData.size();
 
