@@ -527,7 +527,7 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent), p_ready
     constC=new val_selector(0, "Constant C", -1000, 1000, 9, 0, {"ms"});
     parent->conf[name]["constC"]=constC;
     slayout->addWidget(constC);
-    plataeuPeakRatio=new val_selector(1, "Plataeu-Peak height ratio", 1, 1000, 3);
+    plataeuPeakRatio=new val_selector(1, "Plataeu-Peak height ratio", 0.01, 1000, 3);
     parent->conf[name]["plataeuPeakRatio"]=plataeuPeakRatio;
     corPPR=new QPushButton("Correct PPR");
     slayout->addWidget(new twid(plataeuPeakRatio,corPPR));
@@ -758,7 +758,7 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
         int next_i=last_i, next_j=last_j;
 
         long todo=completed.rows*completed.cols-cv::countNonZero(completed);
-        const long total=completed.rows*completed.cols;
+        const long total=completed.rows*completed.cols-cv::countNonZero(completed);
         if(todo==0) goto abort;
 
         struct pt{
