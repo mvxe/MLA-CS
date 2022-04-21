@@ -1,6 +1,7 @@
 #include "tab_camera.h"
 #include "GUI/mainwindow.h"
 #include "includes.h"
+#include <filesystem>
 
 tab_camera::tab_camera(QWidget* parent){
     pgScanGUI::parent=this; //for dialogs in pgScanGUI static functions
@@ -93,10 +94,16 @@ tab_camera::tab_camera(QWidget* parent){
     pageProcessing=new twd_selector;
         loadRawBtn=new QPushButton("Load measurement"); connect(loadRawBtn, SIGNAL(released()), this, SLOT(onLoadDepthMapRaw()));
         diff2RawBtn=new QPushButton("Load 2 measurements and dif them"); connect(diff2RawBtn, SIGNAL(released()), this, SLOT(onDiff2Raw()));
+        avgNRawBtn=new QPushButton("Average all measurements in folder"); connect(avgNRawBtn, SIGNAL(released()), this, SLOT(onAvgNRawBtn()));
+        avgNRawBtn->setToolTip("Averages files in subfolders as well.");
+        avgNRawMarginCut=new val_selector(0, "Cut: ", 0, 1000, 0);
+        avgNRawMarginCut->setToolTip("Cut margin: all scans loaded for averaging will have this ammount of pixels removed from all margins.");
+        avgNRawMarginRef=new val_selector(0, "Ref: ", 0, 1000, 0);
+        avgNRawMarginRef->setToolTip("Reference margin: the averaging will use pixels within this margin as a background reference. Set to 0 to use whole image.");
         combineMes=new QPushButton("Combine measurements"); connect(combineMes, SIGNAL(released()), this, SLOT(onCombineMes()));
         combineUseRefl=new QCheckBox("Use Reflectivity");
 
-        pageProcessing->addWidget(new vtwid(new twid(loadRawBtn),new twid(diff2RawBtn),new twid(combineMes,combineUseRefl),pgSGUI->gui_processing,false, false));
+        pageProcessing->addWidget(new vtwid(new twid(loadRawBtn),new twid(diff2RawBtn),new twid(avgNRawBtn,avgNRawMarginCut,avgNRawMarginRef),new twid(combineMes,combineUseRefl),pgSGUI->gui_processing,false, false));
 
     pageSettings=new twd_selector("","Select");
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));
@@ -590,6 +597,74 @@ void tab_camera::onDiff2Raw(){
     if(pgScanGUI::loadScan(&scanBefore) && pgScanGUI::loadScan(&scanAfter))
         diff2RawCompute();
 }
+void tab_camera::onAvgNRawBtn(){
+    std::vector<std::filesystem::path> readFolders;
+    std::vector<std::filesystem::path> measFiles;
+
+    std::string path=QFileDialog::getExistingDirectory(this, "Select Folder Containing Scans. It will be Searched Recursively.").toStdString();
+    if(path.empty()) return;
+    readFolders.push_back(std::filesystem::path(path));
+    while(!readFolders.empty()){
+        std::vector<std::filesystem::directory_entry> files;
+        for(auto const& dir_entry: std::filesystem::directory_iterator{readFolders.back()}) files.push_back(dir_entry);
+        readFolders.pop_back();
+        for(auto& path: files){
+            if(path.is_directory()) readFolders.push_back(path);
+            else if(path.path().stem().string().find("-SD")==std::string::npos && path.path().extension().string()==".pfm") measFiles.push_back(path);
+        }
+    }
+    //for(auto& path: measFiles) std::cerr<<path.filename().string()<<"\n";
+    if(measFiles.empty()) return;
+    std::vector<pgScanGUI::scanRes> scans;
+    for(auto& path: measFiles){
+        scans.emplace_back();
+        pgScanGUI::loadScan(&scans.back(),path.string());
+        if(avgNRawMarginCut->val>0){
+            int margin=avgNRawMarginCut->val;
+            cv::Mat tmp;
+            int width=scans.back().depth.cols-2*margin;
+            int height=scans.back().depth.rows-2*margin;
+            if(width<=0 || height <=0){
+                std::cerr<<"Cut margins are too large!\n";
+                return;
+            }
+            scans.back().depth(cv::Rect(margin, margin, width, height)).copyTo(tmp);
+            tmp.copyTo(scans.back().depth);
+            scans.back().mask(cv::Rect(margin, margin, width, height)).copyTo(tmp);
+            tmp.copyTo(scans.back().mask);
+            bitwise_not(scans.back().mask, scans.back().maskN);
+            scans.back().depthSS.release();
+            scans.back().refl.release();
+            cv::minMaxLoc(scans.back().depth, &scans.back().min, &scans.back().max, nullptr, nullptr, scans.back().maskN);
+        }
+    }
+
+    pgScanGUI::scanRes res;
+    if(avgNRawMarginRef->val>0){
+        int margin=avgNRawMarginRef->val;
+        int width=scans.back().depth.cols-2*margin;
+        int height=scans.back().depth.rows-2*margin;
+        if(width<=0 || height <=0){
+            std::cerr<<"Ref margins are too large!\n";
+            return;
+        }
+        cv::Mat refMask=cv::Mat::zeros(scans.back().depth.size(),CV_8U);
+        refMask.rowRange(0,margin).setTo(255);
+        refMask.rowRange(refMask.cols-margin,refMask.cols).setTo(255);
+        refMask.colRange(0,margin).setTo(255);
+        refMask.colRange(refMask.cols-margin,refMask.cols).setTo(255);
+        res=pgSGUI->avgScans(&scans,-1,10,&refMask);
+    }else{
+        res=pgSGUI->avgScans(&scans);
+    }
+
+    if(res.depth.empty()) return;
+    res.copyTo(loadedScan);
+    updateDisp=true;
+    loadedOnDisplay=true;
+}
+
+
 void tab_camera::diff2RawCompute(){
     if(scanBefore.depth.empty() || scanAfter.depth.empty()) return;
     pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);

@@ -87,8 +87,10 @@ public:
     static void saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::string fileName="");
     static bool loadScan(scanRes* scan, std::string fileName="");                       //return true if success
     scanRes difScans(scanRes* scan0, scanRes* scan1);
-    scanRes avgScans(std::vector<scanRes>* scans, double excludeSDfactor=-1, int maxNofCorrections=10);       //does not decorrect tilt, excludeSDfactor: exclude measurements that are this many times farther from avg than SD (for example 3), negative number or 0 means no excluding
-                                                                                                                    //using excludeSDfactor>0 makes the program modify scans
+    scanRes avgScans(std::vector<scanRes>* scans, double excludeSDfactor=-1, int maxNofCorrections=10, cv::Mat* refmask=nullptr);
+                                    //does not decorrect tilt, excludeSDfactor: exclude measurements that are this many times farther from avg than SD (for example 3), negative number or 0 means no excluding
+                                    //using excludeSDfactor>0 makes the program modify scans
+                                    //if refmask is provided, the masked pixels are used as reference for finding avg zero, otherwise all pixels are used, must be same size as scans and of type CV_8U
     static QWidget* parent; //for dialogs
 
     std::mutex* useCorr;                //from correction

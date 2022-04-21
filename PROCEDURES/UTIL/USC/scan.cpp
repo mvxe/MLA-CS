@@ -1107,7 +1107,7 @@ pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
     return ret;
 }
 
-pgScanGUI::scanRes pgScanGUI::avgScans(std::vector<scanRes>* scans, double excludeSDfactor, int maxNofCorrections){
+pgScanGUI::scanRes pgScanGUI::avgScans(std::vector<scanRes>* scans, double excludeSDfactor, int maxNofCorrections, cv::Mat* refmask){
     std::cerr<<"Averaging scans...\n";
     scanRes ret;
     int corDone{0};
@@ -1140,7 +1140,13 @@ redo: ret.depth=cv::Mat(scans->at(0).depth.rows,scans->at(0).depth.cols,CV_32F,c
     for(auto& scan:*scans){         //first make them have the same background level
         cv::Mat temp;
         cv::subtract(scan.depth, ret.depth, temp, scan.maskN);
-        cv::Scalar mean=cv::mean(temp, scan.maskN);
+        cv::Scalar mean;
+        if(refmask==nullptr) mean=cv::mean(temp, scan.maskN);
+        else{
+            cv::Mat mask;
+            cv::bitwise_and(scan.maskN, *refmask, mask);
+            mean=cv::mean(temp, mask);
+        }
         cv::subtract(scan.depth, mean, scan.depth, scan.maskN);
     }
     for(auto& scan:*scans){         //calc SD

@@ -66,6 +66,9 @@ private:
 
     QPushButton* loadRawBtn;
     QPushButton* diff2RawBtn;
+    QPushButton* avgNRawBtn;
+    val_selector* avgNRawMarginCut;
+    val_selector* avgNRawMarginRef;
     QPushButton* combineMes;
     QCheckBox* combineUseRefl;
 
@@ -118,6 +121,7 @@ private Q_SLOTS:
     void onLoadDepthMapRaw();
     void onRotateDepthMap();
     void onDiff2Raw();
+    void onAvgNRawBtn();
     void diff2RawCompute();
     void onCombineMes();
     void onPlotLine();
