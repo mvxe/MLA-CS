@@ -365,11 +365,27 @@ void iImageDisplay::calsVars(QMouseEvent *event, double* xcoord, double* ycoord,
     *ycoord=event->pos().y()-(height()-pixmap()->height())/2;
     if(pwidth!=nullptr) *pwidth=pixmap()->width();
     *pheight=pixmap()->height();
+
     if(parent->dispScale->val!=1){
-        *xcoord/=parent->dispScale->val;
-        *ycoord/=parent->dispScale->val;
-        if(pwidth!=nullptr) *pwidth/=parent->dispScale->val;
-        *pheight/=parent->dispScale->val;
+        double scale=parent->dispScale->val;
+        if(parent->selDisp->index!=0){  // not camera
+            if(go.pGCAM->iuScope->connected){
+                const pgScanGUI::scanRes* res;
+                if(parent->loadedOnDisplay) res=&parent->loadedScan;
+                else res=parent->scanRes->get();
+                double colRatio=static_cast<double>(res->depth.cols)/go.pGCAM->iuScope->camCols;
+                double rowRatio=static_cast<double>(res->depth.rows)/go.pGCAM->iuScope->camRows;
+                if(colRatio<1 && rowRatio<1){
+                    if(colRatio<=scale && rowRatio<=scale) scale=1;
+                    else if(colRatio>rowRatio) scale/=colRatio;
+                    else if(colRatio<rowRatio) scale/=rowRatio;
+                }
+            }
+        }
+        *xcoord/=scale;
+        *ycoord/=scale;
+        if(pwidth!=nullptr) *pwidth/=scale;
+        *pheight/=scale;
     }
 }
 
