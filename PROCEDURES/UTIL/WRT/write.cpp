@@ -913,7 +913,7 @@ void pgWrite::onWriteTag(){
         for(int i:{0,1,2})scheduled.back().coords[i]=coords[i];
         tagImage.copyTo(scheduled.back().src);
         scheduled.back().isWrite=true;
-        scheduled.back().wps.depthMaxval=settingWdg[4]->depthMaxval->val/1000000;
+        scheduled.back().wps.depthMaxval=settingWdg[4]->depthMaxval->val;
         scheduled.back().wps.imgmmPPx=settingWdg[4]->imgUmPPx->val/1000;
         scheduled.back().wps.pointSpacing_mm=settingWdg[4]->pointSpacing->val/1000;
         scheduled.back().wps.focus_mm=settingWdg[4]->focus->val/1000;
@@ -940,6 +940,7 @@ void pgWrite::onWriteTag(){
         wps.focus_mm=settingWdg[4]->focus->val/1000;
         wps.focusXcor_mm=settingWdg[4]->focusXcor->val/1000;
         wps.focusYcor_mm=settingWdg[4]->focusYcor->val/1000;
+        // TODO tag doesnt use all the tag settings, fix when variable scheduling is implemented
         writeMat(&tagImage,wps);
         writeTag->setText("Write Tag");
         writeTag->setEnabled(true);
