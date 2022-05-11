@@ -448,7 +448,9 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
         if(plateau!=0){
             cv::Mat mplateau(WArray.rows+1, WArray.cols+1, CV_32F, cv::Scalar(plateau));
             if(wcabort){delete scanRes;return true;}        //abort
-            if(pgWr->writeMat(&mplateau, 0, selArraySpacing->val/1000)){delete scanRes;return true;}    //abort/fail
+            pgWrite::writePars wps;
+            wps.imgmmPPx=selArraySpacing->val/1000;
+            if(pgWr->writeMat(&mplateau, wps)){delete scanRes;return true;}    //abort/fail
         }
 
         if(wcabort){delete scanRes;return true;}        //abort
@@ -1169,7 +1171,6 @@ void pgCalib::onfpLoad(){
 
     std::array<size_t,7> pos;   // indices in data(starting from 1): valid, duration, height, height_err, focus, xofs, yofs
     pos.fill(0);
-    for(size_t i:{0,1,2}) focus[i]=0;
     for(auto& item:measFiles){
         std::ifstream ifs(item);
         for(std::string line; std::getline(ifs, line);){
@@ -1212,7 +1213,6 @@ void pgCalib::onfpLoad(){
         ifs.close();
     }
     if(fpLoadedData.empty()) return;
-    for(size_t i:{0,1,2}) focus[i]/=fpLoadedData.size();
 
     fpLoadedDataSorted=false;
     fitAndPlot->setEnabled(true);
@@ -1228,6 +1228,7 @@ void pgCalib::onfpLoad(){
 }
 void pgCalib::onfpClear(){
     fpLoadedData.clear();
+    for(size_t i:{0,1,2}) focus[i]=0;
     fitAndPlot->setEnabled(false);
     fpClear->setEnabled(false);
     fpList->setText("");
@@ -1445,9 +1446,9 @@ void pgCalib::onApplyMenuTriggered(QAction* action){
             pgWr->settingWdg[i]->constC->setValue(linX);
             pgWr->settingWdg[i]->usingBSpline->setEnabled(true);
             pgWr->settingWdg[i]->usingBSpline->setChecked(true);
-            pgWr->settingWdg[i]->focus->setValue(focus[0]);
-            pgWr->settingWdg[i]->focusXcor->setValue(focus[1]);
-            pgWr->settingWdg[i]->focusYcor->setValue(focus[2]);
+            pgWr->settingWdg[i]->focus->setValue(focus[0]/fpLoadedData.size());
+            pgWr->settingWdg[i]->focusXcor->setValue(focus[1]/fpLoadedData.size());
+            pgWr->settingWdg[i]->focusYcor->setValue(focus[2]/fpLoadedData.size());
             pgWr->settingWdg[i]->p_ready=false;
             return;
         }

@@ -33,11 +33,21 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     connect(importImg, SIGNAL(released()), this, SLOT(onLoadImg()));
     depthMaxval=new val_selector(10, "(if 8/16bit)Maxval = ", 0.1, 500, 3, 0, {"nm"});
     conf["depthMaxval"]=depthMaxval;
+    depthScale=new val_selector(10, "(if pfm) HeightMultiplier = ", 1.0, 500, 3);
+    conf["depthScale"]=depthScale;
     imgUmPPx=new val_selector(10, "Scaling: ", 0.001, 100, 3, 0, {"um/Px"});
     conf["imgUmPPx"]=imgUmPPx;
+    gradualWEn=new checkbox_gs(false,"Gradual");
+    conf["gradualWEn"]=gradualWEn;
+    gradualW=new val_selector(10, "Step: ", 0.001, 100, 3, 0, {"nm"});
+    conf["gradualW"]=gradualW;
+    gradualWCut=new checkbox_gs(true,"Cut");
+    conf["gradualWCut"]=gradualWCut;
     importh=new hidCon(importImg);
     importh->addWidget(depthMaxval);
+    importh->addWidget(depthScale);
     importh->addWidget(imgUmPPx);
+    importh->addWidget(new twid(gradualWEn,gradualW,gradualWCut));
     alayout->addWidget(importh);
 
     writeDM=new HQPushButton("Write");
@@ -609,12 +619,15 @@ void pgWrite::onWriteDM(){
         for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
         WRImage.copyTo(scheduled.back().src);
         scheduled.back().isWrite=true;
-        scheduled.back().writePars[0]=depthMaxval->val;
-        scheduled.back().writePars[1]=imgUmPPx->val/1000;
-        scheduled.back().writePars[2]=pointSpacing->val/1000;
-        scheduled.back().writePars[3]=focus->val/1000;
-        scheduled.back().writePars[4]=focusXcor->val/1000;
-        scheduled.back().writePars[5]=focusYcor->val/1000;
+        scheduled.back().wps.depthMaxval=depthMaxval->val;
+        scheduled.back().wps.imgmmPPx=imgUmPPx->val/1000;
+        scheduled.back().wps.pointSpacing_mm=pointSpacing->val/1000;
+        scheduled.back().wps.focus_mm=focus->val/1000;
+        scheduled.back().wps.focusXcor_mm=focusXcor->val/1000;
+        scheduled.back().wps.focusYcor_mm=focusYcor->val/1000;
+        scheduled.back().wps.depthScale=depthScale->val;
+        scheduled.back().wps.gradualW=(gradualWEn->val)?((double)gradualW->val):(0);
+        scheduled.back().wps.gradualWCut=gradualWCut->val;
         scheduled.back().ptr=addScheduleItem("Pending","Write",filename,true);
         cv::Mat resized;
         double ratio=imgUmPPx->val;
@@ -673,24 +686,32 @@ void pgWrite::prepareScanROI(){
     if(scanROI.width+scanROI.x>cols) scanROI.width=cols-scanROI.x;
     if(scanROI.height+scanROI.y>rows) scanROI.height=rows-scanROI.y;
 }
-bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double override_imgmmPPx, double override_pointSpacing, double override_focus, double ov_fxcor, double ov_fycor){
+bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
     wabort=false;
     cv::Mat tmpWrite, resizedWrite;
     cv::Mat* src;
-    double vdepthMaxval, vimgmmPPx, vpointSpacing, vfocus, vfocusXcor, vfocusYcor;
+    double vdepthMaxval, vimgmmPPx, vpointSpacing, vfocus, vfocusXcor, vfocusYcor, vdepthScale;
     src=(override!=nullptr)?override:&WRImage;
-    vdepthMaxval=(override_depthMaxval!=0)?override_depthMaxval:(depthMaxval->val.load());
-    vimgmmPPx=(override_imgmmPPx!=0)?override_imgmmPPx:imgUmPPx->val/1000;
-    vpointSpacing=(override_pointSpacing!=0)?override_pointSpacing:pointSpacing->val/1000;
-    vfocus=(override_focus!=std::numeric_limits<double>::max())?override_focus:focus->val/1000;
-    vfocusXcor=(ov_fxcor!=std::numeric_limits<double>::max())?ov_fxcor:focusXcor->val/1000;
-    vfocusYcor=(ov_fycor!=std::numeric_limits<double>::max())?ov_fycor:focusYcor->val/1000;
+    vdepthMaxval=(wparoverride.depthMaxval!=0)?wparoverride.depthMaxval:(depthMaxval->val.load());
+    vimgmmPPx=(wparoverride.imgmmPPx!=0)?wparoverride.imgmmPPx:imgUmPPx->val/1000;
+    vpointSpacing=(wparoverride.pointSpacing_mm!=0)?wparoverride.pointSpacing_mm:pointSpacing->val/1000;
+    vfocus=(wparoverride.focus_mm!=std::numeric_limits<double>::max())?wparoverride.focus_mm:focus->val/1000;
+    vfocusXcor=(wparoverride.focusXcor_mm!=std::numeric_limits<double>::max())?wparoverride.focusXcor_mm:focusXcor->val/1000;
+    vfocusYcor=(wparoverride.focusYcor_mm!=std::numeric_limits<double>::max())?wparoverride.focusYcor_mm:focusYcor->val/1000;
+    vdepthScale=(wparoverride.depthScale>0)?wparoverride.depthScale:(double)depthScale->val;
+    double vgradualW; bool vgradualWCut;
+    vgradualW=(wparoverride.gradualW<0)?((gradualWEn->val)?((double)gradualW->val):(0)):wparoverride.gradualW;
+    vgradualWCut=(wparoverride.gradualWCut<0)?(bool)gradualWCut->val:(bool)wparoverride.gradualWCut;
 
     if(src->type()==CV_8U){
         src->convertTo(tmpWrite, CV_32F, vdepthMaxval/255);
     }else if(src->type()==CV_16U){
         src->convertTo(tmpWrite, CV_32F, vdepthMaxval/65536);
-    }else if(src->type()==CV_32F) src->copyTo(tmpWrite);
+    }else if(src->type()==CV_32F){
+        src->copyTo(tmpWrite);
+        if(vdepthScale!=1)
+            tmpWrite*=vdepthScale;
+    }
     else {QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n"); return true;}
     preparePredictor();
 
@@ -705,127 +726,159 @@ bool pgWrite::writeMat(cv::Mat* override, double override_depthMaxval, double ov
     wasMirau=pgMGUI->currentObj==0;
     pgMGUI->chooseObj(false);    // switch to writing
 
-    CTRL::CO CO(go.pRPTY);
-    double offsX,offsY;
-    offsX=(resizedWrite.cols-1)*vpointSpacing;
-    offsY=(resizedWrite.rows-1)*vpointSpacing;
-        // move to target and correct for focus (this can happen simultaneously with objective switch)
-    pgMGUI->corCOMove(CO,vfocusXcor,vfocusYcor,vfocus);
-    pgMGUI->corCOMove(CO,-offsX/2,-offsY/2,0);
-    if(selPScheduling->index==0){   //ZigZag
-
-            // wait till motion completes
-        CO.addHold("X",CTRL::he_motion_ontarget);
-        CO.addHold("Y",CTRL::he_motion_ontarget);
-        CO.addHold("Z",CTRL::he_motion_ontarget);
-        CO.execute();
-        CO.clear(true);
-
-        double pulse;
-        bool xdir=0;
-        for(int j=0;j!=resizedWrite.rows;j++){   // write row by row (so that processing for the next row is done while writing the previous one, and the operation can be terminated more easily)
-            for(int i=0;i!=resizedWrite.cols;i++){
-                pulse=predictDuration(resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i));        // Y inverted because image formats have flipped Y
-                if(i!=0) pgMGUI->corCOMove(CO,(xdir?-1:1)*vpointSpacing,0,0);
-                if(writeZeros->val==false && resizedWrite.at<float>(resizedWrite.rows-j-1,xdir?(resizedWrite.cols-i-1):i)==0) continue;
-                if(pulse==0) continue;
-                CO.addHold("X",CTRL::he_motion_ontarget);
-                CO.addHold("Y",CTRL::he_motion_ontarget);
-                CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
-                CO.pulseGPIO("wrLaser",pulse/1000);
+    std::vector<cv::Mat> writes;
+    if(vgradualW<=0) writes.push_back(resizedWrite);
+    else{
+        double max;
+        int n;
+        cv::minMaxIdx(resizedWrite,nullptr,&max);
+        n=ceil(max/vgradualW);
+        if(vgradualWCut){
+            cv::Mat mask;
+            for(int i=0;i<n;i++){
+                writes.emplace_back();
+                resizedWrite.copyTo(writes.back());
+                cv::compare(resizedWrite,i*vgradualW,mask,cv::CMP_LT);
+                writes.back().setTo(0,mask);
+                cv::compare(resizedWrite,(i+1)*vgradualW,mask,cv::CMP_GT);
+                writes.back().setTo((i+1)*vgradualW,mask);
             }
-            if (j!=resizedWrite.rows-1) pgMGUI->corCOMove(CO,0,vpointSpacing,0);
-            CO.execute();
-            CO.clear(true);
-            xdir^=1;
-
-            while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
-            MLP.progress_proc=100./resizedWrite.rows*j;
-            if(wabort) {pgMGUI->move(0,0,-vfocus); if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true); return true;}
-        }
-
-        pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
-        pgMGUI->corCOMove(CO,(xdir?-1:1)*offsX/2,-offsY/2,0);
-        CO.execute();
-        CO.clear(true);
-    }else if(selPScheduling->index==1){ //Nearest
-        cv::flip(resizedWrite,resizedWrite,0);
-        cv::Mat completed=cv::Mat::zeros(resizedWrite.size(), CV_8U);
-        if(writeZeros->val==false) cv::compare(resizedWrite,0,completed,cv::CMP_EQ);
-        cv::Mat pulseMat=cv::Mat::zeros(resizedWrite.size(), CV_32F);
-        for(int j=0;j!=resizedWrite.rows;j++) for(int i=0;i!=resizedWrite.cols;i++) pulseMat.at<float>(j,i)=predictDuration(resizedWrite.at<float>(j,i));
-        int last_i=0, last_j=0;
-        int next_i=last_i, next_j=last_j;
-
-        long todo=completed.rows*completed.cols-cv::countNonZero(completed);
-        const long total=completed.rows*completed.cols-cv::countNonZero(completed);
-        if(todo==0) goto abort;
-
-        struct pt{
-            int i,j;
-            double distance;    // in um
-        };
-        std::vector<pt> lut;
-        const double velX=go.pRPTY->getMotionSetting("X",CTRL::mst_defaultVelocity);
-        const double velY=go.pRPTY->getMotionSetting("Y",CTRL::mst_defaultVelocity);
-        const double accX=go.pRPTY->getMotionSetting("X",CTRL::mst_defaultAcceleration);
-        const double accY=go.pRPTY->getMotionSetting("Y",CTRL::mst_defaultAcceleration);
-        double timeX,timeY;
-
-        for(int j=0;j!=resizedWrite.rows;j++) for(int i=0;i!=resizedWrite.cols;i++){
-            mcutil::evalAccMotion(i*vpointSpacing, accX, velX, &timeX);
-            mcutil::evalAccMotion(j*vpointSpacing, accY, velY, &timeY);
-            lut.push_back({i,j,sqrt(pow(i*vpointSpacing,2)+pow(j*vpointSpacing,2))});
-        }
-        std::sort(lut.begin(), lut.end(), [](pt i,pt j){return (i.distance<j.distance);});
-
-        if(completed.at<uint8_t>(next_j,next_i)==255) for(auto& el: lut)
-            if(completed.at<uint8_t>(el.j,el.i)==0){
-                next_j=el.j;
-                next_i=el.i;
-                goto _out;
-            }_out:;
-
-        int nPerRun=sqrt(resizedWrite.rows*resizedWrite.cols);
-        if(nPerRun<100) nPerRun=100;
-        while(1){
-            for(int i=0;i!=nPerRun; i++){
-                pgMGUI->corCOMove(CO,(next_i-last_i)*vpointSpacing,(next_j-last_j)*vpointSpacing,0);
-                last_i=next_i;
-                last_j=next_j;
-                CO.addHold("X",CTRL::he_motion_ontarget);
-                CO.addHold("Y",CTRL::he_motion_ontarget);
-                CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
-                CO.pulseGPIO("wrLaser",predictDuration(resizedWrite.at<float>(next_j,next_i))/1000);
-                completed.at<uint8_t>(next_j,next_i)=255;
-                todo--;
-
-                if(todo==0) break;
-                for(auto& el: lut) for(int tmp_i:{last_i-el.i,last_i+el.i}) for(int tmp_j:{last_j-el.j,last_j+el.j}){     // there is some redundancy
-                    if(tmp_i<0 || tmp_i>=completed.cols || tmp_j<0 || tmp_j>=completed.rows) continue;
-                    if(completed.at<uint8_t>(tmp_j,tmp_i)==0){
-                        next_i=tmp_i;
-                        next_j=tmp_j;
-                        goto next;
-                    }
-                }
-                QMessageBox::critical(gui_activation, "Error", "Cannot find a point in pgWrite::writeMat; this shouldn't happen!"); goto abort; // in case there is an unforseen bug, TODO remove
-                next:;
+        }else{
+            for(int i=0;i<n;i++){
+                writes.emplace_back();
+                resizedWrite.copyTo(writes.back());
+                if((i+1)*vgradualW<max)
+                    writes.back()*=((i+1)*vgradualW/max);
             }
-            CO.execute();
-            CO.clear(true);
-            while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
-            MLP.progress_proc=100./total*(total-todo);
-            if(wabort) {pgMGUI->move(0,0,-vfocus); if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true); return true;}
-            if(todo==0) break;
         }
-
-        pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
-        pgMGUI->corCOMove(CO,-last_i*vpointSpacing+offsX/2,-last_j*vpointSpacing+offsY/2,0);
-        CO.execute();
-        CO.clear(true);
     }
 
+    for(int wr=0;wr<writes.size();wr++){
+        auto& write=writes[wr];
+
+        CTRL::CO CO(go.pRPTY);
+        double offsX,offsY;
+        offsX=(write.cols-1)*vpointSpacing;
+        offsY=(write.rows-1)*vpointSpacing;
+            // move to target and correct for focus (this can happen simultaneously with objective switch)
+        pgMGUI->corCOMove(CO,vfocusXcor,vfocusYcor,vfocus);
+        pgMGUI->corCOMove(CO,-offsX/2,-offsY/2,0);
+        if(selPScheduling->index==0){   //ZigZag
+
+                // wait till motion completes
+            CO.addHold("X",CTRL::he_motion_ontarget);
+            CO.addHold("Y",CTRL::he_motion_ontarget);
+            CO.addHold("Z",CTRL::he_motion_ontarget);
+            CO.execute();
+            CO.clear(true);
+
+            double pulse;
+            bool xdir=0;
+            for(int j=0;j!=write.rows;j++){   // write row by row (so that processing for the next row is done while writing the previous one, and the operation can be terminated more easily)
+                for(int i=0;i!=write.cols;i++){
+                    pulse=predictDuration(write.at<float>(write.rows-j-1,xdir?(write.cols-i-1):i));        // Y inverted because image formats have flipped Y
+                    if(i!=0) pgMGUI->corCOMove(CO,(xdir?-1:1)*vpointSpacing,0,0);
+                    if(writeZeros->val==false && write.at<float>(write.rows-j-1,xdir?(write.cols-i-1):i)==0) continue;
+                    if(pulse==0) continue;
+                    CO.addHold("X",CTRL::he_motion_ontarget);
+                    CO.addHold("Y",CTRL::he_motion_ontarget);
+                    CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
+                    CO.pulseGPIO("wrLaser",pulse/1000);
+                }
+                if (j!=write.rows-1) pgMGUI->corCOMove(CO,0,vpointSpacing,0);
+                CO.execute();
+                CO.clear(true);
+                xdir^=1;
+
+                while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+                //MLP.progress_proc=100./write.rows*j;
+                MLP.progress_proc=100./(write.rows*writes.size())*(j+wr*write.rows);
+                if(wabort) {pgMGUI->move(0,0,-vfocus); if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true); return true;}
+            }
+
+            pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
+            pgMGUI->corCOMove(CO,(xdir?-1:1)*offsX/2,-offsY/2,0);
+            CO.execute();
+            CO.clear(true);
+        }else if(selPScheduling->index==1){ //Nearest
+            cv::flip(write,write,0);
+            cv::Mat completed=cv::Mat::zeros(write.size(), CV_8U);
+            if(writeZeros->val==false) cv::compare(write,0,completed,cv::CMP_EQ);
+            cv::Mat pulseMat=cv::Mat::zeros(write.size(), CV_32F);
+            for(int j=0;j!=write.rows;j++) for(int i=0;i!=write.cols;i++) pulseMat.at<float>(j,i)=predictDuration(write.at<float>(j,i));
+            int last_i=0, last_j=0;
+            int next_i=last_i, next_j=last_j;
+
+            long todo=completed.rows*completed.cols-cv::countNonZero(completed);
+            const long total=completed.rows*completed.cols-cv::countNonZero(completed);
+            if(todo==0) goto abort;
+
+            struct pt{
+                int i,j;
+                double distance;    // in um
+            };
+            std::vector<pt> lut;
+            const double velX=go.pRPTY->getMotionSetting("X",CTRL::mst_defaultVelocity);
+            const double velY=go.pRPTY->getMotionSetting("Y",CTRL::mst_defaultVelocity);
+            const double accX=go.pRPTY->getMotionSetting("X",CTRL::mst_defaultAcceleration);
+            const double accY=go.pRPTY->getMotionSetting("Y",CTRL::mst_defaultAcceleration);
+            double timeX,timeY;
+
+            for(int j=0;j!=write.rows;j++) for(int i=0;i!=write.cols;i++){
+                mcutil::evalAccMotion(i*vpointSpacing, accX, velX, &timeX);
+                mcutil::evalAccMotion(j*vpointSpacing, accY, velY, &timeY);
+                lut.push_back({i,j,sqrt(pow(i*vpointSpacing,2)+pow(j*vpointSpacing,2))});
+            }
+            std::sort(lut.begin(), lut.end(), [](pt i,pt j){return (i.distance<j.distance);});
+
+            if(completed.at<uint8_t>(next_j,next_i)==255) for(auto& el: lut)
+                if(completed.at<uint8_t>(el.j,el.i)==0){
+                    next_j=el.j;
+                    next_i=el.i;
+                    goto _out;
+                }_out:;
+
+            int nPerRun=sqrt(write.rows*write.cols);
+            if(nPerRun<100) nPerRun=100;
+            while(1){
+                for(int i=0;i!=nPerRun; i++){
+                    pgMGUI->corCOMove(CO,(next_i-last_i)*vpointSpacing,(next_j-last_j)*vpointSpacing,0);
+                    last_i=next_i;
+                    last_j=next_j;
+                    CO.addHold("X",CTRL::he_motion_ontarget);
+                    CO.addHold("Y",CTRL::he_motion_ontarget);
+                    CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
+                    CO.pulseGPIO("wrLaser",predictDuration(write.at<float>(next_j,next_i))/1000);
+                    completed.at<uint8_t>(next_j,next_i)=255;
+                    todo--;
+
+                    if(todo==0) break;
+                    for(auto& el: lut) for(int tmp_i:{last_i-el.i,last_i+el.i}) for(int tmp_j:{last_j-el.j,last_j+el.j}){     // there is some redundancy
+                        if(tmp_i<0 || tmp_i>=completed.cols || tmp_j<0 || tmp_j>=completed.rows) continue;
+                        if(completed.at<uint8_t>(tmp_j,tmp_i)==0){
+                            next_i=tmp_i;
+                            next_j=tmp_j;
+                            goto next;
+                        }
+                    }
+                    QMessageBox::critical(gui_activation, "Error", "Cannot find a point in pgWrite::writeMat; this shouldn't happen!"); goto abort; // in case there is an unforseen bug, TODO remove
+                    next:;
+                }
+                CO.execute();
+                CO.clear(true);
+                while(CO.getProgress()<0.5) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+                //MLP.progress_proc=100./total*(total-todo);
+                MLP.progress_proc=100./writes.size()*wr+100./writes.size()/total*(total-todo);
+                if(wabort) {pgMGUI->move(0,0,-vfocus); if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true); return true;}
+                if(todo==0) break;
+            }
+
+            pgMGUI->corCOMove(CO,-vfocusXcor,-vfocusYcor,-vfocus);
+            pgMGUI->corCOMove(CO,-last_i*vpointSpacing+offsX/2,-last_j*vpointSpacing+offsY/2,0);
+            CO.execute();
+            CO.clear(true);
+        }
+    }
     abort: MLP.progress_proc=100;
     if(wasMirau&&switchBack2mirau->val)pgMGUI->chooseObj(true);
     return false;
@@ -853,12 +906,15 @@ void pgWrite::onWriteTag(){
         for(int i:{0,1,2})scheduled.back().coords[i]=coords[i];
         tagImage.copyTo(scheduled.back().src);
         scheduled.back().isWrite=true;
-        scheduled.back().writePars[0]=settingWdg[4]->depthMaxval->val/1000000;
-        scheduled.back().writePars[1]=settingWdg[4]->imgUmPPx->val/1000;
-        scheduled.back().writePars[2]=settingWdg[4]->pointSpacing->val/1000;
-        scheduled.back().writePars[3]=settingWdg[4]->focus->val/1000;
-        scheduled.back().writePars[4]=settingWdg[4]->focusXcor->val/1000;
-        scheduled.back().writePars[5]=settingWdg[4]->focusYcor->val/1000;
+        scheduled.back().wps.depthMaxval=settingWdg[4]->depthMaxval->val/1000000;
+        scheduled.back().wps.imgmmPPx=settingWdg[4]->imgUmPPx->val/1000;
+        scheduled.back().wps.pointSpacing_mm=settingWdg[4]->pointSpacing->val/1000;
+        scheduled.back().wps.focus_mm=settingWdg[4]->focus->val/1000;
+        scheduled.back().wps.focusXcor_mm=settingWdg[4]->focusXcor->val/1000;
+        scheduled.back().wps.focusYcor_mm=settingWdg[4]->focusYcor->val/1000;
+        scheduled.back().wps.depthScale=-1;
+        scheduled.back().wps.gradualW=0;
+        scheduled.back().wps.gradualWCut=-1;
         scheduled.back().ptr=addScheduleItem("Pending","Write",util::toString("Tag: ",tagText->text().toStdString()),true);
         cv::Mat resized;
         double ratio=settingWdg[4]->imgUmPPx->val;
@@ -870,7 +926,14 @@ void pgWrite::onWriteTag(){
     else{
         writeTag->setText("Abort");
         onChangeDrawWriteAreaOnTag(false);
-        writeMat(&tagImage,settingWdg[4]->depthMaxval->val,settingWdg[4]->imgUmPPx->val/1000, settingWdg[4]->pointSpacing->val/1000,settingWdg[4]->focus->val/1000,settingWdg[4]->focusXcor->val/1000,settingWdg[4]->focusYcor->val/1000);
+        writePars wps;
+        wps.depthMaxval=settingWdg[4]->depthMaxval->val;
+        wps.imgmmPPx=settingWdg[4]->imgUmPPx->val/1000;
+        wps.pointSpacing_mm=settingWdg[4]->pointSpacing->val/1000;
+        wps.focus_mm=settingWdg[4]->focus->val/1000;
+        wps.focusXcor_mm=settingWdg[4]->focusXcor->val/1000;
+        wps.focusYcor_mm=settingWdg[4]->focusYcor->val/1000;
+        writeMat(&tagImage,wps);
         writeTag->setText("Write Tag");
         writeTag->setEnabled(true);
     }
@@ -977,7 +1040,7 @@ void pgWrite::onScheduleWriteStart(){
             if(it->isWrite){
                 pgMGUI->move(it->coords[0], it->coords[1], it->coords[2], true);
                 if(refocusBeforeWrite->val) pgFGUI->doRefocus(true, scanROI, maxRedoRefocusTries);
-                failed=writeMat(&it->src, it->writePars[0], it->writePars[1], it->writePars[2], it->writePars[3], it->writePars[4], it->writePars[5]);
+                failed=writeMat(&it->src, it->wps);
             }else{
                 saveB->setEnabled(false);
                 failed=_onScan(it->scanROI, it->coords);

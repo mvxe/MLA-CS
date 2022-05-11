@@ -25,7 +25,21 @@ public:
     QWidget* gui_activation;
     QWidget* gui_settings;
     void drawWriteArea(cv::Mat* img);
-    bool writeMat(cv::Mat* override=nullptr, double override_depthMaxval=0, double override_imgmmPPx=0, double override_pointSpacing=0, double override_focus=std::numeric_limits<double>::max(), double ov_fxcor=std::numeric_limits<double>::max(), double ov_fycor=std::numeric_limits<double>::max());
+
+    class writePars{
+    public:
+        writePars(){}
+        double depthMaxval{0};
+        double imgmmPPx{0};
+        double pointSpacing_mm{0};
+        double focus_mm{std::numeric_limits<double>::max()};
+        double focusXcor_mm{std::numeric_limits<double>::max()};
+        double focusYcor_mm{std::numeric_limits<double>::max()};
+        double depthScale{-1};
+        double gradualW{-1};     // override disabled if -1, disabled if 0, enabled if >0
+        int gradualWCut{-1};     // override disabled if -1, disabled if 0, enabled if 1
+    };
+    bool writeMat(cv::Mat* override=nullptr, writePars wparoverride=writePars());
             // matrix depth, if CV_32F, is in mm, likewise override_depthMaxval is in mm too
             // override_depthMaxval overrides only if matrix is CV_8U or CV_16U, also in nm
             // return true if failed/aborted
@@ -41,8 +55,12 @@ private:
     hidCon* importh;
     QPushButton* importImg;
     val_selector* depthMaxval;
+    val_selector* depthScale;
     double lastDepth;
     val_selector* imgUmPPx;
+    checkbox_gs* gradualWEn;
+    val_selector* gradualW;
+    checkbox_gs* gradualWCut;
 
     val_selector* dTCcor;
     QPushButton* corDTCor;
@@ -75,7 +93,7 @@ private:
         std::string conf;       // if scan, prefilled conf
         std::string filename;   // if write, source filename, if scan, save filename
         cv::Rect scanROI;       // if scan, ROI
-        double writePars[6];    // write parameters
+        writePars wps;          // write parameters
         void* overlay{nullptr};
         bool pending{true};
     };
