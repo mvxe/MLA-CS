@@ -414,7 +414,7 @@ bool pgWrite::_onScan(cv::Rect ROI, double* coords){
 void pgWrite::onSave(){
     _onSave(true);
 }
-bool pgWrite::_onSave(bool ask, std::string filename){
+bool pgWrite::_onSave(bool ask, std::string filename, std::string config){
     res=scanRes->get();
     if(res==nullptr){saveB->setEnabled(false);return true;}
     if(filename=="") filename=filenaming->get();
@@ -423,20 +423,25 @@ bool pgWrite::_onSave(bool ask, std::string filename){
     size_t found=path.find_last_of("/");
     if(found!=std::string::npos){
         path.erase(found,path.size()+found);
-        cv::utils::fs::createDirectory(path);
+        cv::utils::fs::createDirectories(path);
     }
     if(ask){
         filename=QFileDialog::getSaveFileName(gui_activation,"Save scan to file.",QString::fromStdString(util::toString(scan_default_folder->get(),"/",filename,".pfm")),"Images (*.pfm)").toStdString();
         if(filename.empty()) return true;
     }
     pgScanGUI::saveScan(res,filename);
-    saveConfig(filename);
+    if(config.empty()) config=genConfig();
+    saveConfig(filename, config);
     return false;
 }
-void pgWrite::saveConfig(std::string filename){
-    if(filename.size()>4) filename.replace(filename.size()-4,4,".cfg");
+void pgWrite::saveConfig(std::string filename, std::string config){
+    if(filename.size()>4){
+        if(filename.substr(filename.size()-4)==".pfm")
+            filename.replace(filename.size()-4,4,".cfg");
+        else filename+=".cfg";
+    }
     std::ofstream wfile(filename);
-    wfile<<genConfig();
+    wfile<<config;
     wfile.close();
 }
 std::string pgWrite::genConfig(){
@@ -446,10 +451,12 @@ std::string pgWrite::genConfig(){
     std::string ret= util::toString(
                 "Tag String: ",tagString->text().toStdString(),"\n",
                 "Tag UInt: ",static_cast<int>(tagUInt->val),"\n",
-                "MaxDepth: ",lastDepth,"\n",
+                "MaxDepth: ",lastDepth," nm\n",
                 "ImgUmPPx: ",imgUmPPx->val,"\n",
                 "Source filename: ",fn,"\n"
                 );
+    if(gradualWEn->val) ret+=util::toString("Gradual enabled. Method: ",gradualWCut->val?"Cut":"Scale",". Step: ",gradualW->val," nm\n");
+    //TODO save all write parameters (implment mixed scheduling first!)
     if(addNotes->val){
         ret+="User Notes:\n";
         ret+=notestring;
@@ -1045,7 +1052,7 @@ void pgWrite::onScheduleWriteStart(){
                 saveB->setEnabled(false);
                 failed=_onScan(it->scanROI, it->coords);
                 if(!failed){
-                    if(_onSave(false, it->filename)){
+                    if(_onSave(false, it->filename, it->conf)){
                         failed=true;
                         break;
                     }

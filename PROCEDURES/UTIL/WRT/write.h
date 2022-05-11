@@ -168,7 +168,7 @@ private:
     bool firstImageLoaded{false};
     bool firstWritten{false};
 
-    void saveConfig(std::string filename);
+    void saveConfig(std::string filename, std::string config);
     std::string genConfig();
     QStandardItem* addScheduleItem(std::string status, std::string type, std::string name, bool toTop);
     void prepareSchedTagFrame(std::string name);
@@ -206,7 +206,7 @@ private Q_SLOTS:
     void onClearNonPending();
 private:
     bool _onScan(cv::Rect ROI={0,0,0,0}, double* coords=nullptr);
-    bool _onSave(bool ask=false, std::string filename="");
+    bool _onSave(bool ask=false, std::string filename="", std::string config="");
 };
 
 
