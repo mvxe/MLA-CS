@@ -41,7 +41,7 @@ tab_camera::tab_camera(QWidget* parent){
     pgSGUI=new pgScanGUI(MLP, sROI);
     conf["pgScan"]=pgSGUI->conf;
     scanRes=pgSGUI->result.getClient();
-    pgMGUI=new pgMoveGUI(selObjective);
+    pgMGUI=new pgMoveGUI(selObjective, loadedScan.pos);
     conf["pgMove"]=pgMGUI->conf;
     pgTGUI=new pgTiltGUI;
     conf["pgTilt"]=pgTGUI->conf;

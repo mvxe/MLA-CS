@@ -5,8 +5,9 @@
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_multifit_nlinear.h>
+#include "PROCEDURES/UTIL/USC/scan.h"
 
-pgMoveGUI::pgMoveGUI(smp_selector* _selObjective): selObjective(_selObjective){
+pgMoveGUI::pgMoveGUI(smp_selector* _selObjective, double* _LS_xyz): LS_xyz(_LS_xyz), selObjective(_selObjective){
     init_gui_activation();
     init_gui_settings();
     connect(selObjective, SIGNAL(changed(int)), this, SLOT(_chooseObj(int)));
@@ -42,7 +43,10 @@ void pgMoveGUI::init_gui_activation(){
     gotoZ=new QPushButton("Z");
     gotoZ->setMaximumSize(20,20);
     connect(gotoZ, SIGNAL(released()), this, SLOT(onGotoZ()));
-    alayout->addWidget(new twid(mpow, new vline(), new QLabel("Goto:"),gotoX,gotoY,gotoZ));
+    gotoLoadedScan=new QPushButton("LoadedScan");
+    gotoLoadedScan->setMaximumSize(200,20);
+    connect(gotoLoadedScan, SIGNAL(released()), this, SLOT(onGotoLoadedScan()));
+    alayout->addWidget(new twid(mpow, new vline(), new QLabel("Goto:"),gotoX,gotoY,gotoZ,gotoLoadedScan));
 
     addDial=new QPushButton;
     connect(addDial, SIGNAL(released()), this, SLOT(onAddDial()));
@@ -250,6 +254,13 @@ void pgMoveGUI::onGotoZ(){
     getPos(nullptr, nullptr, &pos);
     pos-=QInputDialog::getDouble(gui_activation, "Goto Z", "Move (corrected) Z to this position:", pos, -2147483647, 2147483647, 6);
     move(0,0,-pos);
+}
+
+void pgMoveGUI::onGotoLoadedScan(){
+    if(!go.pRPTY->connected || LS_xyz==nullptr) return;
+    double pos[3];
+    getPos(&pos[0], &pos[1], &pos[2]);
+    move(LS_xyz[0]-pos[0],LS_xyz[1]-pos[1],LS_xyz[2]-pos[2]);
 }
 
 void pgMoveGUI::delvrNextClickPixDiff(double Dx, double Dy){

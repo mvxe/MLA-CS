@@ -21,7 +21,7 @@ class pgMoveGUI: public QObject{
     Q_OBJECT
     //GUI
 public:
-    pgMoveGUI(smp_selector* selObjective);
+    pgMoveGUI(smp_selector* selObjective, double* _LS_xyz=nullptr);
     rtoml::vsr conf;            //configuration map
     QWidget* gui_activation;
     QWidget* gui_settings;
@@ -84,6 +84,8 @@ private:
     QPushButton* gotoX;
     QPushButton* gotoY;
     QPushButton* gotoZ;
+    QPushButton* gotoLoadedScan;
+    double* LS_xyz;
 
     //settings
     QVBoxLayout* slayout;
@@ -148,6 +150,7 @@ private Q_SLOTS:
     void onGotoX();
     void onGotoY();
     void onGotoZ();
+    void onGotoLoadedScan();
 Q_SIGNALS:
     void sigChooseObj(bool useMirau);
     void sigChooseObjExpo(bool useMirau);

@@ -116,6 +116,7 @@ private:
     val_selector* plataeuPeakRatio;
     val_selector* pointSpacing;
     checkbox_gs* writeZeros;
+    checkbox_gs* PPRefDuration;
     smp_selector* selPScheduling;
     checkbox_gs* refocusBeforeWrite;
     std::vector<double>* bsplbreakpts;
