@@ -423,13 +423,14 @@ bool pgWrite::_onSave(bool ask, std::string filename, std::string config){
     if(filename=="") filename=filenaming->get();
     replacePlaceholdersInString(filename);
     std::string path=util::toString(scan_default_folder->get(),"/",filename);
+    filename=path;
     size_t found=path.find_last_of("/");
     if(found!=std::string::npos){
         path.erase(found,path.size()+found);
         cv::utils::fs::createDirectories(path);
     }
     if(ask){
-        filename=QFileDialog::getSaveFileName(gui_activation,"Save scan to file.",QString::fromStdString(util::toString(scan_default_folder->get(),"/",filename,".pfm")),"Images (*.pfm)").toStdString();
+        filename=QFileDialog::getSaveFileName(gui_activation,"Save scan to file.",QString::fromStdString(filename),"Images (*.pfm)").toStdString();
         if(filename.empty()) return true;
     }
     pgScanGUI::saveScan(res,filename);
@@ -654,7 +655,7 @@ void pgWrite::onWriteDM(){
         scheduled.emplace_back();
         for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
         scheduled.back().isWrite=false;
-        scheduled.back().filename=util::toString(scan_default_folder->get(),"/",filename);
+        scheduled.back().filename=filename;
         scheduled.back().conf=genConfig();
         scheduled.back().scanROI=scanROI;
         scheduled.back().ptr=addScheduleItem("Pending","Scan",filename,false);
