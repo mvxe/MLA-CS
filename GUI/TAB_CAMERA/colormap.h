@@ -10,6 +10,7 @@ class pgScanGUI;
 class pgTiltGUI;
 class QPushButton;
 class checkbox_gs;
+class hidCon;
 
 class colorMap: public QWidget{
     Q_OBJECT
@@ -46,6 +47,7 @@ private:
     val_selector* xysbar_yoffset;
     checkbox_gs* xysbar_color_inv;
 
+    hidCon* hc_export;
     checkbox_gs* exportSet4Whole;
     val_selector* xysbar_unit_Export;
     smp_selector* xysbar_corner_Export;
@@ -55,6 +57,7 @@ private:
 
     double phiX0, phiY0, phiX1, phiY1, phiXR, phiYR;
 
+    hidCon* hc_calib;
     smp_selector* cm_sel;
     checkbox_gs* showAbsHeight;
     cv::Scalar& exclColor;

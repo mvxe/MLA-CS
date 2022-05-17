@@ -125,6 +125,7 @@ void pgScanGUI::init_gui_settings(){
     slayout->addWidget(new hline());
     hideavg=new hidCon(new QLabel("Averaging"));
     hidedbg=new hidCon(new QLabel("Debug"));
+    hideavg->linkTo(hidedbg);
     slayout->addWidget(hideavg);
     slayout->addWidget(hidedbg);
     connect(selectScanSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));

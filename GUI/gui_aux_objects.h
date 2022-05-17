@@ -302,12 +302,15 @@ public:
     template<typename... Args> hidCon(Args... args);
     void hhidCon();
     void addWidget(QWidget* widget);
+    void linkTo(hidCon* hc);
+    void hide();
 private:
     twid* mainTwid;
     QPushButton* showBtn;
     QVBoxLayout* layout;
     QWidget* wI;
     QVBoxLayout* layoutI;
+    std::vector<hidCon*> linked;
 private Q_SLOTS:
     void onClicked();
 };

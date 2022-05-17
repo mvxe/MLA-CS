@@ -13,6 +13,7 @@ class pgWrite;
 class QSpinBox;
 class CvPlotQWindow;
 class QSlider;
+class hidCon;
 namespace CvPlot{class Window;}
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
@@ -25,7 +26,6 @@ public:
     rtoml::vsr conf;                //configuration map
 
     QWidget* gui_settings;
-    QWidget* gui_settings_proc;
     void drawWriteArea(cv::Mat* img);
 private:
     pgFocusGUI* pgFGUI;
@@ -35,8 +35,10 @@ private:
     pgWrite* pgWr;
     overlay& ovl;
 
-    //settings
     QVBoxLayout* slayout;
+
+    //settings
+    hidCon* hc_sett;
     val_selector* selArrayXsize;
     val_selector* selArrayYsize;
     val_selector* selArraySpacing;
@@ -85,7 +87,7 @@ private:
     bool drawWriteAreaOn{false};
 
     //processing
-    QVBoxLayout* splayout;
+    hidCon* hc_proc;
     QPushButton* btnProcessFocusMes;
     val_selector* fitPar_nPeakGauss;
     val_selector* fitPar_nPeakLorentz;

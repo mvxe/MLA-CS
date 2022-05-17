@@ -62,37 +62,43 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, checkbox_gs* sho
     connect(xysbar_color_inv, SIGNAL(changed()), this, SLOT(onChanged()));
     layout->addWidget(xysbar_color_inv);
 
+    hc_export= new hidCon(new QLabel("Export"));
     layout->addWidget(new hline);
+    layout->addWidget(hc_export);
+    hc_calib= new hidCon(new QLabel("Calibration"));
+    layout->addWidget(new hline);
+    layout->addWidget(hc_calib);
+    hc_calib->linkTo(hc_export);
+
     exportSet4Whole=new checkbox_gs(false,"Use Setting Above When Exporting Whole Image");
     conf["exportSet4Whole"]=exportSet4Whole;
     exportSet4WholeVal=&exportSet4Whole->val;
-    layout->addWidget(exportSet4Whole);
+    hc_export->addWidget(exportSet4Whole);
     fontSizeExport=new val_selector(1., "Font Size for Export: ", 0, 10., 2);
     conf["fontSizeExport"]=fontSizeExport;
-    layout->addWidget(fontSizeExport);
+    hc_export->addWidget(fontSizeExport);
     exportANTicks=new val_selector(10, "Approximate Number of Ticks for Export: ", 0, 100, 0);
     conf["exportANTicks"]=exportANTicks;
-    layout->addWidget(exportANTicks);
+    hc_export->addWidget(exportANTicks);
     xysbar_unit_Export=new val_selector(0, "XY Scalebar Unit for Export: ", -1000, 1000, 2, 0, {"um"});
     conf["xysbar_unit_Export"]=xysbar_unit_Export;
-    layout->addWidget(xysbar_unit_Export);
+    hc_export->addWidget(xysbar_unit_Export);
     xysbar_corner_Export=new smp_selector("Select XY Scalebar reference position: ", 0, {"center","top","bottom","left","right","top-left","top-right","bottom-left","bottom-right"});
     conf["xysbar_corner_Export"]=xysbar_corner_Export;
-    layout->addWidget(xysbar_corner_Export);
+    hc_export->addWidget(xysbar_corner_Export);
     xysbar_xoffset_Export=new val_selector(0, "Horizontal Offset for XY Scalebar for Export: ", -10000, 10000, 0, 0, {"px"});
     conf["xysbar_xoffset_Export"]=xysbar_xoffset_Export;
-    layout->addWidget(xysbar_xoffset_Export);
+    hc_export->addWidget(xysbar_xoffset_Export);
     xysbar_yoffset_Export=new val_selector(0, "Vertical Offset for XY Scalebar for Export: ", -10000, 10000, 0, 0, {"px"});
     conf["xysbar_yoffset_Export"]=xysbar_yoffset_Export;
-    layout->addWidget(xysbar_yoffset_Export);
+    hc_export->addWidget(xysbar_yoffset_Export);
 
-    layout->addWidget(new hline);
     QLabel* tlab=new QLabel("This calibration is not used, however, since it is calculated using the depth measurement it may be used to verify the correctness of the depth calibration by comparing it to the calibration done in Move settings.");
     tlab->setWordWrap(true);
-    layout->addWidget(tlab);
+    hc_calib->addWidget(tlab);
     XYnmppx=new val_selector(10, "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
     conf["XYnmppx"]=XYnmppx;
-    layout->addWidget(XYnmppx);
+    hc_calib->addWidget(XYnmppx);
     calibXY=new QPushButton;
     calibXY->setText("Calibrate YZ Scan");
     calibXY->setCheckable(true);
@@ -103,10 +109,10 @@ colorMap::colorMap(smp_selector* cm_sel, cv::Scalar& exclColor, checkbox_gs* sho
     movTilt->setText("Tilt");
     movTilt->setCheckable(true);
     connect(movTilt, SIGNAL(toggled(bool)), this, SLOT(onMovTilt(bool)));
-    layout->addWidget(new twid(calibXY, tilt, movTilt));
+    hc_calib->addWidget(new twid(calibXY, tilt, movTilt));
 
     QLabel* txt=new QLabel("(Scan -> Tilt -> Refocus -> Scan -> Tilt -> Refocus)");
-    layout->addWidget(txt);
+    hc_calib->addWidget(txt);
 }
 
 void colorMap::colormappize(const cv::Mat* src, cv::Mat* dst, const cv::Mat* mask, double min, double max, double XYnmppx, bool excludeOutOfRange, bool isForExport, std::string label, bool isReflectivity){

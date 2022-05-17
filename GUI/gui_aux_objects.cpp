@@ -483,14 +483,26 @@ void hidCon::hhidCon(){
     layoutI=new QVBoxLayout;
     wI->setLayout(layoutI);
     layout->setMargin(0);
-    layoutI->setMargin(0);
+    layoutI->setMargin(15);
     layout->addWidget(wI);
     wI->setVisible(false);
 }
 void hidCon::addWidget(QWidget* widget){
     layoutI->addWidget(widget);
 }
+void hidCon::linkTo(hidCon* hc){
+    for(auto _hc:linked) if(_hc==hc) return;
+    linked.push_back(hc);
+    hc->linkTo(this);
+}
+void hidCon::hide(){
+    wI->setVisible(false);
+    showBtn->setText("< show >");
+}
 void hidCon::onClicked(){
+    if(!wI->isVisible())
+        for(auto hc:linked)
+            hc->hide();
     wI->setVisible(!wI->isVisible());
     showBtn->setText((wI->isVisible())?"< hide >":"< show >");
 }
