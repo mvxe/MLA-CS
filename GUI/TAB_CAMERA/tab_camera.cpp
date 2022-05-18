@@ -114,7 +114,7 @@ tab_camera::tab_camera(QWidget* parent){
         pageSettings->addWidget(pgCor->gui_settings,"Scan Correction");
         pageSettings->addWidget(cMap,"ColorMap");
         pageSettings->addWidget(camSet,"Camera");               index_camSet=6;
-        pageSettings->addWidget(pgCal->gui_settings,"Write Calibration - peaks");
+        pageSettings->addWidget(pgCal->gui_settings,"Write Calibration");
         pageSettings->addWidget(pgBeAn->gui_settings,"Beam Centering");
         pageSettings->addWidget(tCG,"Gnuplot");
         pageSettings->addWidget(pgWrt->gui_settings, "Writing");

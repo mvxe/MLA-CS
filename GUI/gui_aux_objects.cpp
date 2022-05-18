@@ -4,9 +4,9 @@
 
 //  VAL SELECTOR
 
-val_selector::val_selector(double initialValue, QString label, double min, double max, double precision):value(initialValue), unitIndex(0), val(value), index(unitIndex){
+val_selector::val_selector(double initialValue, QString label, double min, double max, double precision, bool addStretch):value(initialValue), unitIndex(0), val(value), index(unitIndex){
     init0(label, min, max, precision);
-    layout->addStretch(0);
+    if(addStretch) layout->addStretch(0);
 }
 
 val_selector::val_selector(double initialValue, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels):

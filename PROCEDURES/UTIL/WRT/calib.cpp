@@ -44,11 +44,15 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     gui_settings=new QWidget;
     slayout=new QVBoxLayout;
     gui_settings->setLayout(slayout);
-    hc_sett=new hidCon(new QLabel("Run calibration"));
-    hc_proc=new hidCon(new QLabel("Process calibration data"));
+    hc_sett=new hidCon(new QLabel("Peak - Run calibration"));
+    hc_proc=new hidCon(new QLabel("Peak - Process calibration data"));
+    hc_sett_pl=new hidCon(new QLabel("Plateau - Run Calibration"));
     hc_sett->linkTo(hc_proc);
+    hc_sett_pl->linkTo(hc_sett);
+    hc_sett_pl->linkTo(hc_proc);
     slayout->addWidget(hc_sett);
     slayout->addWidget(hc_proc);
+    slayout->addWidget(hc_sett_pl);
 
     selArrayXsize=new val_selector(10, "Array Size X", 1, 1000, 0);
     conf["selArrayXsize"]=selArrayXsize;
@@ -173,10 +177,169 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     fpList=new QLabel("");
     fpList->setVisible(false);
     hc_proc->addWidget(fpList);
+
+    plNRuns=new val_selector(10, "NRuns: ", 1, 1000, 0);
+    conf["plNRuns"]=plNRuns;
+    hc_sett_pl->addWidget(plNRuns);
+    plRadius=new val_selector(10, "Radius", 0, 1000, 3, 0, {"um"});
+    conf["plRadius"]=plRadius;
+    hc_sett_pl->addWidget(plRadius);
+    plMargin=new val_selector(10, "Margin", 0, 1000, 3, 0, {"um"});
+    conf["plMargin"]=plMargin;
+    hc_sett_pl->addWidget(plMargin);
+    plSpacing=new val_selector(1, "Point spacing", 0.001, 1000, 3, 0, {"um"});
+    conf["plSpacing"]=plSpacing;
+    hc_sett_pl->addWidget(plSpacing);
+    plDurMin=new val_selector(1, "Duration ", 0.0001, 1000, 4, 0, {"ms"});
+    plDurMax=new val_selector(1, " to ", 0.0001, 1000, 4, 0, {"ms"});
+    plFoc=new val_selector(0, "Focus", -1000, 1000, 3, 0, {"um"});
+    conf["plDurMin"]=plDurMin;
+    conf["plDurMax"]=plDurMax;
+    conf["plFoc"]=plFoc;;
+    hc_sett_pl->addWidget(new twid(plDurMin,plDurMax));
+    hc_sett_pl->addWidget(plFoc);
+    randomizeOrder=new checkbox_gs(true,"Randomize order");
+    conf["randomizeOrder"]=randomizeOrder;
+    hc_sett_pl->addWidget(randomizeOrder);
+    hc_sett_pl->addWidget(new QLabel("(Set to same value if constant)"));
+    plSetFolder=new QPushButton("Prepare matrices and select output folder");
+    connect(plSetFolder, SIGNAL(released()), this, SLOT(onPlSetFolder()));
+    hc_sett_pl->addWidget(new twid(plSetFolder));
+    plSchedule=new HQPushButton("Schedule ?/?");
+    connect(plSchedule, SIGNAL(released()), this, SLOT(onPlSchedule()));
+    connect(plSchedule, SIGNAL(changed(bool)), this, SLOT(onChangePlSchedule(bool)));
+    hc_sett_pl->addWidget(new twid(plSchedule));
+    plSchedule->setEnabled(false);
 }
 pgCalib::~pgCalib(){
     if(cpwin!=nullptr) delete cpwin;
 }
+
+void pgCalib::onPlSetFolder(){
+    // make array
+    std::vector<double> varValues;  // in sec
+    int nvals=plNRuns->val;
+    if(nvals<=1) return;
+    double min=plDurMin->val;
+    double step=(plDurMax->val-min)/(nvals-1);
+    for(int i=0;i<nvals;i++)
+        varValues.push_back(0.001*(min+step*i));
+    if(randomizeOrder->val){
+        std::mt19937 rnd(std::random_device{}());
+        std::shuffle(varValues.begin(), varValues.end(), rnd);
+    }
+
+    // calculate cell size (max ni,nj that can be done in one write/scan)
+    int ni,nj;
+    int freepx[4]; // left,right,up,down
+
+    int rows=go.pGCAM->iuScope->camRows;
+    int cols=go.pGCAM->iuScope->camCols;
+    freepx[0]=cols/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX)-pgWr->getScanExtraBorderPx();
+    freepx[1]=cols-pgWr->getScanExtraBorderPx()-freepx[0];
+    freepx[2]=rows/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY)-pgWr->getScanExtraBorderPx();
+    freepx[3]=rows-pgWr->getScanExtraBorderPx()-freepx[2];
+    double xysizeum=2*(plRadius->val+plMargin->val);
+    int xysizepx=pgMGUI->mm2px(xysizeum*0.001);
+    int xysizepxwr=xysizeum/plSpacing->val;
+    cv::Mat src=cv::Mat::zeros(xysizepxwr,xysizepxwr,CV_32F);
+    cv::circle(src, cv::Point(xysizepxwr/2,xysizepxwr/2), plRadius->val/plSpacing->val, 1, -1);
+    ni=floor(2.0*std::min(freepx[0],freepx[1])/xysizepx);
+    nj=floor(2.0*std::min(freepx[2],freepx[3])/xysizepx);
+    //std::cerr<<"Will write matrices of "<<ni<<" x "<<nj<<"\n";
+    //std::cerr<<"Single matrix size: "<<xysizepx<<" px^2\n";
+    //std::cerr<<"Total matrix size: "<<ni*xysizepx<<" x "<<nj*xysizepx<<" px\n";
+    //std::cerr<<"Image size: "<<cols<<" x "<<rows<<" px\n";
+
+    if(ni<1 || nj<1) return;
+
+    std::vector<std::vector<std::vector<double>>> values; // matrix,row,col
+    for(;;){
+        values.emplace_back();
+        for(int j=0;j<nj;j++){
+            values.back().emplace_back();
+            for(int i=0;i<ni;i++){
+                values.back().back().push_back(varValues.back());
+                varValues.pop_back();
+                if(varValues.empty()) goto out;
+            }
+        }
+    }
+    out:;
+
+    plNTotal=values.size();
+    plNScheduled=0;
+
+    // construct matrices
+    plMats.clear();
+    plTexts.clear();
+    cv::Mat tmp;
+    for(auto& val:values){
+        plMats.push_back(cv::Mat::zeros(xysizepxwr*val.size(),xysizepxwr*val.back().size(),CV_32F));
+        plTexts.emplace_back();
+        plTexts.back()+="#This is a calibration measurement!\n";
+        plTexts.back()+="#Durations (s):\n";
+        for(size_t j=0;j<val.size();j++){
+            for(size_t i=0;i<val.back().size();i++){
+                tmp=src*val[j][i];
+                tmp.copyTo(plMats.back()(cv::Rect(i*xysizepxwr, j*xysizepxwr, xysizepxwr, xysizepxwr)));
+                if(i!=0) plTexts.back()+=" ";
+                plTexts.back()+=std::to_string(val[j][i]);
+            }
+            plTexts.back()+="\n";
+        }
+        plTexts.back()+="#Focus (mm):\n";
+        plTexts.back()+=std::to_string(plFoc->val/1000);
+    }
+
+    // choose save folder
+
+    std::time_t time=std::time(nullptr); std::tm ltime=*std::localtime(&time);
+    std::stringstream ifolder;
+    ifolder<<lastFolder;
+    ifolder<<std::put_time(&ltime, "%Y-%m-%d-%H-%M-%S");
+    plFolder=QFileDialog::getSaveFileName(this, tr("Select Folder for Saving Calibration Data"),QString::fromStdString(ifolder.str()),tr("Folders")).toStdString();
+    if(plFolder.empty()){
+        plSchedule->setEnabled(false);
+        plSchedule->setText("Schedule ?/?");
+        return;
+    }
+    lastFolder=plFolder.substr(0,plFolder.find_last_of("/")+1);
+    plFolder+="/";
+    cv::utils::fs::createDirectory(plFolder);
+
+    plSchedule->setEnabled(true);
+    plSchedule->setText(QString::fromStdString(util::toString("Schedule ",plNScheduled+1,"/",plNTotal)));
+    pgWr->setScheduling(true);
+}
+void pgCalib::onChangePlSchedule(bool status){
+    if(plSchedule->isEnabled() && !plMats.empty())
+        pgWr->changeDrawAreaOnExternal(status,plSpacing->val*plMats.back().cols,plSpacing->val*plMats.back().rows);
+}
+void pgCalib::onPlSchedule(){
+    plNScheduled++;
+    if(plNScheduled>=plNTotal)
+        plSchedule->setEnabled(false);
+    else
+        plSchedule->setText(QString::fromStdString(util::toString("Schedule ",plNScheduled+1,"/",plNTotal)));
+    pgWr->changeDrawAreaOnExternal(false,0,0);
+
+    pgWrite::writePars wpars;
+    wpars.pointSpacing_mm=plSpacing->val/1000;
+    wpars.imgmmPPx=plSpacing->val/1000;
+    wpars.focus_mm=plFoc->val/1000;
+    wpars.focusXcor_mm=0;
+    wpars.focusYcor_mm=0;
+    wpars.depthScale=1;
+    wpars.gradualW=0;
+    wpars.matrixIsDuration=true;
+
+    std::string filename=util::toString(plFolder,plNScheduled-1);
+    pgWr->scheduleMat(plMats.back(), wpars, filename, plTexts.back());
+    plMats.pop_back();
+    plTexts.pop_back();
+}
+
 void pgCalib::onMultiarrayNChanged(double val){
     selArray(selArrayType->index, selMultiArrayType->index);
     btnWriteCalib->setEnabled(val==1);
@@ -1455,3 +1618,4 @@ void pgCalib::onApplyMenuTriggered(QAction* action){
         }
     }
 }
+

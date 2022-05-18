@@ -28,7 +28,7 @@ public:
 
     class writePars{
     public:
-        writePars(){}
+        writePars(){}   // non-default values override settings
         double depthMaxval{0};
         double imgmmPPx{0};
         double pointSpacing_mm{0};
@@ -38,13 +38,18 @@ public:
         double depthScale{-1};
         double gradualW{-1};     // override disabled if -1, disabled if 0, enabled if >0
         int gradualWCut{-1};     // override disabled if -1, disabled if 0, enabled if 1
+        bool matrixIsDuration=false;    // do not use calibration, for calibration
     };
     bool writeMat(cv::Mat* override=nullptr, writePars wparoverride=writePars());
             // matrix depth, if CV_32F, is in mm, likewise override_depthMaxval is in mm too
             // override_depthMaxval overrides only if matrix is CV_8U or CV_16U, also in nm
             // return true if failed/aborted
     bool wabort; // set to true to abort current running writeMat
+    double getScanExtraBorderPx();
 
+    void setScheduling(bool value);
+    void changeDrawAreaOnExternal(bool status, double xsize, double ysize_um);
+    void scheduleMat(cv::Mat& src, writePars pars, std::string scanSaveFilename, std::string notes="");
 private:
     //activation
     QVBoxLayout* alayout;
@@ -144,7 +149,7 @@ private:
     cv::Mat tagImage;
     int drawWriteAreaOn{0};     //1 is img, 2 is tag, 3 is frame
     cv::Rect scanROI;
-    void prepareScanROI();
+    void prepareScanROI(cv::Mat& mat, double _imgUmPPx);
     double scanCoords[3];
 
     pgBeamAnalysis* pgBeAn;
@@ -177,6 +182,7 @@ private:
 
     constexpr static int maxRedoScanTries=3;
     constexpr static int maxRedoRefocusTries=3;
+    double ext_xsize_um, ext_ysize_um;
 private Q_SLOTS:
     void onPulse();
     void onMenuChange(int index);

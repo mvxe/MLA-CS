@@ -420,15 +420,18 @@ void pgWrite::onSave(){
 bool pgWrite::_onSave(bool ask, std::string filename, std::string config){
     res=scanRes->get();
     if(res==nullptr){saveB->setEnabled(false);return true;}
+
     if(filename=="") filename=filenaming->get();
+    else if(filename[0]=='/') goto skipFn;
     replacePlaceholdersInString(filename);
-    std::string path=util::toString(scan_default_folder->get(),"/",filename);
+    {std::string path=util::toString(scan_default_folder->get(),"/",filename);
     filename=path;
     size_t found=path.find_last_of("/");
     if(found!=std::string::npos){
         path.erase(found,path.size()+found);
         cv::utils::fs::createDirectories(path);
-    }
+    }}
+    skipFn:;
     if(ask){
         filename=QFileDialog::getSaveFileName(gui_activation,"Save scan to file.",QString::fromStdString(filename),"Images (*.pfm)").toStdString();
         if(filename.empty()) return true;
@@ -621,7 +624,7 @@ void pgWrite::onWriteDM(){
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
 
-    prepareScanROI();
+    prepareScanROI(WRImage, imgUmPPx->val);
     if(WRImage.type()!=CV_32F) lastDepth=depthMaxval->val;
     else cv::minMaxIdx(WRImage,0,&lastDepth);
 
@@ -678,18 +681,50 @@ void pgWrite::onWriteDM(){
     writeDM->setText("Write");
     writeDM->setEnabled(true);
 }
-void pgWrite::prepareScanROI(){
-    int xSize=pgMGUI->mm2px(round(imgUmPPx->val*WRImage.cols+2)/1000,0);
-    int ySize=pgMGUI->mm2px(round(imgUmPPx->val*WRImage.rows+2)/1000,0);
-    int cols=go.pGCAM->iuScope->camCols;
-    int rows=go.pGCAM->iuScope->camRows;
+void pgWrite::scheduleMat(cv::Mat& src, writePars pars, std::string scanSaveFilename, std::string notes){
+    // save coords for scan
+    while(go.pRPTY->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+    QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+    pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
 
+    prepareScanROI(src, pars.imgmmPPx*1000);
+    scheduled.emplace_back();
+    for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
+    src.copyTo(scheduled.back().src);
+    scheduled.back().isWrite=true;
+    scheduled.back().wps=pars;
+    scheduled.back().ptr=addScheduleItem("Pending","Write",scanSaveFilename,true);
+    cv::Mat resized;
+    double ratio=pars.imgmmPPx*1000;
+    double xSize=round(ratio*src.cols)*1000/pgMGUI->getNmPPx(0);
+    double ySize=round(ratio*src.rows)*1000/pgMGUI->getNmPPx(0);
+    cv::resize(src, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
+    scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(scanCoords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(scanCoords[1]-pgBeAn->writeBeamCenterOfsY,0));
+
+    scheduled.emplace_back();
+    for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
+    scheduled.back().isWrite=false;
+    scheduled.back().filename=scanSaveFilename;
+    scheduled.back().conf=notes;
+    scheduled.back().scanROI=scanROI;
+    scheduled.back().ptr=addScheduleItem("Pending","Scan",scanSaveFilename,false);
+}
+double pgWrite::getScanExtraBorderPx(){
     double extraB=scanExtraBorder->val;
     if(extraB>0){
         if(scanExtraBorder->index==0){  // um
             extraB=pgMGUI->mm2px(extraB/1000,0);
         }
     }
+    return extraB;
+}
+void pgWrite::prepareScanROI(cv::Mat& mat, double _imgUmPPx){
+    int xSize=pgMGUI->mm2px(round(_imgUmPPx*mat.cols+2)/1000,0);
+    int ySize=pgMGUI->mm2px(round(_imgUmPPx*mat.rows+2)/1000,0);
+    int cols=go.pGCAM->iuScope->camCols;
+    int rows=go.pGCAM->iuScope->camRows;
+
+    double extraB=getScanExtraBorderPx();
     scanROI=cv::Rect(cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX,0)-extraB, rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY,0)-extraB, xSize+2*extraB, ySize+2*extraB);
     if(scanROI.x<0){
         scanROI.width+=scanROI.x;
@@ -718,6 +753,7 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
     double vgradualW; bool vgradualWCut;
     vgradualW=(wparoverride.gradualW<0)?((gradualWEn->val)?((double)gradualW->val):(0)):wparoverride.gradualW;
     vgradualWCut=(wparoverride.gradualWCut<0)?(bool)gradualWCut->val:(bool)wparoverride.gradualWCut;
+    bool noCalib=wparoverride.matrixIsDuration;
 
     if(src->type()==CV_8U){
         src->convertTo(tmpWrite, CV_32F, vdepthMaxval/255);
@@ -792,7 +828,8 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
             bool xdir=0;
             for(int j=0;j!=write.rows;j++){   // write row by row (so that processing for the next row is done while writing the previous one, and the operation can be terminated more easily)
                 for(int i=0;i!=write.cols;i++){
-                    pulse=predictDuration(write.at<float>(write.rows-j-1,xdir?(write.cols-i-1):i));        // Y inverted because image formats have flipped Y
+                    if(noCalib) pulse=write.at<float>(write.rows-j-1,xdir?(write.cols-i-1):i);
+                    else pulse=predictDuration(write.at<float>(write.rows-j-1,xdir?(write.cols-i-1):i));        // Y inverted because image formats have flipped Y
                     if(i!=0) pgMGUI->corCOMove(CO,(xdir?-1:1)*vpointSpacing,0,0);
                     if(writeZeros->val==false && write.at<float>(write.rows-j-1,xdir?(write.cols-i-1):i)==0) continue;
                     if(pulse==0) continue;
@@ -998,6 +1035,11 @@ void pgWrite::onChangeDrawWriteAreaOnTag(bool status){
 void pgWrite::onChangeDrawScanAreaOn(bool status){
     drawWriteAreaOn=status?3:0;
 }
+void pgWrite::changeDrawAreaOnExternal(bool status, double xsize_um, double ysize_um){
+    ext_xsize_um=xsize_um;
+    ext_ysize_um=ysize_um;
+    drawWriteAreaOn=status?4:0;
+}
 void pgWrite::drawWriteArea(cv::Mat* img){
     if(!drawWriteAreaOn) return;
     double ratio;
@@ -1024,6 +1066,9 @@ void pgWrite::drawWriteArea(cv::Mat* img){
         yShiftmm-=scanCoords[1];
         xSize=pgMGUI->mm2px(pgMGUI->px2mm(scanROI.width,0));
         ySize=pgMGUI->mm2px(pgMGUI->px2mm(scanROI.height,0));
+    }else if(drawWriteAreaOn==4){ // external
+        xSize=round(ext_xsize_um)*1000/pgMGUI->getNmPPx();
+        ySize=round(ext_ysize_um)*1000/pgMGUI->getNmPPx();
     }
 
     double clr[2]={0,255}; int thck[2]={3,1};
@@ -1088,4 +1133,8 @@ void pgWrite::onScheduleWriteStart(){
 
     scheduleWriteStart->setText("Execute list");
     scheduleWriteStart->setEnabled(pendingInScheduleList());
+}
+
+void pgWrite::setScheduling(bool value){
+    useWriteScheduling->set(value);
 }

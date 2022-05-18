@@ -37,7 +37,7 @@ private:
 
     QVBoxLayout* slayout;
 
-    //settings
+    //peak settings
     hidCon* hc_sett;
     val_selector* selArrayXsize;
     val_selector* selArrayYsize;
@@ -86,7 +86,7 @@ private:
     int measCounter{0};
     bool drawWriteAreaOn{false};
 
-    //processing
+    //peak processing
     hidCon* hc_proc;
     QPushButton* btnProcessFocusMes;
     val_selector* fitPar_nPeakGauss;
@@ -126,6 +126,23 @@ private:
         unsigned overlaps;
     };
 
+    // plateau settings
+    hidCon* hc_sett_pl;
+    val_selector* plNRuns;
+    val_selector* plRadius;
+    val_selector* plMargin;
+    val_selector* plSpacing;
+    checkbox_gs* randomizeOrder;
+    val_selector* plDurMin;
+    val_selector* plDurMax;
+    val_selector* plFoc;
+    QPushButton* plSetFolder;
+    HQPushButton* plSchedule;
+    int plNTotal, plNScheduled;
+    std::vector<cv::Mat> plMats;
+    std::vector<std::string> plTexts;
+    std::string plFolder;
+
     void WCFArray(std::string folder, bool isOverlap=false);
     bool WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, unsigned n, bool isOverlap);
     void selArray(int ArrayIndex, int MultiArrayIndex);
@@ -151,6 +168,9 @@ private Q_SLOTS:
     void onApplyMenuTriggered(QAction* action);
     void updateOverlappingCalibEnabled();
     void onOverlappingCalib();
+    void onPlSetFolder();
+    void onPlSchedule();
+    void onChangePlSchedule(bool status);
 
 private:
     static int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f);

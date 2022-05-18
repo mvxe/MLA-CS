@@ -25,7 +25,7 @@ class QDial;
 class val_selector : public QWidget{       //template for devices
     Q_OBJECT
 public:
-    val_selector(double initialValue, QString label, double min, double max, double precision);
+    val_selector(double initialValue, QString label, double min, double max, double precision, bool addStretch=true);
     val_selector(double initialValue, QString label, double min, double max, double precision, int initialIndex, std::vector<QString> labels);
     const std::atomic<double>& val;         // thread safe
     const std::atomic<int>& index;          // thread safe

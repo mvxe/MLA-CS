@@ -105,7 +105,11 @@ void imgAux::getNearestFreePointToCenter(const cv::Mat* mask, const int cenX, co
 // overlay
 
 void* overlay::add_overlay(cv::Mat mat, long posx, long posy){
-    overlayElements.push_back({posx,posy,mat});
+    double min,max;
+    cv::minMaxIdx(mat,&min,&max);
+    cv::Mat tmp;
+    mat.convertTo(tmp, CV_8U, 255./(max-min),-min*255/(max-min));
+    overlayElements.push_back({posx,posy,tmp});
     return &overlayElements.back();
 }
 void overlay::rm_overlay(void* ptr){
