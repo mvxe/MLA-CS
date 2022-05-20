@@ -159,8 +159,8 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     plSpacing=new val_selector(1, "Point spacing", 0.001, 1000, 3, 0, {"um"});
     conf["plSpacing"]=plSpacing;
     hc_sett_pl->addWidget(plSpacing);
-    plDurMin=new val_selector(1, "Duration ", 0.0001, 1000, 4, 0, {"ms"});
-    plDurMax=new val_selector(1, " to ", 0.0001, 1000, 4, 0, {"ms"});
+    plDurMin=new val_selector(1, "Duration ", 0.00001, 1000, 5, 0, {"ms"});
+    plDurMax=new val_selector(1, " to ", 0.00001, 1000, 5, 0, {"ms"});
     plFoc=new val_selector(0, "Focus", -1000, 1000, 3, 0, {"um"});
     conf["plDurMin"]=plDurMin;
     conf["plDurMax"]=plDurMax;
@@ -224,13 +224,13 @@ pgCalib::~pgCalib(){
 
 void pgCalib::onPlSetFolder(){
     // make array
-    std::vector<double> varValues;  // in sec
+    std::vector<double> varValues;  // in ms
     int nvals=plNRuns->val;
     if(nvals<=1) return;
     double min=plDurMin->val;
     double step=(plDurMax->val-min)/(nvals-1);
     for(int i=0;i<nvals;i++)
-        varValues.push_back(0.001*(min+step*i));
+        varValues.push_back(min+step*i);
     if(randomizeOrder->val){
         std::mt19937 rnd(std::random_device{}());
         std::shuffle(varValues.begin(), varValues.end(), rnd);
@@ -293,7 +293,7 @@ void pgCalib::onPlSetFolder(){
         plTexts.back()+=std::to_string(plSpacing->val);
         plTexts.back()+="\n#Focus (mm):\n";
         plTexts.back()+=std::to_string(plFoc->val/1000);
-        plTexts.back()+="\n#Durations (s):\n";
+        plTexts.back()+="\n#Durations (ms):\n";
         for(size_t j=0;j<val.size();j++){
             for(size_t i=0;i<val.back().size();i++){
                 tmp=src*val[j][i];
@@ -941,7 +941,7 @@ void pgCalib::onfpLoad_pl(){
         auto& mes=measurementsfn[n];
         //std::cerr<<"pfm file:"<<mes.scan.path().stem()<<"\n";
         double radius_um, margin_um, spacing_um, focus_mm;
-        std::vector<std::vector<double>> durs_s;
+        std::vector<std::vector<double>> durs_ms;
 
         std::ifstream ifile(mes.cfg.path());
         while(ifile.peek()!=EOF){
@@ -955,15 +955,15 @@ void pgCalib::onfpLoad_pl(){
                 ifile>>spacing_um;
             }else if(tmp.find("#Focus (mm)")!=std::string::npos){
                 ifile>>focus_mm;
-            }else if(tmp.find("#Durations (s)")!=std::string::npos){
+            }else if(tmp.find("#Durations (ms)")!=std::string::npos){
                 while(ifile.peek()!=EOF){
                     std::getline(ifile,tmp);
                     if(tmp[0]=='#') goto back;
                     if(tmp.empty()) break;
-                    durs_s.emplace_back();
+                    durs_ms.emplace_back();
                     idx=0;
                     for(;;){
-                        durs_s.back().push_back(std::stod(tmp.substr(idx),&ti));
+                        durs_ms.back().push_back(std::stod(tmp.substr(idx),&ti));
                         idx+=ti;
                         if(idx==tmp.size()) break;
                     }
@@ -971,7 +971,7 @@ void pgCalib::onfpLoad_pl(){
             }
         }
         ifile.close();
-        std::cerr<<"got matrix "<<durs_s.size()<<" x "<<durs_s.back().size()<<" from "<<mes.cfg.path()<<"\n";
+        std::cerr<<"got matrix "<<durs_ms.size()<<" x "<<durs_ms.back().size()<<" from "<<mes.cfg.path()<<"\n";
 
         pgScanGUI::scanRes before, after;
         pgScanGUI::loadScan(&before, mes.before.path().string());
@@ -981,8 +981,8 @@ void pgCalib::onfpLoad_pl(){
         double umppx=after.XYnmppx/1000;
         // slice up scan
         double xysize_um=2*(radius_um+margin_um);
-        double xtotal_um=durs_s.back().size()*xysize_um;
-        double ytotal_um=durs_s.size()*xysize_um;
+        double xtotal_um=durs_ms.back().size()*xysize_um;
+        double ytotal_um=durs_ms.size()*xysize_um;
         int xysize_px=xysize_um/umppx;
         int xtotal_px=xtotal_um/umppx;
         int ytotal_px=ytotal_um/umppx;
@@ -990,10 +990,10 @@ void pgCalib::onfpLoad_pl(){
         int yofs_px=(after.depth.rows-ytotal_px)/2;
 
         std::vector<std::vector<pgScanGUI::scanRes>> scans;
-        for(size_t j=0;j!=durs_s.size();j++){
+        for(size_t j=0;j!=durs_ms.size();j++){
             scans.emplace_back();
             auto& dscans=scans.back();
-            for(size_t i=0;i!=durs_s.back().size();i++){
+            for(size_t i=0;i!=durs_ms.back().size();i++){
                 dscans.emplace_back();
                 auto& ddscans=dscans.back();
 
@@ -1063,7 +1063,7 @@ void pgCalib::onfpLoad_pl(){
             }
             A.SE=sqrt(A.SE/(A.n-1)/A.n);
 
-            results.push_back({durs_s[v][u]*1000,A,focus_mm*1000,radius_um,margin_um,spacing_um,x*umppx-xysize_um/2,y*umppx-xysize_um/2,heights});
+            results.push_back({durs_ms[v][u],A,focus_mm*1000,radius_um,margin_um,spacing_um,x*umppx-xysize_um/2,y*umppx-xysize_um/2,heights});
         }
 
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
