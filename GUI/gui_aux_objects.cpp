@@ -491,9 +491,11 @@ void hidCon::addWidget(QWidget* widget){
     layoutI->addWidget(widget);
 }
 void hidCon::linkTo(hidCon* hc){
+    if(this==hc) return;
     for(auto _hc:linked) if(_hc==hc) return;
     linked.push_back(hc);
     hc->linkTo(this);
+    for(auto _hc:linked) hc->linkTo(_hc);
 }
 void hidCon::hide(){
     wI->setVisible(false);

@@ -415,7 +415,7 @@ bool pgWrite::_onScan(cv::Rect ROI, double* coords){
     return false;
 }
 void pgWrite::onSave(){
-    _onSave(true);
+    _onSave(true, "", genConfig());
 }
 bool pgWrite::_onSave(bool ask, std::string filename, std::string config){
     res=scanRes->get();
@@ -437,8 +437,7 @@ bool pgWrite::_onSave(bool ask, std::string filename, std::string config){
         if(filename.empty()) return true;
     }
     pgScanGUI::saveScan(res,filename);
-    if(config.empty()) config=genConfig();
-    saveConfig(filename, config);
+    if(!config.empty()) saveConfig(filename, config);
     return false;
 }
 void pgWrite::saveConfig(std::string filename, std::string config){
@@ -647,7 +646,7 @@ void pgWrite::onWriteDM(){
         scheduled.back().wps.depthScale=depthScale->val;
         scheduled.back().wps.gradualW=(gradualWEn->val)?((double)gradualW->val):(0);
         scheduled.back().wps.gradualWCut=gradualWCut->val;
-        scheduled.back().ptr=addScheduleItem("Pending","Write",filename,true);
+        scheduled.back().ptr=addScheduleItem("Pending","Write",filename,false);
         cv::Mat resized;
         double ratio=imgUmPPx->val;
         double xSize=round(ratio*WRImage.cols)*1000/pgMGUI->getNmPPx(0);
@@ -681,26 +680,33 @@ void pgWrite::onWriteDM(){
     writeDM->setText("Write");
     writeDM->setEnabled(true);
 }
-void pgWrite::scheduleMat(cv::Mat& src, writePars pars, std::string scanSaveFilename, std::string notes){
+void pgWrite::scheduleWriteScan(cv::Mat& src, writePars pars, std::string scanSaveFilename, std::string notes){
     // save coords for scan
     while(go.pRPTY->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+
+    scheduleWrite(src, pars, scanSaveFilename);
+    scheduleScan(src, pars.imgmmPPx,scanSaveFilename, notes, false);
+}
+void pgWrite::scheduleWrite(cv::Mat& src, writePars pars, std::string label){
     pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
 
-    prepareScanROI(src, pars.imgmmPPx*1000);
     scheduled.emplace_back();
     for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
     src.copyTo(scheduled.back().src);
     scheduled.back().isWrite=true;
     scheduled.back().wps=pars;
-    scheduled.back().ptr=addScheduleItem("Pending","Write",scanSaveFilename,true);
+    scheduled.back().ptr=addScheduleItem("Pending","Write",label,false);
     cv::Mat resized;
     double ratio=pars.imgmmPPx*1000;
     double xSize=round(ratio*src.cols)*1000/pgMGUI->getNmPPx(0);
     double ySize=round(ratio*src.rows)*1000/pgMGUI->getNmPPx(0);
     cv::resize(src, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
     scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(scanCoords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(scanCoords[1]-pgBeAn->writeBeamCenterOfsY,0));
-
+}
+void pgWrite::scheduleScan(cv::Mat& src, double imgmmPPx, std::string scanSaveFilename, std::string notes, bool getpos){
+    if(getpos) pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
+    prepareScanROI(src, imgmmPPx*1000);
     scheduled.emplace_back();
     for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
     scheduled.back().isWrite=false;
@@ -968,7 +974,7 @@ void pgWrite::onWriteTag(){
         scheduled.back().wps.depthScale=-1;
         scheduled.back().wps.gradualW=0;
         scheduled.back().wps.gradualWCut=-1;
-        scheduled.back().ptr=addScheduleItem("Pending","Write",util::toString("Tag: ",tagText->text().toStdString()),true);
+        scheduled.back().ptr=addScheduleItem("Pending","Write",util::toString("Tag: ",tagText->text().toStdString()),false);
         cv::Mat resized;
         double ratio=settingWdg[4]->imgUmPPx->val;
         double xSize=round(ratio*tagImage.cols)*1000/pgMGUI->getNmPPx(0);

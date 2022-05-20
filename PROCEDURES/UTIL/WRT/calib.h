@@ -95,6 +95,34 @@ private:
     checkbox_gs* fitPar_independentAngles;
     checkbox_gs* fitPar_independentCentres;
 
+    struct measFolder{
+        std::string folder;
+        unsigned overlaps;
+    };
+
+    // plateau settings
+    hidCon* hc_sett_pl;
+    val_selector* plNRuns;
+    val_selector* plRadius;
+    val_selector* plMargin;
+    val_selector* plSpacing;
+    checkbox_gs* randomizeOrder;
+    val_selector* plDurMin;
+    val_selector* plDurMax;
+    val_selector* plFoc;
+    QPushButton* plSetFolder;
+    HQPushButton* plSchedule;
+    int plNTotal, plNScheduled;
+    std::vector<cv::Mat> plMats;
+    std::vector<std::string> plTexts;
+    std::string plFolder;
+
+    // plateau processing
+    hidCon* hc_proc_pl;
+    QPushButton* fpLoad_pl;
+
+    // curve fit
+    hidCon* hc_proc_cf;
     QPushButton* fpLoad;
     QPushButton* fpClear;
     QPushButton* fitAndPlot;
@@ -121,27 +149,6 @@ private:
     constexpr static int maxRedoScanTries=3;
     constexpr static int maxRedoRefocusTries=3;
 
-    struct measFolder{
-        std::string folder;
-        unsigned overlaps;
-    };
-
-    // plateau settings
-    hidCon* hc_sett_pl;
-    val_selector* plNRuns;
-    val_selector* plRadius;
-    val_selector* plMargin;
-    val_selector* plSpacing;
-    checkbox_gs* randomizeOrder;
-    val_selector* plDurMin;
-    val_selector* plDurMax;
-    val_selector* plFoc;
-    QPushButton* plSetFolder;
-    HQPushButton* plSchedule;
-    int plNTotal, plNScheduled;
-    std::vector<cv::Mat> plMats;
-    std::vector<std::string> plTexts;
-    std::string plFolder;
 
     void WCFArray(std::string folder, bool isOverlap=false);
     bool WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect sROI, std::string folder, unsigned n, bool isOverlap);
@@ -171,6 +178,7 @@ private Q_SLOTS:
     void onPlSetFolder();
     void onPlSchedule();
     void onChangePlSchedule(bool status);
+    void onfpLoad_pl();
 
 private:
     static int gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f);

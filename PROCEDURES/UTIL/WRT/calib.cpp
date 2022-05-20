@@ -47,12 +47,17 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     hc_sett=new hidCon(new QLabel("Peak - Run calibration"));
     hc_proc=new hidCon(new QLabel("Peak - Process calibration data"));
     hc_sett_pl=new hidCon(new QLabel("Plateau - Run Calibration"));
+    hc_proc_pl=new hidCon(new QLabel("Plateau - Process calibration data"));
+    hc_proc_cf=new hidCon(new QLabel("Calibration curve fitting (duration-height)"));
     hc_sett->linkTo(hc_proc);
-    hc_sett_pl->linkTo(hc_sett);
     hc_sett_pl->linkTo(hc_proc);
+    hc_proc_pl->linkTo(hc_proc);
+    hc_proc_cf->linkTo(hc_proc);
     slayout->addWidget(hc_sett);
     slayout->addWidget(hc_proc);
     slayout->addWidget(hc_sett_pl);
+    slayout->addWidget(hc_proc_pl);
+    slayout->addWidget(hc_proc_cf);
 
     selArrayXsize=new val_selector(10, "Array Size X", 1, 1000, 0);
     conf["selArrayXsize"]=selArrayXsize;
@@ -142,42 +147,6 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     conf["fitPar_independentCentres"]=fitPar_independentCentres;
     hc_proc->addWidget(fitPar_independentCentres);
 
-    hc_proc->addWidget(new hline);
-    hc_proc->addWidget(new QLabel("Calibration curve fitting (duration-height):"));
-    fpLoad=new QPushButton("Load");
-    connect(fpLoad, SIGNAL(released()), this, SLOT(onfpLoad()));
-    fpClear=new QPushButton("Clear");
-    fpClear->setEnabled(false);
-    connect(fpClear, SIGNAL(released()), this, SLOT(onfpClear()));
-    fitAndPlot=new QPushButton("Fit/Plot");
-    fitAndPlot->setEnabled(false);
-    connect(fitAndPlot, SIGNAL(released()), this, SLOT(onFitAndPlot()));
-    fpApply=new QPushButton("Apply");
-    fpApply->setEnabled(false);
-    connect(fpApply, SIGNAL(released()), this, SLOT(onApply()));
-    applyMenu=new QMenu;
-    connect(applyMenu, SIGNAL(triggered(QAction*)), this, SLOT(onApplyMenuTriggered(QAction*)));
-    nBSplineCoef=new val_selector(6, "NBsplineCoef", 4, 100, 0);
-    conf["nBSplineCoef"]=nBSplineCoef;
-    connect(nBSplineCoef, SIGNAL(changed()), this, SLOT(onNBSplineCoefChanged()));
-    showBP=new checkbox_gs(false,"Show BP.");
-    conf["showBreakPoints"]=showBP;
-    connect(showBP, SIGNAL(changed()), this, SLOT(onNBSplineCoefChanged()));
-    optimizeBP=new checkbox_gs(true,"Optimize BP.");
-    conf["optimizeBreakPoints"]=optimizeBP;
-    connect(optimizeBP, SIGNAL(changed()), this, SLOT(onNBSplineCoefChanged()));
-    upperLim=new QSlider(Qt::Horizontal);
-    upperLim->setMaximum(1000);
-    upperLim->setValue(1000);
-    upperLim->setTracking(false);
-    connect(upperLim, SIGNAL(valueChanged(int)), this, SLOT(onNBSplineCoefChanged()));
-    hc_proc->addWidget(new twid(fpLoad,fpClear,fitAndPlot,fpApply));
-    hc_proc->addWidget(new twid(nBSplineCoef,showBP,optimizeBP));
-    hc_proc->addWidget(new twid(new QLabel("Fit upper limit:"),upperLim));
-    fpList=new QLabel("");
-    fpList->setVisible(false);
-    hc_proc->addWidget(fpList);
-
     plNRuns=new val_selector(10, "NRuns: ", 1, 1000, 0);
     conf["plNRuns"]=plNRuns;
     hc_sett_pl->addWidget(plNRuns);
@@ -210,6 +179,44 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     connect(plSchedule, SIGNAL(changed(bool)), this, SLOT(onChangePlSchedule(bool)));
     hc_sett_pl->addWidget(new twid(plSchedule));
     plSchedule->setEnabled(false);
+
+    fpLoad_pl=new QPushButton("Select Folders to process measurements");
+    connect(fpLoad_pl, SIGNAL(released()), this, SLOT(onfpLoad_pl()));
+    hc_proc_pl->addWidget(new twid(fpLoad_pl));
+
+    fpLoad=new QPushButton("Load");
+    connect(fpLoad, SIGNAL(released()), this, SLOT(onfpLoad()));
+    fpClear=new QPushButton("Clear");
+    fpClear->setEnabled(false);
+    connect(fpClear, SIGNAL(released()), this, SLOT(onfpClear()));
+    fitAndPlot=new QPushButton("Fit/Plot");
+    fitAndPlot->setEnabled(false);
+    connect(fitAndPlot, SIGNAL(released()), this, SLOT(onFitAndPlot()));
+    fpApply=new QPushButton("Apply");
+    fpApply->setEnabled(false);
+    connect(fpApply, SIGNAL(released()), this, SLOT(onApply()));
+    applyMenu=new QMenu;
+    connect(applyMenu, SIGNAL(triggered(QAction*)), this, SLOT(onApplyMenuTriggered(QAction*)));
+    nBSplineCoef=new val_selector(6, "NBsplineCoef", 4, 100, 0);
+    conf["nBSplineCoef"]=nBSplineCoef;
+    connect(nBSplineCoef, SIGNAL(changed()), this, SLOT(onNBSplineCoefChanged()));
+    showBP=new checkbox_gs(false,"Show BP.");
+    conf["showBreakPoints"]=showBP;
+    connect(showBP, SIGNAL(changed()), this, SLOT(onNBSplineCoefChanged()));
+    optimizeBP=new checkbox_gs(true,"Optimize BP.");
+    conf["optimizeBreakPoints"]=optimizeBP;
+    connect(optimizeBP, SIGNAL(changed()), this, SLOT(onNBSplineCoefChanged()));
+    upperLim=new QSlider(Qt::Horizontal);
+    upperLim->setMaximum(1000);
+    upperLim->setValue(1000);
+    upperLim->setTracking(false);
+    connect(upperLim, SIGNAL(valueChanged(int)), this, SLOT(onNBSplineCoefChanged()));
+    hc_proc_cf->addWidget(new twid(fpLoad,fpClear,fitAndPlot,fpApply));
+    hc_proc_cf->addWidget(new twid(nBSplineCoef,showBP,optimizeBP));
+    hc_proc_cf->addWidget(new twid(new QLabel("Fit upper limit:"),upperLim));
+    fpList=new QLabel("");
+    fpList->setVisible(false);
+    hc_proc_cf->addWidget(fpList);
 }
 pgCalib::~pgCalib(){
     if(cpwin!=nullptr) delete cpwin;
@@ -278,7 +285,15 @@ void pgCalib::onPlSetFolder(){
         plMats.push_back(cv::Mat::zeros(xysizepxwr*val.size(),xysizepxwr*val.back().size(),CV_32F));
         plTexts.emplace_back();
         plTexts.back()+="#This is a calibration measurement!\n";
-        plTexts.back()+="#Durations (s):\n";
+        plTexts.back()+="#Radius (um):\n";
+        plTexts.back()+=std::to_string(plRadius->val);
+        plTexts.back()+="\n#Margin (um):\n";
+        plTexts.back()+=std::to_string(plMargin->val);
+        plTexts.back()+="\n#Spacing (um):\n";
+        plTexts.back()+=std::to_string(plSpacing->val);
+        plTexts.back()+="\n#Focus (mm):\n";
+        plTexts.back()+=std::to_string(plFoc->val/1000);
+        plTexts.back()+="\n#Durations (s):\n";
         for(size_t j=0;j<val.size();j++){
             for(size_t i=0;i<val.back().size();i++){
                 tmp=src*val[j][i];
@@ -288,8 +303,6 @@ void pgCalib::onPlSetFolder(){
             }
             plTexts.back()+="\n";
         }
-        plTexts.back()+="#Focus (mm):\n";
-        plTexts.back()+=std::to_string(plFoc->val/1000);
     }
 
     // choose save folder
@@ -334,8 +347,8 @@ void pgCalib::onPlSchedule(){
     wpars.gradualW=0;
     wpars.matrixIsDuration=true;
 
-    std::string filename=util::toString(plFolder,plNScheduled-1);
-    pgWr->scheduleMat(plMats.back(), wpars, filename, plTexts.back());
+    pgWr->scheduleScan(plMats.back(), wpars.imgmmPPx, util::toString(plFolder,plNScheduled-1,"-before"), "");
+    pgWr->scheduleWriteScan(plMats.back(), wpars, util::toString(plFolder,plNScheduled-1,"-after"), plTexts.back());
     plMats.pop_back();
     plTexts.pop_back();
 }
@@ -853,6 +866,260 @@ void pgCalib::onProcessFocusMes(){
     }
 }
 
+void pgCalib::onfpLoad_pl(){
+    std::vector<std::filesystem::path> readFolders; //folders still yet to be checked
+    struct mesfn{
+        std::filesystem::directory_entry before;
+        std::filesystem::directory_entry after;
+        std::filesystem::directory_entry cfg;
+    };
+    std::vector<mesfn> measurementsfn;
+
+    std::string root=QFileDialog::getExistingDirectory(this, "Select Folder Containing Measurements. It will be Searched Recursively.", QString::fromStdString(lastFolder)).toStdString();
+    if(root.empty()) return;
+
+    std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_comp);
+    pgSGUI->MLP.progress_comp=0;
+
+    readFolders.push_back(std::filesystem::path(root));
+    lastFolder=readFolders.back().parent_path().string()+"/";
+    while(!readFolders.empty()){
+        std::vector<std::filesystem::directory_entry> files;
+        auto current=readFolders.back();
+        for(auto const& dir_entry: std::filesystem::directory_iterator{current}) files.push_back(dir_entry);
+        readFolders.pop_back();
+
+        for(auto& path: files){
+            if(path.is_directory()) readFolders.push_back(path);
+            else{
+                if(path.path().extension()==".pfm"){
+                    if(path.path().stem().string().size()>6){
+                        if(path.path().stem().string().substr(path.path().stem().string().size()-6)=="-after"){
+                            mesfn a;
+                            a.after=path;
+                            std::string str_before=path.path().stem().string();
+                            str_before.replace(path.path().stem().string().size()-6,6,"-before");
+                            for(auto& path2: files){
+                                if(path2.path().stem()==path.path().stem() && path2.path().extension()==".cfg"){
+                                    a.cfg=path2;
+                                    if(!a.before.path().string().empty()) break;
+                                }else if(path2.path().stem()==str_before && path2.path().extension()==".pfm"){
+                                    a.before=path2;
+                                    if(!a.cfg.path().string().empty()) break;
+                                }
+                            }
+                            if(!a.before.path().string().empty() && !a.cfg.path().string().empty())
+                                measurementsfn.push_back(a);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    struct vs{
+        double val=0;
+        double SE=0;
+        double n=0;
+    };
+    struct res{
+        double duration_ms;
+        vs height;
+        double focus_um;
+        double radius_um;
+        double margin_um;
+        double spacing_um;
+        double xofs_um;
+        double yofs_um;
+        std::vector<vs> heights;
+    };
+    std::vector<res> results;
+
+    std::string tmp;
+    size_t idx,ti ;
+    for(size_t n=0;n!=measurementsfn.size(); n++){
+        auto& mes=measurementsfn[n];
+        //std::cerr<<"pfm file:"<<mes.scan.path().stem()<<"\n";
+        double radius_um, margin_um, spacing_um, focus_mm;
+        std::vector<std::vector<double>> durs_s;
+
+        std::ifstream ifile(mes.cfg.path());
+        while(ifile.peek()!=EOF){
+            std::getline(ifile,tmp);
+            back:;
+            if(tmp.find("#Radius (um)")!=std::string::npos){
+                ifile>>radius_um;
+            }else if(tmp.find("#Margin (um)")!=std::string::npos){
+                ifile>>margin_um;
+            }else if(tmp.find("#Spacing (um)")!=std::string::npos){
+                ifile>>spacing_um;
+            }else if(tmp.find("#Focus (mm)")!=std::string::npos){
+                ifile>>focus_mm;
+            }else if(tmp.find("#Durations (s)")!=std::string::npos){
+                while(ifile.peek()!=EOF){
+                    std::getline(ifile,tmp);
+                    if(tmp[0]=='#') goto back;
+                    if(tmp.empty()) break;
+                    durs_s.emplace_back();
+                    idx=0;
+                    for(;;){
+                        durs_s.back().push_back(std::stod(tmp.substr(idx),&ti));
+                        idx+=ti;
+                        if(idx==tmp.size()) break;
+                    }
+                }
+            }
+        }
+        ifile.close();
+        std::cerr<<"got matrix "<<durs_s.size()<<" x "<<durs_s.back().size()<<" from "<<mes.cfg.path()<<"\n";
+
+        pgScanGUI::scanRes before, after;
+        pgScanGUI::loadScan(&before, mes.before.path().string());
+        pgScanGUI::loadScan(&after, mes.after.path().string());
+        pgScanGUI::scanRes dif=pgSGUI->difScans(&before, &after);
+        //pgScanGUI::saveScan(&dif,util::toString(mes.before.path().string(),"-dif.pfm"),false,false,false);
+        double umppx=after.XYnmppx/1000;
+        // slice up scan
+        double xysize_um=2*(radius_um+margin_um);
+        double xtotal_um=durs_s.back().size()*xysize_um;
+        double ytotal_um=durs_s.size()*xysize_um;
+        int xysize_px=xysize_um/umppx;
+        int xtotal_px=xtotal_um/umppx;
+        int ytotal_px=ytotal_um/umppx;
+        int xofs_px=(after.depth.cols-xtotal_px)/2;
+        int yofs_px=(after.depth.rows-ytotal_px)/2;
+
+        std::vector<std::vector<pgScanGUI::scanRes>> scans;
+        for(size_t j=0;j!=durs_s.size();j++){
+            scans.emplace_back();
+            auto& dscans=scans.back();
+            for(size_t i=0;i!=durs_s.back().size();i++){
+                dscans.emplace_back();
+                auto& ddscans=dscans.back();
+
+                cv::Rect roi(xofs_px+i*xysize_px, yofs_px+j*xysize_px,xysize_px,xysize_px);
+                dif.copyTo(ddscans,roi);
+                // make height abs
+                ddscans.depth-=ddscans.min;
+                ddscans.max-=ddscans.min;
+                ddscans.min=0;
+            }
+        }
+        // calculate center of mass
+        for(size_t v=0;v!=scans.size();v++) for(size_t u=0;u!=scans[v].size();u++){
+            auto& scan=scans[v][u];
+            double mid=(scan.max+scan.min)/2;
+            cv::Mat mask;
+            cv::compare(scan.depth,mid,mask,cv::CMP_LE);
+            auto cm=cv::moments(mask,true);
+            int x,y;
+            x=cm.m10/cm.m00;
+            y=cm.m01/cm.m00;
+            // calculate radial profile
+            double rmax=radius_um+margin_um/2;
+            const double rstep=spacing_um;
+            const size_t nsteps=std::ceil(rmax/rstep);
+            std::vector<vs> heights(nsteps,{0,0,0});
+            double r, f; size_t nr;
+
+            // get radial profile
+            for(int j=0;j!=scan.depth.rows;j++) for(int i=0;i!=scan.depth.cols;i++){
+                r=sqrt(pow((i-x)*umppx,2)+pow((j-y)*umppx,2));
+                nr=floor(r/rstep);
+                f=1.-r/rstep+nr;     // 0 - 1
+                if(nr<nsteps){
+                    heights[nr].val+=f*scan.depth.at<float>(j,i);
+                    heights[nr].n+=f;
+                }
+                if(nr+1<nsteps){
+                    heights[nr+1].val+=(1-f)*scan.depth.at<float>(j,i);
+                    heights[nr+1].n+=(1-f);
+                }
+            }
+            for(auto& el:heights)
+                el.val/=el.n;
+
+            // calculate SE
+            for(int j=0;j!=scan.depth.rows;j++) for(int i=0;i!=scan.depth.cols;i++){
+                r=sqrt(pow((i-x)*umppx,2)+pow((j-y)*umppx,2));
+                nr=floor(r/rstep);
+                f=1.-r/rstep+nr;     // 0 - 1
+                if(nr<nsteps)
+                    heights[nr].SE+=pow(f*(scan.depth.at<float>(j,i)-heights[nr].val),2)/heights[nr].n;
+                if(nr+1<nsteps)
+                    heights[nr+1].SE+=pow((1-f)*(scan.depth.at<float>(j,i)-heights[nr+1].val),2)/heights[nr+1].n;
+            }
+            for(auto& el:heights)
+                el.SE=sqrt(el.SE/(el.n-1)/el.n);
+
+            vs A;
+            size_t nA=radius_um/2/rstep;
+            for(size_t i=0;i!=nA;i++)
+                A.val+=heights[i].val;
+            A.val/=nA;
+            for(size_t i=0;i!=nA;i++){
+                A.SE+=pow(heights[i].SE*(heights[i].n)*(heights[i].n+1),2);
+                A.n+=heights[i].n;
+            }
+            A.SE=sqrt(A.SE/(A.n-1)/A.n);
+
+            results.push_back({durs_s[v][u]*1000,A,focus_mm*1000,radius_um,margin_um,spacing_um,x*umppx-xysize_um/2,y*umppx-xysize_um/2,heights});
+        }
+
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        pgSGUI->MLP.progress_comp=100./measurementsfn.size()*(n+1);
+    }
+
+    // sort data
+
+    std::sort(results.begin(), results.end(), [](res& i,res& j){
+        if(i.radius_um!=j.radius_um) return i.radius_um<j.radius_um;
+        if(i.margin_um!=j.margin_um) return i.margin_um<j.margin_um;
+        if(i.spacing_um!=j.spacing_um)  return i.spacing_um<j.spacing_um;
+        if(i.focus_um!=j.focus_um)  return i.focus_um<j.focus_um;
+        return i.duration_ms<j.duration_ms;
+    });
+
+
+    // export data
+
+    std::ofstream wfile_a(util::toString(root,"/","proc.txt"));
+    std::ofstream wfile_b(util::toString(root,"/","proc-all.txt"));
+    wfile_a<<"# 1 - Duration (ms)\n";
+    wfile_a<<"# 2 - Peak Avg. Height (nm)\n";
+    wfile_a<<"# 3 - Peak Avg. Height SE (nm)\n";
+    wfile_a<<"# 4 - Focus (um)\n";
+    wfile_a<<"# 5 - Radius (um)\n";
+    wfile_a<<"# 6 - Margin (um)\n";
+    wfile_a<<"# 7 - Spacing (um)\n";
+    wfile_a<<"# 8 - X Offset (um)\n";
+    wfile_a<<"# 9 - Y Offset (um)\n";
+    wfile_a<<"# Results in res-all.dat: each row corresponds to a row here, the spacing equals 6-Spacing\n";
+    wfile_b<<"# cols : radius from 0 - rmax with step specified in res.dat for given row: odd are avg, even are SE\n";
+    wfile_b<<"# rows : individual measurements (specific duration and focus, see res.dat)\n";
+
+    for(auto& res:results){
+        wfile_a<<res.duration_ms<<" ";
+        wfile_a<<res.height.val<<" ";
+        wfile_a<<res.height.SE<<" ";
+        wfile_a<<res.focus_um<<" ";
+        wfile_a<<res.radius_um<<" ";
+        wfile_a<<res.margin_um<<" ";
+        wfile_a<<res.spacing_um<<" ";
+        wfile_a<<res.xofs_um<<" ";
+        wfile_a<<res.yofs_um<<"\n";
+
+        for(auto& el:res.heights){
+            wfile_b<<el.val<<" "<<el.SE<<" ";
+        }
+        wfile_b<<"\n";
+    }
+
+    wfile_a.close();
+    wfile_b.close();
+
+    pgSGUI->MLP.progress_comp=100;
+}
 
 
 int pgCalib::gauss2De_f (const gsl_vector* pars, void* data, gsl_vector* f){
@@ -1329,7 +1596,7 @@ void pgCalib::onfpLoad(){
         readFolders.pop_back();
         for(auto& path: files){
             if(path.is_directory()) readFolders.push_back(path);
-            else if(path.path().stem().string().find("proc")!=std::string::npos && path.path().extension().string()==".txt") measFiles.push_back(path);
+            else if(path.path().stem().string()=="proc" && path.path().extension().string()==".txt") measFiles.push_back(path);
         }
     }
 
@@ -1350,11 +1617,16 @@ void pgCalib::onfpLoad(){
                     else if(line.find("FIT result for Gaussian peak #0: Y offset (um)")!=std::string::npos) pos[6]=idx;
                     else if(line.find("FIT result for Lorentzian peak #0: X offset (um)")!=std::string::npos && pos[5]==0) pos[5]=idx;      // if no gaussian
                     else if(line.find("FIT result for Lorentzian peak #0: Y offset (um)")!=std::string::npos && pos[6]==0) pos[6]=idx;
+                    else if(line.find("Peak Avg. Height (nm)")!=std::string::npos) pos[2]=idx;
+                    else if(line.find("Peak Avg. Height SE (nm)")!=std::string::npos) pos[3]=idx;
+                    else if(line.find("Focus (um)")!=std::string::npos) pos[4]=idx;
+                    else if(line.find("X Offset (um)")!=std::string::npos) pos[5]=idx;
+                    else if(line.find("Y Offset (um)")!=std::string::npos) pos[6]=idx;
                 }
                 continue;
             }
             size_t sx=0, sxi;
-            bool valid=false;
+            bool valid=true;
             double _duration, _height, _height_err, _focus[3];
             for(size_t i=1;;i++){
                 std::string substr=line.substr(sx);

@@ -73,7 +73,7 @@ public:
         int avgNum;
         cv::Mat depthSS;    //this is for calculating the standard deviation: will be empty if avgNum=1
         cv::Mat refl;       //optional: the reflectivity of the mirror
-        void copyTo(scanRes& dst) const;
+        void copyTo(scanRes& dst, cv::Rect ROI={0,0,0,0}) const;
     };
     varShare<scanRes> result;
 
@@ -95,6 +95,8 @@ public:
 
     std::mutex* useCorr;                //from correction
     pgScanGUI::scanRes* cor{nullptr};
+
+    void correctTilt(scanRes* res);
 private:
     void init_gui_activation();
     void init_gui_settings();
@@ -190,6 +192,7 @@ private:
 
     void _doOneRound(cv::Rect ROI={0,0,0,0}, char cbAvg_override=0, bool force_disable_tilt_correction=false, char cbRefl_override=0, runTrack* RT=nullptr);
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
+    void correctTilt(scanRes* res, cv::Mat* mask4hist);
     void _correctTilt(scanRes* res, bool force_disable_tilt_correction=false);
     void _savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames);
     double avgDriftCorr(const cv::Mat* mavg, const cv::Mat* mnew, const cv::Mat* mask, cv::Mat* temp, double shiftX, double shiftY);

@@ -49,7 +49,9 @@ public:
 
     void setScheduling(bool value);
     void changeDrawAreaOnExternal(bool status, double xsize, double ysize_um);
-    void scheduleMat(cv::Mat& src, writePars pars, std::string scanSaveFilename, std::string notes="");
+    void scheduleWriteScan(cv::Mat& src, writePars pars, std::string scanSaveFilename, std::string notes="");     // schedules both write and scan
+    void scheduleWrite(cv::Mat& src, writePars pars, std::string label);
+    void scheduleScan(cv::Mat& src, double imgmmPPx, std::string scanSaveFilename, std::string notes="", bool getpos=true);     // src needed for ROI
 private:
     //activation
     QVBoxLayout* alayout;

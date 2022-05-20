@@ -155,17 +155,33 @@ void pgScanGUI::init_gui_settings(){
     connect(saveNextMirrorBaselineHist, SIGNAL(released()), this, SLOT(onBSaveNextMirrorBaselineHist()));
     onMenuChange(0);
 }
-void pgScanGUI::scanRes::copyTo(scanRes& dst) const{
-    dst.max=max; dst.min=min;
-    dst.pos[0]=pos[0]; dst.XYnmppx=XYnmppx;
-    dst.pos[1]=pos[1]; dst.pos[2]=pos[2];
-    dst.tiltCor[0]=tiltCor[0]; dst.tiltCor[1]=tiltCor[1];
+void pgScanGUI::scanRes::copyTo(scanRes& dst, cv::Rect ROI) const{
+    dst.XYnmppx=XYnmppx;
+    dst.tiltCor[0]=tiltCor[0];
+    dst.tiltCor[1]=tiltCor[1];
     dst.avgNum=avgNum;
-    depth.copyTo(dst.depth);
-    mask.copyTo(dst.mask);
-    maskN.copyTo(dst.maskN);
-    depthSS.copyTo(dst.depthSS);
-    refl.copyTo(dst.refl);
+    if(ROI.width==0 || ROI.height==0){
+        dst.max=max; dst.min=min;
+        dst.pos[0]=pos[0];
+        dst.pos[1]=pos[1];
+        dst.pos[2]=pos[2];
+        depth.copyTo(dst.depth);
+        mask.copyTo(dst.mask);
+        maskN.copyTo(dst.maskN);
+        depthSS.copyTo(dst.depthSS);
+        refl.copyTo(dst.refl);
+    }else{
+        if(!depth.empty())      depth(ROI).copyTo(dst.depth);
+        if(!mask.empty())       mask(ROI).copyTo(dst.mask);
+        if(!maskN.empty())      maskN(ROI).copyTo(dst.maskN);
+        if(!depthSS.empty())    depthSS(ROI).copyTo(dst.depthSS);
+        if(!refl.empty())       refl(ROI).copyTo(dst.refl);
+        cv::minMaxLoc(dst.depth, &dst.min, &dst.max, 0, 0, dst.maskN);
+        dst.pos[0]=pos[0]+(-dst.depth.cols/2.+ROI.x+ROI.width/2.)*XYnmppx*1e-6;
+        dst.pos[1]=pos[1]+(-dst.depth.rows/2.+ROI.y+ROI.height/2.)*XYnmppx*1e-6;
+        dst.pos[2]=pos[2];
+    }
+
 }
 
 scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
@@ -339,6 +355,34 @@ double pgScanGUI::vsConv(val_selector* vs){
     }
 }
 
+void pgScanGUI::correctTilt(scanRes* res){
+    correctTilt(res,nullptr);
+}
+void pgScanGUI::correctTilt(scanRes* res, cv::Mat* mask4hist){
+    cv::Mat blured;
+    double sigma=tiltCorBlur->val;
+    int ksize=sigma*5;
+    if(!(ksize%2)) ksize++;
+    //cv::GaussianBlur(res->depth, blured, cv::Size(ksize, ksize), sigma, sigma);   //using just gaussian blur also blurs out the inf edges masked over, which sometimes causes tilt to fail
+    cv::bilateralFilter(res->depth, blured, ksize, sigma, sigma);                   //this does not blur over obvious sharp edges (but is a bit slower)
+    double derDbound=tiltCorThrs->val;
+    cv::Mat firstD, secondD, mask, maskT;
+    cv::Sobel(blured, firstD, CV_32F,1,0); //X
+    cv::Sobel(blured, secondD, CV_32F,2,0); //X
+    cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
+    cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
+    mask.setTo(cv::Scalar::all(0), maskT);
+    mask.setTo(cv::Scalar::all(0), res->mask);                                      if(mask4hist!=nullptr) mask.copyTo(*mask4hist);
+    res->tiltCor[0]=-cv::mean(firstD,mask)[0]/8;
+    cv::Sobel(blured, firstD, CV_32F,0,1); //Y
+    cv::Sobel(blured, secondD, CV_32F,0,2); //Y
+    cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
+    cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
+    mask.setTo(cv::Scalar::all(0), maskT);
+    mask.setTo(cv::Scalar::all(0), res->mask);                                      if(mask4hist!=nullptr) cv::bitwise_and(*mask4hist,mask,*mask4hist);
+    res->tiltCor[1]=-cv::mean(firstD,mask)[0]/8;
+}
+
 void pgScanGUI::_correctTilt(scanRes* res, bool force_disable_tilt_correction){
     int titlCorIndex;
     if(force_disable_tilt_correction) titlCorIndex=0;
@@ -354,28 +398,8 @@ void pgScanGUI::_correctTilt(scanRes* res, bool force_disable_tilt_correction){
     int nCols=res->depth.cols;
     cv::Mat mask4hist;
     if(titlCorIndex==1 || getTiltCalibOnNextScan){
-        cv::Mat blured;
-        double sigma=tiltCorBlur->val;
-        int ksize=sigma*5;
-        if(!(ksize%2)) ksize++;
-        //cv::GaussianBlur(res->depth, blured, cv::Size(ksize, ksize), sigma, sigma);   //using just gaussian blur also blurs out the inf edges masked over, which sometimes causes tilt to fail
-        cv::bilateralFilter(res->depth, blured, ksize, sigma, sigma);                   //this does not blur over obvious sharp edges (but is a bit slower)
-        double derDbound=tiltCorThrs->val;
-        cv::Mat firstD, secondD, mask, maskT;
-        cv::Sobel(blured, firstD, CV_32F,1,0); //X
-        cv::Sobel(blured, secondD, CV_32F,2,0); //X
-        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
-        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
-        mask.setTo(cv::Scalar::all(0), maskT);
-        mask.setTo(cv::Scalar::all(0), res->mask);                                      if(findBaseline->val) mask.copyTo(mask4hist);
-        res->tiltCor[0]=-cv::mean(firstD,mask)[0]/8;
-        cv::Sobel(blured, firstD, CV_32F,0,1); //Y
-        cv::Sobel(blured, secondD, CV_32F,0,2); //Y
-        cv::compare(secondD,  derDbound, mask , cv::CMP_LT);
-        cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
-        mask.setTo(cv::Scalar::all(0), maskT);
-        mask.setTo(cv::Scalar::all(0), res->mask);                                      if(findBaseline->val) cv::bitwise_and(mask4hist,mask,mask4hist);
-        res->tiltCor[1]=-cv::mean(firstD,mask)[0]/8;
+        if(findBaseline->val) correctTilt(res,&mask4hist);
+        else correctTilt(res);
         std::cout<<"CPhases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
         if(getTiltCalibOnNextScan){
             tiltCor[0]=res->tiltCor[0];
