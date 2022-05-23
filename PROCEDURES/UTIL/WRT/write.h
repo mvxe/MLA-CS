@@ -126,6 +126,7 @@ private:
     checkbox_gs* PPRefDuration;
     smp_selector* selPScheduling;
     checkbox_gs* refocusBeforeWrite;
+    checkbox_gs* refocusBeforeScan;
     std::vector<double>* bsplbreakpts;
     std::vector<double>* bsplcoefs;
     std::vector<double>* bsplcov;

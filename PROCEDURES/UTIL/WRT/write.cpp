@@ -155,6 +155,9 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     refocusBeforeWrite=new checkbox_gs(false,"Refocus before each write");
     conf["refocusBeforeWrite"]=refocusBeforeWrite;
     slayout->addWidget(refocusBeforeWrite);
+    refocusBeforeScan=new checkbox_gs(false,"Refocus before each scan");
+    conf["refocusBeforeScan"]=refocusBeforeScan;
+    slayout->addWidget(refocusBeforeScan);
     writeZeros=new checkbox_gs(false,"Write zeros");
     writeZeros->setToolTip("If enabled, areas that do not need extra height will be written at threshold duration anyway (slower writing but can give more consistent zero levels if calibration is a bit off).");
     conf["writeZeros"]=writeZeros;
@@ -406,6 +409,7 @@ void pgWrite::onScan(){
     else saveB->setEnabled(true);
 }
 bool pgWrite::_onScan(cv::Rect ROI, double* coords){
+    if(refocusBeforeScan->val) pgFGUI->doRefocus(true, scanROI, maxRedoRefocusTries);
     pgMGUI->chooseObj(true);
     if(coords!=nullptr) pgMGUI->move(coords[0], coords[1], coords[2], true);
     else pgMGUI->move(scanCoords[0], scanCoords[1], scanCoords[2], true);
