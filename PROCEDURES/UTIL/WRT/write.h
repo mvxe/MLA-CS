@@ -38,7 +38,7 @@ public:
         double depthScale{-1};
         double gradualW{-1};     // override disabled if -1, disabled if 0, enabled if >0
         int gradualWCut{-1};     // override disabled if -1, disabled if 0, enabled if 1
-        bool matrixIsDuration=false;    // do not use calibration, for calibration (src values in ms)
+        bool matrixIsDuration{false};   // do not use calibration, for calibration (src values in ms)
     };
     bool writeMat(cv::Mat* override=nullptr, writePars wparoverride=writePars());
             // matrix depth, if CV_32F, is in mm, likewise override_depthMaxval is in mm too

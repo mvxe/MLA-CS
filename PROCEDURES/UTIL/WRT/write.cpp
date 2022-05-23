@@ -842,7 +842,7 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
                     CO.addHold("X",CTRL::he_motion_ontarget);
                     CO.addHold("Y",CTRL::he_motion_ontarget);
                     CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
-                    CO.pulseGPIO("wrLaser",pulse/1000);
+                    CO.pulseGPIO("wrLaser",pulse);
                 }
                 if (j!=write.rows-1) pgMGUI->corCOMove(CO,0,vpointSpacing,0);
                 CO.execute();
@@ -864,7 +864,10 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
             cv::Mat completed=cv::Mat::zeros(write.size(), CV_8U);
             if(writeZeros->val==false) cv::compare(write,0,completed,cv::CMP_EQ);
             cv::Mat pulseMat=cv::Mat::zeros(write.size(), CV_32F);
-            for(int j=0;j!=write.rows;j++) for(int i=0;i!=write.cols;i++) pulseMat.at<float>(j,i)=predictDuration(write.at<float>(j,i));
+            for(int j=0;j!=write.rows;j++) for(int i=0;i!=write.cols;i++){
+                if(noCalib) pulseMat.at<float>(j,i)=write.at<float>(j,i);
+                else pulseMat.at<float>(j,i)=predictDuration(write.at<float>(j,i));
+            }
             int last_i=0, last_j=0;
             int next_i=last_i, next_j=last_j;
 
@@ -907,7 +910,8 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
                     CO.addHold("X",CTRL::he_motion_ontarget);
                     CO.addHold("Y",CTRL::he_motion_ontarget);
                     CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
-                    CO.pulseGPIO("wrLaser",predictDuration(write.at<float>(next_j,next_i))/1000);
+                    if(noCalib) CO.pulseGPIO("wrLaser",write.at<float>(next_j,next_i));
+                    else CO.pulseGPIO("wrLaser",predictDuration(write.at<float>(next_j,next_i)));
                     completed.at<uint8_t>(next_j,next_i)=255;
                     todo--;
 
