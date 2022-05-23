@@ -755,7 +755,7 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
     vfocus=(wparoverride.focus_mm!=std::numeric_limits<double>::max())?wparoverride.focus_mm:focus->val/1000;
     vfocusXcor=(wparoverride.focusXcor_mm!=std::numeric_limits<double>::max())?wparoverride.focusXcor_mm:focusXcor->val/1000;
     vfocusYcor=(wparoverride.focusYcor_mm!=std::numeric_limits<double>::max())?wparoverride.focusYcor_mm:focusYcor->val/1000;
-    vdepthScale=(wparoverride.depthScale>0)?wparoverride.depthScale:(double)depthScale->val;
+    vdepthScale=(wparoverride.depthScale>0)?wparoverride.depthScale:(depthScale->val.load());
     double vgradualW; bool vgradualWCut;
     vgradualW=(wparoverride.gradualW<0)?((gradualWEn->val)?((double)gradualW->val):(0)):wparoverride.gradualW;
     vgradualWCut=(wparoverride.gradualWCut<0)?(bool)gradualWCut->val:(bool)wparoverride.gradualWCut;
@@ -842,7 +842,7 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
                     CO.addHold("X",CTRL::he_motion_ontarget);
                     CO.addHold("Y",CTRL::he_motion_ontarget);
                     CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
-                    CO.pulseGPIO("wrLaser",pulse);
+                    CO.pulseGPIO("wrLaser",pulse/1000);
                 }
                 if (j!=write.rows-1) pgMGUI->corCOMove(CO,0,vpointSpacing,0);
                 CO.execute();
@@ -910,8 +910,8 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
                     CO.addHold("X",CTRL::he_motion_ontarget);
                     CO.addHold("Y",CTRL::he_motion_ontarget);
                     CO.addHold("Z",CTRL::he_motion_ontarget);   // because corCOMove may correct Z too
-                    if(noCalib) CO.pulseGPIO("wrLaser",write.at<float>(next_j,next_i));
-                    else CO.pulseGPIO("wrLaser",predictDuration(write.at<float>(next_j,next_i)));
+                    if(noCalib) CO.pulseGPIO("wrLaser",write.at<float>(next_j,next_i)/1000);
+                    else CO.pulseGPIO("wrLaser",predictDuration(write.at<float>(next_j,next_i))/1000);
                     completed.at<uint8_t>(next_j,next_i)=255;
                     todo--;
 
@@ -978,6 +978,7 @@ void pgWrite::onWriteTag(){
         scheduled.back().wps.depthScale=-1;
         scheduled.back().wps.gradualW=0;
         scheduled.back().wps.gradualWCut=-1;
+        scheduled.back().wps.matrixIsDuration=true;  // TODO fix, this is a dirty fix
         scheduled.back().ptr=addScheduleItem("Pending","Write",util::toString("Tag: ",tagText->text().toStdString()),false);
         cv::Mat resized;
         double ratio=settingWdg[4]->imgUmPPx->val;
@@ -996,6 +997,10 @@ void pgWrite::onWriteTag(){
         wps.focus_mm=settingWdg[4]->focus->val/1000;
         wps.focusXcor_mm=settingWdg[4]->focusXcor->val/1000;
         wps.focusYcor_mm=settingWdg[4]->focusYcor->val/1000;
+        wps.depthScale=-1;
+        wps.gradualW=0;
+        wps.gradualWCut=-1;
+        wps.matrixIsDuration=true;  // TODO fix, this is a dirty fix
         // TODO tag doesnt use all the tag settings, fix when variable scheduling is implemented
         writeMat(&tagImage,wps);
         writeTag->setText("Write Tag");
