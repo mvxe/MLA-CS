@@ -144,7 +144,6 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     for(int i=0;i!=Nset;i++) {
         settingWdg.push_back(new writeSettings(i, this));
         slayout->addWidget(settingWdg.back());
-        connect(settingWdg.back()->corPPR, SIGNAL(released()), this, SLOT(onCorPPR()));
     }
     connect(selectWriteSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     onMenuChange(0);
@@ -161,10 +160,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     writeZeros=new checkbox_gs(false,"Write zeros");
     writeZeros->setToolTip("If enabled, areas that do not need extra height will be written at threshold duration anyway (slower writing but can give more consistent zero levels if calibration is a bit off).");
     conf["writeZeros"]=writeZeros;
-    PPRefDuration=new checkbox_gs(false,"PPR_Dur");
-    PPRefDuration->setToolTip("By default, PPR corrects Height. If set, PPR will correct Duration instead.");
-    conf["PPRefDuration"]=PPRefDuration;
-    slayout->addWidget(new twid(writeZeros,PPRefDuration));
+    slayout->addWidget(new twid(writeZeros));
     selPScheduling=new smp_selector("Point scheduling: ", 0, {"ZigZag","Nearest"});
     conf["selPScheduling"]=selPScheduling;
     slayout->addWidget(selPScheduling);
@@ -481,19 +477,6 @@ void pgWrite::on_scan_default_folder(){
     std::string folder=QFileDialog::getExistingDirectory(gui_settings, tr("Select autoscan destination default folder"), QString::fromStdString(scan_default_folder->get())).toStdString();
     if(!folder.empty()) scan_default_folder->set(folder);
 }
-void pgWrite::onCorPPR(){
-    bool ok;
-    float preH=QInputDialog::getDouble(gui_activation, "Correct plateau-peak ratio", "Input actual written plateau height (nm) for given expected peak height.", 0.001, 0, 1000, 3, &ok);
-    if(!ok) return;
-    if(PPRefDuration->val){
-        float cDT=predictDuration(depthMaxval->val);
-        float gDT=predictDuration(preH);
-        plataeuPeakRatio->setValue(plataeuPeakRatio->val*gDT/cDT);
-    }else{
-        plataeuPeakRatio->setValue(plataeuPeakRatio->val*preH/depthMaxval->val);
-    }
-
-}
 void pgWrite::onPulse(){
     if(!go.pRPTY->connected) return;
     wasMirau=pgMGUI->currentObj==0;
@@ -525,7 +508,6 @@ void pgWrite::onMenuChange(int index){
     usingBSpline=settingWdg[index]->usingBSpline;
     constA=settingWdg[index]->constA;
     constC=settingWdg[index]->constC;
-    plataeuPeakRatio=settingWdg[index]->plataeuPeakRatio;
     pointSpacing=settingWdg[index]->pointSpacing;
     bsplbreakpts=&settingWdg[index]->bsplbreakpts;
     bsplcoefs=&settingWdg[index]->bsplcoefs;
@@ -559,10 +541,6 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent), p_ready
     constC=new val_selector(0, "Constant C", -1000, 1000, 9, 0, {"ms"});
     parent->conf[name]["constC"]=constC;
     slayout->addWidget(constC);
-    plataeuPeakRatio=new val_selector(1, "Plataeu-Peak height ratio", 0.01, 1000, 3);
-    parent->conf[name]["plataeuPeakRatio"]=plataeuPeakRatio;
-    corPPR=new QPushButton("Correct PPR");
-    slayout->addWidget(new twid(plataeuPeakRatio,corPPR));
     pointSpacing=new val_selector(1, "Point spacing", 0.01, 10, 3, 0, {"um"});
     parent->conf[name]["pointSpacing"]=pointSpacing;
     slayout->addWidget(pointSpacing);
@@ -1030,8 +1008,6 @@ void pgWrite::preparePredictor(){
 }
 double pgWrite::predictDuration(double targetHeight){
     if(!p_ready) preparePredictor();
-    if(!PPRefDuration->val)
-        targetHeight/=plataeuPeakRatio->val;
     double T{0},Terr;
     if(targetHeight<0) return T;
     if(p_coefs!=nullptr){
@@ -1039,9 +1015,7 @@ double pgWrite::predictDuration(double targetHeight){
         gsl_bspline_eval(targetHeight, p_basisfun, p_bsplws);
         gsl_multifit_linear_est(p_basisfun, p_coefs, p_covmat, &T, &Terr);
     }else lin: T=constA->val*targetHeight+constC->val;
-    if(PPRefDuration->val)
-        return T/plataeuPeakRatio->val;
-    else return T;
+    return T;
 }
 
 

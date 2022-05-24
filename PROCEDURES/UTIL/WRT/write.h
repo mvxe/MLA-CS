@@ -120,10 +120,8 @@ private:
     checkbox_gs* usingBSpline;
     val_selector* constA;
     val_selector* constC;
-    val_selector* plataeuPeakRatio;
     val_selector* pointSpacing;
     checkbox_gs* writeZeros;
-    checkbox_gs* PPRefDuration;
     smp_selector* selPScheduling;
     checkbox_gs* refocusBeforeWrite;
     checkbox_gs* refocusBeforeScan;
@@ -194,7 +192,6 @@ private Q_SLOTS:
     void onChangeDrawWriteAreaOn(bool status);
     void onChangeDrawScanAreaOn(bool status);
     void onChangeDrawWriteAreaOnTag(bool status);
-    void onCorPPR();
     void on_write_default_folder();
     void on_scan_default_folder();
     void onScan();
@@ -234,8 +231,6 @@ public:
     checkbox_gs* usingBSpline;
     val_selector* constA;
     val_selector* constC;
-    val_selector* plataeuPeakRatio;
-    QPushButton* corPPR;
     val_selector* pointSpacing;
     std::vector<double> bsplbreakpts;
     std::vector<double> bsplcoefs;

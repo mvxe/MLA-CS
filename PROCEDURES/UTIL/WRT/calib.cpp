@@ -999,16 +999,23 @@ void pgCalib::onfpLoad_pl(){
 
                 cv::Rect roi(xofs_px+i*xysize_px, yofs_px+j*xysize_px,xysize_px,xysize_px);
                 dif.copyTo(ddscans,roi);
+                // correct min
+                cv::Mat mask=cv::Mat(ddscans.depth.size(), CV_8U, 255);
+                cv::circle(mask, cv::Point(mask.cols/2,mask.rows/2), (radius_um+margin_um/2)/umppx, 0, -1);
+                double min=cv::mean(ddscans.depth,mask)[0];
+                double a,b;
+                cv::minMaxIdx(ddscans.depth,&a, &b);
+
                 // make height abs
-                ddscans.depth-=ddscans.min;
-                ddscans.max-=ddscans.min;
-                ddscans.min=0;
+                ddscans.depth-=min;
+                ddscans.max-=min;
+                ddscans.min-=min;
             }
         }
         // calculate center of mass
         for(size_t v=0;v!=scans.size();v++) for(size_t u=0;u!=scans[v].size();u++){
             auto& scan=scans[v][u];
-            double mid=(scan.max+scan.min)/2;
+            double mid=scan.max/2;
             cv::Mat mask;
             cv::compare(scan.depth,mid,mask,cv::CMP_LE);
             auto cm=cv::moments(mask,true);
@@ -1768,6 +1775,9 @@ void pgCalib::onFitAndPlot(){
 
     const double min=0;
     const double max=(1./upperLim->maximum()*upperLim->value())*(*std::max_element(height.begin(),height.end()));
+
+    for(auto& he: height)
+        if(he<0) he=0;      // dirty fix (we fit bsplines in an inverted yx, so it cannot fit to points y<0)
 
     while(height.back()>max && height.size()>ncoeffs){
         duration.pop_back();
