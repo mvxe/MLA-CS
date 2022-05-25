@@ -147,8 +147,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     }
     connect(selectWriteSetting, SIGNAL(changed(int)), this, SLOT(onMenuChange(int)));
     onMenuChange(0);
-    QLabel* textl=new QLabel("The required pulse duration T to write a peak of height H is determined via T=A*H+C. If bsplines are defined, they overwrite this (only within their defined range).");
-    textl->setWordWrap(true);
+    WQLabel* textl=new WQLabel("The required pulse duration T to write a peak of height H is determined via T=A*H+C. If bsplines are defined, they overwrite this (only within their defined range).");
     slayout->addWidget(textl);
     slayout->addWidget(new hline());
     refocusBeforeWrite=new checkbox_gs(false,"Refocus before each write");

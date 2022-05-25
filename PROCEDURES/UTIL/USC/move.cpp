@@ -89,15 +89,15 @@ void pgMoveGUI::init_gui_settings(){
     calib_autoadjYZ->setCheckable(true);
     connect(calib_autoadjYZ, SIGNAL(toggled(bool)), this, SLOT(_onCalibrate_Y(bool)));
     slayout->addWidget(new twid(calib_autoadjXZ, calib_autoadjYZ));
-    slayout->addWidget(new QLabel("(Click -> move X/Y -> focus -> Click) (make sure to first disable Correct XY skew)"));
+    slayout->addWidget(new WQLabel("(Click -> move X/Y -> focus -> Click) (make sure to first disable Correct XY skew)"));
 
     slayout->addWidget(new hline);
 
     markObjDis=new QPushButton("Mark");
     markObjDis->setCheckable(true);
     connect(markObjDis, SIGNAL(toggled(bool)), this, SLOT(_onMarkObjDisY(bool)));
-    slayout->addWidget(new twid(new QLabel("Mirau-Writing objective move calibration"), markObjDis));
-    slayout->addWidget(new QLabel("(Focus and center on feature with Mirau objective -> Check^\n-> focus and center on feature with Writing objective -> Uncheck)"));
+    slayout->addWidget(new twid(new WQLabel("Mirau-Writing objective move calibration"), markObjDis));
+    slayout->addWidget(new WQLabel("(Focus and center on feature with Mirau objective -> Check^\n-> focus and center on feature with Writing objective -> Uncheck)"));
 
     slayout->addWidget(new hline);
 
@@ -107,7 +107,7 @@ void pgMoveGUI::init_gui_settings(){
     markPointForCalib->setToolTip("Make Sure the Center Mark is On Center (ie. Reset the Writing Beam Correction Offset).");
     ptFeedback=new QLabel("Have 0 points.");
     slayout->addWidget(new twid(markPointForCalib, ptFeedback));
-    slayout->addWidget(new QLabel("(Check^ -> click on distinct feature -> move and center on it -> Uncheck)"));
+    slayout->addWidget(new WQLabel("(Check^ -> click on distinct feature -> move and center on it -> Uncheck)"));
     calculateCalib=new QPushButton("Calculate Calibration Constants"); calculateCalib->setToolTip("The more points, the better (min 5)!");
     connect(calculateCalib, SIGNAL(released()), this, SLOT(onCalculateCalib()));
     slayout->addWidget(new twid(calculateCalib));
@@ -133,7 +133,7 @@ void pgMoveGUI::init_gui_settings(){
         conf["calibAngCamToXMot"]=calibAngCamToXMot;
         connect(calibAngCamToXMot, SIGNAL(changed()), this, SLOT(reCalcConstM()));
         calibMirauL->addWidget(calibAngCamToXMot);
-        calibMirauL->addWidget(new QLabel("NOTE: these settings are used for most moves, including procedures."));
+        calibMirauL->addWidget(new WQLabel("NOTE: these settings are used for most moves, including procedures."));
 
         calibNmPPx_writing=new val_selector(10, "XY calibration: ", 0, 1000, 6, 0, {"nm/px"});
         conf["calibNmPPx_writing"]=calibNmPPx_writing;
@@ -142,7 +142,7 @@ void pgMoveGUI::init_gui_settings(){
         connect(calibAngCamToXMot_writing, SIGNAL(changed()), this, SLOT(reCalcConstW()));
         conf["calibAngCamToXMot_writing"]=calibAngCamToXMot_writing;
         calibWritingL->addWidget(calibAngCamToXMot_writing);
-        calibWritingL->addWidget(new QLabel("NOTE: these settings are used only for Writing objective GUI click moves."));
+        calibWritingL->addWidget(new WQLabel("NOTE: these settings are used only for Writing objective GUI click moves."));
 
     calibAngYMotToXMot=new val_selector(M_PI/2, "Xmot/Ymot angle ofs: ", -M_PI, M_PI, 6, 0, {"rad"});
     calibAngYMotToXMot->setToolTip("This setting is calibrated with Mirau objective, and should be independent of objective.");

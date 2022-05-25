@@ -377,4 +377,13 @@ private:
     void mouseReleaseEvent(QMouseEvent *event){hide();}
 };
 
+// QLabel with wrap enabled
+class WQLabel: public QLabel{
+    Q_OBJECT
+public:
+    template<typename... Args> WQLabel(Args&&... args) : QLabel(std::forward<Args>(args)...){
+        setWordWrap(true);
+    }
+};
+
 #endif // GUI_AUX_OBJECTS_H

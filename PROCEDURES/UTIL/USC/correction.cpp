@@ -43,8 +43,7 @@ pgCorrection::pgCorrection(pgScanGUI* pgSGUI, pgMoveGUI* pgMGUI): pgSGUI(pgSGUI)
     connect(setAsCalib, SIGNAL(released()), this, SLOT(onSetAsCalib()));
     slayout->addWidget(new twid(setAsCalib));
     slayout->addWidget(new hline);
-    QLabel* lbl=new QLabel(util::toString("The correction file is saved as ",fileName,". It can be replaced by the button above, but you may also manually save a scan over it and restart the program.").c_str());
-    lbl->setWordWrap(true);
+    WQLabel* lbl=new WQLabel(util::toString("The correction file is saved as ",fileName,". It can be replaced by the button above, but you may also manually save a scan over it and restart the program.").c_str());
     slayout->addWidget(lbl);
     enableCorrection=new checkbox_gs(false,"Enable correction.");
     conf["enableCorrection"]=enableCorrection;

@@ -16,23 +16,20 @@ tab_camera::tab_camera(QWidget* parent){
     LDisplay->parent=this;
     LDisplay->setMouseTracking(false);
     LDisplay->setScaledContents(false);
-    LDisplay->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    LDisplay->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Expanding);
     LDisplay->setAlignment(Qt::AlignHCenter|Qt::AlignVCenter);
 
     tBarW=new QWidget;
     layoutTBarW= new QVBoxLayout;
     tBarW->setLayout(layoutTBarW);
+    tBarW->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
 
     layout->addWidget(LDisplay);
     layout->addWidget(tBarW);
 
     selDisp=new smp_selector("Display mode:", 0, {"Camera","Depth Map","Depth Map SD","Reflectivity"});
-    dispScale=new val_selector(1, "Scale: ", 0.1, 1, 2);
-    conf["dispScale"]=dispScale;
-    connect(dispScale, SIGNAL(changed()), this, SLOT(updateImgF()));
-    layoutTBarW->addWidget(new twid(selDisp,dispScale));
     selObjective=new smp_selector("Objective:", 0, {"Mirau","Writing"});
-    layoutTBarW->addWidget(new twid(selObjective));
+    layoutTBarW->addWidget(new twid(selDisp,new QLabel("   |   "),selObjective));
 
     TWCtrl=new QTabWidget;
     TWCtrl->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Expanding);
@@ -309,20 +306,21 @@ void tab_camera::work_fun(){
     compPB->setValue(MLP.progress_comp);
 }
 
+void iImageDisplay::resizeEvent(QResizeEvent *event){
+    parent->updateDisp=true;
+}
+
 void tab_camera::scaleDisplay(cv::Mat img, QImage::Format format){
     cv::Mat tmp;
-    double scale=dispScale->val;
-    if(go.pGCAM->iuScope->connected){
-        double colRatio=static_cast<double>(img.cols)/go.pGCAM->iuScope->camCols;
-        double rowRatio=static_cast<double>(img.rows)/go.pGCAM->iuScope->camRows;
-        if(colRatio<1 && rowRatio<1){
-            if(colRatio<=scale && rowRatio<=scale) scale=1;
-            else if(colRatio>rowRatio) scale/=colRatio;
-            else if(colRatio<rowRatio) scale/=rowRatio;
-        }
-    }
 
-    if(scale!=1) cv::resize(img, tmp, cv::Size(0,0),scale,scale, cv::INTER_AREA);
+    double _s;
+    ld_scale=1;
+    _s=((double)LDisplay->geometry().width()-20)/img.cols;
+    if(ld_scale>_s) ld_scale=_s;
+    _s=((double)LDisplay->geometry().height()-20)/img.rows;
+    if(ld_scale>_s) ld_scale=_s;
+
+    if(ld_scale!=1) cv::resize(img, tmp, cv::Size(0,0),ld_scale,ld_scale, cv::INTER_AREA);
     else tmp=img;
     LDisplay->setPixmap(QPixmap::fromImage(QImage(tmp.data, tmp.cols, tmp.rows, tmp.step, format)));
 }
@@ -365,8 +363,8 @@ void iImageDisplay::calsVars(QMouseEvent *event, double* xcoord, double* ycoord,
     if(pwidth!=nullptr) *pwidth=pixmap()->width();
     *pheight=pixmap()->height();
 
-    if(parent->dispScale->val!=1){
-        double scale=parent->dispScale->val;
+    if(parent->ld_scale!=1){
+        double scale=parent->ld_scale;
         if(parent->selDisp->index!=0){  // not camera
             if(go.pGCAM->iuScope->connected){
                 const pgScanGUI::scanRes* res;
@@ -604,9 +602,6 @@ void tab_camera::showScan(pgScanGUI::scanRes scan){
     loadedScan=scan;
     updateDisp=true;
     loadedOnDisplay=true;
-}
-void tab_camera::updateImgF(){
-    updateDisp=true;
 }
 void tab_camera::onDiff2Raw(){
     if(pgScanGUI::loadScan(&scanBefore) && pgScanGUI::loadScan(&scanAfter))

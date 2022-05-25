@@ -22,7 +22,7 @@ pgBeamAnalysis::pgBeamAnalysis(pgMoveGUI* pgMGUI): pgMGUI(pgMGUI),
     exOfsCalibBtn->setCheckable(true);
     connect(exOfsCalibBtn, SIGNAL(toggled(bool)), this, SLOT(onExOfsCalibBtn(bool)));
     slayout->addWidget(new twid(exOfsCalibBtn));
-    slayout->addWidget(new QLabel("Extra Offset calib: ( Click^ -> write point -> move to point -> Click )"));
+    slayout->addWidget(new WQLabel("Extra Offset calib: ( Click^ -> write point -> move to point -> Click )"));
 }
 
 void pgBeamAnalysis::onExOfsCalibBtn(bool state){

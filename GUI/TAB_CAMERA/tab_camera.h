@@ -30,7 +30,7 @@ private:
     smp_selector* selDisp;
     int oldIndex=-1;
     int oldCm=-1;
-    val_selector* dispScale;
+    double ld_scale=1;
     smp_selector* selObjective;
     QTabWidget* TWCtrl;
 
@@ -135,8 +135,6 @@ private Q_SLOTS:
     void onChangeROI();
     void onPeakFit();
 
-    void updateImgF();
-
     void showScan(pgScanGUI::scanRes scan);
 };
 
@@ -152,6 +150,7 @@ private:
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void wheelEvent(QWheelEvent *event);
+    void resizeEvent(QResizeEvent *event);
 };
 
 #endif // CONFIG_TAB_CAMERA_H

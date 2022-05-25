@@ -218,7 +218,7 @@ scanSettings::scanSettings(uint num, pgScanGUI* parent): parent(parent){
     tiltCorThrs=new val_selector(0.2, "Tilt Correction 2nd Derivative Exclusion Threshold: ", 0, 1, 2);
     parent->conf[parent->selectScanSetting->getLabel(num)]["tiltCorThrs_"]=tiltCorThrs;
     slayout->addWidget(tiltCorThrs);
-    findBaseline=new checkbox_gs(false,"Correct for mirror baseline (used only with per scan tilt cor.).");
+    findBaseline=new checkbox_gs(false,"Correct for mirror baseline (per scan cor. only).");
     parent->conf[parent->selectScanSetting->getLabel(num)]["findBaseline"]=findBaseline;
     slayout->addWidget(findBaseline);
     findBaselineHistStep=new val_selector(0.1, "Mirror baseline cor. hist. step: ", 0.01, 10, 2, 0, {"nm"});

@@ -42,6 +42,8 @@ MainWindow::MainWindow(QApplication* qapp, QWidget *parent) : qapp(qapp), QMainW
     tabCam=new tab_camera(ui->tab_camera);
 
     tabMon->pmw=this;
+
+    setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Minimum);
 }
 
 MainWindow::~MainWindow(){
