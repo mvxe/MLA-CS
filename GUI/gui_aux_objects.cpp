@@ -184,9 +184,16 @@ std::string smp_selector::getLabel(int index){
 
 
 twd_selector::twd_selector(std::string menu, std::string init, bool twidSetMargin, bool addStretch, bool addShown): showSel(menu!="" || init!=""){
+    setWidgetResizable(true);
+    setStyleSheet("background-color:transparent;");
+    QWidget *widget = new QWidget();
+    setWidget( widget );
+    setFrameShape(QFrame::NoFrame);
+    widget->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Expanding);
     layout=new QVBoxLayout;
     layout->setMargin(0);
-    this->setLayout(layout);
+    widget->setLayout(layout);
+    widget->setStyleSheet("background-color:white;");
 
     connect(this, SIGNAL(_changed(int)), this, SLOT(setIndex(int)));
     if(addShown) showBtn=new QPushButton("< show >");

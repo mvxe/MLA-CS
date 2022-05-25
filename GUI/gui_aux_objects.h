@@ -9,6 +9,7 @@
 #include <QPushButton>
 #include <QLineEdit>
 #include <QTimer>
+#include <QScrollArea>
 #include "UTIL/containers.h"
 #include "UTIL/utility.h"
 
@@ -91,7 +92,7 @@ Q_SIGNALS:
 
 // TAB WIDGET DISPLAY SELECTOR - add widgets with addWidget
 
-class twd_selector : public QWidget{
+class twd_selector : public QScrollArea{
     Q_OBJECT
 public:
     twd_selector(std::string menu="", std::string init="", bool twidSetMargin=true, bool addStretch=true, bool addShown=false); //if menu=="" it wont show the selector
