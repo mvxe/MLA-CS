@@ -633,8 +633,10 @@ void pgWrite::onWriteDM(){
         double ratio=imgUmPPx->val;
         double xSize=round(ratio*WRImage.cols)*1000/pgMGUI->getNmPPx(0);
         double ySize=round(ratio*WRImage.rows)*1000/pgMGUI->getNmPPx(0);
-        cv::resize(WRImage, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
-        scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(scanCoords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(scanCoords[1]-pgBeAn->writeBeamCenterOfsY,0));
+        if(xSize>0 && ySize>0){
+             cv::resize(WRImage, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
+             scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(scanCoords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(scanCoords[1]-pgBeAn->writeBeamCenterOfsY,0));
+        }
 
         scheduled.emplace_back();
         for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
@@ -683,8 +685,10 @@ void pgWrite::scheduleWrite(cv::Mat& src, writePars pars, std::string label){
     double ratio=pars.imgmmPPx*1000;
     double xSize=round(ratio*src.cols)*1000/pgMGUI->getNmPPx(0);
     double ySize=round(ratio*src.rows)*1000/pgMGUI->getNmPPx(0);
-    cv::resize(src, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
-    scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(scanCoords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(scanCoords[1]-pgBeAn->writeBeamCenterOfsY,0));
+    if(xSize>0 && ySize>0){
+        cv::resize(src, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
+        scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(scanCoords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(scanCoords[1]-pgBeAn->writeBeamCenterOfsY,0));
+    }
 }
 void pgWrite::scheduleScan(cv::Mat& src, double imgmmPPx, std::string scanSaveFilename, std::string notes, bool getpos){
     if(getpos) pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
@@ -756,9 +760,15 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
     preparePredictor();
 
     double ratio=vimgmmPPx/vpointSpacing;
-    if(vimgmmPPx==vpointSpacing) tmpWrite.copyTo(resizedWrite);
-    else if(vimgmmPPx<vpointSpacing) cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_AREA);   //shrink
-    else cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_CUBIC);                         //enlarge
+    try{
+        if(vimgmmPPx==vpointSpacing) tmpWrite.copyTo(resizedWrite);
+        else if(vimgmmPPx<vpointSpacing) cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_AREA);   //shrink
+        else cv::resize(tmpWrite, resizedWrite, cv::Size(0,0),ratio,ratio, cv::INTER_CUBIC);                         //enlarge
+    }
+    catch (const std::exception& e){
+        QMessageBox::critical(gui_activation, "Error", "Image has zero rows/columns after resize according to umppx and point spacing (ie. write structure too small).\n");
+        return true;
+    }
 
     // at this point resizedWrite contains the desired depth at each point
     std::lock_guard<std::mutex>lock(MLP._lock_proc);
@@ -966,8 +976,10 @@ void pgWrite::onWriteTag(){
         double ratio=settingWdg[4]->imgUmPPx->val;
         double xSize=round(ratio*tagImage.cols)*1000/pgMGUI->getNmPPx(0);
         double ySize=round(ratio*tagImage.rows)*1000/pgMGUI->getNmPPx(0);
-        cv::resize(tagImage, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
-        scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(coords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(coords[1]-pgBeAn->writeBeamCenterOfsY,0));
+        if(xSize>0 && ySize>0){
+            cv::resize(tagImage, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
+            scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(coords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(coords[1]-pgBeAn->writeBeamCenterOfsY,0));
+        }
     }
     else{
         writeTag->setText("Abort");
