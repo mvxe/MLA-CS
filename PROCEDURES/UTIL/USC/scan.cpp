@@ -1012,8 +1012,9 @@ void pgScanGUI::saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::strin
     wfile.close();
 
     if(!scan->depthSS.empty()){
-        fileName.insert(fileName.length()-4,"-SD");
-        std::ofstream wfile(fileName);
+        std::string nfn=fileName;
+        nfn.insert(nfn.length()-4,"-SD");
+        std::ofstream wfile(nfn);
 
         cv::Mat display2;
         cv::divide(cv::Mat(scan->depthSS,roi),scan->avgNum-1,display2);
@@ -1026,6 +1027,23 @@ void pgScanGUI::saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::strin
                 if(i!=0) wfile<<" ";
                 if(display2.at<float>(j,i)==std::numeric_limits<float>::max()) wfile<<"nan";
                 else wfile<<display2.at<float>(j,i);
+            }
+            wfile<<"\n";
+        }
+        wfile.close();
+    }
+
+    if(!scan->refl.empty()){
+        std::string nfn=fileName;
+        nfn.insert(nfn.length()-4,"-RF");
+        std::ofstream wfile(nfn);
+
+        wfile<<util::toString("# This file contains the RF\n");
+
+        for(int j=scan->refl.rows-1;j>=0;j--){
+            for(int i=0;i!=scan->refl.cols;i++){
+                if(i!=0) wfile<<" ";
+                wfile<<(int)scan->refl.at<uchar>(j,i);
             }
             wfile<<"\n";
         }
