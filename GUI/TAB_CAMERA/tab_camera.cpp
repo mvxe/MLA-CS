@@ -161,6 +161,7 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuDepthRight->addAction("Plot Rect (Gnuplot)", this, SLOT(onPlotRect()));
     clickMenuDepthRight->addAction("Rotate DepthMap", this, SLOT(onRotateDepthMap()));
     clickMenuDepthRight->addAction("Crop", this, SLOT(onCrop()));
+    clickMenuDepthRight->addAction("Correct tilt", this, SLOT(onCorrectTilt()));
     clickMenuDepthRight->addAction("2D FFT", this, SLOT(on2DFFT()));
     clickMenuDepthRight->addAction("Apply xy sobel", this, SLOT(onSobel()));
     clickMenuDepthRight->addAction("Apply laplace", this, SLOT(onLaplace()));
@@ -821,6 +822,17 @@ void tab_camera::onCrop(){
         loadedScan.refl(cv::Rect(selStartX<selEndX?selStartX:selEndX, selStartY<selEndY?selStartY:selEndY, width, height)).copyTo(tmp);
         tmp.copyTo(loadedScan.refl);
     }
+    cv::minMaxLoc(loadedScan.depth, &loadedScan.min, &loadedScan.max, nullptr, nullptr, loadedScan.maskN);
+    updateDisp=true;
+    loadedOnDisplay=true;
+}
+
+void tab_camera::onCorrectTilt(){
+    if(!loadedScan.depth.empty() && loadedOnDisplay);
+    else if(scanRes->get()!=nullptr) loadedScan=*scanRes->get();
+    else return;
+    pgSGUI->correctTilt(&loadedScan);
+    pgSGUI->applyTiltCorrection(&loadedScan);
     cv::minMaxLoc(loadedScan.depth, &loadedScan.min, &loadedScan.max, nullptr, nullptr, loadedScan.maskN);
     updateDisp=true;
     loadedOnDisplay=true;

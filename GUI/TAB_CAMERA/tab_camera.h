@@ -131,6 +131,7 @@ private Q_SLOTS:
     void onSobel();
     void onLaplace();
     void onCrop();
+    void onCorrectTilt();
     void onResetROI();
     void onChangeROI();
     void onPeakFit();

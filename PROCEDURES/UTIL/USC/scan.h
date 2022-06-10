@@ -97,6 +97,7 @@ public:
     pgScanGUI::scanRes* cor{nullptr};
 
     void correctTilt(scanRes* res);
+    void applyTiltCorrection(scanRes* res);
 private:
     void init_gui_activation();
     void init_gui_settings();
