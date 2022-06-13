@@ -920,6 +920,7 @@ void pgCalib::onfpLoad_pl(){
     struct vs{
         double val=0;
         double SE=0;
+        double SD=0;
         double n=0;
     };
     struct res{
@@ -1001,15 +1002,12 @@ void pgCalib::onfpLoad_pl(){
                 dif.copyTo(ddscans,roi);
                 // correct min
                 cv::Mat mask=cv::Mat(ddscans.depth.size(), CV_8U, 255);
-                cv::circle(mask, cv::Point(mask.cols/2,mask.rows/2), (radius_um+margin_um/2)/umppx, 0, -1);
+                cv::circle(mask, cv::Point(mask.cols/2,mask.rows/2), (radius_um+margin_um)/umppx, 0, -1);
+                //pgSGUI->correctTilt(&ddscans,&mask);
+                //pgSGUI->applyTiltCorrection(&ddscans);
                 double min=cv::mean(ddscans.depth,mask)[0];
-                double a,b;
-                cv::minMaxIdx(ddscans.depth,&a, &b);
-
-                // make height abs
                 ddscans.depth-=min;
-                ddscans.max-=min;
-                ddscans.min-=min;
+                cv::minMaxIdx(ddscans.depth,&ddscans.min, &ddscans.max);
             }
         }
         // calculate center of mass
@@ -1017,17 +1015,19 @@ void pgCalib::onfpLoad_pl(){
             auto& scan=scans[v][u];
             double mid=scan.max/2;
             cv::Mat mask;
-            cv::compare(scan.depth,mid,mask,cv::CMP_LE);
+            cv::compare(scan.depth,mid,mask,cv::CMP_GE);
             auto cm=cv::moments(mask,true);
-            int x,y;
+            double x,y;
             x=cm.m10/cm.m00;
             y=cm.m01/cm.m00;
             // calculate radial profile
-            double rmax=radius_um+margin_um/2;
+            double rmax=radius_um+margin_um;
             const double rstep=spacing_um;
             const size_t nsteps=std::ceil(rmax/rstep);
-            std::vector<vs> heights(nsteps,{0,0,0});
+            std::vector<vs> heights(nsteps,{0,0,0,0});
             double r, f; size_t nr;
+            vs A;
+            size_t nA=radius_um/2/rstep;
 
             // get radial profile
             for(int j=0;j!=scan.depth.rows;j++) for(int i=0;i!=scan.depth.cols;i++){
@@ -1043,32 +1043,36 @@ void pgCalib::onfpLoad_pl(){
                     heights[nr+1].n+=(1-f);
                 }
             }
-            for(auto& el:heights)
+            for(size_t i=0;i<heights.size();i++){
+                auto& el=heights[i];
+                if(i<nA){
+                    A.val+=el.val;
+                    A.n+=el.n;
+                }
                 el.val/=el.n;
+            }
+            A.val/=A.n;
 
-            // calculate SE
+            // calculate SD,SE
             for(int j=0;j!=scan.depth.rows;j++) for(int i=0;i!=scan.depth.cols;i++){
                 r=sqrt(pow((i-x)*umppx,2)+pow((j-y)*umppx,2));
                 nr=floor(r/rstep);
                 f=1.-r/rstep+nr;     // 0 - 1
-                if(nr<nsteps)
-                    heights[nr].SE+=pow(f*(scan.depth.at<float>(j,i)-heights[nr].val),2)/heights[nr].n;
-                if(nr+1<nsteps)
-                    heights[nr+1].SE+=pow((1-f)*(scan.depth.at<float>(j,i)-heights[nr+1].val),2)/heights[nr+1].n;
+                if(nr<nsteps){
+                    heights[nr].SD+=pow(f*(scan.depth.at<float>(j,i)-heights[nr].val),2);
+                    if(nr<nA) A.SD+=pow(f*(scan.depth.at<float>(j,i)-A.val),2);
+                }
+                if(nr+1<nsteps){
+                    heights[nr+1].SD+=pow((1-f)*(scan.depth.at<float>(j,i)-heights[nr+1].val),2);
+                    if(nr+1<nA) A.SD+=pow((1-f)*(scan.depth.at<float>(j,i)-A.val),2);
+                }
             }
-            for(auto& el:heights)
-                el.SE=sqrt(el.SE/(el.n-1)/el.n);
-
-            vs A;
-            size_t nA=radius_um/2/rstep;
-            for(size_t i=0;i!=nA;i++)
-                A.val+=heights[i].val;
-            A.val/=nA;
-            for(size_t i=0;i!=nA;i++){
-                A.SE+=pow(heights[i].SE*(heights[i].n)*(heights[i].n+1),2);
-                A.n+=heights[i].n;
+            for(auto& el:heights){
+                el.SD=sqrt(el.SD/(el.n-1));
+                el.SE=el.SD/sqrt(el.n);
             }
-            A.SE=sqrt(A.SE/(A.n-1)/A.n);
+            A.SD=sqrt(A.SD/(A.n-1));
+            A.SE=A.SD/sqrt(A.n);
 
             results.push_back({durs_ms[v][u],A,focus_mm*1000,radius_um,margin_um,spacing_um,x*umppx-xysize_um/2,y*umppx-xysize_um/2,heights});
         }
@@ -1101,6 +1105,8 @@ void pgCalib::onfpLoad_pl(){
     wfile_a<<"# 7 - Spacing (um)\n";
     wfile_a<<"# 8 - X Offset (um)\n";
     wfile_a<<"# 9 - Y Offset (um)\n";
+    wfile_a<<"# 10 - Peak Avg. Height SD (nm)\n";
+    wfile_a<<"# Peak Avg. Height is calculated from pixels withing radius/2\n";
     wfile_a<<"# Results in res-all.dat: each row corresponds to a row here, the spacing equals 6-Spacing\n";
     wfile_b<<"# cols : radius from 0 - rmax with step specified in res.dat for given row: odd are avg, even are SE\n";
     wfile_b<<"# rows : individual measurements (specific duration and focus, see res.dat)\n";
@@ -1114,7 +1120,8 @@ void pgCalib::onfpLoad_pl(){
         wfile_a<<res.margin_um<<" ";
         wfile_a<<res.spacing_um<<" ";
         wfile_a<<res.xofs_um<<" ";
-        wfile_a<<res.yofs_um<<"\n";
+        wfile_a<<res.yofs_um<<" ";
+        wfile_a<<res.height.SD<<"\n";
 
         for(auto& el:res.heights){
             wfile_b<<el.val<<" "<<el.SE<<" ";

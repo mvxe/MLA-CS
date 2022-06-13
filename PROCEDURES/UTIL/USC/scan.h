@@ -96,7 +96,7 @@ public:
     std::mutex* useCorr;                //from correction
     pgScanGUI::scanRes* cor{nullptr};
 
-    void correctTilt(scanRes* res);
+    void correctTilt(scanRes* res, cv::Mat* maskex=nullptr, cv::Mat* mask4hist=nullptr);
     void applyTiltCorrection(scanRes* res);
 private:
     void init_gui_activation();
@@ -193,7 +193,6 @@ private:
 
     void _doOneRound(cv::Rect ROI={0,0,0,0}, char cbAvg_override=0, bool force_disable_tilt_correction=false, char cbRefl_override=0, runTrack* RT=nullptr);
     void calcExpMinMax(FQ* framequeue, cv::Mat* mask);
-    void correctTilt(scanRes* res, cv::Mat* mask4hist);
     void _correctTilt(scanRes* res, bool force_disable_tilt_correction=false);
     void _savePixel(FQ* framequeue, unsigned nFrames, unsigned nDFTFrames);
     double avgDriftCorr(const cv::Mat* mavg, const cv::Mat* mnew, const cv::Mat* mask, cv::Mat* temp, double shiftX, double shiftY);

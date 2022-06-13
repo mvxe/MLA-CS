@@ -355,10 +355,7 @@ double pgScanGUI::vsConv(val_selector* vs){
     }
 }
 
-void pgScanGUI::correctTilt(scanRes* res){
-    correctTilt(res,nullptr);
-}
-void pgScanGUI::correctTilt(scanRes* res, cv::Mat* mask4hist){
+void pgScanGUI::correctTilt(scanRes* res, cv::Mat* maskex, cv::Mat* mask4hist){
     cv::Mat blured;
     double sigma=tiltCorBlur->val;
     int ksize=sigma*5;
@@ -373,6 +370,7 @@ void pgScanGUI::correctTilt(scanRes* res, cv::Mat* mask4hist){
     cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
     mask.setTo(cv::Scalar::all(0), maskT);
     mask.setTo(cv::Scalar::all(0), res->mask);                                      if(mask4hist!=nullptr) mask.copyTo(*mask4hist);
+    if(maskex!=nullptr) cv::bitwise_and(mask,*maskex,mask);
     res->tiltCor[0]=-cv::mean(firstD,mask)[0]/8;
     cv::Sobel(blured, firstD, CV_32F,0,1); //Y
     cv::Sobel(blured, secondD, CV_32F,0,2); //Y
@@ -380,6 +378,7 @@ void pgScanGUI::correctTilt(scanRes* res, cv::Mat* mask4hist){
     cv::compare(secondD, -derDbound, maskT, cv::CMP_LE);
     mask.setTo(cv::Scalar::all(0), maskT);
     mask.setTo(cv::Scalar::all(0), res->mask);                                      if(mask4hist!=nullptr) cv::bitwise_and(*mask4hist,mask,*mask4hist);
+    if(maskex!=nullptr) cv::bitwise_and(mask,*maskex,mask);
     res->tiltCor[1]=-cv::mean(firstD,mask)[0]/8;
 }
 void pgScanGUI::applyTiltCorrection(scanRes* res){
@@ -414,7 +413,7 @@ void pgScanGUI::_correctTilt(scanRes* res, bool force_disable_tilt_correction){
     int nCols=res->depth.cols;
     cv::Mat mask4hist;
     if(titlCorIndex==1 || getTiltCalibOnNextScan){
-        if(findBaseline->val) correctTilt(res,&mask4hist);
+        if(findBaseline->val) correctTilt(res,nullptr,&mask4hist);
         else correctTilt(res);
         std::cout<<"CPhases X,Y: "<<res->tiltCor[0]<< " "<<res->tiltCor[1]<<"\n";
         if(getTiltCalibOnNextScan){
