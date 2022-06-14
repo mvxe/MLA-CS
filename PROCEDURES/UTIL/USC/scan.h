@@ -86,7 +86,7 @@ public:
     static void saveScanTxt(const scanRes* scan, std::string fileName="");
     static void saveScanTxt(const scanRes* scan, const cv::Rect &roi, std::string fileName="");
     static bool loadScan(scanRes* scan, std::string fileName="");                       //return true if success
-    scanRes difScans(scanRes* scan0, scanRes* scan1);
+    scanRes difScans(scanRes* scan0, scanRes* scan1, bool decorrect_tilt=true);
     scanRes avgScans(std::vector<scanRes>* scans, double excludeSDfactor=-1, int maxNofCorrections=10, cv::Mat* refmask=nullptr);
                                     //does not decorrect tilt, excludeSDfactor: exclude measurements that are this many times farther from avg than SD (for example 3), negative number or 0 means no excluding
                                     //using excludeSDfactor>0 makes the program modify scans

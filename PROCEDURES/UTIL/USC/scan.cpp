@@ -1093,7 +1093,7 @@ bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
     }
     return true;
 }
-pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
+pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1, bool decorrect_tilt){
     scanRes ret;
     if(scan0==nullptr || scan1==nullptr) {std::cerr<<"difScans got nullptr input\n"; return ret;}
 
@@ -1135,20 +1135,23 @@ pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1){
     cv::subtract(depth1, depth0, ret.depth);
     nCols=depth0.cols;
     nRows=depth0.rows;
-    if(scan1->tiltCor[0]-scan0->tiltCor[0]!=0){
-        cv::Mat slopeX1(1, nCols, CV_32F);
-        cv::Mat slopeX(nRows, nCols, CV_32F);
-        for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=-i*(scan1->tiltCor[0]-scan0->tiltCor[0]);
-        cv::repeat(slopeX1, nRows, 1, slopeX);
-        cv::add(slopeX,ret.depth,ret.depth);
+    if(decorrect_tilt){
+        if(scan1->tiltCor[0]-scan0->tiltCor[0]!=0){
+            cv::Mat slopeX1(1, nCols, CV_32F);
+            cv::Mat slopeX(nRows, nCols, CV_32F);
+            for(int i=0;i!=nCols;i++) slopeX1.at<float>(i)=-i*(scan1->tiltCor[0]-scan0->tiltCor[0]);
+            cv::repeat(slopeX1, nRows, 1, slopeX);
+            cv::add(slopeX,ret.depth,ret.depth);
+        }
+        if(scan1->tiltCor[1]-scan0->tiltCor[1]!=0){
+            cv::Mat slopeY1(nRows, 1, CV_32F);
+            cv::Mat slopeY(nRows, nCols, CV_32F);
+            for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=-i*(scan1->tiltCor[1]-scan0->tiltCor[1]);
+            cv::repeat(slopeY1, 1, nCols, slopeY);
+            cv::add(slopeY,ret.depth,ret.depth);
+        }
     }
-    if(scan1->tiltCor[1]-scan0->tiltCor[1]!=0){
-        cv::Mat slopeY1(nRows, 1, CV_32F);
-        cv::Mat slopeY(nRows, nCols, CV_32F);
-        for(int i=0;i!=nRows;i++) slopeY1.at<float>(i)=-i*(scan1->tiltCor[1]-scan0->tiltCor[1]);
-        cv::repeat(slopeY1, 1, nCols, slopeY);
-        cv::add(slopeY,ret.depth,ret.depth);
-    }
+
     mask0.copyTo(ret.mask);
     ret.mask.setTo(255, mask1);
     bitwise_not(ret.mask, ret.maskN);

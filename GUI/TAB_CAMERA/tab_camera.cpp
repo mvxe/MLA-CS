@@ -91,6 +91,8 @@ tab_camera::tab_camera(QWidget* parent){
     pageProcessing=new twd_selector;
         loadRawBtn=new QPushButton("Load measurement"); connect(loadRawBtn, SIGNAL(released()), this, SLOT(onLoadDepthMapRaw()));
         diff2RawBtn=new QPushButton("Load 2 measurements and dif them"); connect(diff2RawBtn, SIGNAL(released()), this, SLOT(onDiff2Raw()));
+        diff2RawTiltCorr=new QCheckBox("Decorrect tilts");
+        diff2RawTiltCorr->setChecked(true);
         avgNRawBtn=new QPushButton("Average all measurements in folder"); connect(avgNRawBtn, SIGNAL(released()), this, SLOT(onAvgNRawBtn()));
         avgNRawBtn->setToolTip("Averages files in subfolders as well.");
         avgNRawMarginCut=new val_selector(0, "Cut: ", 0, 1000, 0);
@@ -100,7 +102,7 @@ tab_camera::tab_camera(QWidget* parent){
         combineMes=new QPushButton("Combine measurements"); connect(combineMes, SIGNAL(released()), this, SLOT(onCombineMes()));
         combineUseRefl=new QCheckBox("Use Reflectivity");
 
-        pageProcessing->addWidget(new vtwid(new twid(loadRawBtn),new twid(diff2RawBtn),new twid(avgNRawBtn,avgNRawMarginCut,avgNRawMarginRef),new twid(combineMes,combineUseRefl),pgSGUI->gui_processing,false, false));
+        pageProcessing->addWidget(new vtwid(new twid(loadRawBtn),new twid(diff2RawBtn,diff2RawTiltCorr),new twid(avgNRawBtn,avgNRawMarginCut,avgNRawMarginRef),new twid(combineMes,combineUseRefl),pgSGUI->gui_processing,false, false));
 
     pageSettings=new twd_selector("","Select");
     connect(pageSettings, SIGNAL(changed(int)), this, SLOT(on_tab_change(int)));
@@ -681,7 +683,7 @@ void tab_camera::onAvgNRawBtn(){
 
 void tab_camera::diff2RawCompute(){
     if(scanBefore.depth.empty() || scanAfter.depth.empty()) return;
-    pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter);
+    pgScanGUI::scanRes scanDif=pgSGUI->difScans(&scanBefore, &scanAfter, diff2RawTiltCorr->isChecked());
     if(scanDif.depth.empty()) return;
     loadedScan=scanDif;
     updateDisp=true;

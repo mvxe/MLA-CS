@@ -66,6 +66,7 @@ private:
 
     QPushButton* loadRawBtn;
     QPushButton* diff2RawBtn;
+    QCheckBox* diff2RawTiltCorr;
     QPushButton* avgNRawBtn;
     val_selector* avgNRawMarginCut;
     val_selector* avgNRawMarginRef;
