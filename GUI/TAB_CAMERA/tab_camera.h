@@ -80,6 +80,7 @@ private:
     QMenu* clickMenu;
     QMenu* clickMenuSelection;
     QMenu* clickMenuDepthRight;
+    QMenu* clickMenuDepthRightTilt;
     QMenu* clickMenuDepthLeft;
 
     double selStartX, selStartY;
@@ -131,7 +132,10 @@ private Q_SLOTS:
     void onSobel();
     void onLaplace();
     void onCrop();
-    void onCorrectTilt();
+    void onCorrectTilt(int axis=0);
+    void onCorrectTiltXY(){onCorrectTilt(0);};
+    void onCorrectTiltX(){onCorrectTilt(1);};
+    void onCorrectTiltY(){onCorrectTilt(2);};
     void onResetROI();
     void onChangeROI();
     void onPeakFit();

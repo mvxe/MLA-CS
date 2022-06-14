@@ -96,8 +96,8 @@ public:
     std::mutex* useCorr;                //from correction
     pgScanGUI::scanRes* cor{nullptr};
 
-    void correctTilt(scanRes* res, cv::Mat* maskex=nullptr, cv::Mat* mask4hist=nullptr);
-    void applyTiltCorrection(scanRes* res);
+    void correctTilt(scanRes* res, cv::Mat* maskex=nullptr, cv::Mat* mask4hist=nullptr, int axis=0);  // axis: 0=XY, 1=X, 2=Y
+    void applyTiltCorrection(scanRes* res, int axis=0);
 private:
     void init_gui_activation();
     void init_gui_settings();
