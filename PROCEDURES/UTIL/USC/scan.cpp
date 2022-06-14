@@ -491,6 +491,7 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
     abort:  measurementInProgress=false;
             if(RT!=nullptr) RT->running--;
             if(RT!=nullptr) RT->failed++;
+            MLP._lock_proc.unlock();
             return;
     }
     pgMGUI->chooseObj(true);    // switch to mirau
