@@ -113,7 +113,7 @@ private:
     std::vector<writeSettings*> settingWdg;
     friend class pgCalib;
     friend class writeSettings;
-    constexpr static unsigned Nset{5};
+    constexpr static unsigned Nset{6};
     val_selector* focus;
     val_selector* focusXcor;
     val_selector* focusYcor;

@@ -138,7 +138,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
 
     writeDM->setEnabled(false);
 
-    selectWriteSetting=new smp_selector("Select write setting: ", 0, {"Set0", "Set1", "Set2", "Set3", "Tag"});    //should have Nset strings
+    selectWriteSetting=new smp_selector("Select write setting: ", 0, {"Set0", "Set1", "Set2", "Set3", "Tag", "test"});    //should have Nset strings
     conf["selectWriteSetting"]=selectWriteSetting;
     slayout->addWidget(selectWriteSetting);
     for(int i=0;i!=Nset;i++) {
