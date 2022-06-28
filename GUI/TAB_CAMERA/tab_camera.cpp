@@ -157,7 +157,7 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuSelection->addAction("Save image to file", this, SLOT(onSaveCameraPicture()));
 
     clickMenuDepthRight=new QMenu;
-    clickMenuDepthRight->addAction("Save DepthMap (wtih border, scalebar and colorbar) to file", this, SLOT(onSaveDepthMap()));
+    clickMenuDepthRight->addAction("Save DepthMap (with border, scalebar and colorbar) to file", this, SLOT(onSaveDepthMap()));
     clickMenuDepthRight->addAction("Save DepthMap (raw, float) to file", this, SLOT(onSaveDepthMapRaw()));
     clickMenuDepthRight->addAction("Save DepthMap (txt, float) to file", this, SLOT(onSaveDepthMapTxt()));
     clickMenuDepthRight->addAction("Plot Rect (Gnuplot)", this, SLOT(onPlotRect()));

@@ -485,10 +485,10 @@ void pgWrite::onPulse(){
     else{
         preparePredictor();
         pulse=predictDuration(pulseDur->val);
-        vfocus=focus->val/1000;
-        vfocusXcor=focusXcor->val/1000;
-        vfocusYcor=focusYcor->val/1000;
     }
+    vfocus=focus->val/1000;
+    vfocusXcor=focusXcor->val/1000;
+    vfocusYcor=focusYcor->val/1000;
     CTRL::CO co(go.pRPTY);
     pgMGUI->corCOMove(co,vfocusXcor,vfocusYcor,vfocus);
     co.addHold("X",CTRL::he_motion_ontarget);
