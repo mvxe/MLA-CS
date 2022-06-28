@@ -282,8 +282,7 @@ void colorMap::onChanged(){
 void colorMap::onCalibrateXY(bool state){
     varShareClient<pgScanGUI::scanRes>* res=pgSGUI->result.getClient();
     if(state){      //start
-        pgSGUI->doOneRound();
-        while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
+        while(pgSGUI->doOneRoundB());       //wait till measurement is done
         const pgScanGUI::scanRes* ress=res->get();
         phiX0=ress->tiltCor[0];
         phiY0=ress->tiltCor[1];
@@ -291,7 +290,7 @@ void colorMap::onCalibrateXY(bool state){
         phiYR=0;
     }else{
         pgSGUI->doOneRound();
-        while(pgSGUI->measurementInProgress) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);   //wait till measurement is done
+        while(pgSGUI->doOneRoundB());       //wait till measurement is done
         const pgScanGUI::scanRes* ress=res->get();
         phiX1=ress->tiltCor[0];
         phiY1=ress->tiltCor[1];

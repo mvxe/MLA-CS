@@ -325,9 +325,19 @@ void pgScanGUI::updateCO(std::string &report){
 int NA=0;
 void pgScanGUI::doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disable_tilt_correction, char refl_override){
     if(!CORdy) recalculate();
-    measurementInProgress=true;
     go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound, this, ROI,cbAvg_override, force_disable_tilt_correction, refl_override, nullptr));
 }
+
+bool pgScanGUI::doOneRoundB(cv::Rect ROI, char cbAvg_override, bool force_disable_tilt_correction, char refl_override){
+    if(!CORdy) recalculate();
+    runTrack RT{0,0};
+    go.OCL_threadpool.doJob(std::bind(&pgScanGUI::_doOneRound, this, ROI,cbAvg_override, force_disable_tilt_correction, refl_override, &RT));
+    do{
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+    }while(RT.running>0);
+    return RT.succeeded<1;
+}
+
 
 bool pgScanGUI::doNRounds(unsigned N, cv::Rect ROI, unsigned redoN, bool force_disable_tilt_correction, char refl_override){
     if(!CORdy) recalculate();
@@ -342,6 +352,7 @@ bool pgScanGUI::doNRounds(unsigned N, cv::Rect ROI, unsigned redoN, bool force_d
         }
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     }
+    while(RT.running>0) QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     return (RT.succeeded<N);
 }
 
@@ -493,8 +504,7 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
     MLP._lock_proc.lock();                       //wait for other measurements to complete
     if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) goto abort;
     if(!CORdy) {
-    abort:  measurementInProgress=false;
-            if(RT!=nullptr) RT->running--;
+    abort:  if(RT!=nullptr) RT->running--;
             if(RT!=nullptr) RT->failed++;
             MLP._lock_proc.unlock();
             return;
@@ -543,18 +553,18 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
     res->pos[0]+=(-go.pGCAM->iuScope->camCols/2.+ROI.x+ROI.width/2.)*res->XYnmppx/1000000;
     res->pos[1]+=(-go.pGCAM->iuScope->camRows/2.+ROI.y+ROI.height/2.)*res->XYnmppx/1000000;
 
-    std::lock_guard<std::mutex>lock(MLP._lock_comp);    // wait till other processing is done
-    MLP._lock_proc.unlock();                             // allow new measurement to start
-    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
-
     if(framequeue->getFullNumber()!=nFrames){
         Q_EMIT signalQMessageBoxWarning(QString::fromStdString(util::toString("ERROR: took ",framequeue->getFullNumber()," frames, expected ",nFrames,".")));
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
-        if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
         if(RT!=nullptr) RT->running--;
         if(RT!=nullptr) RT->failed++;
+        MLP._lock_proc.unlock();
         return;
     }
+
+    std::lock_guard<std::mutex>lock(MLP._lock_comp);    // wait till other processing is done
+    MLP._lock_proc.unlock();                             // allow new measurement to start
+    std::chrono::time_point<std::chrono::system_clock> A=std::chrono::system_clock::now();
 
     unsigned nRows=(*framequeue->getUserMat(0))(ROI).rows;
     unsigned nCols=(*framequeue->getUserMat(0))(ROI).cols;
@@ -678,7 +688,6 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
             led_wl->setValue(mean,0);
         }
         go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);
-        if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
         if(RT!=nullptr) RT->running--;
         if(RT!=nullptr) RT->succeeded++;
         return;
@@ -816,7 +825,6 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
                 std::cerr<<"Too many bad pixels, skipping.\n";
                 std::cerr<<"done nr "<<NA<<"\n"; NA++;
                 MLP.progress_comp=100;
-                if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
                 delete res;
                 if(RT!=nullptr) RT->running--;
                 if(RT!=nullptr) RT->failed++;
@@ -927,7 +935,6 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
     std::cerr<<"Full: "<<go.pGCAM->iuScope->FQsPCcam.getFullNumber()<<"\n";
 
     MLP.progress_comp=100;
-    if(MLP._lock_proc.try_lock()){MLP._lock_proc.unlock();measurementInProgress=false;}
     if(RT!=nullptr) RT->running--;
     if(RT!=nullptr) RT->succeeded++;
 }
