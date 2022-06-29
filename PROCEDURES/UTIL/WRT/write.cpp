@@ -404,10 +404,10 @@ void pgWrite::onScan(){
     else saveB->setEnabled(true);
 }
 bool pgWrite::_onScan(cv::Rect ROI, double* coords){
-    if(refocusBeforeScan->val) pgFGUI->doRefocus(true, scanROI, maxRedoRefocusTries);
     pgMGUI->chooseObj(true);
     if(coords!=nullptr) pgMGUI->move(coords[0], coords[1], coords[2], true);
     else pgMGUI->move(scanCoords[0], scanCoords[1], scanCoords[2], true);
+    if(refocusBeforeScan->val) pgFGUI->doRefocus(true, scanROI, maxRedoRefocusTries);
     if(pgSGUI->doNRounds(scanRepeatN->val,ROI.width==0?scanROI:ROI,maxRedoScanTries)) return true;
     res=scanRes->get();
     if(res==nullptr){std::cerr<<"Somehow cannot find scan in pgWrite::_onScan()\n";return true;}
