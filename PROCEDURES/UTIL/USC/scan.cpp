@@ -1100,7 +1100,7 @@ bool pgScanGUI::loadScan(scanRes* scan, std::string fileName){
     }
     return true;
 }
-pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1, bool decorrect_tilt){
+pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1, bool decorrect_tilt, double xshift_override, double yshift_override){
     scanRes ret;
     if(scan0==nullptr || scan1==nullptr) {std::cerr<<"difScans got nullptr input\n"; return ret;}
 
@@ -1117,8 +1117,8 @@ pgScanGUI::scanRes pgScanGUI::difScans(scanRes* scan0, scanRes* scan1, bool deco
     scan1->mask.copyTo(_mask1(cv::Rect(0,0,scan1->mask.cols,scan1->mask.rows)));
 
     float xShft, yShft;
-    float xShiftFrac=modf(xDifShift->val, &xShft);
-    float yShiftFrac=modf(yDifShift->val, &yShft);
+    float xShiftFrac=modf((xshift_override!=std::numeric_limits<double>::max())?xshift_override:((double)xDifShift->val), &xShft);
+    float yShiftFrac=modf((yshift_override!=std::numeric_limits<double>::max())?yshift_override:((double)yDifShift->val), &yShft);
 
     cv::Mat depth0, depth1, mask0, mask1;
     if(xShft>= nCols) xShft=nCols-1;

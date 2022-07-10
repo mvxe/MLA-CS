@@ -632,30 +632,62 @@ void tab_camera::onAvgNRawBtn(){
     //for(auto& path: measFiles) std::cerr<<path.filename().string()<<"\n";
     if(measFiles.empty()) return;
     std::vector<pgScanGUI::scanRes> scans;
+    pgScanGUI::scanRes res;
+    double margin=avgNRawMarginCut->val;
     for(auto& path: measFiles){
         scans.emplace_back();
         pgScanGUI::loadScan(&scans.back(),path.string());
-        if(avgNRawMarginCut->val>0){
-            int margin=avgNRawMarginCut->val;
+
+        // fix misalignment
+        if(scans.size()>1){
+            const double step=0.1;
+            double ofsx=0,ofsy=0;
+            pgScanGUI::scanRes sres=pgSGUI->difScans(&scans.front(),&scans.back(),false,ofsx,ofsy);
+            cv::Scalar stdd;
+            cv::meanStdDev(sres.depth, cv::noArray(), stdd);
+            double baseline=stdd[0];
+            double val;
+            int muls[8][2]={{0,1},{0,-1},{1,0},{-1,0},{1,1},{-1,-1},{1,-1},{-1,1}};
+            redofr :
+            for(int i=0;i!=8;i++){
+                sres=pgSGUI->difScans(&scans.front(),&scans.back(),false,ofsx+muls[i][0]*step,ofsy+muls[i][1]*step);
+                cv::meanStdDev(sres.depth, cv::noArray(), stdd);
+                val=stdd[0];
+                if(val<baseline){
+                    ofsx+=muls[i][0]*step;
+                    ofsy+=muls[i][1]*step;
+                    baseline=val;
+                    goto redofr;
+                }
+            }
+            cv::Mat trans=(cv::Mat_<double>(2,3) << 1, 0, -ofsx, 0, 1, -ofsy);
+            cv::warpAffine(scans.back().depth, scans.back().depth, trans, scans.back().depth.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+            if(margin<std::max(abs(ofsx),abs(ofsy)))
+                margin=std::max(abs(ofsx),abs(ofsy));
+        }
+    }
+
+    if(margin>0){
+        int _margin=ceil(margin);
+        for(auto& scan: scans){
             cv::Mat tmp;
-            int width=scans.back().depth.cols-2*margin;
-            int height=scans.back().depth.rows-2*margin;
+            int width=scan.depth.cols-2*_margin;
+            int height=scan.depth.rows-2*_margin;
             if(width<=0 || height <=0){
                 std::cerr<<"Cut margins are too large!\n";
                 return;
             }
-            scans.back().depth(cv::Rect(margin, margin, width, height)).copyTo(tmp);
-            tmp.copyTo(scans.back().depth);
-            scans.back().mask(cv::Rect(margin, margin, width, height)).copyTo(tmp);
-            tmp.copyTo(scans.back().mask);
-            bitwise_not(scans.back().mask, scans.back().maskN);
-            scans.back().depthSS.release();
-            scans.back().refl.release();
-            cv::minMaxLoc(scans.back().depth, &scans.back().min, &scans.back().max, nullptr, nullptr, scans.back().maskN);
+            scan.depth(cv::Rect(_margin, _margin, width, height)).copyTo(tmp);
+            tmp.copyTo(scan.depth);
+            scan.mask(cv::Rect(_margin, _margin, width, height)).copyTo(tmp);
+            tmp.copyTo(scan.mask);
+            bitwise_not(scan.mask, scan.maskN);
+            scan.depthSS.release();
+            scan.refl.release();
+            cv::minMaxLoc(scan.depth, &scan.min, &scan.max, nullptr, nullptr, scan.maskN);
         }
     }
 
-    pgScanGUI::scanRes res;
     if(avgNRawMarginRef->val>0){
         int margin=avgNRawMarginRef->val;
         int width=scans.back().depth.cols-2*margin;
