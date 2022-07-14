@@ -160,7 +160,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     writeZeros->setToolTip("If enabled, areas that do not need extra height will be written at threshold duration anyway (slower writing but can give more consistent zero levels if calibration is a bit off).");
     conf["writeZeros"]=writeZeros;
     slayout->addWidget(new twid(writeZeros));
-    selPScheduling=new smp_selector("Point scheduling: ", 0, {"ZigZag","Nearest"});
+    selPScheduling=new smp_selector("Point scheduling: ", 0, {"ZigZag","Nearest","Spiral"});
     conf["selPScheduling"]=selPScheduling;
     slayout->addWidget(selPScheduling);
 
@@ -850,7 +850,7 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
             pgMGUI->corCOMove(CO,(xdir?-1:1)*offsX/2,-offsY/2,0);
             CO.execute();
             CO.clear(true);
-        }else if(selPScheduling->index==1){ //Nearest
+        }else if(selPScheduling->index==1 ||selPScheduling->index==2 ){ //Nearest or Spiral
             cv::flip(write,write,0);
             cv::Mat completed=cv::Mat::zeros(write.size(), CV_8U);
             if(writeZeros->val==false) cv::compare(write,0,completed,cv::CMP_EQ);
@@ -876,20 +876,62 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
             const double accX=go.pRPTY->getMotionSetting("X",CTRL::mst_defaultAcceleration);
             const double accY=go.pRPTY->getMotionSetting("Y",CTRL::mst_defaultAcceleration);
             double timeX,timeY;
+            size_t iter;
 
-            for(int j=0;j!=write.rows;j++) for(int i=0;i!=write.cols;i++){
-                mcutil::evalAccMotion(i*vpointSpacing, accX, velX, &timeX);
-                mcutil::evalAccMotion(j*vpointSpacing, accY, velY, &timeY);
-                lut.push_back({i,j,sqrt(pow(i*vpointSpacing,2)+pow(j*vpointSpacing,2))});
+            if(selPScheduling->index==1){   //Nearest
+                for(int j=0;j!=write.rows;j++) for(int i=0;i!=write.cols;i++){
+                    mcutil::evalAccMotion(i*vpointSpacing, accX, velX, &timeX);
+                    mcutil::evalAccMotion(j*vpointSpacing, accY, velY, &timeY);
+                    lut.push_back({i,j,sqrt(pow(i*vpointSpacing,2)+pow(j*vpointSpacing,2))});
+                }
+                std::sort(lut.begin(), lut.end(), [](pt i,pt j){return (i.distance<j.distance);});
+
+                if(completed.at<uint8_t>(next_j,next_i)==255) for(auto& el: lut)
+                    if(completed.at<uint8_t>(el.j,el.i)==0){
+                        next_j=el.j;
+                        next_i=el.i;
+                        break;
+                    }
+            }else if(selPScheduling->index==2){ // Spiral
+                std::deque<pt> lut2;
+                for(int j=0;j!=write.rows;j++) for(int i=0;i!=write.cols;i++){
+                    if(completed.at<uint8_t>(j,i)==0)
+                        lut2.push_back({i,j,sqrt(pow((i-0.5*write.cols)*vpointSpacing,2)+pow((j-0.5*write.rows)*vpointSpacing,2))});
+                }
+
+                std::sort(lut2.begin(), lut2.end(), [](pt i,pt j){return (i.distance<j.distance);});
+                // purely sorted by distance is slow as it will jump around, we want a closest in a ring
+                const double ringwidth=3*vpointSpacing;
+
+                lut.push_back(lut2.front());
+                lut2.pop_front();
+                std::deque<pt> tmp;
+                while(!lut2.empty()){
+                    while(abs(lut2.front().distance-lut.back().distance)<ringwidth){
+                        tmp.push_back(lut2.front());
+                        lut2.pop_front();
+                        if(lut2.empty()) break;
+                    }
+                    if(tmp.empty() && !lut2.empty()){
+                        lut.push_back(lut2.front());
+                        lut2.pop_front();
+                        continue;
+                    }
+                    std::sort(tmp.begin(), tmp.end(), [&cur = std::as_const(lut.back())](pt i,pt j){
+                        return (sqrt(pow((cur.i-i.i),2)+pow((cur.j-i.j),2))<sqrt(pow((cur.i-j.i),2)+pow((cur.j-j.j),2)));
+                    });
+                    lut.push_back(tmp.front());
+                    tmp.pop_front();
+                    while(!tmp.empty()){
+                        lut2.push_front(tmp.front());
+                        tmp.pop_front();
+                    }
+                }
+
+                iter=0;
+                next_i=lut[0].i;
+                next_j=lut[0].j;
             }
-            std::sort(lut.begin(), lut.end(), [](pt i,pt j){return (i.distance<j.distance);});
-
-            if(completed.at<uint8_t>(next_j,next_i)==255) for(auto& el: lut)
-                if(completed.at<uint8_t>(el.j,el.i)==0){
-                    next_j=el.j;
-                    next_i=el.i;
-                    goto _out;
-                }_out:;
 
             int nPerRun=sqrt(write.rows*write.cols);
             if(nPerRun<100) nPerRun=100;
@@ -907,13 +949,21 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
                     todo--;
 
                     if(todo==0) break;
-                    for(auto& el: lut) for(int tmp_i:{last_i-el.i,last_i+el.i}) for(int tmp_j:{last_j-el.j,last_j+el.j}){     // there is some redundancy
-                        if(tmp_i<0 || tmp_i>=completed.cols || tmp_j<0 || tmp_j>=completed.rows) continue;
-                        if(completed.at<uint8_t>(tmp_j,tmp_i)==0){
-                            next_i=tmp_i;
-                            next_j=tmp_j;
-                            goto next;
+                    if(selPScheduling->index==1){   //Nearest
+                        for(auto& el: lut) for(int tmp_i:{last_i-el.i,last_i+el.i}) for(int tmp_j:{last_j-el.j,last_j+el.j}){     // there is some redundancy
+                            if(tmp_i<0 || tmp_i>=completed.cols || tmp_j<0 || tmp_j>=completed.rows) continue;
+                            if(completed.at<uint8_t>(tmp_j,tmp_i)==0){
+                                next_i=tmp_i;
+                                next_j=tmp_j;
+                                goto next;
+                            }
                         }
+                    }else if(selPScheduling->index==2){ // Spiral
+                        iter++;
+                        if(iter>lut.size()) break;  // should be redundant
+                        next_j=lut[iter].j;
+                        next_i=lut[iter].i;
+                        continue;
                     }
                     QMessageBox::critical(gui_activation, "Error", "Cannot find a point in pgWrite::writeMat; this shouldn't happen!"); goto abort; // in case there is an unforseen bug, TODO remove
                     next:;
