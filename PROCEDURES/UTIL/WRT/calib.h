@@ -89,6 +89,7 @@ private:
     //peak processing
     hidCon* hc_proc;
     QPushButton* btnProcessFocusMes;
+    checkbox_gs* fitPar_directFWHMandHeight;
     val_selector* fitPar_nPeakGauss;
     val_selector* fitPar_nPeakLorentz;
     checkbox_gs* fitPar_independentWidths;

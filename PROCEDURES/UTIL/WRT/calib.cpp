@@ -130,6 +130,10 @@ pgCalib::pgCalib(pgScanGUI* pgSGUI, pgFocusGUI* pgFGUI, pgMoveGUI* pgMGUI, pgBea
     connect(btnProcessFocusMes, SIGNAL(released()), this, SLOT(onProcessFocusMes()));
     hc_proc->addWidget(new twid(btnProcessFocusMes));
 
+    fitPar_directFWHMandHeight=new checkbox_gs(true,"Direct FWHM and height from measurement");
+    fitPar_directFWHMandHeight->setToolTip("If false, these are determined from the fits.");
+    conf["fitPar_directFWHMandHeight"]=fitPar_directFWHMandHeight;
+    hc_proc->addWidget(fitPar_directFWHMandHeight);
     fitPar_nPeakGauss=new val_selector(1, "Fit Gaussian peak number", 0, 10, 0);
     conf["fitPar_nPeakGauss"]=fitPar_nPeakGauss;
     hc_proc->addWidget(fitPar_nPeakGauss);
@@ -728,10 +732,10 @@ void pgCalib::writeProcessHeader(std::ofstream& wfile){
     wfile<<"# "<<v++<<" PrepeakYoffs (um)\n";
     wfile<<"# "<<v++<<" Mirror Tilt X (nm/nm)\n";
     wfile<<"# "<<v++<<" Mirror Tilt Y (nm/nm)\n";
-    wfile<<"# "<<v++<<" FIT result: Combined peak height (nm)\n";
-    wfile<<"# "<<v++<<" FIT Asymptotic standard error: Combined peak height (nm)\n";
-    wfile<<"# "<<v++<<" FIT result: Combined peak FWHM (um)\n";
-    wfile<<"# "<<v++<<" FIT Asymptotic standard error: Combined peak FWHM (um)\n";
+    wfile<<"# "<<v++<<" result: Combined peak height (nm)\n";
+    wfile<<"# "<<v++<<" error: Combined peak height (nm)\n";
+    wfile<<"# "<<v++<<" result: Combined peak FWHM (um)\n";
+    wfile<<"# "<<v++<<" error: Combined peak FWHM (um)\n";
     if(!independentCentres){
         wfile<<"# "<<v++<<" FIT result: X offset (um)\n";
         wfile<<"# "<<v++<<" FIT Asymptotic standard error: X offset (um)\n";
@@ -1254,6 +1258,7 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
     const bool independentWidths=(gaussPeakNum<=1)|fitPar_independentWidths->val;
     const bool independentAngles=fitPar_independentAngles->val;
     const bool independentCentres=fitPar_independentCentres->val;
+    const bool directFWHMandHeight=fitPar_directFWHMandHeight->val;
     double initval[100];
     size_t v=0;
     if(!independentCentres){
@@ -1469,7 +1474,26 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
 
     double comboHeight{0}, comboHeightErr{0};
     double comboFWHM{0}, comboFWHMErr{0};
-    if(gaussPeakNum+lorentzPeakNum==1){
+    if(directFWHMandHeight){
+        int n=0;
+        double bgnd=0;
+        for(int i=0;i!=scanDif.depth.cols;i++) for(int j=0;j!=scanDif.depth.rows;j++){
+            if(sqrt(pow(i-scanDif.depth.cols/2.,2)+pow(j-scanDif.depth.rows/2.,2))>scanDif.depth.cols*0.45 && scanDif.mask.at<uchar>(j,i)==0){
+                bgnd+=scanDif.depth.at<float>(j,i);
+                n++;
+            }
+        }
+        bgnd/=n;
+        double min,max;
+        cv::minMaxIdx(scanDif.depth, &min, &max, nullptr, nullptr,scanDif.maskN);
+        comboHeightErr=0;
+        comboHeight=max-bgnd;
+        cv::Mat ring;
+        cv::compare(scanDif.depth,bgnd+comboHeight/2,ring,cv::CMP_GE);
+        auto mom=cv::moments(ring, true);
+        comboFWHM=2*sqrt(mom.m00/M_PI)*XYumppx;
+        comboFWHMErr=0;
+    }else if(gaussPeakNum+lorentzPeakNum==1){
         std::vector<double> peak=(gaussPeakNum==1)?gpeaks.front():lpeaks.front();
         size_t u=0;
         comboHeight=peak[u++];
@@ -1563,10 +1587,10 @@ void pgCalib::calcParameters(pgScanGUI::scanRes& scanDif, std::string* output, d
         prepeakYofs," ",                // PrepeakYoffs (um)
         tiltX," ",                      // Mirror Tilt X (nm/nm)
         tiltY," ",                      // Mirror Tilt Y (nm/nm)
-        comboHeight," ",                // FIT result: Combined peak height(nm)\n";
-        comboHeightErr," ",             // FIT Asymptotic standard error: Combined peak height(nm)\n";
-        comboFWHM," ",                  // FIT result: Combined peak FWHM(um)\n";
-        comboFWHMErr," ");              // FIT Asymptotic standard error: Combined peak FWHM(um)\n";
+        comboHeight," ",                // result: Combined peak height(nm)\n";
+        comboHeightErr," ",             // error: Combined peak height(nm)\n";
+        comboFWHM," ",                  // result: Combined peak FWHM(um)\n";
+        comboFWHMErr," ");              // error: Combined peak FWHM(um)\n";
     for(auto& var: shared) *output+=util::toString(var," ");
     for(auto& _var: gpeaks) for(auto& var: _var) *output+=util::toString(var," ");
     for(auto& _var: lpeaks) for(auto& var: _var) *output+=util::toString(var," ");
@@ -1624,8 +1648,8 @@ void pgCalib::onfpLoad(){
                     size_t idx=std::stoi(line.substr(2));
                     if(line.find("Valid Measurement (=1)")!=std::string::npos) pos[0]=idx;
                     else if(line.find("Duration (ms)")!=std::string::npos) pos[1]=idx;
-                    else if(line.find("FIT result: Combined peak height (nm)")!=std::string::npos) pos[2]=idx;
-                    else if(line.find("FIT Asymptotic standard error: Combined peak height (nm)")!=std::string::npos) pos[3]=idx;
+                    else if(line.find("result: Combined peak height (nm)")!=std::string::npos) pos[2]=idx;
+                    else if(line.find("error: Combined peak height (nm)")!=std::string::npos) pos[3]=idx;
                     else if(line.find("Focus Distance (um)")!=std::string::npos) pos[4]=idx;
                     else if(line.find("FIT result for Gaussian peak #0: X offset (um)")!=std::string::npos) pos[5]=idx;
                     else if(line.find("FIT result for Gaussian peak #0: Y offset (um)")!=std::string::npos) pos[6]=idx;
