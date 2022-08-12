@@ -53,7 +53,7 @@ namespace rtoml{
                     _Var(T& ovar): var(&ovar){}
                     void save(toml::basic_value<toml::preserve_comments, tsl::ordered_map>& dst){
                         if constexpr(!std::is_pointer<T>::value){
-                            if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value
+                            if constexpr(std::is_arithmetic<T>::value || std::is_same<T, std::string>::value 
                                 || rtoml::is_vector<T>::value || rtoml::is_unordered_map<T>::value) dst=*var;
                             else if constexpr(rtoml::is_atomic<T>::value) dst=var->load();
                             else dst=var->get();
@@ -161,7 +161,7 @@ namespace rtoml{
                             checkpreceedingComments=true;
                         }else if(sstr[0]=='#') preceedingCommentNum++;
                         else preceedingCommentNum=0;
-
+                        
                         // indent
                         if(sstr.size()>1) for(int i=0;i!=level;i++){
                             data.insert(lineBegin,indentation);

@@ -109,6 +109,9 @@ private:
     std::string fitSaveFilename{""};
     CvPlotQWindow* cpwin{nullptr};
 
+    pgScanGUI::scanRes getSelectionScan();
+    std::vector<double> plateauFitMargins;
+
 private Q_SLOTS:
     void work_fun();
     void on_tab_change(int index);
@@ -140,6 +143,7 @@ private Q_SLOTS:
     void onResetROI();
     void onChangeROI();
     void onPeakFit();
+    void onPlateauFit();
 
     void showScan(pgScanGUI::scanRes scan);
 };

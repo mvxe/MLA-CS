@@ -171,6 +171,10 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuDepthRight->addAction("Apply xy sobel", this, SLOT(onSobel()));
     clickMenuDepthRight->addAction("Apply laplace", this, SLOT(onLaplace()));
     clickMenuDepthRight->addAction("Fit peak", this, SLOT(onPeakFit()));
+    clickMenuDepthRight->addAction("Fit plateau", this, SLOT(onPlateauFit()));
+    plateauFitMargins.push_back(0.75);
+    plateauFitMargins.push_back(0.25);
+    conf["plateauFitMargins"]=plateauFitMargins;
 
     clickMenuDepthLeft=new QMenu;
     clickMenuDepthLeft->addAction("Plot Line (Gnuplot)", this, SLOT(onPlotLine()));
@@ -1009,12 +1013,12 @@ void tab_camera::onLaplace(){
     loadedOnDisplay=true;
 }
 
-void tab_camera::onPeakFit(){
+pgScanGUI::scanRes tab_camera::getSelectionScan(){
+    pgScanGUI::scanRes scan;
     if(!loadedScan.depth.empty() && loadedOnDisplay);
     else if(scanRes->get()!=nullptr) loadedScan=*scanRes->get();
-    else return;
+    else return scan;
 
-    pgScanGUI::scanRes scan;
     int width=abs(selEndX-selStartX+1);
     int height=abs(selEndY-selStartY+1);
     cv::Rect ROI;
@@ -1031,8 +1035,12 @@ void tab_camera::onPeakFit(){
         scan.max-=scan.min;
         scan.min=0;
     }
+    return scan;
+}
 
-
+void tab_camera::onPeakFit(){
+    pgScanGUI::scanRes scan=getSelectionScan();
+    if(scan.depth.empty()) return;
 
     std::string res;
     cv::Mat difMat;
@@ -1080,4 +1088,45 @@ void tab_camera::onPeakFit(){
     if(chs==mns) pgCal->writeProcessHeader(wfile);
     wfile<<res;
     wfile.close();
+}
+
+void tab_camera::onPlateauFit(){
+    pgScanGUI::scanRes scan=getSelectionScan();
+
+    QMenu menu;
+    menu.addAction("Fit circular plateau.");
+    auto mout=menu.addAction("Change outer reference");
+    auto minr=menu.addAction("Change inner fit area");
+    auto chs=menu.exec(QCursor::pos());
+    if(chs==nullptr) return;
+    if(chs==mout){
+        plateauFitMargins[0]=QInputDialog::getDouble(this, "Change outer reference", "Value 0-1, for example 0.8 means that for an 100x100px image, everything outside a circle with an 80 pixel diameter is used as reference. The factor is in reference to the smaller dimentsion.", plateauFitMargins[0], 0, 1, 3);
+    }else if(chs==minr){
+        plateauFitMargins[1]=QInputDialog::getDouble(this, "Change inner fit area", "Value 0-1, for example 0.2 means that for an 100x100px image, everything inside a circle with a 20 pixel diameter is used as fit area. The factor is in reference to the smaller dimentsion.", plateauFitMargins[1], 0, 1, 3);
+    }else{
+        if(scan.depth.empty()) return;
+        cv::Mat mask=cv::Mat(scan.depth.size(), CV_8U, 255);
+        cv::circle(mask, cv::Point(mask.cols/2,mask.rows/2), plateauFitMargins[0]*std::min(mask.rows,mask.cols)/2, 0, -1);
+        pgSGUI->correctTilt(&scan,&mask);
+        pgSGUI->applyTiltCorrection(&scan);
+
+        std::vector<double> mean,stddev;
+        cv::meanStdDev(scan.depth, mean, stddev, mask);
+        double min=mean[0];
+        double minSD=stddev[0];
+        scan.depth-=min;
+        cv::minMaxIdx(scan.depth,&scan.min, &scan.max);
+
+        mask.setTo(0);
+        cv::circle(mask, cv::Point(mask.cols/2,mask.rows/2), plateauFitMargins[1]*std::min(mask.rows,mask.cols)/2, 255, -1);
+
+        cv::meanStdDev(scan.depth, mean, stddev, mask);
+        QString text="Background SD = ";
+        text+=QString::number(minSD);
+        text+="\nPlateau height = ";
+        text+=QString::number(mean[0]);
+        text+="\nPlateau height SD= ";
+        text+=QString::number(stddev[0]);
+        QMessageBox::information(this, "Plateau fit result", text);
+    }
 }
