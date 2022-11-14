@@ -47,6 +47,8 @@ void globals::startup(int argc, char *argv[]){
     pRPTY->registerDevice("X", CTRL::dt_motion);
     pRPTY->registerDevice("Y", CTRL::dt_motion);
     pRPTY->registerDevice("Z", CTRL::dt_motion);
+    pRPTY->registerDevice("XTilt", CTRL::dt_motion);
+    pRPTY->registerDevice("YTilt", CTRL::dt_motion);
     pRPTY->registerDevice("trigCam", CTRL::dt_gpio);
     pRPTY->registerDevice("wrLaser", CTRL::dt_gpio);
     pRPTY->registerDevice("ilumLED", CTRL::dt_gpio);
