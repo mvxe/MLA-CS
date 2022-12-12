@@ -104,7 +104,6 @@ void RPTY::run(){
                 motionDevicesToRestPosition();
                 deinitDevices();
                 disconnect();
-                conf.save(); //TODO put to button
             }
             std::cout<<"RPTY thread exited.\n";
             done=true;

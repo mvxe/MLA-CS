@@ -184,7 +184,6 @@ tab_camera::tab_camera(QWidget* parent){
 }
 
 tab_camera::~tab_camera(){
-    if(conf.changed()) conf.save();    //TODO remove
     delete scanRes;
     delete pgHistGUI;
     delete pgCor;

@@ -73,9 +73,11 @@ void globals::startup(int argc, char *argv[]){
     conf.load();
     pGCAM->update();
 
-    MainWindow w(qapp);
-    w.setWindowTitle("MLA-CS");
-    w.show();
+    confList.push_back(&conf);
+    mw=new MainWindow(qapp,&confList);
+    mw->setWindowTitle("MLA-CS");
+    mw->show();
+
     try {
         qapp->exec();
     } catch (...) {
@@ -98,15 +100,15 @@ void globals::killThread(base_othr*& thro){
 }
 void globals::cleanup(){
     if (!go_mx.try_lock()) return;
-    std::cout<<"Saving conf...\n";
-    if(conf.changed()) conf.save(); // the threads should save on exit themselves
 
     std::cout<<"Sending end signals to all threads...\n";
-
     while(!threads.empty())
         killThread(threads.front());        //this destroys them(safely calling their destructors)
-
     std::cout<<"All threads exited successfully!\n";
+
+    saveDialog sD(mw,confList);
+    sD.exec();
+
     go_mx.unlock();
 }
 void globals::quit(){

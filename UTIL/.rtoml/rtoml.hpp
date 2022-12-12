@@ -92,7 +92,6 @@ namespace rtoml{
                     }
             };
             _BVar* var{nullptr};
-            tsl::ordered_map <std::string, vsr>* map{nullptr};
             bool exmap{false};      //if true, it is an external map (do not deallocate in destructor)
             vsr* parent{nullptr};
             std::string key;        // save filename if parent==nullptr, else the key; redundant but reimplementing map for saving a bit of space is too much work
@@ -188,6 +187,7 @@ namespace rtoml{
             std::vector<std::string> _comments;
             std::vector<std::string>* _exComments;
         public:
+            tsl::ordered_map <std::string, vsr>* map{nullptr};  // direct access to map to be able to go over all entries (if not nullptr!)
             vsr(){}
             vsr(std::string confFilename):key(confFilename){}   // you can also initialize the top object with the load/save filename
             ~vsr(){

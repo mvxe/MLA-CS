@@ -21,6 +21,7 @@
 class GCAM;
 class CTRL;
 class QApplication;
+class MainWindow;
 
 #include <exception>
 #include <QApplication>
@@ -58,7 +59,7 @@ othr<T>::~othr(){
     if (!errord){
         obj->end=true;
         thr->join();
-        delete obj;
+        //delete obj;       // TODO fix : this is at the end of program so it doesn't matter, but ideally this should be deleted however that prevends configuration saving to work as the referenced objects are deleted
         delete thr;
     }
 }
@@ -74,6 +75,7 @@ public:
     std::vector<protooth*> GUIdevList;      // contains device connection GUI
 
     rtoml::vsr conf{"devices.toml"};
+    std::vector<rtoml::vsr*> confList;      // contains pointers to all config files (conf, tab confs...)
     threadPool OCL_threadpool{16};   //apparently opencl does not do well with threads: depending on the driver it fails after usage on a number (~200) of different threads. Using threadpool apparently fixes this, hence OCL_threadpool
 
     void startup(int argc, char *argv[]);                                           //subsequent calls of this are ignored
@@ -92,6 +94,7 @@ private:
     std::mutex tdmx;
     std::thread* cinthr;
     QApplicationQN* qapp;
+    MainWindow* mw;
 };
 
 /*########## TEMPLATE FUNCTIONS ##########*/
