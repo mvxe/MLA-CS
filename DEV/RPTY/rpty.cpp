@@ -2,17 +2,41 @@
 #include "globals.h"
 #include "motionDevices/pinexactstage.h"
 #include "motionDevices/simpleservo.h"
+#include "GUI/gui_includes.h"
 
 RPTY::RPTY(){
-    conf["RPTY_ip"]=IP;
-    conf["RPTY_port"]=port;
-    conf["RPTY_keepalive"]=keepalive;
-
     conf["main_command_queue"]=main_cq;
     conf["helper_command_queue"]=helper_cq;
     conf["serial_command_queue"]=serial_cq;
     conf["main_acquisition_queue"]=main_aq;
     conf["serial_acquisition_queue"]=serial_aq;
+
+    GUI_icon=new ts_label("",pixmaps::px_offline);
+    GUI_icon->setMaximumHeight(26);
+    GUI_icon->setMaximumWidth(26);
+    GUI_icon->setScaledContents(true);
+    GUI_resolvedIP=new ts_label("");
+    GUI_reset=new QPushButton("Reset");
+    GUI_conn=new twid(GUI_icon,new QLabel("Controller : Red Pitaya"),GUI_reset,GUI_resolvedIP);
+    GUI_sett=new hidCon();
+    GUI_sett->setShowLabel("< show IP settings >");
+    IP=new lineedit_gs("192.168.1.2");
+    port=new val_selector(32,"RPTY Port:",1,65535,0);
+    keepalive=new val_selector(500,"Keepalive (msec):",1,1e6,0);
+    keepalive->setToolTip("keepalive and connect timeout, in ms");
+    GUI_sett->addWidget(new twid(new QLabel("RPTY IP address:"),IP));
+    GUI_sett->addWidget(port);
+    GUI_sett->addWidget(keepalive);
+    connectionGUI.push_back(GUI_conn);
+    connectionGUI.push_back(GUI_sett);
+    qdo=new QDisconnect(this);
+    //QObject::connect(IP, SIGNAL(changed()), qdo, SLOT(disco()));    //if the user changes the IP or port setting we disconnect
+    //QObject::connect(port, SIGNAL(changed()), qdo, SLOT(disco()));
+    QObject::connect(GUI_reset, SIGNAL(released()), qdo, SLOT(reset()));
+
+    conf["RPTY_ip"]=IP;
+    conf["RPTY_port"]=port;
+    conf["RPTY_keepalive"]=keepalive;
 }
 RPTY::~RPTY(){
     for(auto& dev : motionAxes){
@@ -30,24 +54,24 @@ void RPTY::run(){
             //std::cerr<<"not connected\n";
                 //resolving...
             std::string resname;    //this is when user enters hostname instead of ip
-            if (resolve(IP.get(), port.get(), &resname)){
+            if (resolve(IP->get(), port->val, &resname)){
                 resname = "cannot resolve this hostname";
-                std::this_thread::sleep_for (std::chrono::milliseconds(keepalive.get()));
+                std::this_thread::sleep_for (std::chrono::milliseconds(keepalive->val));
             }
             else{
                     //connecting...
-                connect(keepalive.get());
+                connect(keepalive->val);
                 if (connected) {
                     /* RPTY init */
+                    GUI_icon->setPix(pixmaps::px_online);
                     initDevices();
                     referenceMotionDevices();
                     motionDevicesToLastPosition();
                 }
             }
-            IP.resolved.set(resname);
+            GUI_resolvedIP->set(QString::fromStdString(resname));
+            reqDisco=false;
         }
-        if(connected && (IP.changed() || port.changed())) {/*TODO RPTY disco*/
-            disconnect();}  //if the user changes the IP or port setting we disconnect
 
         if (connected){ /*TODO: RPTY do work here*/
             if(recheck_position){
@@ -61,10 +85,22 @@ void RPTY::run(){
                     recheck_position=false;
                 }
             }
+            if(reqReset){
+                reset();
+                devicesInited=false;
+                GUI_icon->setPix(pixmaps::px_offline);
+                disconnect();
+                reqReset=false;
+            }
+            //if(reqDisco){     // broken and unnecessary
+            //    disconnect();
+            //    reqDisco=false;
+            //}
         }
         if(end){
             if (connected){
                 /* RPTY disconnect */
+                GUI_icon->setPix(pixmaps::px_offline);
                 motionDevicesToRestPosition();
                 deinitDevices();
                 disconnect();

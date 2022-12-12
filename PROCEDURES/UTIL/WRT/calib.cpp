@@ -4,7 +4,6 @@
 #include "PROCEDURES/UTIL/USC/focus.h"
 #include "PROCEDURES/UTIL/USC/move.h"
 #include "opencv2/core/utils/filesystem.hpp"
-#include "GUI/tab_monitor.h"    //for debug purposes
 #include <algorithm>
 #include <random>
 #include <gsl/gsl_rng.h>
@@ -393,7 +392,7 @@ void pgCalib::onWCF(){
         pgWr->wabort=true;
         return;
     }
-    if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
+    if(!go.pCTRL->isConnected()) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
 
     btnWriteCalib->setText("Abort calibration");
     wcabort=false;
@@ -421,7 +420,7 @@ void pgCalib::onOverlappingCalib(){
         wcabort=true;
         return;
     }
-    if(!go.pRPTY->connected) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
+    if(!go.pCTRL->isConnected()) {QMessageBox::critical(this, "Error", "Error: Red Pitaya not Connected"); return;}
 
     overlappingCalib->setText("Abort calibration");
     wcabort=false;
@@ -432,7 +431,7 @@ void pgCalib::onOverlappingCalib(){
     updateOverlappingCalibEnabled();
 }
 void pgCalib::onSchedule(){
-    while(go.pRPTY->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+    while(go.pCTRL->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     double coords[3];
     pgMGUI->getPos(&coords[0], &coords[1], &coords[2]);
     if(scheduledPos.size()==multiarrayN->val){
@@ -612,7 +611,7 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
         if(pgFGUI->doRefocus(true, ROI, maxRedoRefocusTries)) return true;
 
         // take pos for reruns
-        while(go.pRPTY->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+        while(go.pCTRL->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
         ovrData.pos.emplace_back();
         pgMGUI->getPos(&ovrData.pos.back().x, &ovrData.pos.back().y, &ovrData.pos.back().z);
     }else{
@@ -652,7 +651,7 @@ bool pgCalib::WCFArrayOne(cv::Mat WArray, double plateau, cv::Rect ROI, cv::Rect
     {std::lock_guard<std::mutex>lock(pgSGUI->MLP._lock_proc);
         pgMGUI->chooseObj(false);
         pgMGUI->move(-xOfs,yOfs,0);
-        CTRL::CO CO(go.pRPTY);
+        CTRL::CO CO(go.pCTRL);
         CO.clear(true);
         for(int j=0;j!=WArray.rows; j++){
             for(int i=0;i!=WArray.cols; i++){

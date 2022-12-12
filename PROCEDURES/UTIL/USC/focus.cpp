@@ -114,13 +114,13 @@ void pgFocusGUI::recalculate() {
 double pgFocusGUI::vsConv(val_selector* vs){return pgSGUI->vsConv(vs);}
 
 void pgFocusGUI::updateCO(std::string &report){
-    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
+    if(!go.pGCAM->iuScope->connected || !go.pCTRL->isConnected()) return;
     CORdy=false;
     if(COmeasure==nullptr){
-        COmeasure=new CTRL::CO(go.pRPTY);
-    }else if(COmeasure->_ctrl!=go.pRPTY){
+        COmeasure=new CTRL::CO(go.pCTRL);
+    }else if(COmeasure->_ctrl!=go.pCTRL){
         delete COmeasure;
-        COmeasure=new CTRL::CO(go.pRPTY);
+        COmeasure=new CTRL::CO(go.pCTRL);
     }else COmeasure->clear();
 
 
@@ -130,8 +130,8 @@ void pgFocusGUI::updateCO(std::string &report){
 
 
     readRangeDis=vsConv(range)/1000000;  // in mm
-    double velocity=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultVelocity);
-    double acceleration=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultAcceleration);
+    double velocity=go.pCTRL->getMotionSetting("Z",CTRL::mst_defaultVelocity);
+    double acceleration=go.pCTRL->getMotionSetting("Z",CTRL::mst_defaultAcceleration);
     displacementOneFrame=vsConv(pgSGUI->led_wl)/2/vsConv(pphwl)/1000000;       // in mm
     report+=util::toString("One frame displacement = ",displacementOneFrame*1000000," nm.\n");
     totalFrameNum=readRangeDis/displacementOneFrame;   // for simplicity no image taken on one edge
@@ -167,7 +167,7 @@ void pgFocusGUI::updateCO(std::string &report){
 }
 
 void pgFocusGUI::refocus(cv::Rect ROI){
-    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) {focusFailed=true; focusInProgress=false; return;}
+    if(!go.pGCAM->iuScope->connected || !go.pCTRL->isConnected()) {focusFailed=true; focusInProgress=false; return;}
     if(!CORdy) {focusFailed=true; focusInProgress=false; return;}
 
     if(ROI.width==0) ROI=sROI;
@@ -245,7 +245,7 @@ void pgFocusGUI::refocus(cv::Rect ROI){
             Q_EMIT signalQMessageBoxWarning(QString::fromStdString(util::toString("ERROR: abs of the calculated correction is larger than half the read range distance: ",Zcor," vs ",readRangeDis/2," . Did not apply correction.")));
             focusFailed=true;
         }
-        else go.pRPTY->motion("Z",Zcor,0,0,CTRL::MF_RELATIVE);
+        else go.pCTRL->motion("Z",Zcor,0,0,CTRL::MF_RELATIVE);
     }
     MLP.progress_comp=100;
     go.pGCAM->iuScope->FQsPCcam.deleteFQ(framequeue);

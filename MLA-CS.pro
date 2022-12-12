@@ -56,6 +56,7 @@ HEADERS += \
     DEV/RPTY/rpbbserial.h \
     DEV/RPTY/rpmotion.h \
     DEV/controller.h \
+    DEV/device_includes.h \
     GUI/cvplotauxobj.h \
     GUI/cvplotqwindow.h \
     UTIL/.rtoml/rtoml.hpp \
@@ -77,8 +78,6 @@ HEADERS += \
     PROCEDURES/UTIL/calibrate_xy.h \
     PROCEDURES/UTIL/writing_test.h \
     GUI/TAB_CAMERA/tab_camera.h \
-    GUI/TAB_POSITIONERS/tab_positioners.h \
-    GUI/TAB_SETTINGS/tab_settings.h \
     GUI/TAB_DEVICES/tab_devices.h \
     DEV/devices.h \
     PROCEDURES/UTIL/burn_array.h \
@@ -89,12 +88,7 @@ HEADERS += \
     DEV/GCAM/frame_queues.h \
     DEV/GCAM/gcam.h \
     UTIL/pipe.h \
-    DEV/CNC/cnc.h \
-    DEV/CNC/cnc_template.h \
-    PROCEDURES/UTIL/profile_beam.h \
     DEV/RPTY/fpga_const.h \
-    GUI/tab_monitor.h \
-    DEV/ALP/alp.h \
     GUI/gui_aux_objects.h \
     UTIL/img_util.h \
     PROCEDURES/UTIL/USC/scan.h \
@@ -124,7 +118,6 @@ SOURCES += \
     GUI/cvplotqwindow.cpp \
     main.cpp \
     globals.cpp \
-    GUI/settingstab.cpp \
     GUI/slots_baseclass.cpp \
     GUI/mainwindow.cpp \
     UTIL/containers.cpp \
@@ -136,8 +129,6 @@ SOURCES += \
     PROCEDURES/UTIL/calibrate_xy.cpp \
     PROCEDURES/UTIL/writing_test.cpp \
     GUI/TAB_CAMERA/tab_camera.cpp \
-    GUI/TAB_POSITIONERS/tab_positioners.cpp \
-    GUI/TAB_SETTINGS/tab_settings.cpp \
     GUI/TAB_DEVICES/tab_devices.cpp \
     DEV/devices.cpp \
     PROCEDURES/UTIL/burn_array.cpp \
@@ -145,10 +136,6 @@ SOURCES += \
     DEV/GCAM/frame_queues.cpp \
     DEV/GCAM/gcam.cpp \
     UTIL/pipe.cpp \
-    DEV/CNC/cnc.cpp \
-    PROCEDURES/UTIL/profile_beam.cpp \
-    GUI/tab_monitor.cpp \
-    DEV/ALP/alp.cpp \
     GUI/gui_aux_objects.cpp \
     UTIL/img_util.cpp \
     PROCEDURES/UTIL/USC/scan.cpp \

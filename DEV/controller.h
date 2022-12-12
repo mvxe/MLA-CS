@@ -1,18 +1,21 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
+#include <UTIL/threadpool.h>
 #include <string>
 #include <UTIL/.rtoml/rtoml.hpp>
 #include <map>
+#include <vector>
+class QWidget;
 
 // provides a standard interface to common functionality: motion, digital outputs etc
 // functions will throw an exception if an error is encountered, for example calling functions on devices of wrong type
 // public function of CTRL should be thread safe
 
-class CTRL{
+class CTRL: public protooth{
 
 public:
-    virtual ~CTRL(){};
+    virtual ~CTRL(){}
     // configuration file; load is called on registerDevice() for that device to retrieve configuration
     // CTRL does not autosave, you need to call save before destroying CTRL
     rtoml::vsr conf;
@@ -85,6 +88,12 @@ public:
             motion(md, getMotionSetting(md,CTRL::mst_restPosition), getMotionSetting(md,CTRL::mst_maximumVelocity), getMotionSetting(md,CTRL::mst_maximumAcceleration));
     }
 
+    // resets internal buffers
+    virtual void reset()=0;
+
+    // returns connection status
+    virtual bool isConnected()=0;
+
 public:
     //functions that are accessed by the command object (CO)
     class CO;
@@ -94,6 +103,7 @@ public:
                     he_timer_done,                  // for dt_timer
                     he_motion_ontarget              // for dt_motion
                    };
+
 protected:
 
     // construct command object

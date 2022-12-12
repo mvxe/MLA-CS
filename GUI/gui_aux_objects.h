@@ -62,6 +62,23 @@ Q_SIGNALS:
     void _changed(double value, int index); // do not use
 };
 
+//  Thread safe label
+
+class ts_label : public QLabel{
+    Q_OBJECT
+public:
+    ts_label(QString label, QString pixmap="");
+    void set(QString str);                  // thread safe
+    void setPix(QString str);               // thread safe
+private Q_SLOTS:
+    void on_str_change(QString str);
+    void on_pix_change(QString pix);
+Q_SIGNALS:
+    void _changed_str(QString str);         // do not use
+    void _changed_pix(QString pix);         // do not use
+};
+
+
 //  SIMPLE SELECTOR
 
 class smp_selector : public QWidget{       //template for devices
@@ -305,7 +322,11 @@ public:
     void addWidget(QWidget* widget);
     void linkTo(hidCon* hc);
     void hide();
+    void setShowLabel(QString label);
+    void setHideLabel(QString label);
 private:
+    QString showLabel{"< show >"};
+    QString hideLabel{"< hide >"};
     twid* mainTwid;
     QPushButton* showBtn;
     QVBoxLayout* layout;
@@ -385,5 +406,10 @@ public:
         setWordWrap(true);
     }
 };
+
+namespace pixmaps{
+    const QString px_online{":/emblem-ok.svg"};
+    const QString px_offline{":/emblem-nowrite.svg"};
+}
 
 #endif // GUI_AUX_OBJECTS_H

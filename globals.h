@@ -17,11 +17,9 @@
 #include <UTIL/utility.h>
 #include <UTIL/threadpool.h>
 #include <UTIL/.rtoml/rtoml.hpp>
-#include "DEV/controller.h"
 
 class GCAM;
-class RPTY;
-class CNC;
+class CTRL;
 class QApplication;
 
 #include <exception>
@@ -30,15 +28,6 @@ class QApplicationQN:public QApplication{   //we redefine QApplication to add ex
 public:
     QApplicationQN(int& argc, char** argv);
     bool notify(QObject* receiver, QEvent* event);
-};
-
-class protooth{              //abstract class for all classes to be in threads
-    friend class base_othr;
-public:
-    virtual ~protooth(){}                     //if its virtual, destroying its pointer will call the derived class destructor
-    std::atomic<bool> end{false};             //set this to true to externally signal the thread it should close. In each derived object periodically chech if this is true, and if so, exit.
-    std::atomic<bool> done{false};            //this flag indicates whether the thread is done      //TODO calling this from mainwindow causes a segfault
-    virtual void run()=0;
 };
 
 class globals;
@@ -81,9 +70,10 @@ public:
     ~globals();
 
     GCAM* pGCAM;    //you can access cameras and frame queues through this, see GCAM/_config.h for members
-    RPTY* pRPTY;    //you can access red pitaya functions through this
-    CNC* pCNC;      //you can access CNC functions through this
-    rtoml::vsr conf{"devices.toml"};    // temporary
+    CTRL* pCTRL;    //you can access the controller's functions through this
+    std::vector<protooth*> GUIdevList;      // contains device connection GUI
+
+    rtoml::vsr conf{"devices.toml"};
     threadPool OCL_threadpool{16};   //apparently opencl does not do well with threads: depending on the driver it fails after usage on a number (~200) of different threads. Using threadpool apparently fixes this, hence OCL_threadpool
 
     void startup(int argc, char *argv[]);                                           //subsequent calls of this are ignored
@@ -121,19 +111,19 @@ othr<T>* globals::newThread(Args... args){
 
 extern globals go;
 
-class cinlisten{
-public:
-    void run(){
-        std::string txt;
-        for(;;){
-            std::cin>>txt;
-            if (txt.find("exit")!=std::string::npos) break;
-        }
-        std::thread ttry(&globals::quit, &go);                          //we tell QT to exit nicely
-        std::this_thread::sleep_for (std::chrono::seconds(2));          //after 2 seconds if QT hasnt exited, stop threads and kill QT
-        go.cleanup();                                                   //this does nothing if threads started to getting killed
-        exit(0);
-    }
-};
+//class cinlisten{
+//public:
+//    void run(){
+//        std::string txt;
+//        for(;;){
+//            std::cin>>txt;
+//            if (txt.find("exit")!=std::string::npos) break;
+//        }
+//        std::thread ttry(&globals::quit, &go);                          //we tell QT to exit nicely
+//        std::this_thread::sleep_for (std::chrono::seconds(2));          //after 2 seconds if QT hasnt exited, stop threads and kill QT
+//        go.cleanup();                                                   //this does nothing if threads started to getting killed
+//        exit(0);
+//    }
+//};
 
 #endif // GLOBALS_H

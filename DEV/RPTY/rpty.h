@@ -3,21 +3,26 @@
 
 #include "DEV/TCP_con.h"
 
-#include "globals.h"
 #include "UTIL/containers.h"
+#include "UTIL/utility.h"
 #include "fpga_const.h"
 #include "rpbbserial.h"
 #include "rpmotion.h"
 #include "DEV/controller.h"
+class twid;
+class hidCon;
+class lineedit_gs;
+class val_selector;
+class QPushButton;
+class QDisconnect;
+class ts_label;
 
-class RPTY : public TCP_con, public protooth, public CTRL{
+class RPTY : public TCP_con, public CTRL{
 public:
     RPTY();
     ~RPTY();
 
         // ## lower level functions: - thread safe##
-
-// TODO make private
 
     int F2A_read(uint8_t queue, uint32_t *data, uint32_t size4);    //queue is 0-3; note: size4 is number of uint32_t (4 bytes each), not bytes; return 0 if success, else -1
     int A2F_write(uint8_t queue, uint32_t *data, uint32_t size4);   //queue is 0-3; note: size4 is number of uint32_t (4 bytes each), not bytes; return 0 if success, else -1
@@ -59,6 +64,13 @@ public:
     void setGPIO(std::string ID, bool state);
     void pulseGPIO(std::string ID, double duration);
     double getPulsePrecision();
+    void reset(){
+        FIFOreset();
+        PIDreset();
+    }
+    bool isConnected(){
+        return connected;
+    }
 
 private:
     void CO_init(CO* a);
@@ -93,12 +105,22 @@ public:
     std::recursive_mutex mux;
 
 private:
-    std::mutex smx; // TODO remove this
+    // connection GUI:
+    twid* GUI_conn;
+    hidCon* GUI_sett;
+    ts_label* GUI_icon;
+    ts_label* GUI_resolvedIP;
+    QPushButton* GUI_reset;
+    lineedit_gs* IP;
+    val_selector* port;
+    val_selector* keepalive;
+    QDisconnect* qdo;
+
 public:
-    // TODO change these:
-    tsvar_ip IP{&smx, "192.168.1.2"};
-    tsvar_port port{&smx, 32};
-    tsvar<unsigned> keepalive{&smx, 500};                   //keepalive and connect timeout, in ms
+    std::atomic<bool> reqReset=false;
+    std::atomic<bool> reqDisco=false;
+
+public:
 
     unsigned main_cq{0};                        // main command queue
     unsigned helper_cq{1};
@@ -140,9 +162,21 @@ public:
     std::map<std::string, motionAxis> motionAxes;       // devices of type dt_motion
     std::map<std::string, gpioDevice> gpioDevices;      // devices of type dt_gpio
     std::map<std::string, timerDevice> timerDevices;    // devices of type dt_timer
+};
 
-
-
+class QDisconnect: public QObject{
+    Q_OBJECT
+public:
+    QDisconnect(RPTY* parent): parent(parent){}
+    RPTY* parent;
+private Q_SLOTS:
+    void disco(){
+        parent->reqReset=true;
+    }
+    void reset(){
+        if(parent->connected)
+            parent->reqReset=true;
+    }
 };
 
 

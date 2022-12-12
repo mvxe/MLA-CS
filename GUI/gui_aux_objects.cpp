@@ -114,6 +114,27 @@ std::string val_selector::get(){
 }
 
 
+//  Thread safe label
+
+ts_label::ts_label(QString label, QString pixmap){
+    this->setText(label);
+    if(!pixmap.isEmpty()) this->setPixmap(QPixmap(pixmap));
+    connect(this, SIGNAL(_changed_str(QString)), this, SLOT(on_str_change(QString)));
+    connect(this, SIGNAL(_changed_pix(QString)), this, SLOT(on_pix_change(QString)));
+}
+void ts_label::set(QString str){
+    Q_EMIT on_str_change(str);
+}
+void ts_label::setPix(QString str){
+    Q_EMIT on_pix_change(str);
+}
+void ts_label::on_str_change(QString str){
+    this->setText(str);
+}
+void ts_label::on_pix_change(QString pix){
+    this->setPixmap(QPixmap(pix));
+}
+
 //  SIMPLE SELECTOR
 
 smp_selector::smp_selector(QString label, int initialIndex, std::vector<QString> labels):  _index(initialIndex), labels(labels){
@@ -481,7 +502,7 @@ vtwid::vtwid(QWidget* widget, bool setmargin, bool setstretch): vtwid(setmargin,
 void hidCon::hhidCon(){
     layout=new QVBoxLayout;
     this->setLayout(layout);
-    showBtn=new QPushButton("< show >");
+    showBtn=new QPushButton(showLabel);
     connect(showBtn, SIGNAL(released()), this, SLOT(onClicked()));
     showBtn->setFlat(true);
     mainTwid->addWidget(showBtn);
@@ -506,14 +527,22 @@ void hidCon::linkTo(hidCon* hc){
 }
 void hidCon::hide(){
     wI->setVisible(false);
-    showBtn->setText("< show >");
+    showBtn->setText(showLabel);
 }
 void hidCon::onClicked(){
     if(!wI->isVisible())
         for(auto hc:linked)
             hc->hide();
     wI->setVisible(!wI->isVisible());
-    showBtn->setText((wI->isVisible())?"< hide >":"< show >");
+    showBtn->setText((wI->isVisible())?hideLabel:showLabel);
+}
+void hidCon::setShowLabel(QString label){
+    showLabel=label;
+    showBtn->setText((wI->isVisible())?hideLabel:showLabel);
+}
+void hidCon::setHideLabel(QString label){
+    hideLabel=label;
+    showBtn->setText((wI->isVisible())?hideLabel:showLabel);
 }
 
 // MORE HIDDEN CONTAINER

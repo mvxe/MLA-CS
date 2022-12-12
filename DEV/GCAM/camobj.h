@@ -6,14 +6,17 @@
 #include "DEV/GCAM/frame_queues.h"
 #include <vector>
 #include "_config.h"
+class ts_label;
 
 const int FRAMEBUFFER_INITIAL_SIZE = 10;   //starting size of framebuffer
 class GCAM;
+class QGCAM;
 
 class camobj: public camobj_config{     // note: currently this tagets features implemented by Basler, as the default setFPS from aravis didnt work. This means genicams other than Basler may not work properly.
     friend class GCAM;
     friend class gcam_config;
     friend class FrameObserver;
+    friend class QGCAM;
 public:
     void set(std::string atr, bool nvar);
     void set(std::string atr, long int nvar);
@@ -88,6 +91,9 @@ private:
     std::chrono::time_point<std::chrono::system_clock> lastFrameTime;   // for timeout detection
     std::mutex lastFrameTimeMux;
     unsigned cameraTimeout{1000};
+
+    ts_label* GUI_icon;                                     // for displaying camera status
+    QGCAM* qdo;                                             // more gui
 };
 
 #endif // CAMOBJ_H

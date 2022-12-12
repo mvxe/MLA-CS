@@ -260,13 +260,13 @@ void pgScanGUI::rstAvg(){
 }
 
 void pgScanGUI::updateCO(std::string &report){
-    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) return;
+    if(!go.pGCAM->iuScope->connected || !go.pCTRL->isConnected()) return;
     CORdy=false;
     if(COmeasure==nullptr){
-        COmeasure=new CTRL::CO(go.pRPTY);
-    }else if(COmeasure->_ctrl!=go.pRPTY){
+        COmeasure=new CTRL::CO(go.pCTRL);
+    }else if(COmeasure->_ctrl!=go.pCTRL){
         delete COmeasure;
-        COmeasure=new CTRL::CO(go.pRPTY);
+        COmeasure=new CTRL::CO(go.pCTRL);
     }else COmeasure->clear();
 
 
@@ -282,8 +282,8 @@ void pgScanGUI::updateCO(std::string &report){
 
     double readRangeDis=totalScanRange/1000000;  // in mm
     report+=util::toString("Total scan range = ",readRangeDis," mm.\n");
-    double velocity=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultVelocity);
-    double acceleration=go.pRPTY->getMotionSetting("Z",CTRL::mst_defaultAcceleration);
+    double velocity=go.pCTRL->getMotionSetting("Z",CTRL::mst_defaultVelocity);
+    double acceleration=go.pCTRL->getMotionSetting("Z",CTRL::mst_defaultAcceleration);
     displacementOneFrame=vsConv(led_wl)/2/vsConv(pphwl)/1000000;       // in mm
     report+=util::toString("One frame displacement = ",displacementOneFrame*1000000," nm.\n");
     totalFrameNum=std::round(readRangeDis/displacementOneFrame);   // for simplicity no image taken on one edge
@@ -502,7 +502,7 @@ void pgScanGUI::_doOneRound(cv::Rect ROI, char cbAvg_override, bool force_disabl
     if(ROI.width<=0) ROI=cv::Rect(0,0,go.pGCAM->iuScope->camCols,go.pGCAM->iuScope->camRows);
 
     MLP._lock_proc.lock();                       //wait for other measurements to complete
-    if(!go.pGCAM->iuScope->connected || !go.pRPTY->connected) goto abort;
+    if(!go.pGCAM->iuScope->connected || !go.pCTRL->isConnected()) goto abort;
     if(!CORdy) {
     abort:  if(RT!=nullptr) RT->running--;
             if(RT!=nullptr) RT->failed++;

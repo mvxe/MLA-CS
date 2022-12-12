@@ -180,7 +180,7 @@ tab_camera::tab_camera(QWidget* parent){
     clickMenuDepthLeft->addAction("Plot Line (Gnuplot)", this, SLOT(onPlotLine()));
     clickMenuDepthLeft->addAction("Save Line (.txt)", this, SLOT(onSaveLine()));
 
-    conf.load();    //TODO remove
+    conf.load();
 }
 
 tab_camera::~tab_camera(){
@@ -195,7 +195,7 @@ tab_camera::~tab_camera(){
     delete pgTGUI;
     delete pgFGUI;
     delete pgPRGUI;
-    go.pRPTY->setGPIO("ilumLED", 0);
+    go.pCTRL->setGPIO("ilumLED", 0);
 }
 
 void tab_camera::work_fun(){
@@ -354,7 +354,7 @@ void tab_camera::onShowAbsHeightChanged(){
 void tab_camera::tab_entered(){
     framequeueDisp=go.pGCAM->iuScope->FQsPCcam.getNewFQ();
     framequeueDisp->setUserFps(camSet->guiCamFPS->val,5);
-    go.pRPTY->setGPIO("ilumLED", 1);
+    go.pCTRL->setGPIO("ilumLED", 1);
 
     timer->start(work_call_time);
 }

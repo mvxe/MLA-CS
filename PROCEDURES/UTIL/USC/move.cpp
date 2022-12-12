@@ -167,9 +167,9 @@ void pgMoveGUI::move(double Xmov, double Ymov, double Zmov, bool isAbsolute, boo
     }
 
     double _Zmov=Zmov+(isAbsolute?0:(_Xmov*autoadjXZ->val+_Ymov*autoadjYZ->val));    //this correction should change with skewCorrection, but implementing that would be annoying (dont want to add more configuration) and its negligible anyway, just recalibrate autoadjXZ,YZ with skewCorrection if its a problem
-    go.pRPTY->motion("X",_Xmov+((isAbsolute&&currentObj==1)?_objectiveDisplacement[0]:0),0,0,isAbsolute?0:CTRL::MF_RELATIVE);
-    go.pRPTY->motion("Y",_Ymov+((isAbsolute&&currentObj==1)?_objectiveDisplacement[1]:0),0,0,isAbsolute?0:CTRL::MF_RELATIVE);
-    go.pRPTY->motion("Z",_Zmov+((isAbsolute&&currentObj==1)?_objectiveDisplacement[2]:0),0,0,isAbsolute?0:CTRL::MF_RELATIVE);
+    go.pCTRL->motion("X",_Xmov+((isAbsolute&&currentObj==1)?_objectiveDisplacement[0]:0),0,0,isAbsolute?0:CTRL::MF_RELATIVE);
+    go.pCTRL->motion("Y",_Ymov+((isAbsolute&&currentObj==1)?_objectiveDisplacement[1]:0),0,0,isAbsolute?0:CTRL::MF_RELATIVE);
+    go.pCTRL->motion("Z",_Zmov+((isAbsolute&&currentObj==1)?_objectiveDisplacement[2]:0),0,0,isAbsolute?0:CTRL::MF_RELATIVE);
 }
 
 void pgMoveGUI::corCOMove(CTRL::CO& co, double Xmov, double Ymov, double Zmov, bool forceSkewCorrection){
@@ -193,14 +193,14 @@ void pgMoveGUI::_chooseObj(int index){
         return;
     }else if(currentObjective==index) return;
     bool useMirau=(index==0);
-    if(!go.pRPTY->connected){
+    if(!go.pCTRL->isConnected()){
         Q_EMIT sigChooseObj(!useMirau);  // revert menu
         return;
     }
     currentObjective=index;
-    go.pRPTY->motion("X",(useMirau?-1:1)*_objectiveDisplacement[0],0,0,CTRL::MF_RELATIVE);
-    go.pRPTY->motion("Y",(useMirau?-1:1)*_objectiveDisplacement[1],0,0,CTRL::MF_RELATIVE);
-    go.pRPTY->motion("Z",(useMirau?-1:1)*_objectiveDisplacement[2],0,0,CTRL::MF_RELATIVE);
+    go.pCTRL->motion("X",(useMirau?-1:1)*_objectiveDisplacement[0],0,0,CTRL::MF_RELATIVE);
+    go.pCTRL->motion("Y",(useMirau?-1:1)*_objectiveDisplacement[1],0,0,CTRL::MF_RELATIVE);
+    go.pCTRL->motion("Z",(useMirau?-1:1)*_objectiveDisplacement[2],0,0,CTRL::MF_RELATIVE);
 }
 void pgMoveGUI::chooseObj(bool useMirau){
     if(currentObjective==(useMirau?0:1)) return;
@@ -210,13 +210,13 @@ void pgMoveGUI::chooseObj(bool useMirau){
 
 void pgMoveGUI::onCalibrate(bool isStart, bool isX){
     if(isStart){
-        if(isX) X_cum=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
-        else    Y_cum=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
-        Z_cum=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
+        if(isX) X_cum=go.pCTRL->getMotionSetting("X",CTRL::mst_position);
+        else    Y_cum=go.pCTRL->getMotionSetting("Y",CTRL::mst_position);
+        Z_cum=go.pCTRL->getMotionSetting("Z",CTRL::mst_position);
     }else{
-        Z_cum=go.pRPTY->getMotionSetting("Z",CTRL::mst_position)-Z_cum;
-        if(isX) autoadjXZ->setValue(Z_cum/(go.pRPTY->getMotionSetting("X",CTRL::mst_position)-X_cum));
-        else    autoadjYZ->setValue(Z_cum/(go.pRPTY->getMotionSetting("Y",CTRL::mst_position)-Y_cum));
+        Z_cum=go.pCTRL->getMotionSetting("Z",CTRL::mst_position)-Z_cum;
+        if(isX) autoadjXZ->setValue(Z_cum/(go.pCTRL->getMotionSetting("X",CTRL::mst_position)-X_cum));
+        else    autoadjYZ->setValue(Z_cum/(go.pCTRL->getMotionSetting("Y",CTRL::mst_position)-Y_cum));
     }
 }
 
@@ -235,21 +235,21 @@ void pgMoveGUI::onRmDial(){
 void pgMoveGUI::onDialMove(double x,double y){move(x/1000, y/1000, 0);}
 
 void pgMoveGUI::onGotoX(){
-    if(!go.pRPTY->connected) return;
+    if(!go.pCTRL->isConnected()) return;
     double pos;
     getPos(&pos);
     pos-=QInputDialog::getDouble(gui_activation, "Goto X", "Move (corrected) X to this position:", pos, -2147483647, 2147483647, 6);
     move(-pos,0,0);
 }
 void pgMoveGUI::onGotoY(){
-    if(!go.pRPTY->connected) return;
+    if(!go.pCTRL->isConnected()) return;
     double pos;
     getPos(nullptr, &pos);
     pos-=QInputDialog::getDouble(gui_activation, "Goto Y", "Move (corrected) Y to this position:", pos, -2147483647, 2147483647, 6);
     move(0,-pos,0);
 }
 void pgMoveGUI::onGotoZ(){
-    if(!go.pRPTY->connected) return;
+    if(!go.pCTRL->isConnected()) return;
     double pos;
     getPos(nullptr, nullptr, &pos);
     pos-=QInputDialog::getDouble(gui_activation, "Goto Z", "Move (corrected) Z to this position:", pos, -2147483647, 2147483647, 6);
@@ -257,7 +257,7 @@ void pgMoveGUI::onGotoZ(){
 }
 
 void pgMoveGUI::onGotoLoadedScan(){
-    if(!go.pRPTY->connected || LS_xyz==nullptr) return;
+    if(!go.pCTRL->isConnected() || LS_xyz==nullptr) return;
     double pos[3];
     getPos(&pos[0], &pos[1], &pos[2]);
     move(LS_xyz[0]-pos[0],LS_xyz[1]-pos[1],LS_xyz[2]-pos[2]);
@@ -276,12 +276,12 @@ void pgMoveGUI::onMarkPointForCalib(bool state){
     }
     if(state){
         reqstNextClickPixDiff=true;
-        curP4calib.DXmm=-go.pRPTY->getMotionSetting("X",CTRL::mst_position);
-        curP4calib.DYmm=-go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
+        curP4calib.DXmm=-go.pCTRL->getMotionSetting("X",CTRL::mst_position);
+        curP4calib.DYmm=-go.pCTRL->getMotionSetting("Y",CTRL::mst_position);
     }else{
         if(reqstNextClickPixDiff==true) return;
-        curP4calib.DXmm+=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
-        curP4calib.DYmm+=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
+        curP4calib.DXmm+=go.pCTRL->getMotionSetting("X",CTRL::mst_position);
+        curP4calib.DYmm+=go.pCTRL->getMotionSetting("Y",CTRL::mst_position);
         p4calib.push_back(curP4calib);
         ptFeedback->setText(QString::fromStdString(util::toString("Have ",p4calib.size()," points.")));
     }
@@ -429,28 +429,28 @@ double pgMoveGUI::px2mm(double coord, int index, double nmppx){
 void pgMoveGUI::getPos(double* X, double* Y, double* Z){
     double xr, yr, zr;
     if(X!=nullptr || Y!=nullptr){
-        xr=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
-        yr=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
+        xr=go.pCTRL->getMotionSetting("X",CTRL::mst_position);
+        yr=go.pCTRL->getMotionSetting("Y",CTRL::mst_position);
     }
     if(X!=nullptr) *X=Xcor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0));
     if(Y!=nullptr) *Y=Ycor(xr-((currentObj==1)?_objectiveDisplacement[0]:0),yr-((currentObj==1)?_objectiveDisplacement[1]:0));
     if(Z!=nullptr){
-        zr=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
+        zr=go.pCTRL->getMotionSetting("Z",CTRL::mst_position);
         *Z=zr-((currentObj==1)?_objectiveDisplacement[2]:0);
     }
 }
 
 void pgMoveGUI::_onMarkObjDisY(bool isStart){
     if(isStart){
-        tmpOD[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position);
-        tmpOD[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position);
-        tmpOD[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position);
+        tmpOD[0]=go.pCTRL->getMotionSetting("X",CTRL::mst_position);
+        tmpOD[1]=go.pCTRL->getMotionSetting("Y",CTRL::mst_position);
+        tmpOD[2]=go.pCTRL->getMotionSetting("Z",CTRL::mst_position);
     }else{
         for(unsigned i=0;i!=3;i++) _objectiveDisplacement[i]=0;  // to prevent move
         chooseObj(false);
-        _objectiveDisplacement[0]=go.pRPTY->getMotionSetting("X",CTRL::mst_position)-tmpOD[0];
-        _objectiveDisplacement[1]=go.pRPTY->getMotionSetting("Y",CTRL::mst_position)-tmpOD[1];
-        _objectiveDisplacement[2]=go.pRPTY->getMotionSetting("Z",CTRL::mst_position)-tmpOD[2];
+        _objectiveDisplacement[0]=go.pCTRL->getMotionSetting("X",CTRL::mst_position)-tmpOD[0];
+        _objectiveDisplacement[1]=go.pCTRL->getMotionSetting("Y",CTRL::mst_position)-tmpOD[1];
+        _objectiveDisplacement[2]=go.pCTRL->getMotionSetting("Z",CTRL::mst_position)-tmpOD[2];
     }
 }
 void pgMoveGUI::onSettingsObjectiveChange(int index){
@@ -464,7 +464,7 @@ void pgMoveGUI::onSettingsObjectiveChange(int index){
     }
 }
 void pgMoveGUI::wait4motionToComplete(){
-    CTRL::CO CO(go.pRPTY);
+    CTRL::CO CO(go.pCTRL);
     CO.addHold("X",CTRL::he_motion_ontarget);
     CO.addHold("Y",CTRL::he_motion_ontarget);
     CO.addHold("Z",CTRL::he_motion_ontarget);

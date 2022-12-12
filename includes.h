@@ -5,10 +5,7 @@
 #ifndef INCLUDES_H
 #define INCLUDES_H
 
-#include "DEV/GCAM/frame_queues.h"
-#include "DEV/GCAM/gcam.h"
-#include "DEV/RPTY/rpty.h"
-#include "DEV/CNC/cnc.h"
+#include "DEV/device_includes.h"
 #include "globals.h"
 #include "UTIL/containers.h"
 #include "UTIL/utility.h"

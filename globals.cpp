@@ -29,33 +29,50 @@ void myterminate() {                                                        // i
     }
     std::thread th(&globals::quit, &go);
     th.detach();
-    while(1) std::this_thread::sleep_for (std::chrono::seconds(99999));
+    //while(1) std::this_thread::sleep_for (std::chrono::seconds(99999));
 }
 
 void globals::startup(int argc, char *argv[]){
+    qapp = new QApplicationQN(argc, argv);
     if (started) return; started=true;
     std::set_terminate(myterminate);
-    cinthr=new std::thread(&cinlisten::run, new cinlisten());            //so that I can kill it in the terminal if qt freezes, which is often over ssh -x
+    //cinthr=new std::thread(&cinlisten::run, new cinlisten());            //so that I can kill it in the terminal if qt freezes, which is often over ssh -x
+
+    // registering nanostructuring setup devices, threads
+    std::string CTRL_TYPE="ctrl_RPTY";       // default to RPTY for backward compatibility
+    conf["CTRL_TYPE"]=CTRL_TYPE;
+    conf.load();
+    if(CTRL_TYPE=="ctrl_RPTY"){
+        pCTRL=newThread<RPTY>()->obj;
+        conf["RPTY"]=pCTRL->conf;                           // keep RPTY name for backward compatibility, TODO change in future if more devices are implemented
+    }else{
+        conf["CTRL_TYPE"].comments().push_back("Implemented contollers: ctrl_RPTY.");
+        conf["CTRL_TYPE"].save();
+        throw std::runtime_error(util::toString("In globals::startup, uncrecognized/nonexistant contoller for nanostructuring: ",CTRL_TYPE,". Saved possible options to conf."));
+    }
+    GUIdevList.push_back(pCTRL);
+    pCTRL->registerDevice("X", CTRL::dt_motion);
+    pCTRL->registerDevice("Y", CTRL::dt_motion);
+    pCTRL->registerDevice("Z", CTRL::dt_motion);
+    pCTRL->registerDevice("XTilt", CTRL::dt_motion);
+    pCTRL->registerDevice("YTilt", CTRL::dt_motion);
+    pCTRL->registerDevice("trigCam", CTRL::dt_gpio);
+    pCTRL->registerDevice("wrLaser", CTRL::dt_gpio);
+    pCTRL->registerDevice("ilumLED", CTRL::dt_gpio);
+    pCTRL->registerDevice("timer", CTRL::dt_timer);
+    // done registering devices
+
+    // all cams go here
+    // for now define cameras in /DEV/GCAM/_config.h
+    // nanostructuring camera is named iuScope
     pGCAM=newThread<GCAM>()->obj;
-    pRPTY=newThread<RPTY>()->obj;
-    pCNC=newThread<CNC>()->obj;
+    GUIdevList.push_back(pGCAM);
     //std::this_thread::sleep_for (std::chrono::milliseconds(100));
     conf["GCAM"]=pGCAM->conf;
-    conf["RPTY"]=pRPTY->conf;
-    conf["CNC"]=pCNC->conf;
 
-    pRPTY->registerDevice("X", CTRL::dt_motion);
-    pRPTY->registerDevice("Y", CTRL::dt_motion);
-    pRPTY->registerDevice("Z", CTRL::dt_motion);
-    pRPTY->registerDevice("XTilt", CTRL::dt_motion);
-    pRPTY->registerDevice("YTilt", CTRL::dt_motion);
-    pRPTY->registerDevice("trigCam", CTRL::dt_gpio);
-    pRPTY->registerDevice("wrLaser", CTRL::dt_gpio);
-    pRPTY->registerDevice("ilumLED", CTRL::dt_gpio);
-    pRPTY->registerDevice("timer", CTRL::dt_timer);
     conf.load();
+    pGCAM->update();
 
-    qapp = new QApplicationQN(argc, argv);
     MainWindow w(qapp);
     w.setWindowTitle("MLA-CS");
     w.show();

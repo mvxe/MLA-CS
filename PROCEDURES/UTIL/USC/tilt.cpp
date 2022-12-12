@@ -46,21 +46,21 @@ void pgTiltGUI::init_gui_settings(){
 }
 
 void pgTiltGUI::doTilt(double magnitudeX, double magnitudeY, bool scale){
-    go.pRPTY->motion("XTilt",tilt_mult->val*magnitudeX,0,0,CTRL::MF_RELATIVE);
-    go.pRPTY->motion("YTilt",tilt_mult->val*magnitudeY,0,0,CTRL::MF_RELATIVE);
+    go.pCTRL->motion("XTilt",tilt_mult->val*magnitudeX,0,0,CTRL::MF_RELATIVE);
+    go.pCTRL->motion("YTilt",tilt_mult->val*magnitudeY,0,0,CTRL::MF_RELATIVE);
     pgMGUI->move(0,0,tilt_mult->val*(magnitudeX*focus_autoadjX->val+magnitudeY*focus_autoadjY->val));
 }
 
 void pgTiltGUI::onCalibrate(bool isStart, bool isX){
     if(isStart){
-        if(isX) Tilt_cum_X=go.pRPTY->getMotionSetting("XTilt",CTRL::mst_position);
-        else    Tilt_cum_Y=go.pRPTY->getMotionSetting("YTilt",CTRL::mst_position);
+        if(isX) Tilt_cum_X=go.pCTRL->getMotionSetting("XTilt",CTRL::mst_position);
+        else    Tilt_cum_Y=go.pCTRL->getMotionSetting("YTilt",CTRL::mst_position);
         pgMGUI->getPos(nullptr,nullptr,&Z_cum);
     }else{
         double tmp;
         pgMGUI->getPos(nullptr,nullptr,&tmp);
         Z_cum-=tmp;
-        if(isX) focus_autoadjX->setValue(Z_cum/(go.pRPTY->getMotionSetting("XTilt",CTRL::mst_position)-Tilt_cum_X));
-        else    focus_autoadjY->setValue(Z_cum/(go.pRPTY->getMotionSetting("YTilt",CTRL::mst_position)-Tilt_cum_Y));
+        if(isX) focus_autoadjX->setValue(Z_cum/(go.pCTRL->getMotionSetting("XTilt",CTRL::mst_position)-Tilt_cum_X));
+        else    focus_autoadjY->setValue(Z_cum/(go.pCTRL->getMotionSetting("YTilt",CTRL::mst_position)-Tilt_cum_Y));
     }
 }

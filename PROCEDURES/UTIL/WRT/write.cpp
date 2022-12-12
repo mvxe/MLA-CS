@@ -1,7 +1,6 @@
 #include "write.h"
 #include "GUI/gui_includes.h"
 #include "includes.h"
-#include "GUI/tab_monitor.h"    //for debug purposes
 #include <time.h>
 #include "opencv2/core/utils/filesystem.hpp"
 #include <filesystem>
@@ -477,7 +476,7 @@ void pgWrite::on_scan_default_folder(){
     if(!folder.empty()) scan_default_folder->set(folder);
 }
 void pgWrite::onPulse(){
-    if(!go.pRPTY->connected) return;
+    if(!go.pCTRL->isConnected()) return;
     wasMirau=pgMGUI->currentObj==0;
     pgMGUI->chooseObj(false);    // switch to writing
     double pulse, vfocus{0}, vfocusXcor{0}, vfocusYcor{0};
@@ -489,7 +488,7 @@ void pgWrite::onPulse(){
     vfocus=focus->val/1000;
     vfocusXcor=focusXcor->val/1000;
     vfocusYcor=focusYcor->val/1000;
-    CTRL::CO co(go.pRPTY);
+    CTRL::CO co(go.pCTRL);
     pgMGUI->corCOMove(co,vfocusXcor,vfocusYcor,vfocus);
     co.addHold("X",CTRL::he_motion_ontarget);
     co.addHold("Y",CTRL::he_motion_ontarget);
@@ -600,7 +599,7 @@ void pgWrite::onWriteDM(){
     }
 
     // save coords for scan
-    while(go.pRPTY->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+    while(go.pCTRL->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
 
@@ -665,7 +664,7 @@ void pgWrite::onWriteDM(){
 }
 void pgWrite::scheduleWriteScan(cv::Mat& src, writePars pars, std::string scanSaveFilename, std::string notes){
     // save coords for scan
-    while(go.pRPTY->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
+    while(go.pCTRL->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
 
     scheduleWrite(src, pars, scanSaveFilename);
@@ -771,7 +770,7 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
 
     // at this point resizedWrite contains the desired depth at each point
     std::lock_guard<std::mutex>lock(MLP._lock_proc);
-    if(!go.pRPTY->connected) return true;
+    if(!go.pCTRL->isConnected()) return true;
     wasMirau=pgMGUI->currentObj==0;
     pgMGUI->chooseObj(false);    // switch to writing
 
@@ -805,7 +804,7 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
     for(int wr=0;wr<writes.size();wr++){
         auto& write=writes[wr];
 
-        CTRL::CO CO(go.pRPTY);
+        CTRL::CO CO(go.pCTRL);
         double offsX,offsY;
         offsX=(write.cols-1)*vpointSpacing;
         offsY=(write.rows-1)*vpointSpacing;
@@ -871,10 +870,10 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
                 double distance;    // in um
             };
             std::vector<pt> lut;
-            const double velX=go.pRPTY->getMotionSetting("X",CTRL::mst_defaultVelocity);
-            const double velY=go.pRPTY->getMotionSetting("Y",CTRL::mst_defaultVelocity);
-            const double accX=go.pRPTY->getMotionSetting("X",CTRL::mst_defaultAcceleration);
-            const double accY=go.pRPTY->getMotionSetting("Y",CTRL::mst_defaultAcceleration);
+            const double velX=go.pCTRL->getMotionSetting("X",CTRL::mst_defaultVelocity);
+            const double velY=go.pCTRL->getMotionSetting("Y",CTRL::mst_defaultVelocity);
+            const double accX=go.pCTRL->getMotionSetting("X",CTRL::mst_defaultAcceleration);
+            const double accY=go.pCTRL->getMotionSetting("Y",CTRL::mst_defaultAcceleration);
             double timeX,timeY;
             size_t iter;
 
@@ -1114,7 +1113,7 @@ void pgWrite::drawWriteArea(cv::Mat* img){
         xSize=round(ratio*WRImage.cols)*1000/pgMGUI->getNmPPx();
         ySize=round(ratio*WRImage.rows)*1000/pgMGUI->getNmPPx();
     }else if(drawWriteAreaOn==3){  // scan
-        if(!scanB->isEnabled() || !go.pRPTY->connected) return;
+        if(!scanB->isEnabled() || !go.pCTRL->isConnected()) return;
         pgMGUI->getPos(&xShiftmm, &yShiftmm);
         xShiftmm-=scanCoords[0];
         yShiftmm-=scanCoords[1];

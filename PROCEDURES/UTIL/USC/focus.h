@@ -3,6 +3,7 @@
 
 #include "PROCEDURES/procedure.h"
 #include "UTIL/img_util.h"
+#include "DEV/controller.h"
 class QVBoxLayout;
 class QHBoxLayout;
 class val_selector;

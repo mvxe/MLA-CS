@@ -1,4 +1,5 @@
 #include "DEV/GCAM/gcam.h"
+#include "GUI/gui_aux_objects.h"
 
 camobj::camobj(std::string strID) : camobj_config(strID), selected_ID(&mkmx,strID){
     conf["selected_ID"]=selected_ID;
@@ -154,6 +155,7 @@ void camobj::end(){
     }
     if(control_lost) cobj->MVM_list=true;
     control_lost=false;
+    GUI_icon->setPix(pixmaps::px_offline);
 }
 
 void camobj::control_lost_cb (ArvDevice *ldev){
@@ -179,6 +181,7 @@ void camobj::con_cam(){
     arv_stream_set_emit_signals (str, TRUE);
     start();
     _connected=true;
+    GUI_icon->setPix(pixmaps::px_online);
 }
 
 
