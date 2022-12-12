@@ -140,6 +140,8 @@ Q_SIGNALS:
 private Q_SLOTS:
     void on_menu_change();
     void onClicked();   //for addShown
+public:
+    bool eventFilter(QObject *obj, QEvent *event) override;     // disable scroll wheel event that conflicts with some of our custom widgets
 };
 
 // GUI adaptiveScrollBar

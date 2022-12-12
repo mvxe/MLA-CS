@@ -243,6 +243,14 @@ twd_selector::twd_selector(std::string menu, std::string init, bool twidSetMargi
     }else layouts=layout;
     if(addStretch) layouts->addStretch(0);
     insertOfs=(addStretch)?1:0;
+    this->installEventFilter(this);
+}
+bool twd_selector::eventFilter(QObject *obj, QEvent *event){
+    if (event->type() == QEvent::Wheel){
+        return true;
+    }else{
+        return QObject::eventFilter(obj, event);
+    }
 }
 void twd_selector::addWidget(QWidget* widget, QString label){
     widgets.push_back(widget);
