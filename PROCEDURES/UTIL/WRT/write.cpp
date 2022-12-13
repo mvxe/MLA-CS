@@ -197,6 +197,11 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
         filenaming=new lineedit_gs("%Y-%m/$T$N-$F-$V");
         conf["filenaming"]=filenaming;
         folderhcon->addWidget(new twid(new QLabel("File naming:"),filenaming));
+        connect(filenaming, SIGNAL(changed()), this, SLOT(onCheckTagString()));
+        tagnaming=new lineedit_gs("$T$N");
+        conf["tagnaming"]=tagnaming;
+        folderhcon->addWidget(new twid(new QLabel("Tag autofill:"),tagnaming));
+        connect(tagnaming, SIGNAL(changed()), this, SLOT(onCheckTagString()));
         std::string tooltip{"Date&Time is in ctime/strftime format (%Y, %m, %d, etc).\n"
                             "Other than that custom symbols are:\n"
                             "$T - string tag\n"
@@ -204,13 +209,9 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
                             "$F - source filename\n"
                             "$V - maxval\n"
                             "$X - scaling"};
-        filenaming->setToolTip(QString::fromStdString(tooltip));
-        connect(filenaming, SIGNAL(changed()), this, SLOT(onCheckTagString()));
-        tagnaming=new lineedit_gs("$T$N");
         tagnaming->setToolTip(QString::fromStdString(tooltip));
-        conf["tagnaming"]=tagnaming;
-        folderhcon->addWidget(new twid(new QLabel("Tag autofill:"),tagnaming));
-        connect(tagnaming, SIGNAL(changed()), this, SLOT(onCheckTagString()));
+        tooltip+="\n$W - tag text";
+        filenaming->setToolTip(QString::fromStdString(tooltip));
         numbericTagMinDigits=new val_selector(3, "Minimum number of digits in numeric tag: ", 1, 10, 0);
         conf["numbericTagMinDigits"]=numbericTagMinDigits;
         folderhcon->addWidget(numbericTagMinDigits);
@@ -253,8 +254,8 @@ void pgWrite::replacePlaceholdersInString(std::string& src){
         src=buffer;
     }
     while(std::isspace(src[src.size()-1])) src.pop_back();
-    std::string placeholders[5]={"$T","$N","$F","$V","$X"};
-    std::string replacements[5]={tagString->text().toStdString(),std::to_string(static_cast<int>(tagUInt->val)),fileName,std::to_string(lastDepth),std::to_string(imgUmPPx->val)};
+    std::string placeholders[6]={"$T","$N","$F","$V","$X","$W"};
+    std::string replacements[6]={tagString->text().toStdString(),std::to_string(static_cast<int>(tagUInt->val)),fileName,std::to_string(lastDepth),std::to_string(imgUmPPx->val),tagText->text().toStdString()};
     for(int i:{3,4}) if(replacements[i].find(".")!=std::string::npos) while(replacements[i].back()=='0') replacements[i].pop_back();    //remove extra zeroes
     for(int i:{3,4}) if(replacements[i].back()=='.') replacements[i].pop_back();    //if integer remove point
     found=replacements[2].find_last_of("/");
@@ -262,7 +263,7 @@ void pgWrite::replacePlaceholdersInString(std::string& src){
     found=replacements[2].find_last_of(".");
     if(found!=std::string::npos) replacements[2].erase(found,replacements[2].size()-found);
     while(replacements[1].size()<numbericTagMinDigits->val) replacements[1].insert(0,"0");
-    for(int i=0;i!=5;i++) while(1){
+    for(int i=0;i!=6;i++) while(1){
         found=src.find(placeholders[i]);
         if(found==std::string::npos) break;
         stripDollarSigns(replacements[i]);
