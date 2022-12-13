@@ -59,7 +59,9 @@ void saveDialog::recursiveList(uint depth, varCheckList* _vcl){
     tw->layout->insertSpacing(0,depth*10);
     layout.addWidget(tw);
     if(_vcl->conf->map!=nullptr) for(auto& item:*_vcl->conf->map){
-        if(!((*_vcl->conf->map)[item.first]).changed()) continue;
+        try{
+            if(!((*_vcl->conf->map)[item.first]).changed()) continue;
+        }catch(...){}
         _vcl->queue.emplace();
         _vcl->queue.back().chbox=new hQCheckBox(QString::fromStdString(item.first), this);
         _vcl->queue.back().chbox->setChecked(true);
