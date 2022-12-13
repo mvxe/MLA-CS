@@ -66,13 +66,15 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     connect(writeTag, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOnTag(bool)));
     connect(writeTag, SIGNAL(released()), this, SLOT(onWriteTag()));
     alayout->addWidget(new twid(writeTag,new QLabel("Text:"),tagText));
-
+    tagAutoUpdate= new checkbox_gs(true,"Automatic tag text");
+    conf["tagAutoUpdate"]=tagAutoUpdate;
+    connect(tagAutoUpdate, SIGNAL(changed(bool)), this, SLOT(onTagAutoUpdate(bool)));
+    alayout->addWidget(tagAutoUpdate);
     tagString=new lineedit_gs("A");
     conf["tagString"]=tagString;
     tagSTwid=new twid(new QLabel("Tag String:"),tagString);
     tagSTwid->setVisible(false);
     connect(tagString, SIGNAL(changed()), this, SLOT(onRecomputeTagString()));
-    alayout->addWidget(tagSTwid);
     tagUInt=new val_selector(0, "Tag UInt: ", 0, 999999, 0);
     conf["tagUInt"]=tagUInt;
     tagUInt->setVisible(false);
@@ -80,7 +82,8 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     guessTagUInt=new QPushButton("Guess");
     connect(guessTagUInt, SIGNAL(released()), this, SLOT(guessAndUpdateNextTagUInt()));
     guessTagUInt->setFlat(true);
-    alayout->addWidget(new twid(tagUInt,guessTagUInt));
+    tagtwid=new vtwid(tagSTwid,new twid(tagUInt,guessTagUInt));
+    alayout->addWidget(tagtwid);
 
     notes=new QPushButton("Edit notes");
     conf["notes"]=notestring;
@@ -293,6 +296,7 @@ void pgWrite::onRecomputeTagUInt(){
     if(tagnaming->get().find("$N")!=std::string::npos) onRecomputeTag();
 }
 void pgWrite::onRecomputeTag(){
+    if(!tagAutoUpdate->val) return;
     std::string ttext=tagnaming->get();
     if(!ttext.empty()){
         replacePlaceholdersInString(ttext);
@@ -345,6 +349,9 @@ void pgWrite::onUseWriteScheduling(bool state){
     itemMoveXCoord->setVisible(state);
     itemMoveYCoord->setVisible(state);
     scheduleScans->setVisible(state);
+}
+void pgWrite::onTagAutoUpdate(bool state){
+    tagtwid->setVisible(state);
 }
 QStandardItem* pgWrite::addScheduleItem(std::string status, std::string type, std::string name, bool toTop){
     schedulemod->insertRows(toTop?0:schedulemod->rowCount(),1);

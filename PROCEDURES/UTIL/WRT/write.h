@@ -77,6 +77,8 @@ private:
     QLineEdit* tagText;
     HQPushButton* writeTag;
     twid* tagSTwid;
+    checkbox_gs* tagAutoUpdate;
+    vtwid* tagtwid;
     lineedit_gs* tagString;
     val_selector* tagUInt;
     QPushButton* guessTagUInt;
@@ -216,6 +218,7 @@ private Q_SLOTS:
     void onItemMoveYCoord(double value);
     void onScheduleWriteStart();
     void onClearNonPending();
+    void onTagAutoUpdate(bool state);
 private:
     bool _onScan(cv::Rect ROI={0,0,0,0}, double* coords=nullptr);
     bool _onSave(bool ask=false, std::string filename="", std::string config="");
