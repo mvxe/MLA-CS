@@ -293,6 +293,7 @@ std::vector<std::string> RPTY::getDevices(){
 }
 
 double RPTY::getMotionSetting(std::string ID, mst setting){
+    if(!connected) return 0;
     std::lock_guard<std::recursive_mutex>lock(mux);
     if(setting==mst_position_update_pending) return recheck_position;
     _motionDeviceThrowExc(ID,"getMotionSetting");
