@@ -81,6 +81,7 @@ private:
     val_selector* tagUInt;
     QPushButton* guessTagUInt;
     checkbox_gs* useWriteScheduling;
+    checkbox_gs* scheduleScans;
     twid* schedulelwtwid;
     QTreeView* schedulelw;
     QStandardItemModel* schedulemod;

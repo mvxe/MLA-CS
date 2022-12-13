@@ -90,7 +90,10 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
 
     useWriteScheduling=new checkbox_gs(false,"Enable write scheduling");
     connect(useWriteScheduling, SIGNAL(changed(bool)), this, SLOT(onUseWriteScheduling(bool)));
-    alayout->addWidget(new twid(useWriteScheduling));
+    scheduleScans=new checkbox_gs(true,"Schedule scans");
+    conf["scheduleScans"]=scheduleScans;
+    scheduleScans->setVisible(false);
+    alayout->addWidget(new twid(useWriteScheduling,scheduleScans));
     schedulelw=new QTreeView;
     schedulemod=new QStandardItemModel(0, 3);
     schedulemod->setHorizontalHeaderLabels({"Status","Type","Name"});
@@ -341,6 +344,7 @@ void pgWrite::onUseWriteScheduling(bool state){
     ovl.enabled=state;
     itemMoveXCoord->setVisible(state);
     itemMoveYCoord->setVisible(state);
+    scheduleScans->setVisible(state);
 }
 QStandardItem* pgWrite::addScheduleItem(std::string status, std::string type, std::string name, bool toTop){
     schedulemod->insertRows(toTop?0:schedulemod->rowCount(),1);
@@ -681,13 +685,15 @@ void pgWrite::onWriteDM(){
              scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(scanCoords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(scanCoords[1]-pgBeAn->writeBeamCenterOfsY,0));
         }
 
-        scheduled.emplace_back();
-        for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
-        scheduled.back().isWrite=false;
-        scheduled.back().filename=filename;
-        scheduled.back().conf=genConfig();
-        scheduled.back().scanROI=scanROI;
-        scheduled.back().ptr=addScheduleItem("Pending","Scan",filename,false);
+        if(scheduleScans->val){
+            scheduled.emplace_back();
+            for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
+            scheduled.back().isWrite=false;
+            scheduled.back().filename=filename;
+            scheduled.back().conf=genConfig();
+            scheduled.back().scanROI=scanROI;
+            scheduled.back().ptr=addScheduleItem("Pending","Scan",filename,false);
+        }
 
         return;
     }
