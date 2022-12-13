@@ -432,17 +432,17 @@ moveDial::moveDial(){
     dial=new QDial;
     dial->setMaximumSize(50,50);
     dial->setMinimumSize(50,50);
-    dial->setRange(0,359);
+    dial->setRange(0,360);
     dial->setWrapping(true);
     dial->setValue(270);
     connect(dial, SIGNAL(valueChanged(int)), this, SLOT(onDialChanged(int)));
     dis=new QDoubleSpinBox;
-    dis->setRange(0,1000000);
+    dis->setRange(-1000000,1000000);
     dis->setDecimals(3);
     dis->setValue(1);
     dis->setPrefix("[Distance] "); dis->setSuffix(" um");
     ang=new QDoubleSpinBox;
-    ang->setRange(0,360);
+    ang->setRange(-1000000,1000000);
     ang->setDecimals(3);
     ang->setValue(0);
     ang->setPrefix("[Angle] "); ang->setSuffix(" deg");
@@ -468,9 +468,13 @@ void moveDial::onDialChanged(int val){
     ang->setValue(res);
 }
 void moveDial::onAngChanged(double val){
+    val=std::fmod(val,360);
+    if(val<0) val+=360;
     int res=round(val+270);
     if(res>=360) res-=360;
+    dial->blockSignals(true);
     dial->setValue(res);
+    dial->blockSignals(false);
 }
 
 // HORIZONTAL LAYOUT WIDGET FOR CONVENIENCE
