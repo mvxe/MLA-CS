@@ -129,11 +129,22 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     schedulelwtwid->setVisible(false);
     alayout->addWidget(schedulelwtwid);
 
+    itemMoveXCoord=new eadScrlBar("Move X: ", 100,20);
+    connect(itemMoveXCoord->abar, SIGNAL(change(double)), this, SLOT(onItemMoveXCoord(double)));
+    itemMoveXCoord->setVisible(false);
+    itemMoveYCoord=new eadScrlBar("Move Y: ", 100,20);
+    connect(itemMoveYCoord->abar, SIGNAL(change(double)), this, SLOT(onItemMoveYCoord(double)));
+    itemMoveYCoord->setVisible(false);
+    alayout->addWidget(new twid(itemMoveXCoord,itemMoveYCoord));
+
     scheduleWriteStart=new QPushButton("Execute list");
     scheduleWriteStart->setVisible(false);
     scheduleWriteStart->setEnabled(false);
     connect(scheduleWriteStart, SIGNAL(released()), this, SLOT(onScheduleWriteStart()));
     alayout->addWidget(new twid(scheduleWriteStart));
+
+
+
 
     writeDM->setEnabled(false);
 
@@ -328,6 +339,8 @@ void pgWrite::onUseWriteScheduling(bool state){
     scheduleWriteStart->setVisible(state);
     scheduleWriteStart->setEnabled(pendingInScheduleList());
     ovl.enabled=state;
+    itemMoveXCoord->setVisible(state);
+    itemMoveYCoord->setVisible(state);
 }
 QStandardItem* pgWrite::addScheduleItem(std::string status, std::string type, std::string name, bool toTop){
     schedulemod->insertRows(toTop?0:schedulemod->rowCount(),1);
@@ -383,6 +396,38 @@ void pgWrite::onItemRemove(){
     schedulemod->removeRow(ci.row());
     scheduleWriteStart->setEnabled(pendingInScheduleList());
 }
+void pgWrite::onItemMoveXCoord(double value){
+    auto ci=schedulelw->currentIndex();
+    if(!ci.isValid()) return;
+    for(std::vector<schItem>::iterator it=scheduled.begin();it!=scheduled.end();++it){
+        if(it->ptr==schedulemod->item(ci.row(),0)){
+            it->coords[0]+=value*1e-7;
+            if(it->isWrite) updateItemCoord(it);
+            break;
+        }
+    }
+}
+void pgWrite::onItemMoveYCoord(double value){
+    auto ci=schedulelw->currentIndex();
+    if(!ci.isValid()) return;
+    for(std::vector<schItem>::iterator it=scheduled.begin();it!=scheduled.end();++it){
+        if(it->ptr==schedulemod->item(ci.row(),0)){
+            it->coords[1]+=value*1e-7;
+            if(it->isWrite) updateItemCoord(it);
+            break;
+        }
+    }
+}
+void pgWrite::updateItemCoord(std::vector<schItem>::iterator it){
+    ovl.rm_overlay(it->overlay);
+    cv::Mat resized;
+    double ratio=it->wps.imgmmPPx*1000;
+    double xSize=round(ratio*it->src.cols)*1000/pgMGUI->getNmPPx(0);
+    double ySize=round(ratio*it->src.rows)*1000/pgMGUI->getNmPPx(0);
+    cv::resize(it->src, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
+    it->overlay=ovl.add_overlay(resized,pgMGUI->mm2px(it->coords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(it->coords[1]-pgBeAn->writeBeamCenterOfsY,0));
+}
+
 void pgWrite::onClearNonPending(){
     for(int i=0;i!=schedulemod->rowCount();i++){
         if(schedulemod->item(i,0)->text()!="Pending"){

@@ -91,6 +91,8 @@ private:
     QPushButton* itemRemove;
     QPushButton* clearNonPending;
     QPushButton* scheduleWriteStart;
+    eadScrlBar* itemMoveXCoord;
+    eadScrlBar* itemMoveYCoord;
 
     struct schItem{
         QStandardItem* ptr;
@@ -209,11 +211,14 @@ private Q_SLOTS:
     void onItemMoveDown();
     void onItemMoveBottom();
     void onItemRemove();
+    void onItemMoveXCoord(double value);
+    void onItemMoveYCoord(double value);
     void onScheduleWriteStart();
     void onClearNonPending();
 private:
     bool _onScan(cv::Rect ROI={0,0,0,0}, double* coords=nullptr);
     bool _onSave(bool ask=false, std::string filename="", std::string config="");
+    void updateItemCoord(std::vector<schItem>::iterator it);
 };
 
 
