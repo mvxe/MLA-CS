@@ -39,7 +39,7 @@ RESOURCES += \
     icons/icon.qrc \
     icons/icon.qrc
 
-unix:!macx: LIBS += -lserial -DVIENNACL_WITH_OPENCL  -lOpenCL -lgsl
+unix:!macx: LIBS += -DVIENNACL_WITH_OPENCL  -lOpenCL -lgsl
 #QMAKE_CXXFLAGS += -g -gdwarf        # for debugging purposes (using heaptrack)
 #QMAKE_CFLAGS+="-fsanitize=address -fno-omit-frame-pointer"       # for debugging purposes : asan
 #QMAKE_LFLAGS+="-fsanitize=address"
