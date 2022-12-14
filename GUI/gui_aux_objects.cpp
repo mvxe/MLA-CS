@@ -159,8 +159,23 @@ smp_selector::smp_selector(QString label, int initialIndex, std::vector<QString>
         _sBtn->menu()->addAction(action);
     }
     connect(_sBtn->menu(), SIGNAL(aboutToHide()), this, SLOT(on_menu_change()));
+    connect(_sBtn->menu(), SIGNAL(aboutToShow()), this, SIGNAL(aboutToShow()), Qt::QueuedConnection);
     connect(this, SIGNAL(_changed(int)), this, SLOT(setIndex(int)));
 
+    if (_index>=labels.size()) _index=0;
+    _sBtn->activeAction=_sBtn->menu()->actions()[_index];
+    _sBtn->setText(_sBtn->activeAction->text());
+}
+void smp_selector::replaceLabels(int index, std::vector<QString> _labels){
+    _index=0;
+    labels=_labels;
+    _sBtn->menu()->clear();
+    for(auto& ln : labels){
+        QAction* action=new QAction;
+        action->setText(ln);
+        _sBtn->menu()->addAction(action);
+    }
+    _index=index;
     if (_index>=labels.size()) _index=0;
     _sBtn->activeAction=_sBtn->menu()->actions()[_index];
     _sBtn->setText(_sBtn->activeAction->text());

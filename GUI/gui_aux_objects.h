@@ -87,6 +87,7 @@ public:
     smp_selector(QString label, int initialIndex, std::vector<QString> labels);
     const std::atomic<int>& index{_index};  // thread safe
     void addWidget(QWidget* widget);
+    void replaceLabels(int index, std::vector<QString> labels);
 
     void set(std::string label);            // thread safe, for toml::vsr
     std::string get();                      // thread safe, for toml::vsr
@@ -105,6 +106,7 @@ Q_SIGNALS:
     void changed();
     void changed(int index);
     void _changed(int index);               // do not use
+    void aboutToShow();
 };
 
 // TAB WIDGET DISPLAY SELECTOR - add widgets with addWidget

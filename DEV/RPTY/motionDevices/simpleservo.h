@@ -28,6 +28,7 @@ public:
     double maxPulseWidth{2.5e-3};
     unsigned n_repeat{10};          // repeat each pulse this many times
     double pulseSpacing{1e-3};      // delay between pulse repeats
+    double iposition;
 };
 
 #endif // SIMPLESERVO_H

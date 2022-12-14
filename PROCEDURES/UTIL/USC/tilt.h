@@ -2,7 +2,6 @@
 #define TILT_H
 
 #include "PROCEDURES/procedure.h"
-#include "UTIL/img_util.h"
 #include <QLabel>
 class QPushButton;
 class joyBttn;
@@ -11,6 +10,7 @@ class QHBoxLayout;
 class val_selector;
 class eadScrlBar;
 class pgMoveGUI;
+class smp_selector;
 namespace cv{class Mat;}
 
 class pgTiltGUI: public QObject{
@@ -32,6 +32,14 @@ public:
     cv::Mat* box;
     eadScrlBar* xTilt;
     eadScrlBar* yTilt;
+    //presets
+    smp_selector* tiltPreset;
+    QPushButton* tiltPresetAdd;
+    QPushButton* tiltPresetRemove;
+    std::vector<std::string> vec_pnames;
+    std::vector<double> vec_pxtilt;
+    std::vector<double> vec_pytilt;
+
 
     //settings
     QVBoxLayout* slayout;
@@ -54,6 +62,10 @@ private Q_SLOTS:
     void onCalibrate(bool isStart, bool isX);
     void _onCalibrate_X(bool isStart){onCalibrate(isStart, true);}
     void _onCalibrate_Y(bool isStart){onCalibrate(isStart, false);}
+    void onTiltPresetAdd();
+    void onTiltPresetRemove();
+    void onTiltPreset();
+    void onUpdateMenu();
 };
 
 

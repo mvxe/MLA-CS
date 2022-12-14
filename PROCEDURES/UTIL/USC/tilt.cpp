@@ -1,6 +1,5 @@
 #include "tilt.h"
 #include "GUI/gui_includes.h"
-#include "includes.h"
 
 pgTiltGUI::pgTiltGUI(pgMoveGUI* pgMGUI): pgMGUI(pgMGUI){
     init_gui_activation();
@@ -17,6 +16,22 @@ void pgTiltGUI::init_gui_activation(){
     yTilt=new eadScrlBar("Adjust Y Tilt: ", 250,20,true);
     connect(yTilt->abar, SIGNAL(change(double)), this, SLOT(_doTilt_Y(double)));
     alayout->addWidget(yTilt);
+
+    tiltPreset=new smp_selector("Apply tilt preset: ",0,{"none"});
+    connect(tiltPreset, SIGNAL(changed()), this, SLOT(onTiltPreset()));
+    connect(tiltPreset, SIGNAL(aboutToShow()), this, SLOT(onUpdateMenu()));
+    conf["vec_pnames"]=vec_pnames;
+    conf["vec_pxtilt"]=vec_pxtilt;
+    conf["vec_pytilt"]=vec_pytilt;
+    tiltPresetAdd=new QPushButton("");
+    tiltPresetAdd->setMaximumSize(20,20);
+    tiltPresetAdd->setIcon(QPixmap(":/edit-add.svg"));
+    tiltPresetRemove=new QPushButton("");
+    tiltPresetRemove->setMaximumSize(20,20);
+    tiltPresetRemove->setIcon(QPixmap(":/gtk-no.svg"));
+    alayout->addWidget(new twid(tiltPreset,tiltPresetAdd,tiltPresetRemove));
+    connect(tiltPresetAdd, SIGNAL(released()), this, SLOT(onTiltPresetAdd()));
+    connect(tiltPresetRemove, SIGNAL(released()), this, SLOT(onTiltPresetRemove()));
 }
 
 void pgTiltGUI::init_gui_settings(){
@@ -63,4 +78,48 @@ void pgTiltGUI::onCalibrate(bool isStart, bool isX){
         if(isX) focus_autoadjX->setValue(Z_cum/(go.pCTRL->getMotionSetting("XTilt",CTRL::mst_position)-Tilt_cum_X));
         else    focus_autoadjY->setValue(Z_cum/(go.pCTRL->getMotionSetting("YTilt",CTRL::mst_position)-Tilt_cum_Y));
     }
+}
+
+void pgTiltGUI::onTiltPresetAdd(){
+    QString text=QInputDialog::getText(nullptr, tr("Add preset with current tilt value"),tr("Specify name for new tilt preset:"));
+    if (!text.isEmpty()){
+        vec_pnames.push_back(text.toStdString());
+        vec_pxtilt.push_back(go.pCTRL->getMotionSetting("XTilt",CTRL::mst_position));
+        vec_pytilt.push_back(go.pCTRL->getMotionSetting("YTilt",CTRL::mst_position));
+        std::vector<QString> qvec_pnames;
+        qvec_pnames.push_back("none");
+        for(auto& item:vec_pnames) qvec_pnames.push_back(QString::fromStdString(item));
+        tiltPreset->replaceLabels(vec_pnames.size(),qvec_pnames);
+    }
+}
+void pgTiltGUI::onTiltPresetRemove(){
+    std::string id=tiltPreset->get();
+    for(size_t i=0;i!=vec_pnames.size();i++) if(vec_pnames[i]==id){
+        vec_pnames.erase(vec_pnames.begin()+i);
+        vec_pxtilt.erase(vec_pxtilt.begin()+i);
+        vec_pytilt.erase(vec_pytilt.begin()+i);
+        std::vector<QString> qvec_pnames;
+        qvec_pnames.push_back("none");
+        for(auto& item:vec_pnames) qvec_pnames.push_back(QString::fromStdString(item));
+        tiltPreset->replaceLabels(0,qvec_pnames);
+        break;
+    }
+}
+
+void pgTiltGUI::onTiltPreset(){
+    std::string id=tiltPreset->get();
+    for(size_t i=0;i!=vec_pnames.size();i++) if(vec_pnames[i]==id){
+        go.pCTRL->motion("XTilt",vec_pxtilt[i],0,0);
+        go.pCTRL->motion("YTilt",vec_pytilt[i],0,0);
+        break;
+    }
+}
+
+void pgTiltGUI::onUpdateMenu(){
+    std::vector<QString> qvec_pnames;
+    qvec_pnames.push_back("none");
+    for(size_t i=0;i!=vec_pnames.size();i++){
+        qvec_pnames.push_back(QString::fromStdString(vec_pnames[i]));
+    }
+    tiltPreset->replaceLabels(0,qvec_pnames);
 }
