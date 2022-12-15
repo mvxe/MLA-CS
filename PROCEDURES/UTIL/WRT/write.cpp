@@ -98,6 +98,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     scheduleScans->setVisible(false);
     alayout->addWidget(new twid(useWriteScheduling,scheduleScans));
     schedulelw=new QTreeView;
+    schedulelw->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
     schedulemod=new QStandardItemModel(0, 3);
     schedulemod->setHorizontalHeaderLabels({"Status","Type","Name"});
     schedulelw->setModel(schedulemod);
@@ -396,37 +397,40 @@ void pgWrite::onItemMoveBottom(){
     schedulelw->setCurrentIndex(schedulemod->index(schedulemod->rowCount()-1,0));
 }
 void pgWrite::onItemRemove(){
-    auto ci=schedulelw->currentIndex();
-    if(!ci.isValid()) return;
-    for(std::vector<schItem>::iterator it=scheduled.begin();it!=scheduled.end();++it){
-        if(it->ptr==schedulemod->item(ci.row(),0)){
-            if(it->overlay!=nullptr) ovl.rm_overlay(it->overlay);
-            scheduled.erase(it);
-            break;
+    for(auto ci:schedulelw->selectionModel()->selectedIndexes()){
+        if(!ci.isValid()) return;
+        for(std::vector<schItem>::iterator it=scheduled.begin();it!=scheduled.end();++it){
+            if(it->ptr==schedulemod->item(ci.row(),0)){
+                if(it->overlay!=nullptr) ovl.rm_overlay(it->overlay);
+                scheduled.erase(it);
+                break;
+            }
         }
+        schedulemod->removeRow(ci.row());
+        scheduleWriteStart->setEnabled(pendingInScheduleList());
     }
-    schedulemod->removeRow(ci.row());
-    scheduleWriteStart->setEnabled(pendingInScheduleList());
 }
 void pgWrite::onItemMoveXCoord(double value){
-    auto ci=schedulelw->currentIndex();
-    if(!ci.isValid()) return;
-    for(std::vector<schItem>::iterator it=scheduled.begin();it!=scheduled.end();++it){
-        if(it->ptr==schedulemod->item(ci.row(),0)){
-            it->coords[0]+=value*1e-7;
-            if(it->isWrite) updateItemCoord(it);
-            break;
+    for(auto ci:schedulelw->selectionModel()->selectedIndexes()){
+        if(!ci.isValid()) return;
+        for(std::vector<schItem>::iterator it=scheduled.begin();it!=scheduled.end();++it){
+            if(it->ptr==schedulemod->item(ci.row(),0)){
+                it->coords[0]+=value*1e-7;
+                if(it->isWrite) updateItemCoord(it);
+                break;
+            }
         }
     }
 }
 void pgWrite::onItemMoveYCoord(double value){
-    auto ci=schedulelw->currentIndex();
-    if(!ci.isValid()) return;
-    for(std::vector<schItem>::iterator it=scheduled.begin();it!=scheduled.end();++it){
-        if(it->ptr==schedulemod->item(ci.row(),0)){
-            it->coords[1]+=value*1e-7;
-            if(it->isWrite) updateItemCoord(it);
-            break;
+    for(auto ci:schedulelw->selectionModel()->selectedIndexes()){
+        if(!ci.isValid()) return;
+        for(std::vector<schItem>::iterator it=scheduled.begin();it!=scheduled.end();++it){
+            if(it->ptr==schedulemod->item(ci.row(),0)){
+                it->coords[1]+=value*1e-7;
+                if(it->isWrite) updateItemCoord(it);
+                break;
+            }
         }
     }
 }
