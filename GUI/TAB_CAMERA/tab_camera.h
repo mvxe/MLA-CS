@@ -24,6 +24,7 @@ private:
 
     QHBoxLayout* layout;
     iImageDisplay* LDisplay;
+    bool blockLDisplayEvents;
     QPixmap* LDisplayPixmap{nullptr};
     QWidget* tBarW;
     QVBoxLayout* layoutTBarW;

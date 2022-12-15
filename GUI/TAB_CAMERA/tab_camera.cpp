@@ -240,12 +240,16 @@ void tab_camera::work_fun(){
                 pgCal->drawWriteArea(&temp);
                 pgWrt->drawWriteArea(&temp);
                 scaleDisplay(temp, QImage::Format_Indexed8);
+                blockLDisplayEvents=false;
 //                cv::applyColorMap(temp, temp, OCV_CM::ids[cm_sel->index]);
 //                cv::cvtColor(temp, temp, cv::COLOR_BGR2RGB);
 //                scaleDisplay(temp, QImage::Format_RGB888);
             }
             else scaleDisplay(*onDisplay, QImage::Format_Indexed8);
             addInfo->setVisible(false);
+        }else if(!go.pGCAM->iuScope->connected){
+            LDisplay->setPixmap(pixmaps::px_offline);
+            blockLDisplayEvents=true;
         }
         if(scanRes->changed() || cm_sel->index!=oldCm || redrawHistClrmap || pgHistGUI->changed || updateDisp){
             const pgScanGUI::scanRes* res;
@@ -292,6 +296,7 @@ void tab_camera::work_fun(){
                 }
 
                 scaleDisplay(display, QImage::Format_RGBA8888);
+                blockLDisplayEvents=false;
                 if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0 || res->avgNum>1){
                     std::string text;
                     if(res->tiltCor[0]!=0 || res->tiltCor[1]!=0) text+=util::toString("Tilt correction was: X: ",res->tiltCor[0],", Y: ",res->tiltCor[1],"\n");
@@ -300,9 +305,12 @@ void tab_camera::work_fun(){
                     addInfo->setText(QString::fromStdString(text));
                     addInfo->setVisible(true);
                 } else addInfo->setVisible(false);
-
             }
             oldCm=cm_sel->index;
+        }
+        if(LDisplay->pixmap()->isNull()){
+            LDisplay->setPixmap(pixmaps::px_offline);
+            blockLDisplayEvents=true;
         }
     }
     oldIndex=selDisp->index;
@@ -396,6 +404,7 @@ void iImageDisplay::calsVars(QMouseEvent *event, double* xcoord, double* ycoord,
 }
 
 void iImageDisplay::mouseMoveEvent(QMouseEvent *event){
+    if(parent->blockLDisplayEvents) return;
     double xcoord,ycoord,pxH;
     calsVars(event, &xcoord, &ycoord, nullptr, &pxH);
     parent->selCurX=xcoord;
@@ -413,6 +422,7 @@ void iImageDisplay::mouseMoveEvent(QMouseEvent *event){
     else{}
 }
 void iImageDisplay::mousePressEvent(QMouseEvent *event){
+    if(parent->blockLDisplayEvents) return;
     double xcoord,ycoord,pxH;
     calsVars(event, &xcoord, &ycoord, nullptr, &pxH);
     parent->selStartX=xcoord; parent->selCurX=xcoord;
@@ -439,6 +449,7 @@ void iImageDisplay::mousePressEvent(QMouseEvent *event){
     }
 }
 void iImageDisplay::mouseReleaseEvent(QMouseEvent *event){
+    if(parent->blockLDisplayEvents) return;
     double xcoord,ycoord,pxW,pxH;
     calsVars(event, &xcoord, &ycoord, &pxW, &pxH);
     parent->selEndX=xcoord;
