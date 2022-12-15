@@ -615,9 +615,6 @@ writeSettings::writeSettings(uint num, pgWrite* parent): parent(parent), p_ready
         depthMaxval=new val_selector(10, "Maxval=", 0.1, 500, 3, 0, {"nm"});
         parent->conf[name]["depthMaxval"]=depthMaxval;
         slayout->addWidget(depthMaxval);
-        frameDis=new val_selector(10, "Frame Distance=", 0.1, 500, 3, 0, {"um"});
-        parent->conf[name]["frameDis"]=frameDis;
-        slayout->addWidget(frameDis);
     }
 }
 void writeSettings::onUsingBSpline(bool state){

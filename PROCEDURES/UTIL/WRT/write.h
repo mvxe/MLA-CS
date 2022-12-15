@@ -251,7 +251,6 @@ public:
     val_selector* fontThickness;
     val_selector* imgUmPPx;
     val_selector* depthMaxval;
-    val_selector* frameDis;
 
     bool& p_ready;
 
