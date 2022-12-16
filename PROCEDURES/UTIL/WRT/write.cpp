@@ -99,7 +99,8 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     conf["scheduleScans"]=scheduleScans;
     scheduleScans->setVisible(false);
     alayout->addWidget(new twid(useWriteScheduling,scheduleScans));
-    schedulelw=new QTreeView;
+    schedulelw=new leQTreeView;
+    schedulelw->parent=this;
     schedulelw->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
     schedulemod=new QStandardItemModel(0, 3);
     schedulemod->setHorizontalHeaderLabels({"Status","Type","Name"});
@@ -109,6 +110,8 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     schedulelw->setItemsExpandable(false);
     schedulelw->setDragDropOverwriteMode(false);
     schedulelw->setRootIsDecorated(false);
+    schedulelw->setMouseTracking(true);
+    connect(schedulelw, SIGNAL(entered(const QModelIndex&)), this, SLOT(onHoverOverScheduledItem(const QModelIndex)));
 
     itemMoveTop=new QPushButton();
     itemMoveTop->setIcon(QPixmap(":/top.svg"));
@@ -1193,6 +1196,12 @@ void pgWrite::drawWriteArea(cv::Mat* img){
     }else if(drawWriteAreaOn==4){ // external
         xSize=round(ext_xsize_um)*1000/pgMGUI->getNmPPx();
         ySize=round(ext_ysize_um)*1000/pgMGUI->getNmPPx();
+    }else if(drawWriteAreaOn==5){ // scheduled item hover
+        xSize=pgMGUI->mm2px(drawAreaScheduledRect[2]);
+        ySize=pgMGUI->mm2px(drawAreaScheduledRect[3]);
+        pgMGUI->getPos(&xShiftmm, &yShiftmm);
+        xShiftmm-=drawAreaScheduledRect[0];
+        yShiftmm-=drawAreaScheduledRect[1];
     }
 
     double clr[2]={0,255}; int thck[2]={3,1};
@@ -1201,6 +1210,7 @@ void pgWrite::drawWriteArea(cv::Mat* img){
         corners.push_back({(float)(sqrt(pow(0.5*xSize,2)+pow(0.5*ySize,2))),(float)(rot+atan2(i*0.5*ySize,j*0.5*xSize))});
     double ofsx=img->cols/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX+xShiftmm);
     double ofsy=img->rows/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY+yShiftmm);
+
     for(auto& cr: corners) cr=cv::Point2f(ofsx+cr.x*cos(cr.y),ofsy+cr.x*sin(cr.y));
     std::iter_swap(corners.begin()+2, corners.begin()+3);
     for(int i=0;i!=2;i++)
@@ -1290,4 +1300,22 @@ cv::Size pgWrite::calcRotSize(cv::Size size, double angleRad){
         if(2*abs(ed.amp*sin(ed.an))>ret.height) ret.height=2*abs(ed.amp*sin(ed.an));
     }
     return ret;
+}
+void pgWrite::onHoverOverScheduledItem(const QModelIndex &index){
+    for(auto& item:scheduled) if(item.ptr==schedulemod->item(index.row(), 0)){
+        if(item.isWrite){
+            drawAreaScheduledRect[2]=item.src.cols*item.wps.imgmmPPx;
+            drawAreaScheduledRect[3]=item.src.rows*item.wps.imgmmPPx;
+        }else{
+            drawAreaScheduledRect[2]=pgMGUI->px2mm(item.scanROI.width,0);
+            drawAreaScheduledRect[3]=pgMGUI->px2mm(item.scanROI.height,0);
+        }
+        drawAreaScheduledRect[0]=item.coords[0];
+        drawAreaScheduledRect[1]=item.coords[1];
+        break;
+    }
+    drawWriteAreaOn=5;
+}
+void leQTreeView::leaveEvent(QEvent *event){
+    parent->drawWriteAreaOn=0;
 }

@@ -6,18 +6,20 @@
 #include "PROCEDURES/UTIL/USC/scan.h"
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_bspline.h>
+#include <QTreeView>
 class writeSettings;
 class pgBeamAnalysis;
 class QLineEdit;
 class procLockProg;
 class hidCon;
-class QTreeView;
 class QStandardItemModel;
 class QStandardItem;
 class QFont;
 class pgFocusGUI;
+class leQTreeView;
 class pgWrite: public QObject{
     Q_OBJECT
+    friend leQTreeView;
 public:
     pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, pgScanGUI *pgSGUI, overlay& ovl, pgFocusGUI* pgFGUI);
     ~pgWrite();
@@ -88,7 +90,7 @@ private:
     checkbox_gs* useWriteScheduling;
     checkbox_gs* scheduleScans;
     twid* schedulelwtwid;
-    QTreeView* schedulelw;
+    leQTreeView* schedulelw;
     QStandardItemModel* schedulemod;
     QPushButton* itemMoveTop;
     QPushButton* itemMoveUp;
@@ -157,6 +159,7 @@ private:
     std::string fileName;
     cv::Mat tagImage;
     int drawWriteAreaOn{0};     //1 is img, 2 is tag, 3 is frame
+    double drawAreaScheduledRect[4];    // xoffs, yoffs, xsize, ysize
     cv::Rect scanROI;
     void prepareScanROI(cv::Mat& mat, double _imgUmPPx);
     double scanCoords[3];
@@ -222,6 +225,7 @@ private Q_SLOTS:
     void onScheduleWriteStart();
     void onClearNonPending();
     void onTagAutoUpdate(bool state);
+    void onHoverOverScheduledItem(const QModelIndex &index);
 private:
     bool _onScan(cv::Rect ROI={0,0,0,0}, double* coords=nullptr);
     bool _onSave(bool ask=false, std::string filename="", std::string config="");
@@ -260,6 +264,14 @@ public:
 
 private Q_SLOTS:
     void onUsingBSpline(bool state);
+};
+
+class leQTreeView : public QTreeView{
+    using QTreeView::QTreeView;
+public:
+    pgWrite* parent;
+private:
+    void leaveEvent(QEvent *event);
 };
 
 #endif // PGWRITE_H
