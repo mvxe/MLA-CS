@@ -341,6 +341,7 @@ eadScrlBar::eadScrlBar(QString label, int Hsize, int Vsize, bool locked) : eadSc
     cLock->setCheckable(true);
     cLock->setChecked(locked);
     cLock->setIcon(QPixmap(":/locked.svg"));
+    cLock->setFixedSize(QSize(Vsize,Vsize));
     layout->insertWidget(layout->count()-1, cLock);
     connect(cLock, SIGNAL(toggled(bool)), this, SLOT(on_lock(bool)));
     abar->setEnabled(!locked);
