@@ -67,11 +67,17 @@ void saveDialog::recursiveList(uint depth, varCheckList* _vcl){
         _vcl->queue.back().chbox->setChecked(true);
         _vcl->queue.back().conf=&((*_vcl->conf->map)[item.first]);
         connect(_vcl->chbox,SIGNAL(stateChanged(int)),_vcl->queue.back().chbox,SLOT(parent_changed(int)));
+        connect(_vcl->chbox,SIGNAL(clicked(bool)),_vcl->queue.back().chbox,SLOT(parent_changed_user(bool)));
         connect(_vcl->queue.back().chbox,SIGNAL(stateChanged(int)),_vcl->chbox,SLOT(child_changed(int)));
         recursiveList(depth+1, &_vcl->queue.back());
     }
 }
-
+void hQCheckBox::parent_changed_user(bool state){
+    bool oldState=blockSignals(true);
+    setCheckState(state?Qt::Checked:Qt::Unchecked);
+    blockSignals(oldState);
+    Q_EMIT clicked(state);
+}
 void hQCheckBox::parent_changed(int state){
     if(state==Qt::Checked)
         setCheckState(Qt::Checked);

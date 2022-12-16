@@ -43,6 +43,7 @@ class hQCheckBox: public QCheckBox{
     Q_OBJECT
     using QCheckBox::QCheckBox;
 private Q_SLOTS:
+    void parent_changed_user(bool state);
     void parent_changed(int state);
     void child_changed(int state);
 };
