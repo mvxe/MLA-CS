@@ -1,4 +1,4 @@
-#include "write.h"
+﻿#include "write.h"
 #include "GUI/gui_includes.h"
 #include "includes.h"
 #include <time.h>
@@ -472,7 +472,7 @@ bool pgWrite::_onScan(cv::Rect ROI, double* coords){
     pgMGUI->chooseObj(true);
     if(coords!=nullptr) pgMGUI->move(coords[0], coords[1], coords[2], true);
     else pgMGUI->move(scanCoords[0], scanCoords[1], scanCoords[2], true);
-    if(refocusBeforeScan->val) pgFGUI->doRefocus(true, scanROI, maxRedoRefocusTries);
+    if(refocusBeforeScan->val) pgFGUI->doRefocus(true, ROI, maxRedoRefocusTries);
     if(pgSGUI->doNRounds(scanRepeatN->val,ROI.width==0?scanROI:ROI,maxRedoScanTries)) return true;
     res=scanRes->get();
     if(res==nullptr){std::cerr<<"Somehow cannot find scan in pgWrite::_onScan()\n";return true;}
@@ -702,13 +702,15 @@ void pgWrite::onWriteDM(){
         }
 
         if(scheduleScans->val){
-            scheduled.emplace_back();
-            for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
-            scheduled.back().isWrite=false;
-            scheduled.back().filename=filename;
-            scheduled.back().conf=genConfig();
-            scheduled.back().scanROI=scanROI;
-            scheduled.back().ptr=addScheduleItem("Pending","Scan",filename,false);
+            for(auto& ROI:scanROIs){
+                scheduled.emplace_back();
+                for(int i:{0,1,2})scheduled.back().coords[i]=ROI.scanCoords[i];
+                scheduled.back().isWrite=false;
+                scheduled.back().filename=filename+ROI.filenameadd;
+                scheduled.back().conf=genConfig();
+                scheduled.back().scanROI=ROI.ROI;
+                scheduled.back().ptr=addScheduleItem("Pending","Scan",filename+ROI.filenameadd,false);
+            }
         }
 
         return;
@@ -719,11 +721,15 @@ void pgWrite::onWriteDM(){
     writeDM->setText("Abort");
     onChangeDrawWriteAreaOn(false);
     //write:
-    if(refocusBeforeWrite->val) pgFGUI->doRefocus(true, scanROI, maxRedoRefocusTries);
+    if(refocusBeforeWrite->val){
+        if(scanROIs.size()==1) pgFGUI->doRefocus(true, scanROI, maxRedoRefocusTries);
+        else pgFGUI->doRefocus(true, {0,0,0,0}, maxRedoRefocusTries);
+    }
     if(writeMat()) firstWritten=false;
 
     if(firstWritten){
-        scanB->setEnabled(true);
+        scanB->setEnabled(scanROIs.size()==1);
+        scanB->setToolTip(scanROIs.size()==1?"":"For large (multiple) scans use scheduling!");
         writeDM->setEnabled(true);
     }
     writeDM->setText("Write");
@@ -759,13 +765,15 @@ void pgWrite::scheduleWrite(cv::Mat& src, writePars pars, std::string label){
 void pgWrite::scheduleScan(cv::Mat& src, double imgmmPPx, std::string scanSaveFilename, std::string notes, bool getpos){
     if(getpos) pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
     prepareScanROI(src, imgmmPPx*1000);
-    scheduled.emplace_back();
-    for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
-    scheduled.back().isWrite=false;
-    scheduled.back().filename=scanSaveFilename;
-    scheduled.back().conf=notes;
-    scheduled.back().scanROI=scanROI;
-    scheduled.back().ptr=addScheduleItem("Pending","Scan",scanSaveFilename,false);
+    for(auto& ROI:scanROIs){
+        scheduled.emplace_back();
+        for(int i:{0,1,2})scheduled.back().coords[i]=ROI.scanCoords[i];
+        scheduled.back().isWrite=false;
+        scheduled.back().filename=scanSaveFilename+ROI.filenameadd;
+        scheduled.back().conf=notes;
+        scheduled.back().scanROI=ROI.ROI;
+        scheduled.back().ptr=addScheduleItem("Pending","Scan",scanSaveFilename,false);
+    }
 }
 double pgWrite::getScanExtraBorderPx(){
     double extraB=scanExtraBorder->val;
@@ -783,17 +791,30 @@ void pgWrite::prepareScanROI(cv::Mat& mat, double _imgUmPPx){
     int rows=go.pGCAM->iuScope->camRows;
 
     double extraB=getScanExtraBorderPx();
+    scanROIs.clear();
     scanROI=cv::Rect(cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX,0)-extraB, rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY,0)-extraB, xSize+2*extraB, ySize+2*extraB);
-    if(scanROI.x<0){
-        scanROI.width+=scanROI.x;
-        scanROI.x=0;
+    if(scanROI.x>=0 && scanROI.y>=0 && scanROI.width+scanROI.x<=cols && scanROI.height+scanROI.y<=rows){
+        scanROIs.emplace_back();
+        scanROIs.back().ROI=scanROI;
+        scanROIs.back().filenameadd="";
+        for(auto i:{0,1,2}) scanROIs.back().scanCoords[i]=scanCoords[i];
+    }else{
+        int Ncols=ceil((double)xSize/cols);
+        int Nrows=ceil((double)ySize/rows);
+        int xSizeSeg=xSize/Ncols+2*extraB;
+        int ySizeSeg=ySize/Nrows+2*extraB;
+        cv::Rect newROI=cv::Rect(cols/2-xSizeSeg/2, rows/2-ySizeSeg/2, xSizeSeg, ySizeSeg);
+        for(int row=0;row!=Nrows;row++){
+            for(int col=0;col!=Ncols;col++){
+                scanROIs.emplace_back();
+                scanROIs.back().ROI=newROI;
+                scanROIs.back().filenameadd=util::toString("_y",row,"_x",col);
+                for(auto i:{0,1,2}) scanROIs.back().scanCoords[i]=scanCoords[i];
+                scanROIs.back().scanCoords[0]+=pgMGUI->px2mm(-0.5*xSize+(0.5+col)*xSize/Ncols);
+                scanROIs.back().scanCoords[1]+=pgMGUI->px2mm(-0.5*ySize+(0.5+row)*ySize/Nrows);
+            }
+        }
     }
-    if(scanROI.y<0){
-        scanROI.height+=scanROI.y;
-        scanROI.y=0;
-    }
-    if(scanROI.width+scanROI.x>cols) scanROI.width=cols-scanROI.x;
-    if(scanROI.height+scanROI.y>rows) scanROI.height=rows-scanROI.y;
 }
 bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
     wabort=false;
@@ -1247,7 +1268,10 @@ void pgWrite::onScheduleWriteStart(){
             bool failed;
             if(it->isWrite){
                 pgMGUI->move(it->coords[0], it->coords[1], it->coords[2], true);
-                if(refocusBeforeWrite->val) pgFGUI->doRefocus(true, scanROI, maxRedoRefocusTries);
+                if(refocusBeforeWrite->val){
+                    if(scanROIs.size()==1) pgFGUI->doRefocus(true, scanROI, maxRedoRefocusTries);
+                    else pgFGUI->doRefocus(true, {0,0,0,0}, maxRedoRefocusTries);
+                }
                 failed=writeMat(&it->src, it->wps);
             }else{
                 saveB->setEnabled(false);

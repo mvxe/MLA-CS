@@ -160,6 +160,12 @@ private:
     cv::Mat tagImage;
     int drawWriteAreaOn{0};     //1 is img, 2 is tag, 3 is frame
     double drawAreaScheduledRect[4];    // xoffs, yoffs, xsize, ysize
+    struct _scanROIs{
+        cv::Rect ROI;
+        std::string filenameadd;
+        double scanCoords[3];
+    };
+    std::vector<_scanROIs> scanROIs;
     cv::Rect scanROI;
     void prepareScanROI(cv::Mat& mat, double _imgUmPPx);
     double scanCoords[3];
