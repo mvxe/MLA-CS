@@ -75,6 +75,9 @@ private:
     HQPushButton* scanB;
     QPushButton* saveB;
     QLineEdit* tagText;
+    val_selector* rotation;
+    void rotateIm(cv::Mat* mat);
+    cv::Size calcRotSize(cv::Size size, double angleDeg);
     HQPushButton* writeTag;
     twid* tagSTwid;
     checkbox_gs* tagAutoUpdate;
@@ -251,6 +254,7 @@ public:
     val_selector* fontThickness;
     val_selector* imgUmPPx;
     val_selector* depthMaxval;
+    val_selector* frameDis;
 
     bool& p_ready;
 

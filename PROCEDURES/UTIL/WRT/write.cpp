@@ -66,6 +66,8 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     connect(writeTag, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOnTag(bool)));
     connect(writeTag, SIGNAL(released()), this, SLOT(onWriteTag()));
     alayout->addWidget(new twid(writeTag,new QLabel("Text:"),tagText));
+    rotation=new val_selector(0, "Rotation", -99999, 99999, 3, 0, {"deg"});
+    alayout->addWidget(new twid(rotation));
     tagAutoUpdate= new checkbox_gs(true,"Automatic tag text");
     conf["tagAutoUpdate"]=tagAutoUpdate;
     connect(tagAutoUpdate, SIGNAL(changed(bool)), this, SLOT(onTagAutoUpdate(bool)));
@@ -661,9 +663,11 @@ void pgWrite::onWriteDM(){
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
 
-    prepareScanROI(WRImage, imgUmPPx->val);
-    if(WRImage.type()!=CV_32F) lastDepth=depthMaxval->val;
-    else cv::minMaxIdx(WRImage,0,&lastDepth);
+    cv::Mat _WRImage=WRImage.clone();
+    if(rotation->val!=0) rotateIm(&_WRImage);
+    prepareScanROI(_WRImage, imgUmPPx->val);
+    if(_WRImage.type()!=CV_32F) lastDepth=depthMaxval->val;
+    else cv::minMaxIdx(_WRImage,0,&lastDepth);
 
     if(!firstWritten)firstWritten=true;
     else tagUInt->setValue(tagUInt->val+1);
@@ -673,7 +677,7 @@ void pgWrite::onWriteDM(){
         replacePlaceholdersInString(filename);
         scheduled.emplace_back();
         for(int i:{0,1,2})scheduled.back().coords[i]=scanCoords[i];
-        WRImage.copyTo(scheduled.back().src);
+        _WRImage.copyTo(scheduled.back().src);
         scheduled.back().isWrite=true;
         scheduled.back().wps.depthMaxval=depthMaxval->val;
         scheduled.back().wps.imgmmPPx=imgUmPPx->val/1000;
@@ -687,10 +691,10 @@ void pgWrite::onWriteDM(){
         scheduled.back().ptr=addScheduleItem("Pending","Write",filename,false);
         cv::Mat resized;
         double ratio=imgUmPPx->val;
-        double xSize=round(ratio*WRImage.cols)*1000/pgMGUI->getNmPPx(0);
-        double ySize=round(ratio*WRImage.rows)*1000/pgMGUI->getNmPPx(0);
+        double xSize=round(ratio*_WRImage.cols)*1000/pgMGUI->getNmPPx(0);
+        double ySize=round(ratio*_WRImage.rows)*1000/pgMGUI->getNmPPx(0);
         if(xSize>0 && ySize>0){
-             cv::resize(WRImage, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
+             cv::resize(_WRImage, resized, cv::Size(xSize, ySize), cv::INTER_LINEAR);
              scheduled.back().overlay=ovl.add_overlay(resized,pgMGUI->mm2px(scanCoords[0]-pgBeAn->writeBeamCenterOfsX,0), pgMGUI->mm2px(scanCoords[1]-pgBeAn->writeBeamCenterOfsY,0));
         }
 
@@ -727,8 +731,9 @@ void pgWrite::scheduleWriteScan(cv::Mat& src, writePars pars, std::string scanSa
     while(go.pCTRL->getMotionSetting("",CTRL::mst_position_update_pending)!=0) QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
     QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 10);
 
-    scheduleWrite(src, pars, scanSaveFilename);
-    scheduleScan(src, pars.imgmmPPx,scanSaveFilename, notes, false);
+    cv::Mat srcm=src.clone();
+    scheduleWrite(srcm, pars, scanSaveFilename);
+    scheduleScan(srcm, pars.imgmmPPx,scanSaveFilename, notes, false);
 }
 void pgWrite::scheduleWrite(cv::Mat& src, writePars pars, std::string label){
     pgMGUI->getPos(&scanCoords[0], &scanCoords[1], &scanCoords[2]);
@@ -792,6 +797,7 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
     cv::Mat tmpWrite, resizedWrite;
     cv::Mat* src;
     double vdepthMaxval, vimgmmPPx, vpointSpacing, vfocus, vfocusXcor, vfocusYcor, vdepthScale;
+
     src=(override!=nullptr)?override:&WRImage;
     vdepthMaxval=(wparoverride.depthMaxval!=0)?wparoverride.depthMaxval:(depthMaxval->val.load());
     vimgmmPPx=(wparoverride.imgmmPPx!=0)?wparoverride.imgmmPPx:imgUmPPx->val/1000;
@@ -813,8 +819,9 @@ bool pgWrite::writeMat(cv::Mat* override, writePars wparoverride){
         src->copyTo(tmpWrite);
         if(vdepthScale!=1)
             tmpWrite*=vdepthScale;
-    }
-    else {QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n"); return true;}
+    }else {QMessageBox::critical(gui_activation, "Error", "Image type not compatible.\n"); return true;}
+    if(override==nullptr && rotation->val!=0) rotateIm(&tmpWrite);
+
     preparePredictor();
 
     double ratio=vimgmmPPx/vpointSpacing;
@@ -1056,6 +1063,7 @@ void pgWrite::onWriteTag(){
     cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
     tagImage=cv::Mat(size.height+4,size.width+4,CV_8U,cv::Scalar(0));
     cv::putText(tagImage,tagText->text().toStdString(), {0,size.height+1}, OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, cv::Scalar(255), settingWdg[4]->fontThickness->val, cv::LINE_AA);
+    if(rotation->val!=0) rotateIm(&tagImage);
 
     if(useWriteScheduling->val){
         pgMGUI->wait4motionToComplete();
@@ -1160,16 +1168,19 @@ void pgWrite::drawWriteArea(cv::Mat* img){
     double ySize;
     double xShiftmm=0;
     double yShiftmm=0;
+    double rot=0;
 
     if(drawWriteAreaOn==2){ //tag
         if(tagText->text().toStdString().empty()) return;
         ratio=settingWdg[4]->imgUmPPx->val;
         cv::Size size=cv::getTextSize(tagText->text().toStdString(), OCV_FF::ids[settingWdg[4]->fontFace->index], settingWdg[4]->fontSize->val, settingWdg[4]->fontThickness->val, nullptr);
+        rot=-rotation->val/180*M_PI;
         xSize=round(ratio*(size.width+4))*1000/pgMGUI->getNmPPx();
         ySize=round(ratio*(size.height+4))*1000/pgMGUI->getNmPPx();
     }else if(drawWriteAreaOn==1){ // write
         if(WRImage.empty() || !writeDM->isEnabled()) return;
         ratio=imgUmPPx->val;
+        rot=-rotation->val/180*M_PI;
         xSize=round(ratio*WRImage.cols)*1000/pgMGUI->getNmPPx();
         ySize=round(ratio*WRImage.rows)*1000/pgMGUI->getNmPPx();
     }else if(drawWriteAreaOn==3){  // scan
@@ -1185,8 +1196,16 @@ void pgWrite::drawWriteArea(cv::Mat* img){
     }
 
     double clr[2]={0,255}; int thck[2]={3,1};
+    std::vector<cv::Point2f> corners;
+    for(int i:{-1,1}) for(int j:{-1,1})
+        corners.push_back({(float)(sqrt(pow(0.5*xSize,2)+pow(0.5*ySize,2))),(float)(rot+atan2(i*0.5*ySize,j*0.5*xSize))});
+    double ofsx=img->cols/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX+xShiftmm);
+    double ofsy=img->rows/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY+yShiftmm);
+    for(auto& cr: corners) cr=cv::Point2f(ofsx+cr.x*cos(cr.y),ofsy+cr.x*sin(cr.y));
+    std::iter_swap(corners.begin()+2, corners.begin()+3);
     for(int i=0;i!=2;i++)
-        cv::rectangle(*img,  cv::Rect(img->cols/2-xSize/2-pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsX+xShiftmm), img->rows/2-ySize/2+pgMGUI->mm2px(pgBeAn->writeBeamCenterOfsY+yShiftmm), xSize, ySize), {clr[i]}, thck[i], cv::LINE_AA);
+        for(int j=0;j!=4;j++)
+            cv::line(*img, corners[j], corners[(j+1)%4], {clr[i]}, thck[i], cv::LINE_AA);
 }
 void pgWrite::onScheduleWriteStart(){
     if(scheduleWriteStart->text()=="Abort current"){
@@ -1250,4 +1269,25 @@ void pgWrite::onScheduleWriteStart(){
 
 void pgWrite::setScheduling(bool value){
     useWriteScheduling->set(value);
+}
+void pgWrite::rotateIm(cv::Mat* mat){
+    cv::Mat tmp=mat->clone();
+    double angle=std::fmod(rotation->val,360);
+    cv::Size size=calcRotSize(mat->size(), angle/180*M_PI);
+    cv::Mat TM=cv::getRotationMatrix2D(cv::Point2f(tmp.cols*0.5,tmp.rows*0.5), angle, 1.0);
+    TM.at<double>(0,2)+=0.5*(size.width-tmp.cols);
+    TM.at<double>(1,2)+=0.5*(size.height-tmp.rows);
+    cv::warpAffine(tmp, *mat, TM, size);
+}
+cv::Size pgWrite::calcRotSize(cv::Size size, double angleRad){
+    struct pa{double amp; double an;/*rad*/};
+    std::vector<pa> corners;
+    for(int i:{-1,1}) for(int j:{-1,1})
+        corners.push_back({sqrt(pow(0.5*size.width,2)+pow(0.5*size.height,2)),angleRad+atan2(i*0.5*size.height,j*0.5*size.width)});
+    cv::Size ret{0,0};
+    for(auto ed: corners){
+        if(2*abs(ed.amp*cos(ed.an))>ret.width) ret.width=2*abs(ed.amp*cos(ed.an));
+        if(2*abs(ed.amp*sin(ed.an))>ret.height) ret.height=2*abs(ed.amp*sin(ed.an));
+    }
+    return ret;
 }
