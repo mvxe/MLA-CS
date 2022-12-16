@@ -62,6 +62,7 @@ pgWrite::pgWrite(pgBeamAnalysis* pgBeAn, pgMoveGUI* pgMGUI, procLockProg& MLP, p
     alayout->addWidget(new twid(writeDM,scanB,saveB));
 
     tagText=new QLineEdit;
+    tagText->setText("tag");
     writeTag=new HQPushButton("Write Tag");
     connect(writeTag, SIGNAL(changed(bool)), this, SLOT(onChangeDrawWriteAreaOnTag(bool)));
     connect(writeTag, SIGNAL(released()), this, SLOT(onWriteTag()));
