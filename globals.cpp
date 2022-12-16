@@ -1,5 +1,6 @@
 #include "GUI/mainwindow.h"
 #include "includes.h"
+#include "opencv2/core/utils/filesystem.hpp"
 globals go;
 
 globals::globals(){}
@@ -36,10 +37,14 @@ void globals::startup(int argc, char *argv[]){
     qapp = new QApplicationQN(argc, argv);
     if (started) return; started=true;
     std::set_terminate(myterminate);
+    if(!cv::utils::fs::exists(cv::utils::fs::getcwd()+"/configs"))
+        cv::utils::fs::createDirectory(cv::utils::fs::getcwd()+"/configs");
+    if(!cv::utils::fs::exists(cv::utils::fs::getcwd()+"/configs/.git"))
+        std::system(util::toString("git init ",cv::utils::fs::getcwd(),"/configs").c_str());
     //cinthr=new std::thread(&cinlisten::run, new cinlisten());            //so that I can kill it in the terminal if qt freezes, which is often over ssh -x
 
     // registering nanostructuring setup devices, threads
-    std::string CTRL_TYPE="ctrl_RPTY";       // default to RPTY for backward compatibility
+    std::string CTRL_TYPE;
     conf["CTRL_TYPE"]=CTRL_TYPE;
     conf.load();
     if(CTRL_TYPE=="ctrl_RPTY"){
@@ -47,6 +52,7 @@ void globals::startup(int argc, char *argv[]){
         conf["RPTY"]=pCTRL->conf;                           // keep RPTY name for backward compatibility, TODO change in future if more devices are implemented
     }else{
         conf["CTRL_TYPE"].comments().push_back("Implemented contollers: ctrl_RPTY.");
+        CTRL_TYPE="ctrl_RPTY";                              // default to RPTY for backward compatibility
         conf["CTRL_TYPE"].save();
         throw std::runtime_error(util::toString("In globals::startup, uncrecognized/nonexistant contoller for nanostructuring: ",CTRL_TYPE,". Saved possible options to conf."));
     }
@@ -106,8 +112,7 @@ void globals::cleanup(){
         killThread(threads.front());        //this destroys them(safely calling their destructors)
     std::cout<<"All threads exited successfully!\n";
 
-    saveDialog sD(mw,confList);
-    sD.exec();
+    mw->onSaveBtn();
 
     go_mx.unlock();
 }

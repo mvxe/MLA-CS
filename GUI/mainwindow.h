@@ -22,8 +22,10 @@ public:
 
 private Q_SLOTS:
     void program_exit();
-    void onSaveBtn();
     void on_tabWidget_currentChanged(int index);
+
+public Q_SLOTS:
+    void onSaveBtn();
 
 private:
     QApplication* qapp;
@@ -35,6 +37,7 @@ private:
     tab_camera* tabCam;
 
     int lastIndex=0;
+    bool saved;
 
     bool cleanedTabs=false;
 };
@@ -59,13 +62,14 @@ public:
 class saveDialog : public QDialog{
     Q_OBJECT
 public:
-    saveDialog(QWidget* parent, std::vector<rtoml::vsr*>& confList);
+    saveDialog(QWidget* parent, std::vector<rtoml::vsr*>& confList, bool& saved);
 private:
     QScrollArea qsa;
     QVBoxLayout layout;
     std::queue<varCheckList> vcl;
     void recursiveList(uint depth, varCheckList* vcl);
     void recursiveSave(varCheckList* vcl);
+    bool& saved;
 private Q_SLOTS:
     void on_finished(int result);
 };

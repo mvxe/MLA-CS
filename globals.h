@@ -74,7 +74,7 @@ public:
     CTRL* pCTRL;    //you can access the controller's functions through this
     std::vector<protooth*> GUIdevList;      // contains device connection GUI
 
-    rtoml::vsr conf{"devices.toml"};
+    rtoml::vsr conf{"configs/devices.toml"};
     std::vector<rtoml::vsr*> confList;      // contains pointers to all config files (conf, tab confs...)
     threadPool OCL_threadpool{16};   //apparently opencl does not do well with threads: depending on the driver it fails after usage on a number (~200) of different threads. Using threadpool apparently fixes this, hence OCL_threadpool
 

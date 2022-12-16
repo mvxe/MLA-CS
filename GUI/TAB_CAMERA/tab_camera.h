@@ -13,7 +13,7 @@ friend iImageDisplay;
 public:
     tab_camera(QWidget* parent);
     ~tab_camera();
-    rtoml::vsr conf{"app_camera.toml"};                //configuration map
+    rtoml::vsr conf{"configs/app_camera.toml"};                //configuration map
 
     void tab_entered();
     void tab_exited();

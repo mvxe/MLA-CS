@@ -2,6 +2,7 @@
 #include "DEV/GCAM/gcam.h"
 #include "ui_mainwindow.h"
 #include <opencv2/highgui/highgui.hpp>  // Video write
+#include "opencv2/core/utils/filesystem.hpp"
 
 MainWindow::MainWindow(QApplication* qapp, std::vector<rtoml::vsr *> *confList) : qapp(qapp), QMainWindow(0), ui(new Ui::MainWindow) {
     connect(qapp,SIGNAL(aboutToQuit()),this,SLOT(program_exit()));
@@ -87,7 +88,7 @@ void hQCheckBox::child_changed(int state){
         setCheckState(Qt::Unchecked);
 }
 
-saveDialog::saveDialog(QWidget* parent, std::vector<rtoml::vsr *>& confList):QDialog(parent){
+saveDialog::saveDialog(QWidget* parent, std::vector<rtoml::vsr *>& confList, bool &saved):QDialog(parent),saved(saved){
     connect(this,SIGNAL(finished(int)),this,SLOT(on_finished(int)));
     for(auto conf: confList){
         if(conf->changed()){
@@ -128,6 +129,7 @@ saveDialog::saveDialog(QWidget* parent, std::vector<rtoml::vsr *>& confList):QDi
 void saveDialog::recursiveSave(varCheckList* _vcl){
     if(_vcl->chbox->isChecked()){
         _vcl->conf->save();
+        saved=true;
     }
     else while(!_vcl->queue.empty()){
         recursiveSave(&_vcl->queue.front());
@@ -148,6 +150,11 @@ void saveDialog::on_finished(int result){
 }
 
 void MainWindow::onSaveBtn(){
-    saveDialog sD(this,go.confList);
+    saved=false;
+    saveDialog sD(this,go.confList,saved);
     sD.exec();
+    if(saved) {
+        std::system(util::toString("git -C ",cv::utils::fs::getcwd(),"/configs add .").c_str());
+        std::system(util::toString("git -C ",cv::utils::fs::getcwd(),"/configs commit --author=\"Writing setup <>\" -m \"updated\"").c_str());
+    }
 }
